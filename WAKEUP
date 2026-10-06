@@ -97,6 +97,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Ryan next (optional):** Cursor Settings → General → Privacy → **Privacy Mode** (confirm still on). Delete this chat + local transcript when done. Prod service-role cutover only when he wants that project.
 
+### Windows Theo 2026-10-06 … Action/ESPN Invalid API key was test JWT
+
+**I am Windows Theo.** Home-PC 10am Action + ESPN cards failed because `TEST_SUPABASE_SERVICE_ROLE_KEY` (legacy JWT) is dead. `TEST_SUPABASE_SECRET_KEY` (`sb_secret`) works. `npm run env:sync` now prefers the secret. Mac: pull `test` then `npm run env:sync` so LaunchAgent does not keep the dead JWT.
+
 ### Windows Theo ACTIVE TRACK 2026-09-25 ... Action splits + ESPN trench auto pull
 
 **I am Windows Theo.** Weekly Action PRO + ESPN trench screenshots are replaced by a home-PC puller (same idea as MTTDB).

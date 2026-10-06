@@ -62,11 +62,22 @@ function applyTargetEnvFromProcess(target) {
       : process.env.SUPABASE_URL?.trim()) ||
     "";
   const key =
+    process.env[`SUPABASE_SECRET_KEY${suffix}`]?.trim() ||
     process.env[`SUPABASE_SERVICE_ROLE_KEY${suffix}`]?.trim() ||
+    process.env.SUPABASE_SECRET_KEY?.trim() ||
     process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
     "";
   if (url) process.env.SUPABASE_URL = url.replace(/\/+$/, "");
   if (key) process.env.SUPABASE_SERVICE_ROLE_KEY = key;
+}
+
+function overlaySecretKey(target) {
+  const prefix = target === "production" ? "PROD_" : "TEST_";
+  const secret =
+    process.env[`${prefix}SUPABASE_SECRET_KEY`]?.trim() ||
+    process.env.SUPABASE_SECRET_KEY?.trim() ||
+    "";
+  if (secret) process.env.SUPABASE_SERVICE_ROLE_KEY = secret;
 }
 
 /** @param {"test" | "production" | null | undefined} target */
@@ -83,12 +94,18 @@ export function loadSupabaseEnv(target) {
     delete process.env.SUPABASE_DB_PASSWORD;
   }
   const full = path.join(repoRoot, file);
-  if (applyEnvFile(full, { fillEmptyOnly: false })) return;
+  if (applyEnvFile(full, { fillEmptyOnly: false })) {
+    overlaySecretKey(target);
+    return;
+  }
 
   // No split file … map TEST_* / PROD_* from .env.master onto SUPABASE_*.
   const prefix = target === "production" ? "PROD_" : "TEST_";
   const mappedUrl = process.env[`${prefix}SUPABASE_URL`]?.trim() || "";
-  const mappedKey = process.env[`${prefix}SUPABASE_SERVICE_ROLE_KEY`]?.trim() || "";
+  const mappedKey =
+    process.env[`${prefix}SUPABASE_SECRET_KEY`]?.trim() ||
+    process.env[`${prefix}SUPABASE_SERVICE_ROLE_KEY`]?.trim() ||
+    "";
   const mappedPw = process.env[`${prefix}SUPABASE_DB_PASSWORD`]?.trim() || "";
   const mappedDb = process.env[`${prefix}SUPABASE_DB_URL`]?.trim() || "";
   if (mappedUrl) process.env.SUPABASE_URL = mappedUrl.replace(/\/+$/, "");
@@ -112,7 +129,10 @@ export function loadSupabaseEnv(target) {
 export function readSupabaseCredentials() {
   const urlRaw = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const url = urlRaw?.trim()?.replace(/\/+$/, "") || "";
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.SUPABASE_SECRET_KEY?.trim() ||
+    "";
   return { url, key };
 }
 

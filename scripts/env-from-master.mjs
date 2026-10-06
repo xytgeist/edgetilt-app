@@ -93,7 +93,7 @@ writeGenerated(
   ".env.supabase.test",
   [
     ["SUPABASE_URL", firstNonEmpty(env, "TEST_SUPABASE_URL")],
-    ["SUPABASE_SERVICE_ROLE_KEY", firstNonEmpty(env, "TEST_SUPABASE_SERVICE_ROLE_KEY")],
+    ["SUPABASE_SERVICE_ROLE_KEY", firstNonEmpty(env, "TEST_SUPABASE_SECRET_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY")],
     ["SUPABASE_DB_PASSWORD", firstNonEmpty(env, "TEST_SUPABASE_DB_PASSWORD")],
     ["SUPABASE_DB_URL", firstNonEmpty(env, "TEST_SUPABASE_DB_URL")],
     ["CLOUDFLARE_ACCOUNT_ID", firstNonEmpty(env, "TEST_CLOUDFLARE_ACCOUNT_ID")],
@@ -112,7 +112,7 @@ writeGenerated(
   ".env.supabase.production",
   [
     ["SUPABASE_URL", firstNonEmpty(env, "PROD_SUPABASE_URL")],
-    ["SUPABASE_SERVICE_ROLE_KEY", firstNonEmpty(env, "PROD_SUPABASE_SERVICE_ROLE_KEY")],
+    ["SUPABASE_SERVICE_ROLE_KEY", firstNonEmpty(env, "PROD_SUPABASE_SECRET_KEY", "PROD_SUPABASE_SERVICE_ROLE_KEY")],
     ["SUPABASE_DB_PASSWORD", firstNonEmpty(env, "PROD_SUPABASE_DB_PASSWORD")],
     ["SUPABASE_DB_URL", firstNonEmpty(env, "PROD_SUPABASE_DB_URL")],
     ["SUPABASE_ACCESS_TOKEN", firstNonEmpty(env, "SUPABASE_ACCESS_TOKEN")],

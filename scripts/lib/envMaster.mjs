@@ -55,7 +55,11 @@ export function applyMasterTarget(env, target) {
   const prefix = target === "production" ? "PROD_" : "TEST_";
   const mapped = {
     SUPABASE_URL: firstNonEmpty(env, `${prefix}SUPABASE_URL`),
-    SUPABASE_SERVICE_ROLE_KEY: firstNonEmpty(env, `${prefix}SUPABASE_SERVICE_ROLE_KEY`),
+    SUPABASE_SERVICE_ROLE_KEY: firstNonEmpty(
+      env,
+      `${prefix}SUPABASE_SECRET_KEY`,
+      `${prefix}SUPABASE_SERVICE_ROLE_KEY`,
+    ),
     SUPABASE_DB_PASSWORD: firstNonEmpty(env, `${prefix}SUPABASE_DB_PASSWORD`),
     SUPABASE_DB_URL: firstNonEmpty(env, `${prefix}SUPABASE_DB_URL`),
     CLOUDFLARE_ACCOUNT_ID: firstNonEmpty(env, `${prefix}CLOUDFLARE_ACCOUNT_ID`),

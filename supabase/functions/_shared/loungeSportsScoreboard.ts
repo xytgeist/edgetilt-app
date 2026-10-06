@@ -108,6 +108,8 @@ export const LOUNGE_SPORTS_SCOREBOARD_SPORTS = [
   { key: 'basketball_nba', label: 'NBA', logoLeague: 'nba' },
   { key: 'icehockey_nhl', label: 'NHL', logoLeague: 'nhl' },
   { key: 'soccer_usa_mls', label: 'MLS', logoLeague: 'mls' },
+  /** Tournament slate from ESPN (Odds API golf is outrights, not matchups). */
+  { key: 'golf_pga', label: 'PGA', logoLeague: 'pga' },
 ] as const
 
 export type LoungeSportsGameSide = {
@@ -884,7 +886,21 @@ function isMlbSportKey(sportKey: string): boolean {
   return String(sportKey || '').includes('baseball_mlb')
 }
 
-type MajorLeagueEspnPath = { sport: 'hockey' | 'basketball' | 'baseball'; league: 'nhl' | 'nba' | 'mlb' }
+function isMlsSportKey(sportKey: string): boolean {
+  return String(sportKey || '').includes('soccer_usa_mls')
+}
+
+function isPgaSportKey(sportKey: string): boolean {
+  const sk = String(sportKey || '')
+  return sk.includes('golf_pga') || sk === 'golf_pga'
+}
+
+type MajorLeagueEspnPath = {
+  sport: 'hockey' | 'basketball' | 'baseball' | 'soccer'
+  league: 'nhl' | 'nba' | 'mlb' | 'usa.1'
+  /** ESPN CDN teamlogos folder when it differs from scoreboard league slug. */
+  logoLeague?: string
+}
 
 function espnMajorLeagueScoreboardPath(path: MajorLeagueEspnPath): string {
   return `https://site.api.espn.com/apis/site/v2/sports/${path.sport}/${path.league}/scoreboard`
@@ -1407,15 +1423,18 @@ export async function buildLoungeSportsScoreboard(
   const nhlSport = LOUNGE_SPORTS_SCOREBOARD_SPORTS.find((s) => s.key === 'icehockey_nhl')
   const nbaSport = LOUNGE_SPORTS_SCOREBOARD_SPORTS.find((s) => s.key === 'basketball_nba')
   const mlbSport = LOUNGE_SPORTS_SCOREBOARD_SPORTS.find((s) => s.key === 'baseball_mlb')
+  const mlsSport = LOUNGE_SPORTS_SCOREBOARD_SPORTS.find((s) => s.key === 'soccer_usa_mls')
 
-  // NFL + CFB (week windows) + NHL/NBA/MLB (short window) in parallel.
+  // NFL + CFB (week windows) + NHL/NBA/MLB/MLS (short window) in parallel.
+  // PGA is ESPN tournament cards (below) … Odds golf is outrights, not matchups.
   // Soft-fail each pack … a dead league must not 502 the football pills.
-  const [nflPack, cfbPack, nhlPack, nbaPack, mlbPack] = await Promise.all([
+  const [nflPack, cfbPack, nhlPack, nbaPack, mlbPack, mlsPack] = await Promise.all([
     nflSport ? fetchLeagueBoardPack(nflSport.key, nflDates).catch(() => null) : Promise.resolve(null),
     cfbSport ? fetchLeagueBoardPack(cfbSport.key, cfbDates).catch(() => null) : Promise.resolve(null),
     nhlSport ? fetchLeagueBoardPack(nhlSport.key, otherDates).catch(() => null) : Promise.resolve(null),
     nbaSport ? fetchLeagueBoardPack(nbaSport.key, otherDates).catch(() => null) : Promise.resolve(null),
     mlbSport ? fetchLeagueBoardPack(mlbSport.key, otherDates).catch(() => null) : Promise.resolve(null),
+    mlsSport ? fetchLeagueBoardPack(mlsSport.key, otherDates).catch(() => null) : Promise.resolve(null),
   ])
 
   if (nflSport && nflPack) {
@@ -1483,6 +1502,33 @@ export async function buildLoungeSportsScoreboard(
     })
   }
 
+  if (mlsSport && mlsPack) {
+    await ingestLeagueBoardPack({
+      byKey,
+      sport: mlsSport,
+      dates: otherDates,
+      pack: mlsPack,
+      admin,
+      matchSport: isMlsSportKey,
+      sourceRef,
+      lockMarketFiles: true,
+    })
+  }
+
+  // PGA Tour tournaments … not matchups. One card per active ESPN event (leader vs Field).
+  try {
+    const pgaGames = await loadEspnPgaTournamentGames()
+    if (pgaGames.length) {
+      sourceRef.value = sourceRef.value === 'none' ? 'espn-golf' : `${sourceRef.value}+espn-golf`
+      for (const game of pgaGames) {
+        const key = slateDedupeKey(game)
+        byKey.set(key, game)
+      }
+    }
+  } catch {
+    // soft-fail … PGA tile can show empty
+  }
+
   const games = [...byKey.values()].sort((a, b) => {
     const rank = { in: 0, post: 1, pre: 2 }
     const d = rank[a.status] - rank[b.status]
@@ -1498,6 +1544,11 @@ export async function buildLoungeSportsScoreboard(
   withRecords = await enrichEspnMajorLeagueSides(withRecords, { sport: 'hockey', league: 'nhl' }, isNhlSportKey)
   withRecords = await enrichEspnMajorLeagueSides(withRecords, { sport: 'basketball', league: 'nba' }, isNbaSportKey)
   withRecords = await enrichEspnMajorLeagueSides(withRecords, { sport: 'baseball', league: 'mlb' }, isMlbSportKey)
+  withRecords = await enrichEspnMajorLeagueSides(
+    withRecords,
+    { sport: 'soccer', league: 'usa.1', logoLeague: 'mls' },
+    isMlsSportKey,
+  )
   return { games: withRecords, source: sourceRef.value }
 }
 
@@ -1591,7 +1642,8 @@ async function enrichEspnMajorLeagueSides(
       : {}
     const abb = nflAbbrevKey(team.abbreviation) || side.abbrev
     const logoFromEspn = String(team.logo || '').trim()
-    const logo = logoFromEspn || espnLogo(path.league, abb) || side.logo
+    const logoFolder = path.logoLeague || path.league
+    const logo = logoFromEspn || espnLogo(logoFolder, abb) || side.logo
     const record = recordFromEspnCompetitor(competitor) || side.record || null
     const teamId = Number(team.id)
     return {
@@ -1625,6 +1677,161 @@ async function enrichEspnMajorLeagueSides(
     }
     return g
   })
+}
+
+const espnPgaCache = new Map<string, { at: number; games: LoungeSportsGame[] }>()
+const ESPN_PGA_TTL_MS = 60_000
+
+function parseGolfToPar(value: unknown): number | null {
+  const raw = String(value ?? '').trim()
+  if (!raw || raw === '-' || raw.toUpperCase() === 'E') return raw.toUpperCase() === 'E' ? 0 : null
+  const n = Number(raw.replace(/^\+/, ''))
+  return Number.isFinite(n) ? n : null
+}
+
+function golferAbbrev(name: string): string {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
+  const last = parts[parts.length - 1] || name || 'GLF'
+  return last.slice(0, 3).toUpperCase()
+}
+
+function classifyEspnGolfStatus(status: Record<string, unknown> | undefined): {
+  status: LoungeSportsGame['status']
+  label: string
+} {
+  const type = (status?.type && typeof status.type === 'object')
+    ? status.type as Record<string, unknown>
+    : {}
+  const state = String(type.state || status?.state || '').toLowerCase()
+  const detail = String(type.detail || type.shortDetail || status?.detail || '').trim()
+  const name = String(type.name || type.description || '').toUpperCase()
+  if (state === 'post' || /FINAL|COMPLETE/.test(name)) {
+    return { status: 'post', label: detail || 'Final' }
+  }
+  if (state === 'in' || /IN_PROGRESS|LIVE|PLAY/.test(name)) {
+    return { status: 'in', label: detail || 'Live' }
+  }
+  return { status: 'pre', label: detail || 'Upcoming' }
+}
+
+/**
+ * PGA Tour is not a home/away sport on Odds API (outrights only).
+ * Build one slate card per ESPN tournament: leader (away) vs Field (home).
+ */
+async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
+  const cacheKey = 'pga:active'
+  const cached = espnPgaCache.get(cacheKey)
+  if (cached && Date.now() - cached.at < ESPN_PGA_TTL_MS) return cached.games
+
+  const headers = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
+  const url = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard'
+  let events: Array<Record<string, unknown>> = []
+  try {
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
+    if (!res.ok) return cached?.games || []
+    const pack = await res.json() as { events?: Array<Record<string, unknown>> }
+    events = Array.isArray(pack.events) ? pack.events : []
+  } catch {
+    return cached?.games || []
+  }
+
+  const games: LoungeSportsGame[] = []
+  for (const ev of events.slice(0, 6)) {
+    const eventId = String(ev.id || '').trim()
+    if (!eventId) continue
+    const comps = (Array.isArray(ev.competitions) ? ev.competitions[0] : null) as Record<string, unknown> | null
+    const statusObj = (comps?.status || ev.status) as Record<string, unknown> | undefined
+    const { status, label } = classifyEspnGolfStatus(statusObj)
+    const tourneyName = String(ev.shortName || ev.name || 'PGA Tour').trim()
+    const commence = String(ev.date || comps?.date || '').trim() || new Date().toISOString()
+    const competitors = Array.isArray(comps?.competitors)
+      ? comps!.competitors as Array<Record<string, unknown>>
+      : []
+    // ESPN ranks golfers; rank 1 is the leader when available.
+    const ranked = [...competitors].sort((a, b) => {
+      const ra = Number(a.order ?? a.rank ?? 999)
+      const rb = Number(b.order ?? b.rank ?? 999)
+      return ra - rb
+    })
+    const leader = ranked[0] || null
+    const athlete = (leader?.athlete && typeof leader.athlete === 'object')
+      ? leader.athlete as Record<string, unknown>
+      : {}
+    const leaderName = String(
+      athlete.displayName || athlete.fullName || leader?.displayName || 'Leader',
+    ).trim()
+    const leaderScore = parseGolfToPar(leader?.score ?? leader?.displayValue)
+    const headshot = String(athlete.headshot || athlete.flag?.href || '').trim()
+    const roundNum = Number(
+      (statusObj?.period != null ? statusObj.period : null)
+      ?? (comps?.status && typeof comps.status === 'object'
+        ? (comps.status as Record<string, unknown>).period
+        : null),
+    )
+    const roundLabel = Number.isFinite(roundNum) && roundNum > 0 ? `R${roundNum}` : ''
+    const statusLabel = [roundLabel, label].filter(Boolean).join(' · ') || tourneyName
+    const lastPlay = leaderScore != null
+      ? `${leaderName} (${leaderScore === 0 ? 'E' : leaderScore > 0 ? `+${leaderScore}` : String(leaderScore)})`
+      : leaderName
+
+    const away: LoungeSportsGameSide = {
+      name: leaderName,
+      mascot: '',
+      abbrev: golferAbbrev(leaderName),
+      logo: headshot,
+      score: leaderScore,
+      linescores: [],
+      spread: null,
+      ml: null,
+      record: null,
+      team_id: Number(athlete.id) > 0 ? Number(athlete.id) : null,
+    }
+    const home: LoungeSportsGameSide = {
+      name: tourneyName,
+      mascot: '',
+      abbrev: 'FLD',
+      logo: '',
+      score: null,
+      linescores: [],
+      spread: null,
+      ml: null,
+      record: null,
+      team_id: null,
+    }
+    games.push({
+      id: `espn-golf-${eventId}`,
+      sport_key: 'golf_pga',
+      sport_label: 'PGA',
+      status,
+      status_label: statusLabel,
+      commence_time: commence,
+      away,
+      home,
+      aliases: [leaderName, tourneyName, 'PGA', 'golf'].filter(Boolean),
+      live: status === 'in'
+        ? {
+          clock: '',
+          period: Number.isFinite(roundNum) ? roundNum : null,
+          down: null,
+          distance: null,
+          yard_line: null,
+          yard_side: null,
+          possession: null,
+          home_timeouts: null,
+          away_timeouts: null,
+          last_play: lastPlay,
+          status_name: String((statusObj?.type as Record<string, unknown> | undefined)?.name || '') || null,
+          status_detail: label,
+        }
+        : null,
+      broadcast: null,
+      broadcast_url: null,
+      total: null,
+    })
+  }
+
+  espnPgaCache.set(cacheKey, { at: Date.now(), games })
+  return games
 }
 
 const RUNDOWN_BASE = 'https://therundown.io/api/v2'

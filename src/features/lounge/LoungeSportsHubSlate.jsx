@@ -12,9 +12,11 @@ import {
   LOUNGE_SPORTS_HUB_FILTER_ALL,
   LOUNGE_SPORTS_HUB_FILTER_CFB,
   LOUNGE_SPORTS_HUB_FILTER_MLB,
+  LOUNGE_SPORTS_HUB_FILTER_MLS,
   LOUNGE_SPORTS_HUB_FILTER_NBA,
   LOUNGE_SPORTS_HUB_FILTER_NHL,
   LOUNGE_SPORTS_HUB_FILTER_NFL,
+  LOUNGE_SPORTS_HUB_FILTER_PGA,
 } from './loungeSportsHubNav.js'
 import { loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
 import { probeLogoWashTreatment, resolveNflPillWashes } from './loungeSportsMatch.js'
@@ -57,8 +59,8 @@ const SPORTS_HUB_LEAGUES = [
   { id: 'nba', label: 'NBA', icon: '🏀', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_NBA },
   { id: 'mlb', label: 'MLB', icon: '⚾', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_MLB },
   { id: 'nhl', label: 'NHL', icon: '🏒', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_NHL },
-  { id: 'pga', label: 'PGA', icon: '⛳', ready: false },
-  { id: 'mls', label: 'MLS', icon: '⚽', ready: false },
+  { id: 'pga', label: 'PGA', icon: '⛳', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_PGA },
+  { id: 'mls', label: 'MLS', icon: '⚽', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_MLS },
 ]
 
 function isNflHubFilter(filter) {
@@ -84,6 +86,16 @@ function isNbaHubFilter(filter) {
 function isMlbHubFilter(filter) {
   const f = String(filter || '')
   return f === LOUNGE_SPORTS_HUB_FILTER_MLB || f.includes('baseball_mlb') || f === 'mlb'
+}
+
+function isMlsHubFilter(filter) {
+  const f = String(filter || '')
+  return f === LOUNGE_SPORTS_HUB_FILTER_MLS || f.includes('soccer_usa_mls') || f === 'mls'
+}
+
+function isPgaHubFilter(filter) {
+  const f = String(filter || '')
+  return f === LOUNGE_SPORTS_HUB_FILTER_PGA || f.includes('golf_pga') || f === 'pga'
 }
 
 function SportsHubLeagueButtons({ onOpenLeague }) {
@@ -126,6 +138,8 @@ function sportSectionLabel(sportKey) {
   if (sk.includes('ncaab')) return 'CBB'
   if (sk.includes('mlb')) return 'MLB'
   if (sk.includes('nhl')) return 'NHL'
+  if (sk.includes('soccer_usa_mls') || sk === 'mls') return 'MLS'
+  if (sk.includes('golf_pga') || sk === 'pga') return 'PGA'
   if (sk.includes('mma') || sk.includes('ufc')) return 'MMA'
   if (sk.includes('soccer')) return 'Soccer'
   return String(sportKey || 'Sports').replace(/_/g, ' ')
@@ -150,7 +164,9 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
   const nhlHub = isNhlHubFilter(filter)
   const nbaHub = isNbaHubFilter(filter)
   const mlbHub = isMlbHubFilter(filter)
-  const leagueHub = nflHub || cfbHub || nhlHub || nbaHub || mlbHub
+  const mlsHub = isMlsHubFilter(filter)
+  const pgaHub = isPgaHubFilter(filter)
+  const leagueHub = nflHub || cfbHub || nhlHub || nbaHub || mlbHub || mlsHub || pgaHub
   const boardFetched = Boolean(sports?.boardFetched)
 
   // Once a league hub is ready it stays ready for that open … live polls must not re-gate.
@@ -182,6 +198,8 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
     if (nhlHub) return [{ key: 'nhl', label: 'NHL', games }]
     if (nbaHub) return [{ key: 'nba', label: 'NBA', games }]
     if (mlbHub) return [{ key: 'mlb', label: 'MLB', games }]
+    if (mlsHub) return [{ key: 'mls', label: 'MLS', games }]
+    if (pgaHub) return [{ key: 'pga', label: 'PGA', games }]
     const bySport = new Map()
     for (const game of games) {
       const key = String(game?.sport_key || 'other')
@@ -193,7 +211,7 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
       label: sportSectionLabel(key),
       games: list,
     }))
-  }, [cfbHub, filter, games, mlbHub, nbaHub, nflHub, nhlHub])
+  }, [cfbHub, filter, games, mlbHub, mlsHub, nbaHub, nflHub, nhlHub, pgaHub])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -207,7 +225,11 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
           ? 'NBA Hub'
           : mlbHub
             ? 'MLB Hub'
-            : 'Sports Hub'
+            : mlsHub
+              ? 'MLS Hub'
+              : pgaHub
+                ? 'PGA Hub'
+                : 'Sports Hub'
 
   const root = (
     <div

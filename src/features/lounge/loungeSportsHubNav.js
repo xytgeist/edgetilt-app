@@ -15,6 +15,10 @@ export const LOUNGE_SPORTS_HUB_FILTER_NHL = 'icehockey_nhl'
 export const LOUNGE_SPORTS_HUB_FILTER_NBA = 'basketball_nba'
 /** MLB short slate (yesterday + today + tomorrow PT). */
 export const LOUNGE_SPORTS_HUB_FILTER_MLB = 'baseball_mlb'
+/** MLS short slate (yesterday + today + tomorrow PT). */
+export const LOUNGE_SPORTS_HUB_FILTER_MLS = 'soccer_usa_mls'
+/** PGA Tour tournaments (ESPN cards … not Odds matchups). */
+export const LOUNGE_SPORTS_HUB_FILTER_PGA = 'golf_pga'
 
 /**
  * @param {string} [filter]
@@ -31,6 +35,10 @@ export function normalizeLoungeSportsHubFilter(filter) {
   }
   if (raw === 'nba' || raw.includes('basketball_nba')) return LOUNGE_SPORTS_HUB_FILTER_NBA
   if (raw === 'mlb' || raw.includes('baseball_mlb')) return LOUNGE_SPORTS_HUB_FILTER_MLB
+  if (raw === 'mls' || raw.includes('soccer_usa_mls')) return LOUNGE_SPORTS_HUB_FILTER_MLS
+  if (raw === 'pga' || raw.includes('golf_pga') || (raw.includes('golf') && raw.includes('pga'))) {
+    return LOUNGE_SPORTS_HUB_FILTER_PGA
+  }
   return String(filter || '').trim()
 }
 

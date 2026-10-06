@@ -77,6 +77,14 @@ function isMlbGame(game) {
   return String(game?.sport_key || '').includes('baseball_mlb')
 }
 
+function isMlsGame(game) {
+  return String(game?.sport_key || '').includes('soccer_usa_mls')
+}
+
+function isPgaGame(game) {
+  return String(game?.sport_key || '').includes('golf_pga')
+}
+
 function commenceMs(game) {
   const t = Date.parse(game?.commence_time || '')
   return Number.isFinite(t) ? t : 0
@@ -224,10 +232,13 @@ function hubGamesUnsorted(games, sportKey, now) {
     sport.includes('icehockey_nhl')
     || sport.includes('basketball_nba')
     || sport.includes('baseball_mlb')
+    || sport.includes('soccer_usa_mls')
   ) {
     const dates = new Set(otherSportSlateDates(now))
     return same.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
   }
+  // PGA tournament cards are already windowed by ESPN … keep whatever is on the board.
+  if (sport.includes('golf_pga')) return same
   return same
 }
 
@@ -267,6 +278,14 @@ function slateGamesUnsorted(games, filter, now) {
     const mlb = list.filter((g) => isMlbGame(g))
     const dates = new Set(otherSportSlateDates(now))
     return mlb.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
+  }
+  if (key.includes('soccer_usa_mls') || key === 'mls') {
+    const mls = list.filter((g) => isMlsGame(g))
+    const dates = new Set(otherSportSlateDates(now))
+    return mls.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
+  }
+  if (key.includes('golf_pga') || key === 'pga') {
+    return list.filter((g) => isPgaGame(g))
   }
   return hubGamesUnsorted(list, key, now)
 }

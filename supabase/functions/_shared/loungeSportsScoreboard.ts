@@ -3038,14 +3038,6 @@ function oddsNamesHit(oddsName: string, side: LoungeSportsGameSide): boolean {
   return false
 }
 
-function playTeam(raw: unknown, homeId: number | null, awayId: number | null): 'home' | 'away' | null {
-  if (raw === 'home' || raw === 'away') return raw
-  const n = Number(raw)
-  if (homeId && n === homeId) return 'home'
-  if (awayId && n === awayId) return 'away'
-  return null
-}
-
 function categorizeStat(name: string, abbr: string): string | null {
   const hay = `${name} ${abbr}`.toLowerCase()
   if (/pass/.test(hay) && !/rush|receiv/.test(hay)) return 'Passing'

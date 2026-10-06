@@ -1,6 +1,7 @@
 /**
  * Lounge in-post game pill scoreboard.
- * TheRundown day slates first (period scores + status). Odds API /scores as fallback.
+ * TheRundown day slates first (scores-only via affiliate_ids=0 … period scores + status).
+ * Odds API /scores as fallback; Odds /odds + Pinnacle own books.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { listRundownDayEvents, ptDateFromIso, rundownApiKey } from './loungeBotRundownContext.ts'
@@ -3069,9 +3070,10 @@ export async function fetchLoungeSportsGameDetail(
   rosters: LoungeSportsRosters | null
 }> {
   const eventId = encodeURIComponent(game.id)
-  const [eventRaw, playsRaw, statsRaw, oddsPack, pinPack] = await Promise.all([
-    rundownGet<unknown>(`/events/${eventId}`),
-    rundownGet<unknown>(`/events/${eventId}/plays`),
+  // Scores-only event (`affiliate_ids=0`) … Odds API owns books. Skip Rundown `/plays`
+  // (Ultra-only on current tiers; football PBP/clock comes from ESPN below).
+  const [eventRaw, statsRaw, oddsPack, pinPack] = await Promise.all([
+    rundownGet<unknown>(`/events/${eventId}?affiliate_ids=0`),
     rundownGet<unknown>(`/events/${eventId}/players/stats`),
     cachedSportOdds(game.sport_key),
     cachedPinnacleOdds(game.sport_key),
@@ -3086,24 +3088,8 @@ export async function fetchLoungeSportsGameDetail(
     ? liveFromRundown(eventObj, homeId, awayId) || game.live
     : game.live
 
-  const playList: unknown[] = Array.isArray(playsRaw)
-    ? playsRaw
-    : Array.isArray((playsRaw as { plays?: unknown[] } | null)?.plays)
-      ? (playsRaw as { plays: unknown[] }).plays
-      : []
-  const plays: LoungeSportsPlay[] = playList.slice(0, 80).map((row, i) => {
-    const p = (row && typeof row === 'object') ? row as Record<string, unknown> : {}
-    return {
-      id: String(p.id || p.sequence || i),
-      period: numOrNull(p.period ?? p.quarter ?? p.game_period),
-      clock: String(p.clock || p.display_clock || p.time || '').trim(),
-      description: String(p.description || p.play_text || p.play_description || p.text || '').trim(),
-      team: playTeam(p.team_id ?? p.team ?? p.possession, homeId, awayId),
-    }
-  }).filter((p) => p.description)
-
   let liveOut = live
-  let playsOut = plays
+  let playsOut: LoungeSportsPlay[] = []
   const sk = String(game.sport_key || '')
   const needEspn =
     (isNflSportKey(sk) || isCfbSportKey(sk)) &&

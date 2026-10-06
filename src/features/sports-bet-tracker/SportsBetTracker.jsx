@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Camera, Check, ClipboardList, ClipboardPaste, FileSpreadsheet, Pencil, Plus, RefreshCw, Settings, Trash2, X } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import {
   confirmSportsBet,
@@ -30,6 +31,7 @@ import {
   DEFAULT_STAKE_UNITS,
   formatUsd,
   readUnitSizeDollars,
+  writeUnitSizeDollars,
   stakeDollarsFromUnits,
   stakeUnitsFromDollars,
 } from './sportsBetStake.js'
@@ -100,7 +102,7 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
   return next
 }
 
-function StatChip({ label, value, tone = 'zinc' }) {
+function StatChip({ label, value, tone = 'zinc', onClick = null, hint = '' }) {
   const toneClass =
     tone === 'green'
       ? 'text-emerald-300'
@@ -109,13 +111,31 @@ function StatChip({ label, value, tone = 'zinc' }) {
         : tone === 'cyan'
           ? 'text-cyan-300'
           : 'text-white'
+  const body = (
+    <>
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className={`mt-0.5 text-lg font-black tabular-nums ${toneClass}`}>{value}</div>
+      {hint ? <div className="mt-0.5 text-[10px] font-semibold text-cyan-400">{hint}</div> : null}
+    </>
+  )
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        data-sports-bet-stat
+        onClick={onClick}
+        className="rounded-2xl border border-zinc-800 bg-zinc-900/80 px-3 py-2.5 text-left touch-manipulation active:bg-zinc-800"
+      >
+        {body}
+      </button>
+    )
+  }
   return (
     <div
       data-sports-bet-stat
       className="rounded-2xl border border-zinc-800 bg-zinc-900/80 px-3 py-2.5"
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div>
-      <div className={`mt-0.5 text-lg font-black tabular-nums ${toneClass}`}>{value}</div>
+      {body}
     </div>
   )
 }
@@ -282,6 +302,17 @@ export default function SportsBetTracker({
       return
     }
     const bet = result.bet
+    const nextUnit = Number(draft.unit_size_dollars)
+    if (Number.isFinite(nextUnit) && nextUnit > 0) {
+      writeUnitSizeDollars(nextUnit)
+      setUnitSize(nextUnit)
+      if (bankrollStart != null) {
+        void saveSportsBetSettings(supabaseClient, userId, {
+          unit_size_dollars: nextUnit,
+          bankroll_start: bankrollStart,
+        })
+      }
+    }
     setBets((prev) => (
       editingId
         ? prev.map((row) => (row.id === bet.id ? bet : row))
@@ -380,6 +411,15 @@ export default function SportsBetTracker({
     setSettingsOpen(false)
   }
 
+  const openSettings = () => {
+    setSettingsDraft({
+      unit: String(unitSize || ''),
+      bankroll: bankrollNow == null ? '' : String(Number(bankrollNow.toFixed(2))),
+    })
+    setSettingsOpen(true)
+    setError('')
+  }
+
   const inputClass =
     'w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-[15px] text-white outline-none focus:border-cyan-500'
 
@@ -410,14 +450,26 @@ export default function SportsBetTracker({
         <div className="mb-4 grid grid-cols-2 gap-2">
           <StatChip
             label="Bankroll"
-            value={bankrollNow == null ? 'Set →' : formatUsd(bankrollNow)}
+            value={bankrollNow == null ? '—' : formatUsd(bankrollNow)}
+            hint={bankrollNow == null ? 'Tap to set' : 'Tap to edit'}
+            onClick={openSettings}
           />
           <StatChip
             label="Unit"
             value={formatUsd(unitSize)}
             tone="cyan"
+            hint="Tap to edit"
+            onClick={openSettings}
           />
         </div>
+        <button
+          type="button"
+          onClick={openSettings}
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 py-3 text-[13px] font-bold text-cyan-200 touch-manipulation active:bg-cyan-500/20"
+        >
+          <Settings className="h-4 w-4" />
+          {bankrollNow == null ? 'Set bankroll & unit size' : 'Edit bankroll & unit size'}
+        </button>
 
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <StatChip
@@ -465,21 +517,6 @@ export default function SportsBetTracker({
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setSettingsDraft({
-                unit: String(unitSize || ''),
-                bankroll: bankrollNow == null ? '' : String(Number(bankrollNow.toFixed(2))),
-              })
-              setSettingsOpen(true)
-              setError('')
-            }}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-700 text-zinc-300 active:bg-zinc-800"
-            aria-label="Bankroll and unit size"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
           <button
             type="button"
             onClick={() => void load()}
@@ -916,7 +953,32 @@ export default function SportsBetTracker({
                   />
                 </label>
               </div>
-              <p className="text-[11px] text-zinc-500">1u = {formatUsd(unitSize)}. Change unit size in settings.</p>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Unit size ($)
+                <input
+                  className={`${inputClass} mt-1`}
+                  inputMode="decimal"
+                  value={draft.unit_size_dollars == null ? '' : String(draft.unit_size_dollars)}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    const n = Number(raw)
+                    setDraft((d) => ({
+                      ...d,
+                      unit_size_dollars: raw,
+                      stake_dollars:
+                        Number.isFinite(n) && n > 0
+                          ? stakeDollarsFromUnits(d.stake_units, n) || d.stake_dollars
+                          : d.stake_dollars,
+                    }))
+                    if (Number.isFinite(n) && n > 0) {
+                      setUnitSize(n)
+                      writeUnitSizeDollars(n)
+                    }
+                  }}
+                  placeholder="100"
+                />
+              </label>
+              <p className="text-[11px] text-zinc-500">1u = {formatUsd(unitSize)}. Bankroll is on the tracker, not per bet.</p>
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Book
                 <input
@@ -957,24 +1019,19 @@ export default function SportsBetTracker({
       ) : null}
 
       {settingsOpen ? (
-        <div
-          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 sm:items-center"
+        <AppModalOverlay
           role="dialog"
           aria-modal="true"
           aria-label="Bankroll settings"
+          onClick={() => setSettingsOpen(false)}
         >
-          <button
-            type="button"
-            className="absolute inset-0 cursor-default"
-            aria-label="Close"
-            onClick={() => setSettingsOpen(false)}
-          />
           <div
             data-sports-bet-composer
             className="relative z-[1] max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-zinc-700 bg-zinc-950 p-4 shadow-xl sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-black text-white">Bankroll</h2>
+              <h2 className="text-lg font-black text-white">Bankroll & unit</h2>
               <button
                 type="button"
                 onClick={() => setSettingsOpen(false)}
@@ -985,8 +1042,9 @@ export default function SportsBetTracker({
               </button>
             </div>
             <p className="mb-3 text-sm text-zinc-400">
-              Set what you have now. Wins and losses move it automatically.
+              Set what you have now. Wins and losses move bankroll automatically. Unit size is what 1u costs.
             </p>
+            {error ? <p className="mb-3 text-sm text-rose-300">{error}</p> : null}
             <div className="space-y-3">
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Current bankroll ($)
@@ -1017,7 +1075,7 @@ export default function SportsBetTracker({
               </button>
             </div>
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {pasteOpen ? (

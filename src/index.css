@@ -11327,6 +11327,18 @@ html.light [data-sports-bet-tracker] .text-zinc-500 {
 html.light [data-sports-bet-tracker] .text-zinc-200 {
   color: #27272a !important;
 }
+html.light [data-sports-bet-tracker] .text-cyan-200 {
+  color: #0e7490 !important;
+}
+html.light [data-sports-bet-tracker] .border-cyan-500\/40 {
+  border-color: rgba(8, 145, 178, 0.45) !important;
+}
+html.light [data-sports-bet-tracker] .bg-cyan-500\/10 {
+  background-color: rgba(8, 145, 178, 0.12) !important;
+}
+html.light [data-sports-bet-stat] .text-cyan-400 {
+  color: #0891b2 !important;
+}
 html.light [data-sports-bet-composer] {
   background-color: #ffffff !important;
   border-color: #d4d4d8 !important;

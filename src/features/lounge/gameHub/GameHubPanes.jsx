@@ -16,21 +16,23 @@ import { openSportsbookUrl } from '../../../utils/edgeNative.js'
 import { usableLink } from './gameHubBestLines.js'
 import { sportsbookHomeUrl } from './sportsbookLinks.js'
 import { fillBookLinkState, isLegalBook, stateHasLegalBooks, stateName } from './gameHubLegalBooks.js'
-import { useLogSportsBetOdds } from '../../sports-bet-tracker/sportsBetLogContext.jsx'
+import { useSportsBetOddsActions } from '../../sports-bet-tracker/sportsBetLogContext.jsx'
 import { useOddsLogPress } from '../../sports-bet-tracker/useOddsLogPress.js'
 
-/** Odds cell: tap opens the book. Hold / right-click logs the line into Bet Tracker. */
+/** Odds cell: tap records + opens the book. Hold / right-click opens the tracker form. */
 function OddsCell({ row, linkKey, label, className, legalState, children, logPayload = null }) {
-  const logOdds = useLogSportsBetOdds()
+  const { logOdds, recordTap } = useSportsBetOddsActions()
   const url = usableLink(fillBookLinkState(row?.[linkKey], legalState)) || sportsbookHomeUrl(row?.book)
+  const payload = logPayload ? { ...logPayload, book: row?.book } : null
   const press = useOddsLogPress({
-    enabled: Boolean(logOdds && logPayload),
-    onLog: () =>
-      logOdds({
-        ...logPayload,
-        book: row?.book,
-      }),
-    onOpen: url ? () => void openSportsbookUrl(url, { book: row?.book }) : null,
+    enabled: Boolean((logOdds || recordTap) && payload),
+    onLog: logOdds && payload ? () => logOdds(payload) : null,
+    onOpen: url
+      ? () => {
+          if (payload) recordTap?.(payload)
+          void openSportsbookUrl(url, { book: row?.book })
+        }
+      : null,
   })
   if (!url && !(logOdds && logPayload)) return <td className={className}>{children}</td>
   return (
@@ -40,7 +42,7 @@ function OddsCell({ row, linkKey, label, className, legalState, children, logPay
         data-lounge-game-odds-link
         {...press}
         aria-label={`${label} at ${row.book}`}
-        title="Tap to open book · hold to log"
+        title="Tap to log + open book · hold to review"
         className="w-full rounded-lg px-2 py-2 tabular-nums touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/10"
       >
         {children}

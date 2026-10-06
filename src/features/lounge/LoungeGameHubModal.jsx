@@ -750,7 +750,11 @@ export default function LoungeGameHubModal({
   )
 
   const hubRoot = (
-    <SportsBetLogGameProvider game={game} onBeforeLog={() => sports.closeSlate?.()}>
+    <SportsBetLogGameProvider
+      game={game}
+      supabaseClient={supabaseClient}
+      onBeforeLog={() => sports.closeSlate?.()}
+    >
     <div
       data-lounge-game-hub
       className={
@@ -856,7 +860,11 @@ export default function LoungeGameHubModal({
   if (gamecastFull) {
     const chipClass = `inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`
     return createPortal(
-      <SportsBetLogGameProvider game={game} onBeforeLog={() => sports.closeSlate?.()}>
+      <SportsBetLogGameProvider
+      game={game}
+      supabaseClient={supabaseClient}
+      onBeforeLog={() => sports.closeSlate?.()}
+    >
       <div
         data-lounge-game-hub
         data-lounge-gamecast-full

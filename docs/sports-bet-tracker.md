@@ -93,15 +93,17 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 - Table **`sports_bets`** (RLS: own rows only) … migration **`20261006010000_sports_bet_tracker.sql`**
 - Intake sources `odds_cell` / `slip` / `csv` … **`20261006020000_sports_bets_intake_sources.sql`**
 - Settings **`sports_bet_settings`** (unit size + starting bankroll) … **`20261006030000_sports_bet_settings.sql`**
+- Tap-through confirm flag **`sports_bets.confirmed`** + source `odds_tap` … **`20261006040000_sports_bets_tap_confirm.sql`**
 - CLV: **`sports_bets_refresh_clv()`** security definer reads locked closes for the caller’s event ids (does not widen market-file RLS to the client)
 
-Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** test + prod 2026-10-05 (intake sources). Applied **`20261006030000`** on **test** 2026-10-06 (prod on promote).
+Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** test + prod 2026-10-05 (intake sources). Applied **`20261006030000`** + **`20261006040000`** on **test** 2026-10-06 (prod on promote).
 
 ## Client
 
 - Feature: **`src/features/sports-bet-tracker/`**
 - Tab: **`?tab=sports-bets`** (Sports Hub **Bet Tracker** row; league hubs have a clipboard chip. Not in the hamburger.)
 - Prefill: hub **… → Log a bet** / hold odds / `requestSportsBetLog(prefill)` … closes the sports surface and sets `tab=sports-bets`. Does **not** keep `?game=` (that reopened the league hub). Hollow `?logBet=1` URLs do not wipe a sessionStorage fill.
+- **Tap-through:** opening the book from a hub odds cell inserts an **unconfirmed** 1u bet (`odds_tap`). Confirm / Edit / Delete on the tracker row. Hold still opens the composer first.
 - Money: **1u** default stake, **$** field, default **$100** unit size (gear), **bankroll** = start + settled $ P&L.
 - Git: scaffold **`0ef9edbd`** (`1.4.1057`) on **`origin/test`**. Notes commit is the tip after computer-change writeup. Draft PR: `cursor/sports-bet-tracker-9369`.
 

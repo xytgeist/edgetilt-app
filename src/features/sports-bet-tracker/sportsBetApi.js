@@ -5,8 +5,59 @@ const SELECT = `
   id, user_id, event_id, sport_key, sport_label, home_team, away_team, commence_time,
   book, market, side, selection_label, line, odds, stake_units, stake_dollars, unit_size_dollars,
   status, result_at, profit_units, close_line, close_odds, clv_pts, clv_graded_at,
-  notes, tags, source, created_at, updated_at
+  notes, tags, source, confirmed, created_at, updated_at
 `.replace(/\s+/g, ' ').trim()
+
+function draftToRow(userId, draft) {
+  const market = String(draft.market || 'spread')
+  const side = draft.side ? String(draft.side) : null
+  const odds = Number(draft.odds)
+  const stakeUnits = Number(draft.stake_units ?? 1)
+  if (!Number.isFinite(odds) || odds === 0) return { error: 'Odds required' }
+  if (!Number.isFinite(stakeUnits) || stakeUnits <= 0) return { error: 'Stake units required' }
+  const selection_label = buildSelectionLabel({
+    market,
+    side,
+    homeTeam: draft.home_team,
+    awayTeam: draft.away_team,
+    line: draft.line,
+    selectionLabel: draft.selection_label,
+  })
+  const direct = draft.stake_dollars == null || draft.stake_dollars === ''
+    ? null
+    : Number(draft.stake_dollars)
+  const unitSize = draft.unit_size_dollars == null || draft.unit_size_dollars === ''
+    ? null
+    : Number(draft.unit_size_dollars)
+  let stake_dollars = Number.isFinite(direct) && direct >= 0 ? direct : null
+  if (stake_dollars == null && Number.isFinite(unitSize) && unitSize > 0) {
+    stake_dollars = stakeUnits * unitSize
+  }
+  return {
+    row: {
+      ...(userId ? { user_id: userId } : {}),
+      event_id: draft.event_id ? String(draft.event_id) : null,
+      sport_key: draft.sport_key ? String(draft.sport_key) : null,
+      sport_label: draft.sport_label ? String(draft.sport_label) : null,
+      home_team: draft.home_team ? String(draft.home_team) : null,
+      away_team: draft.away_team ? String(draft.away_team) : null,
+      commence_time: draft.commence_time || null,
+      book: draft.book ? String(draft.book).trim() : null,
+      market,
+      side,
+      selection_label,
+      line: draft.line == null || draft.line === '' ? null : Number(draft.line),
+      odds: Math.round(odds),
+      stake_units: stakeUnits,
+      stake_dollars,
+      unit_size_dollars: Number.isFinite(unitSize) ? unitSize : null,
+      notes: draft.notes ? String(draft.notes).trim() : null,
+      tags: Array.isArray(draft.tags) ? draft.tags : [],
+      source: normalizeSportsBetSource(draft.source, 'manual'),
+      confirmed: draft.confirmed === false ? false : true,
+    },
+  }
+}
 
 export async function listSportsBets(supabaseClient, { limit = 200 } = {}) {
   if (!supabaseClient) return { bets: [], error: 'No client' }
@@ -21,58 +72,39 @@ export async function listSportsBets(supabaseClient, { limit = 200 } = {}) {
 
 export async function insertSportsBet(supabaseClient, userId, draft) {
   if (!supabaseClient || !userId) return { bet: null, error: 'Not signed in' }
-  const market = String(draft.market || 'spread')
-  const side = draft.side ? String(draft.side) : null
-  const odds = Number(draft.odds)
-  const stakeUnits = Number(draft.stake_units ?? 1)
-  if (!Number.isFinite(odds) || odds === 0) return { bet: null, error: 'Odds required' }
-  if (!Number.isFinite(stakeUnits) || stakeUnits <= 0) return { bet: null, error: 'Stake units required' }
-
-  const selection_label = buildSelectionLabel({
-    market,
-    side,
-    homeTeam: draft.home_team,
-    awayTeam: draft.away_team,
-    line: draft.line,
-    selectionLabel: draft.selection_label,
-  })
-
-  const row = {
-    user_id: userId,
-    event_id: draft.event_id ? String(draft.event_id) : null,
-    sport_key: draft.sport_key ? String(draft.sport_key) : null,
-    sport_label: draft.sport_label ? String(draft.sport_label) : null,
-    home_team: draft.home_team ? String(draft.home_team) : null,
-    away_team: draft.away_team ? String(draft.away_team) : null,
-    commence_time: draft.commence_time || null,
-    book: draft.book ? String(draft.book).trim() : null,
-    market,
-    side,
-    selection_label,
-    line: draft.line == null || draft.line === '' ? null : Number(draft.line),
-    odds: Math.round(odds),
-    stake_units: stakeUnits,
-    stake_dollars: (() => {
-      const direct = draft.stake_dollars == null || draft.stake_dollars === ''
-        ? null
-        : Number(draft.stake_dollars)
-      if (Number.isFinite(direct) && direct >= 0) return direct
-      const unitSize = Number(draft.unit_size_dollars)
-      if (Number.isFinite(unitSize) && unitSize > 0) return stakeUnits * unitSize
-      return null
-    })(),
-    unit_size_dollars: draft.unit_size_dollars == null || draft.unit_size_dollars === ''
-      ? null
-      : Number(draft.unit_size_dollars),
-    notes: draft.notes ? String(draft.notes).trim() : null,
-    tags: Array.isArray(draft.tags) ? draft.tags : [],
-    source: normalizeSportsBetSource(draft.source, 'manual'),
-    status: 'open',
-  }
-
+  const built = draftToRow(userId, draft)
+  if (built.error) return { bet: null, error: built.error }
+  const row = { ...built.row, status: 'open' }
   const { data, error } = await supabaseClient
     .from('sports_bets')
     .insert(row)
+    .select(SELECT)
+    .single()
+  if (error) return { bet: null, error: error.message }
+  return { bet: data, error: null }
+}
+
+export async function updateSportsBet(supabaseClient, betId, draft) {
+  if (!supabaseClient || !betId) return { bet: null, error: 'Missing bet' }
+  const built = draftToRow(null, { ...draft, confirmed: true })
+  if (built.error) return { bet: null, error: built.error }
+  const { user_id: _uid, ...patch } = built.row
+  const { data, error } = await supabaseClient
+    .from('sports_bets')
+    .update(patch)
+    .eq('id', betId)
+    .select(SELECT)
+    .single()
+  if (error) return { bet: null, error: error.message }
+  return { bet: data, error: null }
+}
+
+export async function confirmSportsBet(supabaseClient, betId) {
+  if (!supabaseClient || !betId) return { bet: null, error: 'Missing bet' }
+  const { data, error } = await supabaseClient
+    .from('sports_bets')
+    .update({ confirmed: true })
+    .eq('id', betId)
     .select(SELECT)
     .single()
   if (error) return { bet: null, error: error.message }
@@ -104,6 +136,7 @@ export async function settleSportsBet(supabaseClient, betId, status) {
       status: next,
       result_at: next === 'open' ? null : new Date().toISOString(),
       profit_units,
+      ...(next === 'open' ? {} : { confirmed: true }),
     })
     .eq('id', betId)
     .select(SELECT)

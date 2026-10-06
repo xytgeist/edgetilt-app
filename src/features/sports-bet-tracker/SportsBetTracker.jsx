@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, ClipboardList, ClipboardPaste, FileSpreadsheet, Plus, RefreshCw, Settings, Trash2, X } from 'lucide-react'
+import { Camera, Check, ClipboardList, ClipboardPaste, FileSpreadsheet, Pencil, Plus, RefreshCw, Settings, Trash2, X } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import {
+  confirmSportsBet,
   deleteSportsBet,
   insertSportsBet,
   listSportsBets,
   refreshSportsBetClv,
   settleSportsBet,
+  updateSportsBet,
 } from './sportsBetApi.js'
 import {
   currentSportsBankroll,
@@ -126,6 +128,7 @@ export default function SportsBetTracker({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [composerOpen, setComposerOpen] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [draft, setDraft] = useState(emptyDraft)
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('all')
@@ -196,7 +199,21 @@ export default function SportsBetTracker({
   }, [supabaseClient, userId])
 
   const openComposer = (prefill) => {
+    setEditingId(null)
     setDraft(draftFromPrefill(isUsefulSportsBetPrefill(prefill) ? prefill : null, unitSize))
+    setComposerOpen(true)
+    setError('')
+  }
+
+  const openEdit = (bet) => {
+    if (!bet) return
+    setEditingId(bet.id)
+    setDraft(draftFromPrefill({
+      ...bet,
+      stake_units: bet.stake_units,
+      stake_dollars: bet.stake_dollars,
+      source: bet.source || 'manual',
+    }, unitSize))
     setComposerOpen(true)
     setError('')
   }
@@ -247,14 +264,22 @@ export default function SportsBetTracker({
     }
     setSaving(true)
     setError('')
-    const { bet, error: saveErr } = await insertSportsBet(supabaseClient, userId, draft)
+    const result = editingId
+      ? await updateSportsBet(supabaseClient, editingId, draft)
+      : await insertSportsBet(supabaseClient, userId, draft)
     setSaving(false)
-    if (saveErr) {
-      setError(saveErr)
+    if (result.error) {
+      setError(result.error)
       return
     }
-    setBets((prev) => [bet, ...prev])
+    const bet = result.bet
+    setBets((prev) => (
+      editingId
+        ? prev.map((row) => (row.id === bet.id ? bet : row))
+        : [bet, ...prev]
+    ))
     setComposerOpen(false)
+    setEditingId(null)
     setDraft(emptyDraft(unitSize))
     void refreshSportsBetClv(supabaseClient).then(() => load())
   }
@@ -311,6 +336,15 @@ export default function SportsBetTracker({
     setBets((prev) => prev.filter((b) => b.id !== id))
   }
 
+  const onConfirm = async (id) => {
+    const { bet, error: confirmErr } = await confirmSportsBet(supabaseClient, id)
+    if (confirmErr) {
+      setError(confirmErr)
+      return
+    }
+    setBets((prev) => prev.map((b) => (b.id === id ? bet : b)))
+  }
+
   const onSaveSettings = async () => {
     const unit = Number(settingsDraft.unit)
     const displayed = Number(settingsDraft.bankroll)
@@ -360,7 +394,7 @@ export default function SportsBetTracker({
             </h1>
           )}
           <p className={`text-sm text-zinc-400 ${ipadShell ? '' : 'mt-0.5'}`}>
-            Hold a hub line to log it. Open from Sports Hub.
+            Hold a hub line to review the form. Tap through to the book to auto-log 1u.
           </p>
         </div>
 
@@ -538,7 +572,7 @@ export default function SportsBetTracker({
           <div className="rounded-2xl border border-dashed border-zinc-700 px-4 py-10 text-center">
             <p className="text-sm font-semibold text-zinc-300">No bets yet</p>
             <p className="mt-1 text-sm text-zinc-500">
-              Hold a line on the Sports Hub odds board, or paste a slip / CSV.
+              Hold a line to review, or tap through to the book to auto-log.
             </p>
           </div>
         ) : null}
@@ -588,7 +622,7 @@ export default function SportsBetTracker({
                   </div>
                   <div className="shrink-0 text-right">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                      {bet.status}
+                      {bet.confirmed === false ? 'unconfirmed' : bet.status}
                     </div>
                     <div className={`text-sm font-black tabular-nums ${profitTone}`}>
                       {profit == null
@@ -613,6 +647,16 @@ export default function SportsBetTracker({
                 </div>
                 {bet.status === 'open' ? (
                   <div className="mt-2 flex flex-wrap gap-1.5">
+                    {bet.confirmed === false ? (
+                      <button
+                        type="button"
+                        onClick={() => void onConfirm(bet.id)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-cyan-500/50 bg-cyan-500/15 px-2.5 py-1 text-[11px] font-bold uppercase text-cyan-200 active:bg-cyan-500/25"
+                      >
+                        <Check className="h-3 w-3" />
+                        Confirm
+                      </button>
+                    ) : null}
                     {['won', 'lost', 'push', 'void'].map((s) => (
                       <button
                         key={s}
@@ -625,6 +669,14 @@ export default function SportsBetTracker({
                     ))}
                     <button
                       type="button"
+                      onClick={() => openEdit(bet)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 px-2.5 py-1 text-[11px] font-bold uppercase text-zinc-300 active:bg-zinc-800"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => void onDelete(bet.id)}
                       className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-rose-300 active:bg-rose-500/10"
                     >
@@ -633,13 +685,29 @@ export default function SportsBetTracker({
                     </button>
                   </div>
                 ) : (
-                  <div className="mt-2 flex justify-end">
+                  <div className="mt-2 flex flex-wrap justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(bet)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-zinc-400 active:bg-zinc-800"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Edit
+                    </button>
                     <button
                       type="button"
                       onClick={() => void onSettle(bet.id, 'open')}
                       className="rounded-lg px-2 py-1 text-[11px] font-bold text-zinc-500 active:bg-zinc-800"
                     >
                       Reopen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onDelete(bet.id)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-rose-300 active:bg-rose-500/10"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Delete
                     </button>
                   </div>
                 )}
@@ -654,23 +722,29 @@ export default function SportsBetTracker({
           className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 sm:items-center"
           role="dialog"
           aria-modal="true"
-          aria-label="Log bet"
+            aria-label={editingId ? 'Edit bet' : 'Log bet'}
         >
           <button
             type="button"
             className="absolute inset-0 cursor-default"
             aria-label="Close"
-            onClick={() => setComposerOpen(false)}
+            onClick={() => {
+              setComposerOpen(false)
+              setEditingId(null)
+            }}
           />
           <div
             data-sports-bet-composer
             className="relative z-[1] max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-zinc-700 bg-zinc-950 p-4 shadow-xl sm:rounded-3xl"
           >
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-black text-white">Log a bet</h2>
+              <h2 className="text-lg font-black text-white">{editingId ? 'Edit bet' : 'Log a bet'}</h2>
               <button
                 type="button"
-                onClick={() => setComposerOpen(false)}
+                onClick={() => {
+              setComposerOpen(false)
+              setEditingId(null)
+            }}
                 className="rounded-full p-2 text-zinc-400 active:bg-zinc-800"
                 aria-label="Close composer"
               >
@@ -807,7 +881,7 @@ export default function SportsBetTracker({
                 onClick={() => void onSave()}
                 className="w-full rounded-2xl bg-cyan-600 py-3 text-[15px] font-bold text-white active:bg-cyan-500 disabled:opacity-50"
               >
-                {saving ? 'Saving…' : 'Save bet'}
+                {saving ? 'Saving…' : editingId ? 'Save changes' : 'Save bet'}
               </button>
             </div>
           </div>

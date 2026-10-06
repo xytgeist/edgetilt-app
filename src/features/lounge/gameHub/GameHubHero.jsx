@@ -19,7 +19,7 @@ import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregame
 import { liveFantasyRails, livePropRails } from './gameHubLiveRails.js'
 import { liveBestLines, pregameBestLines } from './gameHubBestLines.js'
 import { useLegalBooks } from './gameHubLegalBooks.js'
-import { useLogSportsBetOdds } from '../../sports-bet-tracker/sportsBetLogContext.jsx'
+import { useSportsBetOddsActions } from '../../sports-bet-tracker/sportsBetLogContext.jsx'
 import { useOddsLogPress } from '../../sports-bet-tracker/useOddsLogPress.js'
 import { formatFantasyPoints, playFantasyPoints } from './gameHubPlayFantasy.js'
 import {
@@ -4480,11 +4480,16 @@ function pickLogPayload(label, pick, side) {
 }
 
 function MatchupLine({ title, value, sub, href = '', source = '', book = '', tag = '', logPayload = null }) {
-  const logOdds = useLogSportsBetOdds()
+  const { logOdds, recordTap } = useSportsBetOddsActions()
   const press = useOddsLogPress({
-    enabled: Boolean(logOdds && logPayload),
-    onLog: () => logOdds(logPayload),
-    onOpen: href ? () => void openSportsbookUrl(href, { book: book || source }) : null,
+    enabled: Boolean((logOdds || recordTap) && logPayload),
+    onLog: logOdds && logPayload ? () => logOdds(logPayload) : null,
+    onOpen: href
+      ? () => {
+          if (logPayload) recordTap?.(logPayload)
+          void openSportsbookUrl(href, { book: book || source })
+        }
+      : null,
   })
   const body = (
     <>
@@ -4516,7 +4521,7 @@ function MatchupLine({ title, value, sub, href = '', source = '', book = '', tag
       data-lounge-gamecast-market-link
       {...press}
       aria-label={`${title} ${value}, ${href ? `open on ${MARKET_SOURCE_LABEL[source] || source || 'market'}` : 'hold to log'}`}
-      title={logPayload ? 'Tap to open book · hold to log' : undefined}
+      title={logPayload ? 'Tap to log + open book · hold to review' : undefined}
       className="-mx-1.5 -my-1 flex min-w-[3.5rem] flex-col items-center rounded-lg px-1.5 py-1 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15"
     >
       {body}
@@ -4526,12 +4531,17 @@ function MatchupLine({ title, value, sub, href = '', source = '', book = '', tag
 
 /** Scoreboard spread / ML under-over the score: taps open the best book's betslip (or book home) when shopped. Hold logs. */
 function ScoreboardLine({ pick, text, label, className = '', side = null }) {
-  const logOdds = useLogSportsBetOdds()
+  const { logOdds, recordTap } = useSportsBetOddsActions()
   const logPayload = pickLogPayload(label, pick, side)
   const press = useOddsLogPress({
-    enabled: Boolean(logOdds && logPayload),
-    onLog: () => logOdds(logPayload),
-    onOpen: pick?.url ? () => void openSportsbookUrl(pick.url, { book: pick.book }) : null,
+    enabled: Boolean((logOdds || recordTap) && logPayload),
+    onLog: logOdds && logPayload ? () => logOdds(logPayload) : null,
+    onOpen: pick?.url
+      ? () => {
+          if (logPayload) recordTap?.(logPayload)
+          void openSportsbookUrl(pick.url, { book: pick.book })
+        }
+      : null,
   })
   const base = `leading-none tabular-nums drop-shadow ${className}`
   if (!pick?.url && !(logOdds && logPayload)) return <div className={base}>{text}</div>
@@ -4542,7 +4552,7 @@ function ScoreboardLine({ pick, text, label, className = '', side = null }) {
       data-lounge-gamecast-market-link
       {...press}
       aria-label={`${label} ${text}${label === 'Spread' && price ? ` ${price}` : ''}${pick?.url ? `, open on ${pick.book || 'sportsbook'}` : ''}`}
-      title={`${pick?.book || 'Sportsbook'} ${text} · hold to log`}
+      title={`${pick?.book || 'Sportsbook'} ${text} · tap to log`}
       className={`${base} -mx-1 rounded px-1 underline decoration-white/25 underline-offset-2 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15`}
     >
       {text}

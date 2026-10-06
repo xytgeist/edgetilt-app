@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **Tap-through auto-log (`1.4.1062`).** Opening a book from a hub odds cell inserts an unconfirmed 1u bet (`odds_tap`). Tracker row: Confirm / Edit / Delete. Hold still opens the composer. SQL **`20261006040000`** on **test**.
 - **2026-10-06:** **Bet Tracker fill + bankroll (`1.4.1061`).** Hold-to-log fills book / market / side / line / odds / selection; stake defaults to **1u**. $ stake + unit size. Bankroll setting = start + settled $ P&L. SQL **`20261006030000`** on **test** (`sports_bet_settings`).
 - **2026-10-06:** **Hold-to-log opens tracker (`1.4.1060`).** Do not leave `?game=` on the URL (that reopened the league hub, then the game). Hub **Bet Tracker** row does not inherit a leftover Log a bet composer.
 - **2026-10-06:** **Bet Tracker lives in Sports Hub (`1.4.1059`).** Door is the hub home row (plus clipboard chip on league slates). Removed from the hamburger. Deep link `?tab=sports-bets` still works.

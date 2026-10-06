@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **Promoted hold-to-log fill + bankroll door (`1.4.1066`).** Frontend **`test` → `main`**. No new SQL / Edge.
 - **2026-10-06:** **Hold-to-log empty composer (`1.4.1066`).** Not a missing prod SQL issue (`20261006030000`–`50000` already on prod). Tracker `popstate` still did `openComposer` on hollow `?logBet=1`, wiping the hold fill. Only open from a useful URL; pending also kept in memory.
 - **2026-10-06:** **Bankroll / unit size door (`1.4.1065`).** Settings lived behind an unlabeled gear. Bankroll + Unit chips tap to edit; full-width **Set bankroll & unit size**; Unit size ($) on Log a bet. Sheet uses `AppModalOverlay`.
 - **2026-10-06:** **Promoted Bet Tracker fill / tap / Sport+props (`1.4.1064`).** Applied **`20261006030000`**–**`20261006050000`** on **prod**. Frontend **`test` → `main`**. No Edge redeploy.

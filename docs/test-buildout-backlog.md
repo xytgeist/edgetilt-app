@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **Promoted Bet Tracker fill / tap / Sport+props (`1.4.1064`).** Applied **`20261006030000`**–**`20261006050000`** on **prod**. Frontend **`test` → `main`**. No Edge redeploy.
 - **2026-10-06:** **Vercel build fix (`1.4.1064`).** Duplicate `normalizeSportsBetSource` / `sportsBetSourceLabel` in `sportsBetSources.js` (from tap-through `28f15711`) failed Vite. Deduped; `odds_tap` label kept.
 - **2026-10-06:** **Sport + player props (`1.4.1063`).** Log a bet Sport dropdown (NFL/CFB/NBA/MLB/NHL/PGA/MLS/Other). Market **Player prop** with player + stat. Kalshi/Poly Yes/No and landscape prop rails tap/hold-log like board odds (Yes=Over, No=Under). SQL **`20261006050000`** on **test**.
 - **2026-10-06:** **Tap-through auto-log (`1.4.1062`).** Opening a book from a hub odds cell inserts an unconfirmed 1u bet (`odds_tap`). Tracker row: Confirm / Edit / Delete. Hold still opens the composer. SQL **`20261006040000`** on **test**.

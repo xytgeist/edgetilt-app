@@ -97,7 +97,7 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 - Player prop market + `player_name` / `prop_stat` … **`20261006050000_sports_bets_prop_market.sql`**
 - CLV: **`sports_bets_refresh_clv()`** security definer reads locked closes for the caller’s event ids (does not widen market-file RLS to the client)
 
-Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** test + prod 2026-10-05 (intake sources). Applied **`20261006030000`** + **`20261006040000`** + **`20261006050000`** on **test** 2026-10-06 (prod on promote).
+Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** test + prod 2026-10-05 (intake sources). Applied **`20261006030000`** + **`20261006040000`** + **`20261006050000`** on **test + prod** 2026-10-06.
 
 ## Client
 

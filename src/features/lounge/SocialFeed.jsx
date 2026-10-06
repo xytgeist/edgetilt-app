@@ -16752,14 +16752,12 @@ export default function SocialFeed({
   const loungeDetailInPane =
     loungeLandscapeSplit && Boolean(loungePostDetail) && !loungePostDetailOverLightbox
   const loungeChartInPane = loungeLandscapeSplit && marketChartModal.open
-  const loungeGameInPane = loungeLandscapeSplit && loungeSportsGameHubOpen
   const loungeSlateInPane = loungeLandscapeSplit && loungeSportsSlateOpen && !loungeSportsGameHubOpen
   const loungeProfileInPane =
     loungeLandscapeSplit && profileModalOpen && Boolean(profileModalData?.user_id)
   const loungeLandscapeEngagementActive =
     loungeDetailInPane ||
     loungeChartInPane ||
-    loungeGameInPane ||
     loungeSlateInPane ||
     loungeProfileInPane
 
@@ -17856,19 +17854,10 @@ export default function SocialFeed({
               }
             />
           ) : null}
-          {loungeGameInPane && !loungeChartInPane ? (
-            <LoungeGameHubModal
-              embedded
-              supabaseClient={supabaseClient}
-              hydratePosts={hydrateCommunityPosts}
-              onOpenPost={openLoungePostDetail}
-              loungeReadOnly={loungeReadOnly}
-            />
-          ) : null}
-          {loungeSlateInPane && !loungeChartInPane && !loungeGameInPane ? (
+          {loungeSlateInPane && !loungeChartInPane ? (
             <LoungeSportsHubSlate embedded />
           ) : null}
-          {loungeProfileInPane && !loungeChartInPane && !loungeGameInPane && !loungeSlateInPane ? (
+          {loungeProfileInPane && !loungeChartInPane && !loungeSlateInPane ? (
             <LoungeProfileFullScreen
               embedded
               open={profileModalOpen}
@@ -20531,17 +20520,13 @@ export default function SocialFeed({
         />
       ) : null}
 
-      {!loungeLandscapeSplit ? (
-        <>
-          <LoungeSportsHubSlate />
-          <LoungeGameHubModal
-            supabaseClient={supabaseClient}
-            hydratePosts={hydrateCommunityPosts}
-            onOpenPost={openLoungePostDetail}
-            loungeReadOnly={loungeReadOnly}
-          />
-        </>
-      ) : null}
+      {!loungeLandscapeSplit ? <LoungeSportsHubSlate /> : null}
+      <LoungeGameHubModal
+        supabaseClient={supabaseClient}
+        hydratePosts={hydrateCommunityPosts}
+        onOpenPost={openLoungePostDetail}
+        loungeReadOnly={loungeReadOnly}
+      />
 
       {loungeImageLimitDialog && typeof document !== 'undefined'
         ? createPortal(

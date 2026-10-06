@@ -117,6 +117,41 @@ export function usePhoneLandscapeNotTablet() {
   )
 }
 
+function readCoarseLandscape() {
+  if (typeof window === 'undefined') return false
+  // Portrait wins if WK still reports the landscape MQ after rotate-back.
+  return (
+    window.matchMedia(PHONE_LANDSCAPE_QUERY).matches &&
+    !window.matchMedia('(orientation: portrait)').matches
+  )
+}
+
+/**
+ * Landscape phone or iPad (coarse pointer). Football gamecast uses this so iPad
+ * gets the same full-screen field as iPhone … `usePhoneLandscapeNotTablet` excludes tablets.
+ */
+export function useCoarseLandscape() {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === 'undefined') return () => {}
+      const landscapeMq = window.matchMedia(PHONE_LANDSCAPE_QUERY)
+      const portraitMq = window.matchMedia('(orientation: portrait)')
+      landscapeMq.addEventListener('change', onStoreChange)
+      portraitMq.addEventListener('change', onStoreChange)
+      window.addEventListener('orientationchange', onStoreChange)
+      window.addEventListener('resize', onStoreChange)
+      return () => {
+        landscapeMq.removeEventListener('change', onStoreChange)
+        portraitMq.removeEventListener('change', onStoreChange)
+        window.removeEventListener('orientationchange', onStoreChange)
+        window.removeEventListener('resize', onStoreChange)
+      }
+    },
+    readCoarseLandscape,
+    () => false,
+  )
+}
+
 /**
  * While `active`, composers want portrait. IPA iPhone and the Android APK force-rotate. Other phones
  * show the rotate hint. Unlock / hide when the last composer closes.

@@ -19,7 +19,7 @@ import {
   LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS,
 } from './loungeFeedAvatar.js'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
-import { usePhoneLandscapeNotTablet } from '../../utils/edgeiOSComposerPortraitLock.js'
+import { useCoarseLandscape } from '../../utils/edgeiOSComposerPortraitLock.js'
 import GameHubHero from './gameHub/GameHubHero.jsx'
 import GameHubMoreMenu from './gameHub/GameHubMoreMenu.jsx'
 import { setLegalBooksOn, setLegalBooksState, useLegalBooks } from './gameHub/gameHubLegalBooks.js'
@@ -75,7 +75,7 @@ export default function LoungeGameHubModal({
 }) {
   const sports = useLoungeSportsFeed()
   const game = sports?.hubGame
-  const phoneLandscape = usePhoneLandscapeNotTablet()
+  const coarseLandscape = useCoarseLandscape()
   const [tab, setTab] = useState('news')
   const [news, setNews] = useState(null)
   const [newsLoading, setNewsLoading] = useState(false)
@@ -497,8 +497,8 @@ export default function LoungeGameHubModal({
     // Duplicate for seamless ticker when the strip overflows.
     return sameSportGames.length > 1 ? [...sameSportGames, ...sameSportGames] : sameSportGames
   }, [sameSportGames])
-  // Landscape phone on a football game renders the full-screen gamecast (see below) instead of the tabbed hub.
-  const gamecastFull = Boolean(game) && phoneLandscape && String(game.sport_key || '').includes('football')
+  // Landscape phone or iPad on a football game renders the full-screen gamecast instead of the tabbed hub.
+  const gamecastFull = Boolean(game) && coarseLandscape && String(game.sport_key || '').includes('football')
   // Strip only mounts once a game is open … gate on that so the hook starts with a real element. Portrait
   // top bar and landscape bottom strip are different elements, so each gets its own ticker gated on layout.
   const pillsTickerOn = Boolean(game) && sameSportGames.length > 1
@@ -854,7 +854,7 @@ export default function LoungeGameHubModal({
     </SportsBetLogGameProvider>
   )
 
-  // Landscape phone on a football game: full-screen gamecast (live / final: scoreboard, field, stat rails;
+  // Landscape phone or iPad on a football game: full-screen gamecast (live / final: scoreboard, field, stat rails;
   // pregame: matchup board) instead of the tabbed hub. Replaces the tabbed root rather than stacking on it
   // so the field anims only run once.
   if (gamecastFull) {

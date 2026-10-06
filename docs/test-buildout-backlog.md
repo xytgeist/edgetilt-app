@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **iPad landscape gamecast (`1.4.1069`).** Game hub no longer embeds in the Lounge 50/50 pane. Football landscape (phone + iPad) uses the same full-screen gamecast (`useCoarseLandscape`). Other sports stay the tabbed overlay. Post / chart / slate / profile keep the split. Marketing still **1.4.95**.
 - **2026-10-06:** **iPad landscape game hub split (`1.4.1068`).** Tall iPad (height > 520) never set `--lounge-landscape-feed-col` / pane (only Duo + phone MQ did). Opening a game then rotating collapsed the hub pane to 0 and stretched the feed. Defaults now match Chat: (rail + feed) = 50vw, pane = 50vw. Same for post detail / chart / slate / profile on that rotate. Marketing still **1.4.95**.
 - **2026-10-06:** **Promoted Bet Tracker chrome (`1.4.1067`).** Frontend **`test` → `main`**. No new SQL / Edge.
 - **2026-10-06:** **Bet Tracker chrome (`1.4.1067`).** Dropped extra Edit bankroll button. Log a bet sheet portals under the title bar (`max-h` clears EDGE chrome), fields scroll, Save stays pinned. Title bar × + header back close to Lounge. No SQL.

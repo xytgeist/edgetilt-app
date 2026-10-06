@@ -114,8 +114,11 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-06 ... iPad landscape gamecast
+**Web `1.4.1069`.** iPad landscape game is full-screen like phone (football = gamecast). Not the Lounge 50/50 pane. Post / chart / slate / profile still split. Smoke: open a game, rotate iPad 11 … field/matchup covers the frame. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-06 ... iPad landscape game hub split
-**Web `1.4.1068`.** iPad 11 rotate-into-game was dumping a broken Lounge because tall iPad never set the 50/50 split vars. Defaults now on `[data-lounge-feed-root][data-lounge-landscape-split]`. Smoke: open a game in portrait, rotate landscape … feed left, hub right. Same path for post / chart / profile / slate. Marketing still **1.4.95**.
+**Web `1.4.1068`.** Tall iPad split column vars. Superseded for **games** by **`1.4.1069`**. Post / chart / profile / slate still use the 50/50 pane. Marketing still **1.4.95**.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-06 ... Sports bet tracker (Pikkit-class, no password scrape)
 **Web `1.4.1067`.** Promoted **`test` → `main`** 2026-10-06. Bet Tracker: tap Bankroll/Unit chips. Log a bet bottom sheet with sticky Save. Title bar × / back leaves tracker. **No new SQL.**

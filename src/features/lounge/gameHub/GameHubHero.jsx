@@ -4732,7 +4732,7 @@ function PregamePropRail({ rows, align }) {
         style={{ touchAction: 'pan-y' }}
       >
         <div
-          className={`flex min-h-full flex-col justify-center gap-2 px-1.5 py-2 ${left ? 'items-start' : 'items-end'}`}
+          className={`flex min-h-full flex-col justify-evenly gap-2 px-1.5 py-2 ${left ? 'items-start' : 'items-end'}`}
         >
           {rows.map((r) => (
             <PropRailMarketButton
@@ -4815,7 +4815,10 @@ function LandscapeMatchupBoard({
         data-lounge-game-hero-veil
         className="pointer-events-none absolute inset-0 z-[3] bg-gradient-to-b from-black/15 via-black/28 to-[#09090b]"
       />
-      <div className="relative z-[4] flex min-h-0 flex-1 flex-col px-3 pt-[max(0.375rem,env(safe-area-inset-top,0px))]">
+      <div
+        data-lounge-gamecast-chrome
+        className="relative z-[4] flex min-h-0 flex-1 flex-col px-3 pt-[max(0.375rem,env(safe-area-inset-top,0px))]"
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="shrink-0">{sideSlots?.left}</div>
           <div className="flex min-w-0 flex-col items-center pt-1 text-center">

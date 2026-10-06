@@ -62,7 +62,7 @@ Why not DIY BookSync:
 
 ## Build order (next sessions)
 
-1. **Odds-cell Log (bones shipped `1.4.1058`)** … **hold** (or right-click) the number on the hub board / odds table. Tap still opens the book. Composer opens with that book/line/odds; last stake units stick.
+1. **Odds-cell Log (bones shipped `1.4.1058`, fill complete `1.4.1061`)** … **hold** (or right-click) the number on the hub board / odds table. Tap still opens the book. Composer fills book / market / side / line / odds / selection. Stake defaults to **1u**.
 2. **Slip capture (bones shipped)** … paste text, or photo on IPA (`EdgeNative.recognizeText`, purpose `sports-bet-slip`) → heuristic parse → confirm. PWA photo falls back to paste. Not a trained slip model yet.
 3. **CSV / statement import (bones shipped)** … file with Odds / Selection columns; bulk insert when more than one row parses.
 4. **Real book connect** … only via licensed aggregator or official partner APIs, behind Sports Edge. **Never scrape logins.**
@@ -92,15 +92,17 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 
 - Table **`sports_bets`** (RLS: own rows only) … migration **`20261006010000_sports_bet_tracker.sql`**
 - Intake sources `odds_cell` / `slip` / `csv` … **`20261006020000_sports_bets_intake_sources.sql`**
+- Settings **`sports_bet_settings`** (unit size + starting bankroll) … **`20261006030000_sports_bet_settings.sql`**
 - CLV: **`sports_bets_refresh_clv()`** security definer reads locked closes for the caller’s event ids (does not widen market-file RLS to the client)
 
-Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** test + prod 2026-10-05 (intake sources).
+Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** test + prod 2026-10-05 (intake sources). Applied **`20261006030000`** on **test** 2026-10-06 (prod on promote).
 
 ## Client
 
 - Feature: **`src/features/sports-bet-tracker/`**
 - Tab: **`?tab=sports-bets`** (Sports Hub **Bet Tracker** row; league hubs have a clipboard chip. Not in the hamburger.)
-- Prefill: hub **… → Log a bet** / hold odds / `requestSportsBetLog(prefill)` … closes the sports surface and sets `tab=sports-bets`. Does **not** keep `?game=` (that reopened the league hub).
+- Prefill: hub **… → Log a bet** / hold odds / `requestSportsBetLog(prefill)` … closes the sports surface and sets `tab=sports-bets`. Does **not** keep `?game=` (that reopened the league hub). Hollow `?logBet=1` URLs do not wipe a sessionStorage fill.
+- Money: **1u** default stake, **$** field, default **$100** unit size (gear), **bankroll** = start + settled $ P&L.
 - Git: scaffold **`0ef9edbd`** (`1.4.1057`) on **`origin/test`**. Notes commit is the tip after computer-change writeup. Draft PR: `cursor/sports-bet-tracker-9369`.
 
 ## Access

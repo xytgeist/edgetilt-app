@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, ClipboardList, ClipboardPaste, FileSpreadsheet, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { Camera, ClipboardList, ClipboardPaste, FileSpreadsheet, Plus, RefreshCw, Settings, Trash2, X } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
@@ -11,28 +11,40 @@ import {
   settleSportsBet,
 } from './sportsBetApi.js'
 import {
+  currentSportsBankroll,
   formatAmericanOdds,
   formatLine,
   summarizeBets,
 } from './sportsBetMath.js'
 import {
   consumeSportsBetLogPending,
+  isUsefulSportsBetPrefill,
   sportsBetLogOpenEventName,
   sportsBetPrefillFromSearchParams,
 } from './sportsBetNav.js'
 import { parseSportsBetCsv, parseSportsBetIntake } from './sportsBetParse.js'
 import { ocrSportsBetSlipImage } from './sportsBetOcr.js'
-import { readLastStakeUnits, writeLastStakeUnits } from './sportsBetStake.js'
+import {
+  DEFAULT_STAKE_UNITS,
+  formatUsd,
+  readUnitSizeDollars,
+  stakeDollarsFromUnits,
+  stakeUnitsFromDollars,
+} from './sportsBetStake.js'
+import { loadSportsBetSettings, saveSportsBetSettings } from './sportsBetSettings.js'
 import { normalizeSportsBetSource, sportsBetSourceLabel } from './sportsBetSources.js'
 
-function emptyDraft() {
+function emptyDraft(unitSize = readUnitSizeDollars()) {
+  const units = String(DEFAULT_STAKE_UNITS)
   return {
     book: '',
     market: 'spread',
     side: 'home',
     line: '',
     odds: '-110',
-    stake_units: String(readLastStakeUnits()),
+    stake_units: units,
+    stake_dollars: stakeDollarsFromUnits(units, unitSize),
+    unit_size_dollars: unitSize,
     selection_label: '',
     notes: '',
     home_team: '',
@@ -45,19 +57,26 @@ function emptyDraft() {
   }
 }
 
-function draftFromPrefill(prefill) {
-  if (!prefill || typeof prefill !== 'object') return emptyDraft()
+function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
+  if (!prefill || typeof prefill !== 'object') return emptyDraft(unitSize)
+  const units =
+    prefill.stake_units != null && String(prefill.stake_units) !== ''
+      ? String(prefill.stake_units)
+      : String(DEFAULT_STAKE_UNITS)
+  const dollars =
+    prefill.stake_dollars != null && String(prefill.stake_dollars) !== ''
+      ? String(prefill.stake_dollars)
+      : stakeDollarsFromUnits(units, unitSize)
   return {
-    ...emptyDraft(),
+    ...emptyDraft(unitSize),
     book: prefill.book != null ? String(prefill.book) : '',
     market: prefill.market || 'spread',
     side: prefill.side || 'home',
-    line: prefill.line != null ? String(prefill.line) : '',
-    odds: prefill.odds != null ? String(prefill.odds) : '-110',
-    stake_units:
-      prefill.stake_units != null && String(prefill.stake_units) !== ''
-        ? String(prefill.stake_units)
-        : String(readLastStakeUnits()),
+    line: prefill.line != null && prefill.line !== '' ? String(prefill.line) : '',
+    odds: prefill.odds != null && prefill.odds !== '' ? String(prefill.odds) : '-110',
+    stake_units: units,
+    stake_dollars: dollars,
+    unit_size_dollars: unitSize,
     selection_label: prefill.selection_label ? String(prefill.selection_label) : '',
     notes: prefill.notes ? String(prefill.notes) : '',
     home_team: prefill.home_team ? String(prefill.home_team) : '',
@@ -112,6 +131,10 @@ export default function SportsBetTracker({
   const [filter, setFilter] = useState('all')
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [unitSize, setUnitSize] = useState(readUnitSizeDollars)
+  const [bankrollStart, setBankrollStart] = useState(null)
+  const [settingsDraft, setSettingsDraft] = useState({ unit: '', bankroll: '' })
   const csvInputRef = useRef(null)
   const photoInputRef = useRef(null)
 
@@ -158,15 +181,31 @@ export default function SportsBetTracker({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on client identity
   }, [supabaseClient, userId])
 
+  useEffect(() => {
+    let cancelled = false
+    void loadSportsBetSettings(supabaseClient).then(({ settings }) => {
+      if (cancelled || !settings) return
+      setUnitSize(settings.unit_size_dollars)
+      setBankrollStart(
+        settings.bankroll_start == null ? null : Number(settings.bankroll_start),
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [supabaseClient, userId])
+
   const openComposer = (prefill) => {
-    setDraft(draftFromPrefill(prefill))
+    setDraft(draftFromPrefill(isUsefulSportsBetPrefill(prefill) ? prefill : null, unitSize))
     setComposerOpen(true)
     setError('')
   }
 
   useEffect(() => {
-    if (pendingPrefill) {
+    if (pendingPrefill && isUsefulSportsBetPrefill(pendingPrefill)) {
       openComposer(pendingPrefill)
+      onPendingPrefillConsumed?.()
+    } else if (pendingPrefill) {
       onPendingPrefillConsumed?.()
     }
   }, [pendingPrefill, onPendingPrefillConsumed])
@@ -194,6 +233,7 @@ export default function SportsBetTracker({
   }, [])
 
   const summary = summarizeBets(bets)
+  const bankrollNow = currentSportsBankroll(bankrollStart, bets, unitSize)
   const visible = bets.filter((b) => {
     if (filter === 'open') return b.status === 'open'
     if (filter === 'settled') return b.status !== 'open'
@@ -215,8 +255,7 @@ export default function SportsBetTracker({
     }
     setBets((prev) => [bet, ...prev])
     setComposerOpen(false)
-    setDraft(emptyDraft())
-    writeLastStakeUnits(draft.stake_units)
+    setDraft(emptyDraft(unitSize))
     void refreshSportsBetClv(supabaseClient).then(() => load())
   }
 
@@ -241,7 +280,9 @@ export default function SportsBetTracker({
     for (const row of list) {
       const payload = {
         ...row,
-        stake_units: row.stake_units || readLastStakeUnits(),
+        stake_units: row.stake_units || DEFAULT_STAKE_UNITS,
+        unit_size_dollars: row.unit_size_dollars || unitSize,
+        stake_dollars: row.stake_dollars || stakeDollarsFromUnits(row.stake_units || DEFAULT_STAKE_UNITS, unitSize),
       }
       const { bet, error: saveErr } = await insertSportsBet(supabaseClient, userId, payload)
       if (saveErr) lastErr = saveErr
@@ -270,6 +311,32 @@ export default function SportsBetTracker({
     setBets((prev) => prev.filter((b) => b.id !== id))
   }
 
+  const onSaveSettings = async () => {
+    const unit = Number(settingsDraft.unit)
+    const displayed = Number(settingsDraft.bankroll)
+    if (!Number.isFinite(unit) || unit <= 0) {
+      setError('Unit size must be greater than 0.')
+      return
+    }
+    if (!Number.isFinite(displayed)) {
+      setError('Enter a bankroll amount.')
+      return
+    }
+    const realized = currentSportsBankroll(0, bets, unitSize) ?? 0
+    const start = displayed - realized
+    const { settings, error: saveErr } = await saveSportsBetSettings(supabaseClient, userId, {
+      unit_size_dollars: unit,
+      bankroll_start: start,
+    })
+    if (!settings) {
+      setError(saveErr || 'Could not save settings.')
+      return
+    }
+    setUnitSize(settings.unit_size_dollars)
+    setBankrollStart(settings.bankroll_start)
+    setSettingsOpen(false)
+  }
+
   const inputClass =
     'w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-[15px] text-white outline-none focus:border-cyan-500'
 
@@ -295,6 +362,18 @@ export default function SportsBetTracker({
           <p className={`text-sm text-zinc-400 ${ipadShell ? '' : 'mt-0.5'}`}>
             Hold a hub line to log it. Open from Sports Hub.
           </p>
+        </div>
+
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          <StatChip
+            label="Bankroll"
+            value={bankrollNow == null ? 'Set →' : formatUsd(bankrollNow)}
+          />
+          <StatChip
+            label="Unit"
+            value={formatUsd(unitSize)}
+            tone="cyan"
+          />
         </div>
 
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -343,6 +422,21 @@ export default function SportsBetTracker({
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSettingsDraft({
+                unit: String(unitSize || ''),
+                bankroll: bankrollNow == null ? '' : String(Number(bankrollNow.toFixed(2))),
+              })
+              setSettingsOpen(true)
+              setError('')
+            }}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-700 text-zinc-300 active:bg-zinc-800"
+            aria-label="Bankroll and unit size"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={() => void load()}
@@ -477,6 +571,7 @@ export default function SportsBetTracker({
                         bet.book,
                         formatAmericanOdds(bet.odds),
                         `${bet.stake_units}u`,
+                        bet.stake_dollars != null ? formatUsd(bet.stake_dollars) : null,
                         sportsBetSourceLabel(bet.source),
                       ]
                         .filter(Boolean)
@@ -650,19 +745,45 @@ export default function SportsBetTracker({
                     className={`${inputClass} mt-1`}
                     inputMode="decimal"
                     value={draft.stake_units}
-                    onChange={(e) => setDraft((d) => ({ ...d, stake_units: e.target.value }))}
+                    onChange={(e) => {
+                      const stake_units = e.target.value
+                      setDraft((d) => ({
+                        ...d,
+                        stake_units,
+                        stake_dollars: stakeDollarsFromUnits(stake_units, unitSize) || d.stake_dollars,
+                      }))
+                    }}
                   />
                 </label>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Book
+                  Stake ($)
                   <input
                     className={`${inputClass} mt-1`}
-                    value={draft.book}
-                    onChange={(e) => setDraft((d) => ({ ...d, book: e.target.value }))}
-                    placeholder="DraftKings"
+                    inputMode="decimal"
+                    value={draft.stake_dollars}
+                    onChange={(e) => {
+                      const stake_dollars = e.target.value
+                      const fromUsd = stakeUnitsFromDollars(stake_dollars, unitSize)
+                      setDraft((d) => ({
+                        ...d,
+                        stake_dollars,
+                        stake_units: fromUsd || d.stake_units,
+                      }))
+                    }}
+                    placeholder={stakeDollarsFromUnits(1, unitSize) || '100'}
                   />
                 </label>
               </div>
+              <p className="text-[11px] text-zinc-500">1u = {formatUsd(unitSize)}. Change unit size in settings.</p>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Book
+                <input
+                  className={`${inputClass} mt-1`}
+                  value={draft.book}
+                  onChange={(e) => setDraft((d) => ({ ...d, book: e.target.value }))}
+                  placeholder="DraftKings"
+                />
+              </label>
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Label (optional)
                 <input
@@ -687,6 +808,70 @@ export default function SportsBetTracker({
                 className="w-full rounded-2xl bg-cyan-600 py-3 text-[15px] font-bold text-white active:bg-cyan-500 disabled:opacity-50"
               >
                 {saving ? 'Saving…' : 'Save bet'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {settingsOpen ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Bankroll settings"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            aria-label="Close"
+            onClick={() => setSettingsOpen(false)}
+          />
+          <div
+            data-sports-bet-composer
+            className="relative z-[1] max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-zinc-700 bg-zinc-950 p-4 shadow-xl sm:rounded-3xl"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-black text-white">Bankroll</h2>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                className="rounded-full p-2 text-zinc-400 active:bg-zinc-800"
+                aria-label="Close settings"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mb-3 text-sm text-zinc-400">
+              Set what you have now. Wins and losses move it automatically.
+            </p>
+            <div className="space-y-3">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Current bankroll ($)
+                <input
+                  className={`${inputClass} mt-1`}
+                  inputMode="decimal"
+                  value={settingsDraft.bankroll}
+                  onChange={(e) => setSettingsDraft((d) => ({ ...d, bankroll: e.target.value }))}
+                  placeholder="5000"
+                />
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Unit size ($)
+                <input
+                  className={`${inputClass} mt-1`}
+                  inputMode="decimal"
+                  value={settingsDraft.unit}
+                  onChange={(e) => setSettingsDraft((d) => ({ ...d, unit: e.target.value }))}
+                  placeholder="100"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => void onSaveSettings()}
+                className="w-full rounded-2xl bg-cyan-600 py-3 text-[15px] font-bold text-white active:bg-cyan-500"
+              >
+                Save
               </button>
             </div>
           </div>

@@ -104,6 +104,18 @@ export function sportsBetLogOpenEventName() {
 }
 
 /** Prefill from URL query (share / reload). */
+export function isUsefulSportsBetPrefill(prefill) {
+  if (!prefill || typeof prefill !== 'object') return false
+  return Boolean(
+    (prefill.book && String(prefill.book).trim())
+    || (prefill.odds != null && String(prefill.odds).trim() !== '')
+    || (prefill.line != null && String(prefill.line).trim() !== '')
+    || (prefill.selection_label && String(prefill.selection_label).trim())
+    || (prefill.market && String(prefill.market) !== 'spread')
+    || (prefill.side && String(prefill.side) !== 'home'),
+  )
+}
+
 export function sportsBetPrefillFromSearchParams(params) {
   if (!params || typeof params.get !== 'function') return null
   if (!params.get('logBet')) return null

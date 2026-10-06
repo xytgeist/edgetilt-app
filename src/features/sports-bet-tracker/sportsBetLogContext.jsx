@@ -1,7 +1,12 @@
 import { createContext, useCallback, useContext, useMemo } from 'react'
 import { requestSportsBetLog } from './sportsBetNav.js'
+import { buildSelectionLabel } from './sportsBetMath.js'
 
 const SportsBetLogGameContext = createContext(null)
+
+export function formatSportsBetBook(name) {
+  return String(name || '').replace(/\.(ag|com|eu|lv)$/i, '').replace(/\s*\(US\)\s*$/i, '').trim()
+}
 
 export function sportsBetPrefillFromGame(game) {
   if (!game) return {}
@@ -17,18 +22,28 @@ export function sportsBetPrefillFromGame(game) {
 
 /**
  * Hub-wide log helper so odds cells can prefill without drilling 15 props.
- * `onBeforeLog` should close the hub (same as … → Log a bet).
+ * `onBeforeLog` should close the sports surface (same as … → Log a bet).
  */
 export function SportsBetLogGameProvider({ game, onBeforeLog, children }) {
   const logOdds = useCallback(
     (partial) => {
       if (!game) return
       onBeforeLog?.()
-      requestSportsBetLog({
+      const merged = {
         ...sportsBetPrefillFromGame(game),
         ...(partial && typeof partial === 'object' ? partial : {}),
         source: 'odds_cell',
+      }
+      merged.book = formatSportsBetBook(merged.book)
+      merged.selection_label = buildSelectionLabel({
+        market: merged.market,
+        side: merged.side,
+        homeTeam: merged.home_team,
+        awayTeam: merged.away_team,
+        line: merged.line,
+        selectionLabel: merged.selection_label,
       })
+      requestSportsBetLog(merged)
     },
     [game, onBeforeLog],
   )

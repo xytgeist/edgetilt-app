@@ -83,6 +83,15 @@ export function summarizeBets(bets) {
     ? (clvBeats / (clvBeats + clvMisses)) * 100
     : null
 
+  let profitDollars = 0
+  let hasDollarPnl = false
+  for (const b of list) {
+    const pd = profitDollarsForBet(b)
+    if (pd == null) continue
+    profitDollars += pd
+    hasDollarPnl = true
+  }
+
   return {
     won,
     lost,
@@ -90,6 +99,7 @@ export function summarizeBets(bets) {
     voided,
     open,
     profitUnits,
+    profitDollars: hasDollarPnl || profitUnits !== 0 ? profitDollars : 0,
     settledStake,
     roiPct,
     recordLabel: decided + push > 0
@@ -99,6 +109,43 @@ export function summarizeBets(bets) {
     clvAvg: clvN ? clvSum / clvN : null,
     clvN,
   }
+}
+
+/** Realized $ P&L for a settled bet. Open → null. */
+export function profitDollarsForBet(bet, fallbackUnitSize) {
+  if (!bet) return null
+  const status = String(bet.status || 'open')
+  if (status === 'open') return null
+  const dollars = Number(bet.stake_dollars)
+  const unit = Number(bet.unit_size_dollars)
+  const fallback = Number(fallbackUnitSize)
+  const units = Number(bet.stake_units)
+  const size =
+    Number.isFinite(unit) && unit > 0
+      ? unit
+      : Number.isFinite(fallback) && fallback > 0
+        ? fallback
+        : null
+  const stake =
+    Number.isFinite(dollars) && dollars > 0
+      ? dollars
+      : size != null && Number.isFinite(units) && units > 0
+        ? units * size
+        : null
+  if (stake == null) return null
+  return profitUnitsForStatus(status, stake, bet.odds)
+}
+
+export function currentSportsBankroll(bankrollStart, bets, fallbackUnitSize) {
+  const start = Number(bankrollStart)
+  if (!Number.isFinite(start)) return null
+  const list = Array.isArray(bets) ? bets : []
+  let pnl = 0
+  for (const b of list) {
+    const pd = profitDollarsForBet(b, fallbackUnitSize)
+    if (pd != null) pnl += pd
+  }
+  return start + pnl
 }
 
 export function buildSelectionLabel({

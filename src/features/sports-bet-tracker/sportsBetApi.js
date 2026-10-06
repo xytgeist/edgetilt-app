@@ -52,9 +52,18 @@ export async function insertSportsBet(supabaseClient, userId, draft) {
     line: draft.line == null || draft.line === '' ? null : Number(draft.line),
     odds: Math.round(odds),
     stake_units: stakeUnits,
-    stake_dollars: draft.stake_dollars == null || draft.stake_dollars === ''
+    stake_dollars: (() => {
+      const direct = draft.stake_dollars == null || draft.stake_dollars === ''
+        ? null
+        : Number(draft.stake_dollars)
+      if (Number.isFinite(direct) && direct >= 0) return direct
+      const unitSize = Number(draft.unit_size_dollars)
+      if (Number.isFinite(unitSize) && unitSize > 0) return stakeUnits * unitSize
+      return null
+    })(),
+    unit_size_dollars: draft.unit_size_dollars == null || draft.unit_size_dollars === ''
       ? null
-      : Number(draft.stake_dollars),
+      : Number(draft.unit_size_dollars),
     notes: draft.notes ? String(draft.notes).trim() : null,
     tags: Array.isArray(draft.tags) ? draft.tags : [],
     source: normalizeSportsBetSource(draft.source, 'manual'),

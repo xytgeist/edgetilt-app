@@ -115,14 +115,14 @@ The agent should treat the following as **standing instructions for this session
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-06 ... Sports bet tracker (Pikkit-class, no password scrape)
-**Web `1.4.1060`.** Hold an odds cell opens Bet Tracker (does not bounce through NFL Hub / `?game=`). Hub door still has no composer. Tracker lives in Sports Hub.
+**Web `1.4.1061`.** Hold-to-log fills the whole Log a bet form (book + selection, 1u). Unit size + $ stake. Bankroll setting moves with W/L.
 
 **Canonical notes:** **`docs/sports-bet-tracker.md`** (how BookSync works, what we copy vs refuse, build order). Read that on the other machine.
 
 **Do:** complete hands-off records (odds-cell Log → slip Vision ingest → CSV → later official/white-label connect).
 **Do not:** DIY DK/FD password scrape / store sportsbook logins.
 
-**Shipped:** Sports Hub **Bet Tracker** (`?tab=sports-bets`) + hub **… → Log a bet**. **Hold** a hub odds cell (or right-click) to prefill that book/line ... opens the tracker, does not reopen the league hub. Paste slip / IPA Vision photo / CSV. Units / ROI / CLV vs locked `lounge_market_files`. SQL **`20261006010000`** + **`20261006020000`** on test + prod. Frontend promote **`test` → `main`** web **`1.4.1059`**. Hold-to-log fix is **`1.4.1060`** on test. Marketing still **1.4.95**. Do **not** DIY book-password scrape.
+**Shipped:** Sports Hub **Bet Tracker**. Hold an odds cell to fill Log a bet (book, line, odds, selection; 1u). Unit size + $ stake + bankroll (moves on settle). SQL **`20261006010000`** + **`20261006020000`** on test + prod. **`20261006030000`** settings table on **test**. Do **not** DIY book-password scrape.
 
 ### Mac Theo ACTIVE TRACK 2026-10-05 ... Sports bet tracker v1
 **Web `1.4.1057`.** Scaffold only. Superseded as product intent by **2026-10-06** track above. Spec **`docs/sports-bet-tracker.md`**.

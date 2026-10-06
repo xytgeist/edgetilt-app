@@ -7,5 +7,6 @@ export {
   sportsBetLogOpenEventName,
   sportsBetPrefillFromSearchParams,
   isSportsBetTrackerSearch,
+  isUsefulSportsBetPrefill,
 } from './sportsBetNav.js'
 export { SportsBetLogGameProvider } from './sportsBetLogContext.jsx'

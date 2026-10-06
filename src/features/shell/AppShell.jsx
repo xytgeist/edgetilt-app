@@ -165,7 +165,7 @@ import {
   requestLoungeSportsHubOpen,
   clearLoungeSportsGamePending,
 } from '../lounge/loungeSportsHubNav.js'
-import { isSportsBetTrackerSearch, sportsBetLogOpenEventName } from '../sports-bet-tracker/sportsBetNav.js'
+import { isSportsBetTrackerSearch, isUsefulSportsBetPrefill, sportsBetLogOpenEventName, sportsBetPrefillFromSearchParams } from '../sports-bet-tracker/sportsBetNav.js'
 import { BadgeCheck, Bot, ChartSpline, Cherry, ClipboardList, Handshake, MessagesSquare, Spade, Sparkles, Trophy } from 'lucide-react'
 import { football, footballHelmet } from '@lucide/lab'
 import LucideLabIcon from '../../components/LucideLabIcon.jsx'
@@ -1613,21 +1613,8 @@ export default function AppShell({
           setTab('sports-bets')
           setMenuOpen(false)
           if ((params.get('logBet') || '').trim()) {
-            setPendingSportsBetPrefill({
-              event_id: (params.get('event') || '').trim() || undefined,
-              sport_key: (params.get('sport') || '').trim() || undefined,
-              sport_label: (params.get('sportLabel') || '').trim() || undefined,
-              home_team: (params.get('home') || '').trim() || undefined,
-              away_team: (params.get('away') || '').trim() || undefined,
-              commence_time: (params.get('commence') || '').trim() || undefined,
-              book: (params.get('book') || '').trim() || undefined,
-              market: (params.get('market') || '').trim() || undefined,
-              side: (params.get('side') || '').trim() || undefined,
-              line: params.get('line') != null && params.get('line') !== '' ? params.get('line') : undefined,
-              odds: params.get('odds') != null && params.get('odds') !== '' ? params.get('odds') : undefined,
-              selection_label: (params.get('selection') || '').trim() || undefined,
-              source: 'game_hub',
-            })
+            const fromUrl = sportsBetPrefillFromSearchParams(params)
+            if (isUsefulSportsBetPrefill(fromUrl)) setPendingSportsBetPrefill(fromUrl)
           }
         }
       }

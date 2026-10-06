@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **Promoted NBA / NHL / MLB / MLS team kits (`1.4.1072`).** Frontend **`test` → `main`**. No new SQL. Client catalog paints kits. Scoreboard Edge `color` / `color2` still undeployed (CLI token 401). Marketing still **1.4.95**.
 - **2026-10-06:** **NBA / NHL / MLB / MLS team kits (`1.4.1072`).** Same catalog+local-logo path as NFL/CFB: generated `*TeamCatalog.generated.js`, `/sports/{nba,nhl,mlb,mls}/logos`, `enrichLoungeSportsGame`. White primaries (Whitecaps) wash with secondary. ESPN major-league patch now also sends `color` / `color2`. PGA stays player vs Field (no club kit). Scoreboard `_shared` now also returns ESPN `color` / `color2` … redeploy **`lounge-sports-scoreboard`** on test when convenient (client catalog already paints). Marketing still **1.4.95**.
 - **2026-10-06:** **Promoted iPad landscape gamecast (`1.4.1071`).** Frontend **`test` → `main`** (`d06df584`). No new SQL / Edge. Marketing still **1.4.95**.
 - **2026-10-06:** **iPad gamecast chips (`1.4.1071`).** Back / … stay phone size on tablet landscape; pills + board keep the 1.58× scale. Marketing still **1.4.95**.

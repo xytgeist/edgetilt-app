@@ -164,7 +164,7 @@ import {
   requestLoungeSportsGameOpen,
   requestLoungeSportsHubOpen,
 } from '../lounge/loungeSportsHubNav.js'
-import { BadgeCheck, Bot, ChartSpline, Cherry, Handshake, MessagesSquare, Spade, Sparkles, Trophy } from 'lucide-react'
+import { BadgeCheck, Bot, ChartSpline, Cherry, ClipboardList, Handshake, MessagesSquare, Spade, Sparkles, Trophy } from 'lucide-react'
 import { football, footballHelmet } from '@lucide/lab'
 import LucideLabIcon from '../../components/LucideLabIcon.jsx'
 
@@ -180,6 +180,7 @@ const NAV_ICONS = {
   'sports-hub': { Glyph: Trophy, tint: '#38bdf8' },
   'nfl-hub': { Glyph: FootballHelmetIcon, tint: '#34d399' },
   'cfb-hub': { Glyph: FootballIcon, tint: '#fb923c' },
+  'sports-bets': { Glyph: ClipboardList, tint: '#22d3ee' },
   chat: { Glyph: MessagesSquare, tint: '#a78bfa' },
   monitor: { Glyph: ChartSpline, tint: '#22d3ee' },
   bots: { Glyph: Bot, tint: '#cbd5e1' },
@@ -216,6 +217,7 @@ const PokerStableScreen = lazyRoute(() => import('../poker-stable/PokerStableScr
 const LocalIntel = lazyRoute(() => import('../intel/LocalIntel.jsx'))
 const CalculatorsTab = lazyRoute(() => import('../calculators/CalculatorsTab.jsx'))
 const PlayLogbook = lazyRoute(() => import('../play-logbook/PlayLogbook.jsx'))
+const SportsBetTracker = lazyRoute(() => import('../sports-bet-tracker/SportsBetTracker.jsx'))
 const W2GScannerScreen = lazyRoute(() => import('../w2g-scanner/W2GScannerScreen.jsx'))
 const SlotsScreen = lazyRoute(() => import('../slots/SlotsScreen.jsx'))
 const PokerScreen = lazyRoute(() => import('../poker/PokerScreen.jsx'))
@@ -513,6 +515,7 @@ export default function AppShell({
   const [slotsBankrollKeepAlive, setSlotsBankrollKeepAlive] = useState(false)
   const [pokerStableKeepAlive, setPokerStableKeepAlive] = useState(false)
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
+  const [pendingSportsBetPrefill, setPendingSportsBetPrefill] = useState(null)
   const [pendingPlayLogLedger, setPendingPlayLogLedger] = useState(false)
   const [pendingPlayLogPartner, setPendingPlayLogPartner] = useState(null)
   const [pendingPlayLogSessionId, setPendingPlayLogSessionId] = useState(null)
@@ -1521,6 +1524,7 @@ export default function AppShell({
       const memberDeepLinkTabs = new Set([
         'offers',
         'logbook',
+        'sports-bets',
         'w2g-scanner',
         'chat',
         'monitor',
@@ -1594,6 +1598,31 @@ export default function AppShell({
           if (playLogPartner) setPendingPlayLogPartner(playLogPartner)
           const playLogSession = (params.get('playLogSession') || '').trim()
           if (playLogSession) setPendingPlayLogSessionId(playLogSession)
+        }
+      }
+      if (targetTab === 'sports-bets') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('sports-bets')
+          setMenuOpen(false)
+          if ((params.get('logBet') || '').trim()) {
+            setPendingSportsBetPrefill({
+              event_id: (params.get('event') || '').trim() || undefined,
+              sport_key: (params.get('sport') || '').trim() || undefined,
+              sport_label: (params.get('sportLabel') || '').trim() || undefined,
+              home_team: (params.get('home') || '').trim() || undefined,
+              away_team: (params.get('away') || '').trim() || undefined,
+              commence_time: (params.get('commence') || '').trim() || undefined,
+              book: (params.get('book') || '').trim() || undefined,
+              market: (params.get('market') || '').trim() || undefined,
+              side: (params.get('side') || '').trim() || undefined,
+              line: params.get('line') != null && params.get('line') !== '' ? params.get('line') : undefined,
+              odds: params.get('odds') != null && params.get('odds') !== '' ? params.get('odds') : undefined,
+              selection_label: (params.get('selection') || '').trim() || undefined,
+              source: 'game_hub',
+            })
+          }
         }
       }
       if (targetTab === 'w2g-scanner') {
@@ -2351,6 +2380,7 @@ export default function AppShell({
     { id: 'sports-hub', label: 'Sports Hub', icon: NAV_ICONS['sports-hub'], subscriberGated: false },
     { id: 'nfl-hub', label: 'NFL Hub', icon: NAV_ICONS['nfl-hub'], subscriberGated: false },
     { id: 'cfb-hub', label: 'CFB Hub', icon: NAV_ICONS['cfb-hub'], subscriberGated: false },
+    { id: 'sports-bets', label: 'Bet Tracker', icon: NAV_ICONS['sports-bets'], subscriberGated: false },
     { id: 'chat', label: 'Chat', icon: NAV_ICONS.chat, subscriberGated: false },
     ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: NAV_ICONS.monitor, subscriberGated: false }] : []),
     ...(isAdmin ? [{ id: 'bots', label: 'Bots', icon: NAV_ICONS.bots, subscriberGated: false }] : []),
@@ -3770,6 +3800,17 @@ export default function AppShell({
             setPendingW2GPrefill(prefill || null)
             openSlotsTool('w2g-scanner')
           }}
+        />
+      )
+    } else if (tab === 'sports-bets') {
+      visibleTab = (
+        <SportsBetTracker
+          supabaseClient={supabaseClient}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
+          titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
+          pendingPrefill={pendingSportsBetPrefill}
+          onPendingPrefillConsumed={() => setPendingSportsBetPrefill(null)}
         />
       )
     } else if (tab === 'w2g-scanner') {

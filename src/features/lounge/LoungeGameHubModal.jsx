@@ -45,6 +45,7 @@ import {
   withFreshestLiveClock,
 } from './gameHub/gameHubFormatters.js'
 import { readGameHubCache, writeGameHubCache } from './gameHub/gameHubCache.js'
+import { requestSportsBetLog } from '../sports-bet-tracker/sportsBetNav.js'
 
 const EMPTY_DETAIL = { odds: [], plays: [], stats: [], live: null, splits: null }
 
@@ -114,9 +115,14 @@ export default function LoungeGameHubModal({
     [game?.sport_key, sports?.games],
   )
 
-  const isCfbGame = String(game?.sport_key || '').includes('ncaaf')
-  const showFantasyTab = Boolean(game) && !isCfbGame
-  const showNewsTab = Boolean(game) && String(game?.sport_key || '').includes('americanfootball')
+  const sportKey = String(game?.sport_key || '')
+  const isFootballGame = sportKey.includes('americanfootball')
+  const isCfbGame = sportKey.includes('ncaaf')
+  // Fantasy is NFL-only … do not show an empty Fantasy tab for CFB / NHL / NBA / MLB.
+  const showFantasyTab = Boolean(game) && sportKey.includes('americanfootball_nfl') && !isCfbGame
+  const showNewsTab = Boolean(game) && isFootballGame
+  // Players needs football roster Edges … hide until NHL/NBA/MLB have their own.
+  const showPlayersTab = Boolean(game) && isFootballGame
   const showPlaysTab = Boolean(game) && game.status !== 'pre'
   const fieldPlayers = useMemo(
     () => mergeFieldRoster(fantasy.players, detail.rosters, game),
@@ -209,6 +215,24 @@ export default function LoungeGameHubModal({
     await shareViaBestAvailable({ url, title, text })
   }
 
+  function logBetFromHub() {
+    if (!game) return
+    sports.closeHub?.()
+    requestSportsBetLog({
+      event_id: game.id,
+      sport_key: game.sport_key,
+      sport_label: game.sport_label,
+      home_team: game.home?.name || game.home?.mascot,
+      away_team: game.away?.name || game.away?.mascot,
+      commence_time: game.commence_time,
+      market: 'spread',
+      side: 'home',
+      line: game.home?.spread ?? '',
+      odds: '-110',
+      source: 'game_hub',
+    })
+  }
+
   const detailGameId = game?.id || null
   const detailGameLive = game?.status === 'in'
   useEffect(() => {
@@ -265,7 +289,16 @@ export default function LoungeGameHubModal({
 
   useEffect(() => {
     if (!game || !supabaseClient) return undefined
-    const cfb = String(game.sport_key || '').includes('ncaaf')
+    const sk = String(game.sport_key || '')
+    const football = sk.includes('americanfootball')
+    if (!football) {
+      setFantasy(EMPTY_FANTASY)
+      setFantasyLoading(false)
+      setFantasyErr('')
+      fantasyRefreshRef.current = null
+      return undefined
+    }
+    const cfb = sk.includes('ncaaf')
     const gameId = game.id
     const cachedFantasy = readGameHubCache(gameId)?.fantasy
     setFantasy(cachedFantasy || EMPTY_FANTASY)
@@ -493,7 +526,7 @@ export default function LoungeGameHubModal({
     ...(showNewsTab ? [{ id: 'news', label: 'News' }] : []),
     { id: 'stats', label: 'Stats' },
     ...(showPlaysTab ? [{ id: 'plays', label: 'Plays' }] : []),
-    { id: 'players', label: 'Players' },
+    ...(showPlayersTab ? [{ id: 'players', label: 'Players' }] : []),
     ...(showFantasyTab ? [{ id: 'fantasy', label: 'Fantasy' }] : []),
     { id: 'posts', label: 'Posts' },
     { id: 'chat', label: 'Chat' },
@@ -710,6 +743,7 @@ export default function LoungeGameHubModal({
         onToggleLegalBooks={() => setLegalBooksOn(!legalBooks.on)}
         onPickLegalState={setLegalBooksState}
         onShare={shareHubGame}
+        onLogBet={logBetFromHub}
       />
     </div>
   )
@@ -844,10 +878,11 @@ export default function LoungeGameHubModal({
                 chipClassName={chipClass}
                 muted={whistleMuted}
                 onToggleMuted={toggleWhistleMuted}
-        legalBooks={legalBooks}
-        onToggleLegalBooks={() => setLegalBooksOn(!legalBooks.on)}
-        onPickLegalState={setLegalBooksState}
+                legalBooks={legalBooks}
+                onToggleLegalBooks={() => setLegalBooksOn(!legalBooks.on)}
+                onPickLegalState={setLegalBooksState}
                 onShare={shareHubGame}
+                onLogBet={logBetFromHub}
               />
             ),
           }}

@@ -249,17 +249,22 @@ async function rundownFetch<T>(path: string): Promise<T | null> {
   }
 }
 
+/**
+ * Day slate: scores / status / schedule / live_game_state only.
+ * `affiliate_ids=0` is TheRundown's scores-only filter (no markets / price rows).
+ * Odds API owns books … never pull full ML/spread/total snapshots onto this key.
+ */
 async function loadDayEvents(
   sportId: number,
   ptDate: string,
   maxCacheMs = CACHE_MS,
 ): Promise<RundownEvent[]> {
-  const cacheKey = `${sportId}|${ptDate}`
+  const cacheKey = `${sportId}|${ptDate}|scores`
   const cached = dayEventsCache.get(cacheKey)
   if (cached && Date.now() - cached.at < maxCacheMs) return cached.events
 
   const data = await rundownFetch<{ events?: RundownEvent[] }>(
-    `/sports/${sportId}/events/${ptDate}?offset=${PT_OFFSET_MIN}`,
+    `/sports/${sportId}/events/${ptDate}?offset=${PT_OFFSET_MIN}&affiliate_ids=0`,
   )
   const events = Array.isArray(data?.events) ? data!.events! : []
   dayEventsCache.set(cacheKey, { at: Date.now(), events })

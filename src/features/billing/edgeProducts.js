@@ -39,7 +39,7 @@ export const EDGE_PRODUCTS = [
   {
     slug: PRODUCT_SPORTS_EDGE,
     displayName: 'Sports Edge',
-    description: 'Sports betting intel (coming soon).',
+    description: 'Bet tracker with units, ROI, and CLV vs our closes (SKU coming soon).',
   },
   {
     slug: PRODUCT_CRYPTO_EDGE,

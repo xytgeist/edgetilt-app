@@ -114,6 +114,28 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac / Windows Theo ACTIVE TRACK 2026-10-06 ... Sports bet tracker (Pikkit-class, no password scrape)
+**Web `1.4.1057`.** Scaffold is live. **Ryan lock:** be strong where Pikkit is strong **and** where they are weak. Manual + our CLV is not enough.
+
+**Canonical notes:** **`docs/sports-bet-tracker.md`** (how BookSync works, what we copy vs refuse, build order). Read that on the other machine.
+
+**Do:** complete hands-off records (odds-cell Log → slip Vision ingest → CSV → later official/white-label connect).
+**Do not:** DIY DK/FD password scrape / store sportsbook logins.
+
+**Shipped:** hamburger **Bet Tracker** (`?tab=sports-bets`) + hub **… → Log a bet**. Units / ROI / CLV vs locked `lounge_market_files`. **Apply SQL `20261006010000` on test** before smoke. Marketing still **1.4.95**. Scaffold git **`0ef9edbd`**. **Next machine:** `git pull origin test` (this notes commit is the tip). Do **not** start odds-cell Log / slip OCR until Ryan asks.
+
+### Mac Theo ACTIVE TRACK 2026-10-05 ... Sports bet tracker v1
+**Web `1.4.1057`.** Scaffold only. Superseded as product intent by **2026-10-06** track above. Spec **`docs/sports-bet-tracker.md`**.
+
+### Mac Theo ACTIVE TRACK 2026-10-05 ... Rundown scores-only diet
+**Web `1.4.1056`.** TheRundown day + hub event fetches use `affiliate_ids=0` (scores/status/live only … no market price rows). Hub drops Rundown `/plays` (Ultra-only; football PBP stays ESPN). Odds API still owns books. **Redeploy `lounge-sports-scoreboard` (+ any Edge that shares `_shared/loungeBotRundownContext.ts`) on test** before smoke. Marketing still **1.4.95**.
+
+### Mac Theo ACTIVE TRACK 2026-10-05 ... All Sports Hub leagues v1
+**Web `1.4.1055`.** Sports Hub tiles for NHL / NBA / MLB / MLS / PGA are live. Matchup leagues share the NFL/CFB scoreboard pack pattern (short PT window). **PGA** is ESPN tournament cards (leader vs Field) … Odds golf is outrights, not matchups. Per-game hub = Stats / Plays / Posts / Chat (no News / Players / Fantasy yet). Superseded on Rundown metering by **`1.4.1056`**. Marketing still **1.4.95**.
+
+### Mac Theo ACTIVE TRACK 2026-10-05 ... NHL / NBA / MLB hubs v1
+**Web `1.4.1054`.** Sports Hub tiles for NHL / NBA / MLB. Superseded by **`1.4.1055`** (MLS + PGA). Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-04 ... Sports Island shared compact
 **Widget `1.4.999`.** Shared Dynamic Island was a wide black pill with one logo. Compact now `ViewThatFits` so trailing does not vanish. Marketing still **1.4.95**.
 **Test IPA:** Xcode Cloud **TestFlight Internal** succeeded on **`test` `90b72895`** (2026-10-04). Wait for ASC processing, then install the newest Internal build (lvslotpro.com).
@@ -2916,4 +2938,12 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … Guides/Calcs vertical rhythm
 
-**I am Mac Theo.** **`1.4.1053`**: phone landscape … Guides search→first card `0.5rem` (match title→search); Calcs title→first card drops extra pad; between calc cards `0.375rem` like tools. Hard-refresh on test. Not promoted.
+**I am Mac Theo.** **`1.4.1053`**: phone landscape … Guides search→first card `0.5rem` (match title→search); Calcs title→first card drops extra pad; between calc cards `0.375rem` like tools.
+
+### Mac Theo 2026-10-05 … Promote 1.4.1053
+
+**I am Mac Theo.** Promoted **`test` → `main` (`8378808b`)**. Vercel prod web **`1.4.1053`** (Guides/Calcs vertical rhythm). No new IPA. Back on **`test`**.
+
+### Mac Theo 2026-10-05 … Ryan smoked phone landscape day
+
+**I am Mac Theo.** Ryan signed off today’s phone landscape chrome stack on device (`1.4.1041`–`1.4.1053` on prod). Backlog Update log has the sign-off. No open follow-ups from him on this pass.

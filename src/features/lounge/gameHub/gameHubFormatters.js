@@ -15,6 +15,7 @@ export function periodLabel(sportKey, index, total) {
   const sk = String(sportKey || '')
   if (sk.includes('baseball')) return String(index + 1)
   if (sk.includes('hockey')) return index < 3 ? `${index + 1}` : 'OT'
+  if (sk.includes('golf')) return `R${index + 1}`
   if (index >= 4) return 'OT'
   if (total <= 2) return index === 0 ? 'H1' : 'H2'
   return String(index + 1)

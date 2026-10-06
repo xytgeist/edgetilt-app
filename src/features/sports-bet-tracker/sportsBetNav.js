@@ -10,6 +10,38 @@ const PENDING_KEY = 'edge.sportsBetLog.pending.v1'
 const OPEN_EVENT = 'edge-sports-bet-log'
 const TTL_MS = 15 * 60 * 1000
 
+/** Survives hub unmount even if sessionStorage is blocked. */
+let memoryPending = null
+
+function stripPendingMeta(row) {
+  if (!row || typeof row !== 'object') return null
+  if (!(Date.now() - Number(row.at) < TTL_MS)) return null
+  const { at: _at, ...prefill } = row
+  return prefill
+}
+
+function writePending(row) {
+  memoryPending = row
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(PENDING_KEY, JSON.stringify(row))
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+function readStoredPending() {
+  try {
+    if (typeof sessionStorage === 'undefined') return null
+    const raw = sessionStorage.getItem(PENDING_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
 /**
  * @typedef {{
  *   event_id?: string,
@@ -35,13 +67,7 @@ export function requestSportsBetLog(prefill) {
     source: normalizeSportsBetSource(prefill?.source, 'game_hub'),
     at: Date.now(),
   }
-  try {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(PENDING_KEY, JSON.stringify(row))
-    }
-  } catch {
-    /* ignore */
-  }
+  writePending(row)
   clearLoungeSportsGamePending()
   if (typeof window !== 'undefined') {
     const url = new URL(window.location.href)
@@ -57,6 +83,7 @@ export function requestSportsBetLog(prefill) {
 }
 
 export function clearSportsBetLogPending() {
+  memoryPending = null
   try {
     if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(PENDING_KEY)
   } catch {
@@ -85,18 +112,15 @@ export function isSportsBetTrackerSearch(params) {
 
 /** @returns {SportsBetPrefill | null} */
 export function consumeSportsBetLogPending() {
+  const mem = memoryPending
+  memoryPending = null
+  const stored = readStoredPending()
   try {
-    if (typeof sessionStorage === 'undefined') return null
-    const raw = sessionStorage.getItem(PENDING_KEY)
-    if (!raw) return null
-    sessionStorage.removeItem(PENDING_KEY)
-    const row = JSON.parse(raw)
-    if (!(Date.now() - Number(row?.at) < TTL_MS)) return null
-    const { at: _at, ...prefill } = row
-    return prefill
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(PENDING_KEY)
   } catch {
-    return null
+    /* ignore */
   }
+  return stripPendingMeta(mem) || stripPendingMeta(stored)
 }
 
 export function sportsBetLogOpenEventName() {

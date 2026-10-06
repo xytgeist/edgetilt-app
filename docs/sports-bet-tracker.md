@@ -103,7 +103,7 @@ Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`*
 
 - Feature: **`src/features/sports-bet-tracker/`**
 - Tab: **`?tab=sports-bets`** (Sports Hub **Bet Tracker** row; league hubs have a clipboard chip. Not in the hamburger.)
-- Prefill: hub **… → Log a bet** / hold odds / `requestSportsBetLog(prefill)` … closes the sports surface and sets `tab=sports-bets`. Does **not** keep `?game=` (that reopened the league hub). Hollow `?logBet=1` URLs do not wipe a sessionStorage fill.
+- Prefill: hub **… → Log a bet** / hold odds / `requestSportsBetLog(prefill)` … closes the sports surface and sets `tab=sports-bets`. Does **not** keep `?game=` (that reopened the league hub). Hollow `?logBet=1` URLs **must not** open the composer (that wiped book / line / odds after a hold). Prefill lives in memory + sessionStorage + the open event.
 - **Tap-through:** opening the book from a hub odds cell inserts an **unconfirmed** 1u bet (`odds_tap`). Confirm / Edit / Delete on the tracker row. Hold still opens the composer first. Same for Kalshi/Poly Yes/No and landscape player-prop rails (Yes = Over, No = Under; implied ¢ → American).
 - Composer **Sport** (NFL / CFB / NBA / MLB / NHL / PGA / MLS / Other) maps to Odds API `sport_key`. **Player prop** market adds Player + Stat.
 - Money: **1u** default stake, **$** field, default **$100** unit size. **Bankroll** and **unit size** are set from the tracker chips / **Set bankroll & unit size** (and Unit size on Log a bet). Bankroll = start + settled $ P&L.

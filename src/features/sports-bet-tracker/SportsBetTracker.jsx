@@ -259,8 +259,11 @@ export default function SportsBetTracker({
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
     const fromStore = consumeSportsBetLogPending()
-    if (fromStore) openComposer(fromStore)
-    const onOpen = (e) => openComposer(e?.detail || consumeSportsBetLogPending())
+    if (isUsefulSportsBetPrefill(fromStore)) openComposer(fromStore)
+    const onOpen = (e) => {
+      const next = e?.detail || consumeSportsBetLogPending()
+      if (isUsefulSportsBetPrefill(next)) openComposer(next)
+    }
     window.addEventListener(sportsBetLogOpenEventName(), onOpen)
     return () => window.removeEventListener(sportsBetLogOpenEventName(), onOpen)
   }, [])
@@ -271,7 +274,9 @@ export default function SportsBetTracker({
       const params = new URLSearchParams(window.location.search || '')
       if (params.get('tab') !== 'sports-bets') return
       const fromUrl = sportsBetPrefillFromSearchParams(params)
-      if (fromUrl) openComposer(fromUrl)
+      // Hollow `?logBet=1` is only a door. Prefill lives in sessionStorage / the open event.
+      // Opening from the empty URL wiped book / line / odds after a hold-to-log.
+      if (isUsefulSportsBetPrefill(fromUrl)) openComposer(fromUrl)
     }
     apply()
     window.addEventListener('popstate', apply)

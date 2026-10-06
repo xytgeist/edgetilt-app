@@ -5,7 +5,7 @@ import {
   readLoungeSportsScoreboardCache,
   writeLoungeSportsScoreboardCache,
 } from '../../utils/loungeSportsApi.js'
-import { enrichLoungeSportsGame } from './loungeSportsMatch.js'
+import { dedupeLoungeSportsGames, enrichLoungeSportsGame } from './loungeSportsMatch.js'
 import { isLoungeSportsCurrentSlateGame, ptDateFromIsoLocal } from './loungeSportsSlateWindow.js'
 import { parseLoungeSportsGameField } from './loungeSportsGameField.js'
 import {
@@ -49,7 +49,7 @@ function sameHubGame(a, b) {
 function gamesFromCache() {
   const cached = readLoungeSportsScoreboardCache()
   if (!Array.isArray(cached) || !cached.length) return []
-  return cached.map(enrichLoungeSportsGame).filter(isLoungeSportsCurrentSlateGame)
+  return dedupeLoungeSportsGames(cached.map(enrichLoungeSportsGame).filter(isLoungeSportsCurrentSlateGame))
 }
 
 function normAbbrev(value) {
@@ -185,7 +185,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
           ...incoming.filter((g) => !known.has(String(g.id))),
         ]
       }
-      const next = preserveSpreads(merged, gamesRef.current)
+      const next = preserveSpreads(dedupeLoungeSportsGames(merged), gamesRef.current)
       setGames(next)
       writeLoungeSportsScoreboardCache(next)
     } catch (err) {

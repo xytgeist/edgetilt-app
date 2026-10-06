@@ -10,6 +10,7 @@ import { fetchSportOdds, fetchSportOddsHistorical, ptTodayDate } from './loungeB
 import { sharedCached, sharedCachedNoMem } from './edgeSharedCache.ts'
 import { type CircaFixture, loadCircaFootballFixtures } from './oddspapiCirca.ts'
 import type { OddsEvent } from './loungeBotOddsCaption.ts'
+import { majorLeagueAbbrevFromName } from './loungeSportsMajorLeagueAbbrevs.ts'
 import {
   loadMarketFilesForSportWindow,
   lockDueMarketFileCloses,
@@ -801,16 +802,17 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
   const kicked = commence ? Date.parse(commence) <= Date.now() : false
   const status: LoungeSportsGame['status'] = completed ? 'post' : kicked && (homeScore != null || awayScore != null) ? 'in' : 'pre'
   const useNflAbbrev = isNflSportKey(sportKey)
+  const stubAbbrev = (name: string) => (name.split(/\s+/).pop() || name).slice(0, 3).toUpperCase()
   const homeAbbrev = useNflAbbrev
     ? nflAbbrevFromOddsName(homeName)
     : isCfbSportKey(sportKey)
       ? cfbAbbrevFromOddsName(homeName)
-      : (homeName.split(/\s+/).pop() || homeName).slice(0, 3).toUpperCase()
+      : majorLeagueAbbrevFromName(sportKey, homeName, stubAbbrev(homeName))
   const awayAbbrev = useNflAbbrev
     ? nflAbbrevFromOddsName(awayName)
     : isCfbSportKey(sportKey)
       ? cfbAbbrevFromOddsName(awayName)
-      : (awayName.split(/\s+/).pop() || awayName).slice(0, 3).toUpperCase()
+      : majorLeagueAbbrevFromName(sportKey, awayName, stubAbbrev(awayName))
   const homeMascot = homeName.split(/\s+/).pop() || homeName
   const awayMascot = awayName.split(/\s+/).pop() || awayName
   const home: LoungeSportsGameSide = {
@@ -973,14 +975,43 @@ function gameOnSlate(game: LoungeSportsGame, dates: string[]): boolean {
   return Boolean(day) && dates.includes(day)
 }
 
+function slateSideKey(game: LoungeSportsGame, side: LoungeSportsGameSide | undefined): string {
+  if (isCfbSportKey(game.sport_key)) return resolveCfbCatalogAbbrev(side?.abbrev || '')
+  if (isNflSportKey(game.sport_key)) return nflAbbrevKey(side?.abbrev)
+  const fromName = majorLeagueAbbrevFromName(game.sport_key, side?.name || '', '')
+  if (fromName) return fromName
+  const fromMascot = majorLeagueAbbrevFromName(game.sport_key, side?.mascot || '', '')
+  if (fromMascot) return fromMascot
+  return majorLeagueAbbrevFromName(game.sport_key, side?.abbrev || '', nflAbbrevKey(side?.abbrev))
+}
+
 function slateDedupeKey(game: LoungeSportsGame): string {
-  const a = isCfbSportKey(game.sport_key)
-    ? resolveCfbCatalogAbbrev(game.away?.abbrev || '')
-    : nflAbbrevKey(game.away?.abbrev)
-  const h = isCfbSportKey(game.sport_key)
-    ? resolveCfbCatalogAbbrev(game.home?.abbrev || '')
-    : nflAbbrevKey(game.home?.abbrev)
-  return `${game.sport_key}:${a}@${h}:${ptDateFromIso(game.commence_time)}`
+  return `${game.sport_key}:${slateSideKey(game, game.away)}@${slateSideKey(game, game.home)}:${ptDateFromIso(game.commence_time)}`
+}
+
+function richerSlateGame(a: LoungeSportsGame, b: LoungeSportsGame): LoungeSportsGame {
+  const score = (g: LoungeSportsGame) => {
+    let n = 0
+    if (g.status === 'in') n += 8
+    if (g.status === 'post') n += 4
+    if (g.home?.score != null || g.away?.score != null) n += 4
+    if (g.live) n += 2
+    if (g.home?.spread != null || g.away?.spread != null) n += 2
+    if (g.home?.ml != null || g.away?.ml != null) n += 1
+    if (g.home?.record || g.away?.record) n += 1
+    return n
+  }
+  return score(b) > score(a) ? b : a
+}
+
+function collapseSlateGames(games: LoungeSportsGame[]): LoungeSportsGame[] {
+  const byKey = new Map<string, LoungeSportsGame>()
+  for (const game of games) {
+    const key = slateDedupeKey(game)
+    const prev = byKey.get(key)
+    byKey.set(key, prev ? richerSlateGame(prev, game) : game)
+  }
+  return [...byKey.values()]
 }
 
 function nflAbbrevKey(value: unknown): string {
@@ -1557,7 +1588,7 @@ export async function buildLoungeSportsScoreboard(
     { sport: 'soccer', league: 'usa.1', logoLeague: 'mls' },
     isMlsSportKey,
   )
-  return { games: withRecords, source: sourceRef.value }
+  return { games: collapseSlateGames(withRecords), source: sourceRef.value }
 }
 
 const espnMajorLeagueCache = new Map<string, { at: number; events: Array<Record<string, unknown>> }>()

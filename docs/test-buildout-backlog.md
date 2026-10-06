@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **NHL hub duplicate cards (`1.4.1074`).** Odds last-3 nickname abbrevs (`OIL`/`DUC`) missed Rundown codes (`EDM`/`ANA`) in `slateDedupeKey`, so ESPN painted two identical pills. Catalog name map + post-ESPN collapse on scoreboard; client `dedupeLoungeSportsGames` after enrich / cache / active merge. Same path for NBA / MLB / MLS. Redeploy **`lounge-sports-scoreboard`**. Marketing still **1.4.95**.
 - **2026-10-06:** **NBA / NHL / MLB / MLS live scores (`1.4.1073`).** ESPN score + sport clock (Q / P / inning / half) on the 5s live cache; hub Plays + box from ESPN summary. Football path unchanged. Redeploy **`lounge-sports-scoreboard`**. Marketing still **1.4.95**.
 - **2026-10-06:** **Redeployed `lounge-sports-scoreboard` test + prod.** ESPN `color` / `color2` on major-league sides. Matches **`1.4.1072`** client kits.
 - **2026-10-06:** **Promoted NBA / NHL / MLB / MLS team kits (`1.4.1072`).** Frontend **`test` → `main`**. No new SQL. Client catalog paints kits. Scoreboard Edge `color` / `color2` still undeployed (CLI token 401). Marketing still **1.4.95**.

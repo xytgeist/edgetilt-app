@@ -10,6 +10,10 @@
  *   node scripts/sync-major-league-team-assets.mjs --dry-run
  *   node scripts/sync-major-league-team-assets.mjs --league=nba
  *   npm run sports:teams:assets
+ *
+ * After a catalog regen, refresh
+ * `supabase/functions/_shared/loungeSportsMajorLeagueAbbrevs.ts` so Edge
+ * slate keys stay aligned with client kits.
  */
 import fs from 'fs'
 import path from 'path'

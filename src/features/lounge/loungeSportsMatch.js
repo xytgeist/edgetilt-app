@@ -1,4 +1,4 @@
-import { pickAmbiguousTeamGame, pickSpecificMatchupGame, gameHasTeam, sideAbbrev } from './loungeSportsSlateWindow.js'
+import { pickAmbiguousTeamGame, pickSpecificMatchupGame, gameHasTeam, sideAbbrev, ptDateFromIsoLocal } from './loungeSportsSlateWindow.js'
 import { LOUNGE_SPORTS_GAME_PIN_MAX } from './loungeSportsGameField.js'
 import { CFB_TEAM_CATALOG } from './cfbTeamCatalog.generated.js'
 import { NBA_TEAM_CATALOG } from './nbaTeamCatalog.generated.js'
@@ -520,6 +520,42 @@ export function probeLogoWashTreatment(src, washHex) {
 export function probeLogoWashConflict(src, washHex) {
   const job = probeLogoWashTreatment(src, washHex)
   return Promise.resolve(job).then((t) => t === 'light')
+}
+
+export function loungeSportsMatchupDedupeKey(game) {
+  const sport = String(game?.sport_key || '')
+  const away = catalogRowForSide(game?.away, sport)?.abbrev || sideAbbrev(game?.away)
+  const home = catalogRowForSide(game?.home, sport)?.abbrev || sideAbbrev(game?.home)
+  return `${sport}:${String(away || '').toUpperCase()}@${String(home || '').toUpperCase()}:${ptDateFromIsoLocal(game?.commence_time)}`
+}
+
+function richerLoungeSportsGame(a, b) {
+  const score = (g) => {
+    let n = 0
+    if (g?.status === 'in') n += 8
+    if (g?.status === 'post') n += 4
+    if (g?.home?.score != null || g?.away?.score != null) n += 4
+    if (g?.live) n += 2
+    if (g?.home?.spread != null || g?.away?.spread != null) n += 2
+    if (g?.home?.ml != null || g?.away?.ml != null) n += 1
+    if (g?.home?.record || g?.away?.record) n += 1
+    return n
+  }
+  return score(b) > score(a) ? b : a
+}
+
+/** Collapse Odds nickname rows + Rundown/ESPN rows for the same matchup. */
+export function dedupeLoungeSportsGames(games) {
+  const byKey = new Map()
+  for (const game of Array.isArray(games) ? games : []) {
+    const away = sideAbbrev(game?.away)
+    const home = sideAbbrev(game?.home)
+    const key = away && home ? loungeSportsMatchupDedupeKey(game) : `id:${String(game?.id || '')}`
+    if (!key || key === 'id:') continue
+    const prev = byKey.get(key)
+    byKey.set(key, prev ? richerLoungeSportsGame(prev, game) : game)
+  }
+  return [...byKey.values()]
 }
 
 export function enrichLoungeSportsGame(game) {

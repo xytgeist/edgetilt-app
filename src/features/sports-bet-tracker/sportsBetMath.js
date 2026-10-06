@@ -28,11 +28,20 @@ export function formatAmericanOdds(odds) {
   return o > 0 ? `+${o}` : `${o}`
 }
 
+/** Implied probability 0-1 (Kalshi/Poly cents) → American odds. */
+export function americanFromImplied(prob) {
+  const p = Number(prob)
+  if (!Number.isFinite(p) || p <= 0 || p >= 1) return null
+  if (p >= 0.5) return Math.round(-100 * p / (1 - p))
+  return Math.round(100 * (1 - p) / p)
+}
+
 export function formatLine(line, market) {
   if (line == null || line === '') return ''
   const n = Number(line)
   if (!Number.isFinite(n)) return String(line)
   if (market === 'h2h') return ''
+  if (market === 'prop' || market === 'total') return String(n)
   const sign = n > 0 ? '+' : ''
   return `${sign}${n}`
 }
@@ -155,12 +164,23 @@ export function buildSelectionLabel({
   awayTeam,
   line,
   selectionLabel,
+  playerName,
+  propStat,
 }) {
   const custom = String(selectionLabel || '').trim()
+  const m = String(market || 'spread')
+  if (m === 'prop') {
+    if (custom && !playerName) return custom
+    const player = String(playerName || '').trim()
+    const ou = side === 'under' ? 'Under' : 'Over'
+    const ln = formatLine(line, 'prop')
+    const stat = String(propStat || '').trim()
+    const built = [player, ou, ln, stat].filter(Boolean).join(' ')
+    return built || custom || 'Player prop'
+  }
   if (custom) return custom
   const home = String(homeTeam || 'Home').trim()
   const away = String(awayTeam || 'Away').trim()
-  const m = String(market || 'spread')
   const ln = formatLine(line, m)
   if (m === 'h2h') {
     if (side === 'home') return home

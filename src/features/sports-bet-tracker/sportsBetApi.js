@@ -1,11 +1,12 @@
 import { buildSelectionLabel, profitUnitsForStatus } from './sportsBetMath.js'
 import { normalizeSportsBetSource } from './sportsBetSources.js'
+import { resolveSportsBetSport } from './sportsBetSports.js'
 
 const SELECT = `
   id, user_id, event_id, sport_key, sport_label, home_team, away_team, commence_time,
   book, market, side, selection_label, line, odds, stake_units, stake_dollars, unit_size_dollars,
   status, result_at, profit_units, close_line, close_odds, clv_pts, clv_graded_at,
-  notes, tags, source, confirmed, created_at, updated_at
+  notes, tags, source, confirmed, player_name, prop_stat, created_at, updated_at
 `.replace(/\s+/g, ' ').trim()
 
 function draftToRow(userId, draft) {
@@ -15,6 +16,7 @@ function draftToRow(userId, draft) {
   const stakeUnits = Number(draft.stake_units ?? 1)
   if (!Number.isFinite(odds) || odds === 0) return { error: 'Odds required' }
   if (!Number.isFinite(stakeUnits) || stakeUnits <= 0) return { error: 'Stake units required' }
+  const sport = resolveSportsBetSport(draft.sport_key, draft.sport_label)
   const selection_label = buildSelectionLabel({
     market,
     side,
@@ -22,6 +24,8 @@ function draftToRow(userId, draft) {
     awayTeam: draft.away_team,
     line: draft.line,
     selectionLabel: draft.selection_label,
+    playerName: draft.player_name,
+    propStat: draft.prop_stat,
   })
   const direct = draft.stake_dollars == null || draft.stake_dollars === ''
     ? null
@@ -37,8 +41,8 @@ function draftToRow(userId, draft) {
     row: {
       ...(userId ? { user_id: userId } : {}),
       event_id: draft.event_id ? String(draft.event_id) : null,
-      sport_key: draft.sport_key ? String(draft.sport_key) : null,
-      sport_label: draft.sport_label ? String(draft.sport_label) : null,
+      sport_key: sport.key || null,
+      sport_label: sport.label || null,
       home_team: draft.home_team ? String(draft.home_team) : null,
       away_team: draft.away_team ? String(draft.away_team) : null,
       commence_time: draft.commence_time || null,
@@ -46,6 +50,8 @@ function draftToRow(userId, draft) {
       market,
       side,
       selection_label,
+      player_name: draft.player_name ? String(draft.player_name).trim() : null,
+      prop_stat: draft.prop_stat ? String(draft.prop_stat).trim() : null,
       line: draft.line == null || draft.line === '' ? null : Number(draft.line),
       odds: Math.round(odds),
       stake_units: stakeUnits,

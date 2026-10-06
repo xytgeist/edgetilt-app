@@ -78,7 +78,7 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 | Manual log + **Log a bet** from game hub (game prefill) | DIY book credential sync (**never**) |
 | **Hold odds cell** to log that book/line | Tap-replaces-open-book (tap still opens the sportsbook) |
 | Paste slip + IPA photo OCR + CSV import (heuristic, confirm first) | Trained slip Vision model / share-sheet auto-ingest |
-| Units stake, American odds, market (spread / ML / total / other) | White-label / official book connect |
+| Units stake, American odds, market (spread / ML / total / **player prop** / other), **Sport** (NFL, CFB, …) | White-label / official book connect |
 | Open → won / lost / push / void settle | Parlay legs; verified public record |
 | P&L units + ROI + record | Hard `sports-edge` paywall |
 | CLV vs locked **`lounge_market_files`** close (RPC) |  |
@@ -94,16 +94,18 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 - Intake sources `odds_cell` / `slip` / `csv` … **`20261006020000_sports_bets_intake_sources.sql`**
 - Settings **`sports_bet_settings`** (unit size + starting bankroll) … **`20261006030000_sports_bet_settings.sql`**
 - Tap-through confirm flag **`sports_bets.confirmed`** + source `odds_tap` … **`20261006040000_sports_bets_tap_confirm.sql`**
+- Player prop market + `player_name` / `prop_stat` … **`20261006050000_sports_bets_prop_market.sql`**
 - CLV: **`sports_bets_refresh_clv()`** security definer reads locked closes for the caller’s event ids (does not widen market-file RLS to the client)
 
-Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** test + prod 2026-10-05 (intake sources). Applied **`20261006030000`** + **`20261006040000`** on **test** 2026-10-06 (prod on promote).
+Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** test + prod 2026-10-05 (intake sources). Applied **`20261006030000`** + **`20261006040000`** + **`20261006050000`** on **test** 2026-10-06 (prod on promote).
 
 ## Client
 
 - Feature: **`src/features/sports-bet-tracker/`**
 - Tab: **`?tab=sports-bets`** (Sports Hub **Bet Tracker** row; league hubs have a clipboard chip. Not in the hamburger.)
 - Prefill: hub **… → Log a bet** / hold odds / `requestSportsBetLog(prefill)` … closes the sports surface and sets `tab=sports-bets`. Does **not** keep `?game=` (that reopened the league hub). Hollow `?logBet=1` URLs do not wipe a sessionStorage fill.
-- **Tap-through:** opening the book from a hub odds cell inserts an **unconfirmed** 1u bet (`odds_tap`). Confirm / Edit / Delete on the tracker row. Hold still opens the composer first.
+- **Tap-through:** opening the book from a hub odds cell inserts an **unconfirmed** 1u bet (`odds_tap`). Confirm / Edit / Delete on the tracker row. Hold still opens the composer first. Same for Kalshi/Poly Yes/No and landscape player-prop rails (Yes = Over, No = Under; implied ¢ → American).
+- Composer **Sport** (NFL / CFB / NBA / MLB / NHL / PGA / MLS / Other) maps to Odds API `sport_key`. **Player prop** market adds Player + Stat.
 - Money: **1u** default stake, **$** field, default **$100** unit size (gear), **bankroll** = start + settled $ P&L.
 - Git: scaffold **`0ef9edbd`** (`1.4.1057`) on **`origin/test`**. Notes commit is the tip after computer-change writeup. Draft PR: `cursor/sports-bet-tracker-9369`.
 

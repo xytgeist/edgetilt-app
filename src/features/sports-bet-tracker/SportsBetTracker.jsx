@@ -35,6 +35,7 @@ import {
 } from './sportsBetStake.js'
 import { loadSportsBetSettings, saveSportsBetSettings } from './sportsBetSettings.js'
 import { normalizeSportsBetSource, sportsBetSourceLabel } from './sportsBetSources.js'
+import { resolveSportsBetSport, SPORTS_BET_SPORTS, sportByKey } from './sportsBetSports.js'
 
 function emptyDraft(unitSize = readUnitSizeDollars()) {
   const units = String(DEFAULT_STAKE_UNITS)
@@ -55,6 +56,8 @@ function emptyDraft(unitSize = readUnitSizeDollars()) {
     event_id: '',
     sport_key: '',
     commence_time: '',
+    player_name: '',
+    prop_stat: '',
     source: 'manual',
   }
 }
@@ -69,11 +72,11 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     prefill.stake_dollars != null && String(prefill.stake_dollars) !== ''
       ? String(prefill.stake_dollars)
       : stakeDollarsFromUnits(units, unitSize)
-  return {
+  const next = {
     ...emptyDraft(unitSize),
     book: prefill.book != null ? String(prefill.book) : '',
     market: prefill.market || 'spread',
-    side: prefill.side || 'home',
+    side: prefill.side || (prefill.market === 'prop' || prefill.market === 'total' ? 'over' : 'home'),
     line: prefill.line != null && prefill.line !== '' ? String(prefill.line) : '',
     odds: prefill.odds != null && prefill.odds !== '' ? String(prefill.odds) : '-110',
     stake_units: units,
@@ -87,8 +90,14 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     event_id: prefill.event_id ? String(prefill.event_id) : '',
     sport_key: prefill.sport_key ? String(prefill.sport_key) : '',
     commence_time: prefill.commence_time ? String(prefill.commence_time) : '',
+    player_name: prefill.player_name ? String(prefill.player_name) : '',
+    prop_stat: prefill.prop_stat ? String(prefill.prop_stat) : '',
     source: normalizeSportsBetSource(prefill.source, 'manual'),
   }
+  const sport = resolveSportsBetSport(next.sport_key, next.sport_label)
+  next.sport_key = sport.key
+  next.sport_label = sport.label
+  return next
 }
 
 function StatChip({ label, value, tone = 'zinc' }) {
@@ -764,18 +773,68 @@ export default function SportsBetTracker({
             )}
             <div className="space-y-3">
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Sport
+                <select
+                  className={`${inputClass} mt-1`}
+                  value={resolveSportsBetSport(draft.sport_key, draft.sport_label).key || ''}
+                  onChange={(e) => {
+                    const s = sportByKey(e.target.value) || { key: e.target.value, label: e.target.value }
+                    setDraft((d) => ({ ...d, sport_key: s.key, sport_label: s.label }))
+                  }}
+                >
+                  <option value="">Select</option>
+                  {SPORTS_BET_SPORTS.map((s) => (
+                    <option key={s.key} value={s.key}>{s.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Market
                 <select
                   className={`${inputClass} mt-1`}
                   value={draft.market}
-                  onChange={(e) => setDraft((d) => ({ ...d, market: e.target.value }))}
+                  onChange={(e) => {
+                    const market = e.target.value
+                    setDraft((d) => {
+                      let side = d.side
+                      if (market === 'prop' || market === 'total') {
+                        side = side === 'under' ? 'under' : 'over'
+                      } else if (side === 'over' || side === 'under') {
+                        side = 'home'
+                      }
+                      return { ...d, market, side }
+                    })
+                  }}
                 >
                   <option value="spread">Spread</option>
                   <option value="h2h">Moneyline</option>
                   <option value="total">Total</option>
+                  <option value="prop">Player prop</option>
                   <option value="other">Other</option>
                 </select>
               </label>
+              {draft.market === 'prop' ? (
+                <>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Player
+                    <input
+                      className={`${inputClass} mt-1`}
+                      value={draft.player_name}
+                      onChange={(e) => setDraft((d) => ({ ...d, player_name: e.target.value }))}
+                      placeholder="Ja'Marr Chase"
+                    />
+                  </label>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Stat
+                    <input
+                      className={`${inputClass} mt-1`}
+                      value={draft.prop_stat}
+                      onChange={(e) => setDraft((d) => ({ ...d, prop_stat: e.target.value }))}
+                      placeholder="rec yds"
+                    />
+                  </label>
+                </>
+              ) : null}
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Side
                 <select
@@ -783,11 +842,20 @@ export default function SportsBetTracker({
                   value={draft.side}
                   onChange={(e) => setDraft((d) => ({ ...d, side: e.target.value }))}
                 >
-                  <option value="home">Home</option>
-                  <option value="away">Away</option>
-                  <option value="over">Over</option>
-                  <option value="under">Under</option>
-                  <option value="draw">Draw</option>
+                  {draft.market === 'prop' || draft.market === 'total' ? (
+                    <>
+                      <option value="over">Over</option>
+                      <option value="under">Under</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="home">Home</option>
+                      <option value="away">Away</option>
+                      <option value="over">Over</option>
+                      <option value="under">Under</option>
+                      <option value="draw">Draw</option>
+                    </>
+                  )}
                 </select>
               </label>
               <div className="grid grid-cols-2 gap-2">

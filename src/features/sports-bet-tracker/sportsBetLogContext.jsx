@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { requestSportsBetLog } from './sportsBetNav.js'
-import { buildSelectionLabel } from './sportsBetMath.js'
+import { buildSelectionLabel, americanFromImplied } from './sportsBetMath.js'
 import { insertSportsBet } from './sportsBetApi.js'
 import { DEFAULT_STAKE_UNITS, readUnitSizeDollars, stakeDollarsFromUnits } from './sportsBetStake.js'
+import { resolveSportsBetSport } from './sportsBetSports.js'
 
 const SportsBetLogGameContext = createContext(null)
 const TAP_DEDUPE_MS = 20_000
@@ -13,10 +14,11 @@ export function formatSportsBetBook(name) {
 
 export function sportsBetPrefillFromGame(game) {
   if (!game) return {}
+  const sport = resolveSportsBetSport(game.sport_key, game.sport_label)
   return {
     event_id: game.id,
-    sport_key: game.sport_key,
-    sport_label: game.sport_label,
+    sport_key: sport.key,
+    sport_label: sport.label,
     home_team: game.home?.name || game.home?.mascot,
     away_team: game.away?.name || game.away?.mascot,
     commence_time: game.commence_time,
@@ -28,6 +30,9 @@ export function mergeSportsBetOddsPrefill(game, partial) {
     ...sportsBetPrefillFromGame(game),
     ...(partial && typeof partial === 'object' ? partial : {}),
   }
+  const sport = resolveSportsBetSport(merged.sport_key, merged.sport_label)
+  merged.sport_key = sport.key
+  merged.sport_label = sport.label
   merged.book = formatSportsBetBook(merged.book)
   merged.selection_label = buildSelectionLabel({
     market: merged.market,
@@ -36,8 +41,34 @@ export function mergeSportsBetOddsPrefill(game, partial) {
     awayTeam: merged.away_team,
     line: merged.line,
     selectionLabel: merged.selection_label,
+    playerName: merged.player_name,
+    propStat: merged.prop_stat,
   })
   return merged
+}
+
+const PROP_BOOK = { kalshi: 'Kalshi', polymarket: 'Polymarket', poly: 'Polymarket' }
+
+export function sportsBetPropTapPayload({
+  playerName,
+  stat,
+  line,
+  price,
+  book,
+  side = 'over',
+  selectionLabel,
+}) {
+  const odds = americanFromImplied(price)
+  return {
+    market: 'prop',
+    side: side === 'under' ? 'under' : 'over',
+    line: line == null || line === '' ? null : line,
+    odds: odds == null ? -110 : odds,
+    book: PROP_BOOK[String(book || '').toLowerCase()] || formatSportsBetBook(book) || String(book || ''),
+    player_name: playerName ? String(playerName).trim() : '',
+    prop_stat: stat ? String(stat).trim() : '',
+    selection_label: selectionLabel ? String(selectionLabel).trim() : '',
+  }
 }
 
 function tapDedupeKey(row) {
@@ -48,6 +79,8 @@ function tapDedupeKey(row) {
     row.side || '',
     row.line ?? '',
     row.odds ?? '',
+    row.player_name || '',
+    row.prop_stat || '',
   ].join('|')
 }
 

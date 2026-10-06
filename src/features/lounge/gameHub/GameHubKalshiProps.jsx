@@ -8,8 +8,12 @@ import {
   clearsLine,
   gameFraction,
   indexPlayerBox,
+  PROP_STATS,
   propLineStats,
 } from './gameHubPropStats.js'
+import { openExternalUrl } from '../../../utils/edgeNative.js'
+import { useSportsBetOddsActions, sportsBetPropTapPayload } from '../../sports-bet-tracker/sportsBetLogContext.jsx'
+import { useOddsLogPress } from '../../sports-bet-tracker/useOddsLogPress.js'
 
 function nameKey(name) {
   return String(name || '')
@@ -289,8 +293,55 @@ function crossBookArb(kalshi, polymarket) {
 
 const BOOK_NAME = { kalshi: 'Kalshi', polymarket: 'Poly' }
 
-/** Compact Yes/No deep-link chips … price only (Y/N labeled in column headers). */
-function YesNoButtons({ prop, arbSide = null }) {
+/** Compact Yes/No chips … price only (Y/N in column headers). Tap logs a player prop. */
+function YesNoButtons({ prop, arbSide = null, playerName = '', lineStrike = null, propStat = '', lineLabel = '' }) {
+  const { logOdds, recordTap } = useSportsBetOddsActions()
+  const yesPx = prop?.yes_ask ?? prop?.yes_bid ?? prop?.last
+  const noPx =
+    prop?.no_ask ??
+    prop?.no_bid ??
+    (yesPx != null && Number.isFinite(Number(yesPx)) ? Math.max(0, 1 - Number(yesPx)) : null)
+  const yesHref = prop?.url_yes || prop?.url_market || prop?.url
+  const noHref = prop?.url_no || prop?.url_market || prop?.url
+  const stat = PROP_STATS[propStat]?.label || propStat
+  const yesPayload = sportsBetPropTapPayload({
+    playerName,
+    stat,
+    line: lineStrike,
+    price: yesPx,
+    book: prop?.source,
+    side: 'over',
+    selectionLabel: lineLabel,
+  })
+  const noPayload = sportsBetPropTapPayload({
+    playerName,
+    stat,
+    line: lineStrike,
+    price: noPx,
+    book: prop?.source,
+    side: 'under',
+    selectionLabel: lineLabel,
+  })
+  const yesPress = useOddsLogPress({
+    enabled: Boolean(prop && (logOdds || recordTap)),
+    onLog: logOdds ? () => logOdds(yesPayload) : null,
+    onOpen: yesHref
+      ? () => {
+          recordTap?.(yesPayload)
+          void openExternalUrl(yesHref)
+        }
+      : null,
+  })
+  const noPress = useOddsLogPress({
+    enabled: Boolean(prop && (logOdds || recordTap)),
+    onLog: logOdds ? () => logOdds(noPayload) : null,
+    onOpen: noHref
+      ? () => {
+          recordTap?.(noPayload)
+          void openExternalUrl(noHref)
+        }
+      : null,
+  })
   if (!prop) {
     return (
       <div className="inline-flex shrink-0 overflow-hidden rounded-lg ring-1 ring-inset ring-zinc-800 opacity-55">
@@ -303,33 +354,26 @@ function YesNoButtons({ prop, arbSide = null }) {
       </div>
     )
   }
-  const yesPx = prop.yes_ask ?? prop.yes_bid ?? prop.last
-  const noPx =
-    prop.no_ask ??
-    prop.no_bid ??
-    (yesPx != null && Number.isFinite(Number(yesPx)) ? Math.max(0, 1 - Number(yesPx)) : null)
-  const yesHref = prop.url_yes || prop.url_market || prop.url
-  const noHref = prop.url_no || prop.url_market || prop.url
   return (
     <div className="inline-flex shrink-0 overflow-hidden rounded-lg ring-1 ring-inset ring-zinc-700/80">
-      <a
-        href={yesHref}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        type="button"
+        {...yesPress}
         data-prop-arb-leg={arbSide === 'yes' ? '' : undefined}
         className="inline-flex min-w-[2rem] items-center justify-center bg-emerald-500/15 px-1.5 py-1 touch-manipulation active:opacity-80"
+        aria-label={`${playerName || 'Player'} over ${lineStrike ?? ''} ${stat}, Yes`}
       >
         <span className="text-[12px] font-bold tabular-nums text-emerald-300">{kalshiCents(yesPx)}</span>
-      </a>
-      <a
-        href={noHref}
-        target="_blank"
-        rel="noopener noreferrer"
+      </button>
+      <button
+        type="button"
+        {...noPress}
         data-prop-arb-leg={arbSide === 'no' ? '' : undefined}
         className="inline-flex min-w-[2rem] items-center justify-center border-l border-zinc-700/80 bg-rose-500/10 px-1.5 py-1 touch-manipulation active:opacity-80"
+        aria-label={`${playerName || 'Player'} under ${lineStrike ?? ''} ${stat}, No`}
       >
         <span className="text-[12px] font-bold tabular-nums text-rose-300">{kalshiCents(noPx)}</span>
-      </a>
+      </button>
     </div>
   )
 }
@@ -705,10 +749,24 @@ function KalshiPlayerPropGroup({ group, liqScale, statCtx }) {
               <PropLineStat line={line} stats={stats} />
             </div>
             <div className="flex justify-center">
-              <YesNoButtons prop={row.kalshi} arbSide={legFor('kalshi')} />
+              <YesNoButtons
+                prop={row.kalshi}
+                arbSide={legFor('kalshi')}
+                playerName={name}
+                lineStrike={line?.strike ?? null}
+                propStat={line?.stat || ''}
+                lineLabel={row.label}
+              />
             </div>
             <div className="flex justify-center">
-              <YesNoButtons prop={row.polymarket} arbSide={legFor('polymarket')} />
+              <YesNoButtons
+                prop={row.polymarket}
+                arbSide={legFor('polymarket')}
+                playerName={name}
+                lineStrike={line?.strike ?? null}
+                propStat={line?.stat || ''}
+                lineLabel={row.label}
+              />
             </div>
             {arbShown ? (
               <div data-prop-arb-note className="col-span-3 mt-1.5 text-[11px] leading-snug">

@@ -19,7 +19,7 @@ import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregame
 import { liveFantasyRails, livePropRails } from './gameHubLiveRails.js'
 import { liveBestLines, pregameBestLines } from './gameHubBestLines.js'
 import { useLegalBooks } from './gameHubLegalBooks.js'
-import { useSportsBetOddsActions } from '../../sports-bet-tracker/sportsBetLogContext.jsx'
+import { useSportsBetOddsActions, sportsBetPropTapPayload } from '../../sports-bet-tracker/sportsBetLogContext.jsx'
 import { useOddsLogPress } from '../../sports-bet-tracker/useOddsLogPress.js'
 import { formatFantasyPoints, playFantasyPoints } from './gameHubPlayFantasy.js'
 import {
@@ -4258,6 +4258,40 @@ function railNumber(n) {
   return Number.isInteger(v) ? String(v) : v.toFixed(1)
 }
 
+function PropRailMarketButton({ row, className, ariaLabel, children }) {
+  const { logOdds, recordTap } = useSportsBetOddsActions()
+  const payload = sportsBetPropTapPayload({
+    playerName: row.name,
+    stat: row.stat,
+    line: row.target ?? parseFloat(String(row.line)),
+    price: row.price,
+    book: row.source,
+    side: 'over',
+  })
+  const press = useOddsLogPress({
+    enabled: Boolean(logOdds || recordTap),
+    onLog: logOdds ? () => logOdds(payload) : null,
+    onOpen: row.url
+      ? () => {
+          recordTap?.(payload)
+          void openExternalUrl(row.url)
+        }
+      : null,
+  })
+  return (
+    <button
+      type="button"
+      data-lounge-gamecast-market-link
+      disabled={!row.url}
+      aria-label={ariaLabel}
+      className={className}
+      {...press}
+    >
+      {children}
+    </button>
+  )
+}
+
 function RailPlayerName({ name, position, left }) {
   return (
     <div className="truncate text-[10px] font-semibold uppercase leading-none tracking-wide text-white/60">
@@ -4307,13 +4341,10 @@ function PropRailRows({ rows, align }) {
       style={{ touchAction: 'pan-y' }}
     >
       {rows.map((r) => (
-        <button
+        <PropRailMarketButton
           key={r.key}
-          type="button"
-          data-lounge-gamecast-market-link
-          disabled={!r.url}
-          onClick={() => void openExternalUrl(r.url)}
-          aria-label={`${r.name} ${r.current ?? 'no stats yet'} of ${r.line} ${r.stat}, open on ${MARKET_SOURCE_LABEL[r.source] || 'market'}`}
+          row={r}
+          ariaLabel={`${r.name} ${r.current ?? 'no stats yet'} of ${r.line} ${r.stat}, open on ${MARKET_SOURCE_LABEL[r.source] || 'market'}`}
           className={`w-full min-w-0 shrink-0 rounded-lg py-0.5 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15 ${
             left ? 'text-left' : 'text-right'
           }`}
@@ -4328,7 +4359,7 @@ function PropRailRows({ rows, align }) {
           <div className="mt-0.5 truncate text-[9px] font-semibold uppercase leading-none tracking-wide text-white/40">
             {r.stat} <span className="text-emerald-300/80">{kalshiCents(r.price)}</span>
           </div>
-        </button>
+        </PropRailMarketButton>
       ))}
     </div>
   )
@@ -4704,13 +4735,10 @@ function PregamePropRail({ rows, align }) {
           className={`flex min-h-full flex-col justify-center gap-2 px-1.5 py-2 ${left ? 'items-start' : 'items-end'}`}
         >
           {rows.map((r) => (
-            <button
+            <PropRailMarketButton
               key={r.key}
-              type="button"
-              data-lounge-gamecast-market-link
-              disabled={!r.url}
-              onClick={() => void openExternalUrl(r.url)}
-              aria-label={`${r.name} ${r.line} ${r.stat}, open on ${MARKET_SOURCE_LABEL[r.source] || 'market'}`}
+              row={r}
+              ariaLabel={`${r.name} ${r.line} ${r.stat}, open on ${MARKET_SOURCE_LABEL[r.source] || 'market'}`}
               className={`-mx-1.5 -my-0.5 min-w-0 max-w-full rounded-lg px-1.5 py-0.5 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15 ${
                 left ? 'text-left' : 'text-right'
               }`}
@@ -4729,7 +4757,7 @@ function PregamePropRail({ rows, align }) {
               <div className="mt-0.5 truncate text-[13px] font-bold leading-none tabular-nums text-white drop-shadow">
                 {r.line} {r.stat} <span className="font-semibold text-emerald-300">{kalshiCents(r.price)}</span>
               </div>
-            </button>
+            </PropRailMarketButton>
           ))}
         </div>
       </div>

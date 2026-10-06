@@ -115,14 +115,14 @@ The agent should treat the following as **standing instructions for this session
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-06 ... Sports bet tracker (Pikkit-class, no password scrape)
-**Web `1.4.1062`.** Tap a hub line logs 1u (unconfirmed) and opens the book. Tracker row: Confirm / Edit / Delete. Hold still opens the form.
+**Web `1.4.1063`.** Log a bet has **Sport** (NFL, CFB, …) and **Player prop** (player + stat). Hub Kalshi Yes/No + prop rails tap/hold like board odds. Tap still logs 1u unconfirmed. SQL **`20261006050000`** on **test**.
 
 **Canonical notes:** **`docs/sports-bet-tracker.md`** (how BookSync works, what we copy vs refuse, build order). Read that on the other machine.
 
 **Do:** complete hands-off records (odds-cell Log → slip Vision ingest → CSV → later official/white-label connect).
 **Do not:** DIY DK/FD password scrape / store sportsbook logins.
 
-**Shipped:** Sports Hub **Bet Tracker**. Hold an odds cell to fill Log a bet (book, line, odds, selection; 1u). Unit size + $ stake + bankroll (moves on settle). SQL **`20261006010000`** + **`20261006020000`** on test + prod. **`20261006030000`** settings table on **test**. Do **not** DIY book-password scrape.
+**Shipped:** Sports Hub **Bet Tracker**. Hold an odds cell to fill Log a bet (book, line, odds, selection; 1u). Unit size + $ stake + bankroll (moves on settle). Sport + player props (`1.4.1063`). SQL **`20261006010000`** + **`20261006020000`** on test + prod. **`20261006030000`**–**`20261006050000`** on **test**. Do **not** DIY book-password scrape.
 
 ### Mac Theo ACTIVE TRACK 2026-10-05 ... Sports bet tracker v1
 **Web `1.4.1057`.** Scaffold only. Superseded as product intent by **2026-10-06** track above. Spec **`docs/sports-bet-tracker.md`**.

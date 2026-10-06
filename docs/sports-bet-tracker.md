@@ -91,7 +91,7 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 - Table **`sports_bets`** (RLS: own rows only) … migration **`20261006010000_sports_bet_tracker.sql`**
 - CLV: **`sports_bets_refresh_clv()`** security definer reads locked closes for the caller’s event ids (does not widen market-file RLS to the client)
 
-**Apply that SQL on test** before smoke.
+Applied **test + prod** 2026-10-05 (`schema_migrations` **`20261006010000`**).
 
 ## Client
 

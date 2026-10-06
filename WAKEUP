@@ -122,7 +122,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 **Do:** complete hands-off records (odds-cell Log → slip Vision ingest → CSV → later official/white-label connect).
 **Do not:** DIY DK/FD password scrape / store sportsbook logins.
 
-**Shipped:** hamburger **Bet Tracker** (`?tab=sports-bets`) + hub **… → Log a bet**. Units / ROI / CLV vs locked `lounge_market_files`. **Apply SQL `20261006010000` on test** before smoke. Marketing still **1.4.95**. Scaffold git **`0ef9edbd`**. **Next machine:** `git pull origin test` (this notes commit is the tip). Do **not** start odds-cell Log / slip OCR until Ryan asks.
+**Shipped:** hamburger **Bet Tracker** (`?tab=sports-bets`) + hub **… → Log a bet**. Units / ROI / CLV vs locked `lounge_market_files`. SQL **`20261006010000` applied test + prod** (2026-10-05, Mac). Edge **`lounge-sports-scoreboard`** redeployed test + prod (hub leagues + Rundown scores-only). Frontend promote **`test` → `main`** web **`1.4.1057`**. Marketing still **1.4.95**. Scaffold git **`0ef9edbd`**. Do **not** start odds-cell Log / slip OCR until Ryan asks.
 
 ### Mac Theo ACTIVE TRACK 2026-10-05 ... Sports bet tracker v1
 **Web `1.4.1057`.** Scaffold only. Superseded as product intent by **2026-10-06** track above. Spec **`docs/sports-bet-tracker.md`**.

@@ -132,6 +132,9 @@ export type LoungeSportsGameSide = {
   /** AP / CFP Top 25 rank (1-25) from ESPN `curatedRank`; null when unranked. */
   rank?: number | null
   team_id?: number | null
+  /** Jersey primary / secondary (ESPN hex). Client catalogs prefer these for pill washes. */
+  color?: string | null
+  color2?: string | null
 }
 
 export type LoungeSportsLiveState = {
@@ -1647,12 +1650,22 @@ async function enrichEspnMajorLeagueSides(
     const logo = logoFromEspn || espnLogo(logoFolder, abb) || side.logo
     const record = recordFromEspnCompetitor(competitor) || side.record || null
     const teamId = Number(team.id)
+    const hex = (value: unknown) => {
+      const raw = String(value || '').trim()
+      if (!raw) return ''
+      const h = raw.startsWith('#') ? raw : `#${raw}`
+      return /^#[0-9a-fA-F]{6}$/.test(h) ? h.toUpperCase() : ''
+    }
+    const color = hex(team.color) || side.color || null
+    const color2 = hex(team.alternateColor) || side.color2 || null
     return {
       ...side,
       abbrev: abb || side.abbrev,
       logo: logo || side.logo,
       record,
       team_id: Number.isFinite(teamId) && teamId > 0 ? teamId : side.team_id ?? null,
+      color,
+      color2,
     }
   }
 

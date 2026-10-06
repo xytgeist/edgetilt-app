@@ -1,8 +1,12 @@
 import { pickAmbiguousTeamGame, pickSpecificMatchupGame, gameHasTeam, sideAbbrev } from './loungeSportsSlateWindow.js'
 import { LOUNGE_SPORTS_GAME_PIN_MAX } from './loungeSportsGameField.js'
 import { CFB_TEAM_CATALOG } from './cfbTeamCatalog.generated.js'
+import { NBA_TEAM_CATALOG } from './nbaTeamCatalog.generated.js'
+import { NHL_TEAM_CATALOG } from './nhlTeamCatalog.generated.js'
+import { MLB_TEAM_CATALOG } from './mlbTeamCatalog.generated.js'
+import { MLS_TEAM_CATALOG } from './mlsTeamCatalog.generated.js'
 
-export { CFB_TEAM_CATALOG }
+export { CFB_TEAM_CATALOG, NBA_TEAM_CATALOG, NHL_TEAM_CATALOG, MLB_TEAM_CATALOG, MLS_TEAM_CATALOG }
 
 /** NFL aliases + notable names so captions like "Jayden Daniels" still hit today's game. */
 export const NFL_TEAM_CATALOG = [
@@ -137,6 +141,59 @@ function isNflSportKey(sportKey) {
   return sk.includes('nfl') && !sk.includes('ncaaf')
 }
 
+function isNbaSportKey(sportKey) {
+  return String(sportKey || '').includes('basketball_nba')
+}
+
+function isNhlSportKey(sportKey) {
+  return String(sportKey || '').includes('icehockey_nhl')
+}
+
+function isMlbSportKey(sportKey) {
+  return String(sportKey || '').includes('baseball_mlb')
+}
+
+function isMlsSportKey(sportKey) {
+  return String(sportKey || '').includes('soccer_usa_mls')
+}
+
+function indexTeamCatalog(rows) {
+  const byAbbrev = new Map()
+  const byEspn = new Map()
+  for (const row of rows) {
+    byAbbrev.set(String(row.abbrev || '').toUpperCase(), row)
+    for (const alias of row.aliases || []) {
+      const key = String(alias || '').toUpperCase()
+      if (key) byAbbrev.set(key, row)
+    }
+    const espnId = String(row.espn || '').trim()
+    if (espnId) byEspn.set(espnId, row)
+  }
+  return { rows, byAbbrev, byEspn }
+}
+
+const NBA_INDEX = indexTeamCatalog(NBA_TEAM_CATALOG)
+const NHL_INDEX = indexTeamCatalog(NHL_TEAM_CATALOG)
+const MLB_INDEX = indexTeamCatalog(MLB_TEAM_CATALOG)
+const MLS_INDEX = indexTeamCatalog(MLS_TEAM_CATALOG)
+
+function majorLeagueCatalog(sportKey) {
+  if (isNbaSportKey(sportKey)) return NBA_INDEX
+  if (isNhlSportKey(sportKey)) return NHL_INDEX
+  if (isMlbSportKey(sportKey)) return MLB_INDEX
+  if (isMlsSportKey(sportKey)) return MLS_INDEX
+  return null
+}
+
+export function loungeSportsLogoBase(sportKey) {
+  if (isCfbSportKey(sportKey)) return '/sports/cfb/logos'
+  if (isNbaSportKey(sportKey)) return '/sports/nba/logos'
+  if (isNhlSportKey(sportKey)) return '/sports/nhl/logos'
+  if (isMlbSportKey(sportKey)) return '/sports/mlb/logos'
+  if (isMlsSportKey(sportKey)) return '/sports/mls/logos'
+  return '/sports/nfl/logos'
+}
+
 function norm(value) {
   return String(value || '')
     .toLowerCase()
@@ -170,6 +227,14 @@ function catalogRowForSide(side, sportKey) {
     if (abbrev.length >= 2 && CFB_BY_ABBREV.has(abbrev)) return CFB_BY_ABBREV.get(abbrev)
     return cfbRowByLongestName(hay)
   }
+  const major = majorLeagueCatalog(sportKey)
+  if (major) {
+    const espnId = String(side?.team_id ?? side?.espn_id ?? '').trim()
+    if (espnId && major.byEspn.has(espnId)) return major.byEspn.get(espnId)
+    const abbrev = String(side?.abbrev || '').trim().toUpperCase()
+    if (abbrev.length >= 2 && major.byAbbrev.has(abbrev)) return major.byAbbrev.get(abbrev)
+    return majorLeagueRowByLongestName(major.rows, hay)
+  }
   if (!isNflSportKey(sportKey)) return null
   // Prefer longest full name ("Arizona Cardinals") over bare mascot ("Cardinals") so
   // CFB Ball State / Louisville never paint as the NFL Cardinals when sport is mis-keyed.
@@ -192,6 +257,32 @@ function nflRowByLongestName(hay) {
       if (p.length < 4) continue
       const isBareMascot = Boolean(full) && p !== full && full.endsWith(` ${p}`)
       if (isBareMascot) {
+        if (compact !== p) continue
+      } else if (!hay.includes(` ${p} `)) {
+        continue
+      }
+      if (p.length > bestLen) {
+        best = row
+        bestLen = p.length
+      }
+    }
+  }
+  return best
+}
+
+/** NBA/NHL/MLB/MLS name match: longest phrase wins; bare city/mascot only when hay is that word alone. */
+function majorLeagueRowByLongestName(rows, hay) {
+  const compact = String(hay || '').trim()
+  let best = null
+  let bestLen = 0
+  for (const row of rows || []) {
+    const full = norm(row.names?.[0] || '')
+    for (const n of row.names || []) {
+      const p = norm(n)
+      if (p.length < 4) continue
+      const isBare =
+        Boolean(full) && p !== full && (full.endsWith(` ${p}`) || full.startsWith(`${p} `))
+      if (isBare) {
         if (compact !== p) continue
       } else if (!hay.includes(` ${p} `)) {
         continue
@@ -286,10 +377,15 @@ function mixHex(a, b, t) {
   return `#${[m(A.r, B.r), m(A.g, B.g), m(A.b, B.b)].map((n) => n.toString(16).padStart(2, '0')).join('')}`
 }
 
-/** Team primary for the pill fade. Near-black only (Raiders / Steelers) gets a slight lift so multiply-blend still stains. Mixing in color2 turned Giants navy purple and Rams blue muddy gold. */
-export function nflPillWash(primary, _secondary) {
+/** Team primary for the pill fade. Near-black only (Raiders / Steelers) gets a slight lift so multiply-blend still stains. Mixing in color2 turned Giants navy purple and Rams blue muddy gold. Near-white MLS primaries (Whitecaps) fall back to secondary. */
+export function nflPillWash(primary, secondary) {
   const p = String(primary || '#3f3f46')
   if (hexLuminance(p) < 0.01) return mixHex(p, '#ffffff', 0.22)
+  if (hexLuminance(p) > 0.82) {
+    const s = String(secondary || '').trim()
+    if (s && hexToRgb(s) && hexLuminance(s) < 0.75) return s
+    return mixHex('#3f3f46', p, 0.28)
+  }
   return p
 }
 
@@ -429,11 +525,11 @@ export function probeLogoWashConflict(src, washHex) {
 export function enrichLoungeSportsGame(game) {
   if (!game) return game
   const sportKey = String(game.sport_key || '')
-  const logoBase = isCfbSportKey(sportKey) ? '/sports/cfb/logos' : '/sports/nfl/logos'
+  const logoBase = loungeSportsLogoBase(sportKey)
   const patchSide = (side) => {
     const row = catalogRowForSide(side, sportKey)
     if (!row) {
-      // FCS / unknown: keep local if already set; else ESPN numeric id (not letter slug).
+      // FCS / unknown CFB: keep local if already set; else ESPN numeric id (not letter slug).
       if (!isCfbSportKey(sportKey)) return side
       const espnId = String(side?.team_id ?? side?.espn_id ?? '').trim()
       if (!/^\d+$/.test(espnId)) return side

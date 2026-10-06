@@ -5010,7 +5010,13 @@ html.light [data-slots-landscape-pane-chrome] {
    Open Duo (Mail / Music): feed ~40%, detail ~60% of the content width left of the status gutter.
    Phone chrome on feed (no tall-iPad pad/scale).
    Width rules are scoped under the split attr so portrait keep-alive does not keep a 50vw column
-   when WebKit leaves `display:contents` children with stale flex basis. */
+   when WebKit leaves `display:contents` children with stale flex basis.
+   Tall iPad (height > 520) never hits the phone MQ and is not Duo … it must set these
+   defaults here or rotate-into-hub leaves an unset flex basis (feed full-bleed, pane 0). */
+[data-lounge-feed-root][data-lounge-landscape-split] {
+  --lounge-landscape-feed-col: calc(50vw - var(--edge-ipad-rail, 0px));
+  --lounge-landscape-pane-col: 50vw;
+}
 html[data-ipad-nav-end] [data-lounge-feed-root][data-lounge-landscape-split] {
   --lounge-landscape-feed-col: 40vw;
   --lounge-landscape-pane-col: calc(60vw - var(--edge-ipad-rail, 0px));
@@ -5024,14 +5030,14 @@ html[data-ipad-nav-end] [data-slots-landscape-split] {
   --slots-landscape-pane-col: calc(60vw - var(--edge-ipad-rail, 0px));
 }
 [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-feed] {
-  width: var(--lounge-landscape-feed-col);
-  flex: 0 0 var(--lounge-landscape-feed-col);
+  width: var(--lounge-landscape-feed-col, calc(50vw - var(--edge-ipad-rail, 0px)));
+  flex: 0 0 var(--lounge-landscape-feed-col, calc(50vw - var(--edge-ipad-rail, 0px)));
   max-width: none;
 }
 [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-pane],
 [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-detail-in-pane] {
-  width: var(--lounge-landscape-pane-col);
-  flex: 0 0 var(--lounge-landscape-pane-col);
+  width: var(--lounge-landscape-pane-col, 50vw);
+  flex: 0 0 var(--lounge-landscape-pane-col, 50vw);
   max-width: none;
 }
 html.light [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-feed] {

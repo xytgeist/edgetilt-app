@@ -122,6 +122,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-06 ... hub line diet + Rundown shop
+**Web `1.4.1080`.** Sports Hub lines (Odds + Rundown shop) cache 90s on the slate, 40s on an open live hub. Score/clock board stays 8s. Rundown shop: Circa, Heritage, Bet105, BookMaker, Sportsbetting.ag, Betcris, YouWager, Matchbook, Everygame. Redeploy **`lounge-sports-scoreboard`**. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-06 ... promote 1.4.1078
 **Web `1.4.1078`.** Promoted **`test` → `main`** 2026-10-06. Carries no-field hub scores (`1.4.1078`) and today-only Sports Hub pills (`1.4.1077`). No new SQL / Edge. Marketing still **1.4.95**.
 

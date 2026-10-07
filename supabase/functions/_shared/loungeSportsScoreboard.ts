@@ -1,10 +1,16 @@
 /**
  * Lounge in-post game pill scoreboard.
  * TheRundown day slates first (scores-only via affiliate_ids=0 … period scores + status).
- * Odds API /scores as fallback; Odds /odds + Pinnacle own books.
+ * Odds API /scores as fallback when Rundown is empty; Odds /odds + Pinnacle + Rundown shop own books.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { listRundownDayEvents, ptDateFromIso, rundownApiKey } from './loungeBotRundownContext.ts'
+import { listRundownDayEvents, ptDateFromIso, rundownApiKey, type RundownEvent } from './loungeBotRundownContext.ts'
+import {
+  loadRundownShopDayEvents,
+  rundownShopEventSides,
+  rundownShopRowsFromEvent,
+  type RundownShopOddsRow,
+} from './loungeSportsRundownShop.ts'
 import { fetchSportScores, type ScoreEvent } from './loungeBotLiveContent.ts'
 import { fetchSportOdds, fetchSportOddsHistorical, ptTodayDate } from './loungeBotOddsRun.ts'
 import { sharedCached, sharedCachedNoMem } from './edgeSharedCache.ts'
@@ -1374,15 +1380,41 @@ type LeaguePack = [
   Awaited<ReturnType<typeof fetchSportScores>>,
   Awaited<ReturnType<typeof cachedSportOdds>>,
   Awaited<ReturnType<typeof cachedPinnacleOdds>>,
+  RundownEvent[],
 ]
 
+function uniqueShopDates(rundownBatches: RundownEvent[][], fallbackDates: string[]): string[] {
+  const dates = new Set<string>()
+  for (const batch of rundownBatches) {
+    for (const ev of batch) {
+      const status = String(ev.score?.event_status || '').toUpperCase()
+      if (/FINAL|COMPLETE|ENDED/.test(status)) continue
+      const iso = String(ev.event_date || '').trim()
+      const day = iso ? ptDateFromIso(iso) : ''
+      if (day) dates.add(day)
+    }
+  }
+  if (!dates.size) {
+    for (const day of fallbackDates.slice(0, 3)) {
+      if (day) dates.add(day)
+    }
+  }
+  return [...dates].slice(0, 4)
+}
+
 async function fetchLeagueBoardPack(sportKey: string, dates: string[]): Promise<LeaguePack> {
-  return Promise.all([
-    Promise.all(dates.map((date) => listRundownDayEvents(sportKey, date).catch(() => []))),
-    fetchSportScores(sportKey, 3).catch(() => []),
-    cachedSportOdds(sportKey),
-    cachedPinnacleOdds(sportKey),
+  const rundownBatches = await Promise.all(
+    dates.map((date) => listRundownDayEvents(sportKey, date).catch(() => [])),
+  )
+  const hasRundown = rundownBatches.some((batch) => batch.length > 0)
+  const shopDates = uniqueShopDates(rundownBatches, dates)
+  const [scores, oddsPack, pinPack, shopEvents] = await Promise.all([
+    hasRundown ? Promise.resolve([]) : cachedSportScores(sportKey),
+    cachedSportOdds(sportKey, false),
+    cachedPinnacleOdds(sportKey, false),
+    cachedRundownShop(sportKey, shopDates, false),
   ])
+  return [rundownBatches, scores, oddsPack, pinPack, shopEvents]
 }
 
 async function ingestLeagueBoardPack(opts: {
@@ -1398,7 +1430,7 @@ async function ingestLeagueBoardPack(opts: {
 }): Promise<void> {
   const { byKey, sport, dates, pack, admin, matchSport, sourceRef } = opts
   const lockMarketFiles = opts.lockMarketFiles !== false
-  const [batches, scores, oddsPack, pinPack] = pack
+  const [batches, scores, oddsPack, pinPack, shopEvents] = pack
   const upsert = (game: LoungeSportsGame, overwrite = false) => {
     const key = slateDedupeKey(game)
     if (!overwrite && byKey.has(key)) return
@@ -1435,6 +1467,7 @@ async function ingestLeagueBoardPack(opts: {
     false,
   )
   leagueGames = applyUsBoardQuotes(leagueGames, oddsPack)
+  leagueGames = applyRundownShopQuotes(leagueGames, shopEvents)
   if (admin && pinPack?.events?.length) {
     await upsertMarketFilesFromEvents(admin, sport.key, pinPack.events as OddsEvent[]).catch(() => null)
   }
@@ -2003,15 +2036,22 @@ async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
 }
 
 const RUNDOWN_BASE = 'https://therundown.io/api/v2'
-/** Live lines move every few seconds; 20s keeps the hub scoreboard close without one fetch per viewer. */
-const ODDS_CACHE_MS = 20_000
+/** Pill / slate shop. Lines do not need the 8s score tick. */
+const ODDS_SLATE_CACHE_MS = 90_000
+/** Open live hub can shop a bit faster without paying every board rebuild. */
+const ODDS_HUB_LIVE_CACHE_MS = 40_000
 type OddsPack = Awaited<ReturnType<typeof fetchSportOdds>>
 
-function cachedSportOdds(sportKey: string): Promise<OddsPack | null> {
+function oddsLineTtlMs(live: boolean): number {
+  return live ? ODDS_HUB_LIVE_CACHE_MS : ODDS_SLATE_CACHE_MS
+}
+
+function cachedSportOdds(sportKey: string, live = false): Promise<OddsPack | null> {
   const key = String(sportKey || '')
+  const lane = live ? 'hub' : 'slate'
   return sharedCached<OddsPack | null>(
-    `odds:board:${key}`,
-    { ttlMs: ODDS_CACHE_MS, shouldStore: (pack) => pack != null },
+    `odds:${lane}:${key}`,
+    { ttlMs: oddsLineTtlMs(live), shouldStore: (pack) => pack != null },
     () => fetchSportOdds(key, ['us', 'us2'], ['h2h', 'spreads', 'totals'], { includeLinks: true }).catch(() => null),
   )
 }
@@ -2019,10 +2059,11 @@ function cachedSportOdds(sportKey: string): Promise<OddsPack | null> {
 const PINNACLE_REGIONS = ['eu', 'us', 'us2']
 const PINNACLE_BOOKS = ['pinnacle']
 
-function cachedPinnacleOdds(sportKey: string): Promise<OddsPack | null> {
+function cachedPinnacleOdds(sportKey: string, live = false): Promise<OddsPack | null> {
+  const lane = live ? 'hub' : 'slate'
   return sharedCached<OddsPack | null>(
-    `odds:pinnacle:${sportKey}`,
-    { ttlMs: ODDS_CACHE_MS, shouldStore: (pack) => pack != null },
+    `odds:pinnacle:${lane}:${sportKey}`,
+    { ttlMs: oddsLineTtlMs(live), shouldStore: (pack) => pack != null },
     () =>
       fetchSportOdds(
         sportKey,
@@ -2030,6 +2071,28 @@ function cachedPinnacleOdds(sportKey: string): Promise<OddsPack | null> {
         ['h2h', 'spreads', 'totals'],
         { bookmakers: PINNACLE_BOOKS },
       ).catch(() => null),
+  )
+}
+
+function cachedSportScores(sportKey: string): Promise<ScoreEvent[]> {
+  return sharedCached<ScoreEvent[]>(
+    `odds:scores:${sportKey}`,
+    { ttlMs: ODDS_SLATE_CACHE_MS, shouldStore: (rows) => Array.isArray(rows) },
+    () => fetchSportScores(sportKey, 3).catch(() => []),
+  )
+}
+
+function cachedRundownShop(sportKey: string, dates: string[], live = false): Promise<RundownEvent[]> {
+  const days = [...new Set(dates.map((d) => String(d || '').trim()).filter(Boolean))].sort()
+  if (!days.length) return Promise.resolve([])
+  const lane = live ? 'hub' : 'slate'
+  return sharedCached<RundownEvent[]>(
+    `rundown:shop:${lane}:${sportKey}:${days.join(',')}`,
+    { ttlMs: oddsLineTtlMs(live), shouldStore: (rows) => Array.isArray(rows) },
+    async () => {
+      const batches = await Promise.all(days.map((day) => loadRundownShopDayEvents(sportKey, day).catch(() => [])))
+      return batches.flat()
+    },
   )
 }
 
@@ -2995,6 +3058,10 @@ function compactOddsBooksFromEvent(ev: OddsEventRow, homeName: string, awayName:
   const preferred = [
     'pinnacle',
     'lowvig',
+    'circasports',
+    'heritage',
+    'bet105',
+    'bookmaker',
     'fanduel',
     'draftkings',
     'betmgm',
@@ -3025,9 +3092,9 @@ function compactOddsBooksFromEvent(ev: OddsEventRow, homeName: string, awayName:
   if (pinnacleRow) {
     pinnacleRow = scrubStalePinnacleRow(pinnacleRow, rows)
   }
-  // Compacted rows are tiny (~0.2KB each) … keep 10, with Pinnacle pinned first when present.
+  // Compacted rows are tiny (~0.2KB each). Room for Odds retail + Rundown shop books.
   const out = pinnacleRow ? [pinnacleRow, ...rows] : rows
-  return out.slice(0, 10)
+  return out.slice(0, 20)
 }
 
 /**
@@ -3114,6 +3181,81 @@ function applyUsBoardQuotes(
         ...game.away,
         spread: pair.away,
         ml: freshest?.away_ml ?? (awayMls[0] ?? game.away.ml ?? null),
+      },
+    }
+  })
+}
+
+function shopBookKey(name: string): string {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/\.(ag|com|eu|lv|us)$/i, '')
+    .replace(/[^a-z0-9]/g, '')
+}
+
+function shopRowsForGame(events: RundownEvent[], game: LoungeSportsGame): LoungeSportsOddsRow[] {
+  for (const ev of events) {
+    const sides = rundownShopEventSides(ev)
+    if (!sides) continue
+    if (!oddsNamesHit(sides.home, game.home) || !oddsNamesHit(sides.away, game.away)) continue
+    return rundownShopRowsFromEvent(ev)
+  }
+  return []
+}
+
+function mergeRundownShopOdds(
+  odds: LoungeSportsOddsRow[],
+  shop: RundownShopOddsRow[],
+): LoungeSportsOddsRow[] {
+  const byKey = new Map<string, LoungeSportsOddsRow>()
+  for (const row of odds) byKey.set(shopBookKey(row.book), row)
+  for (const row of shop) {
+    const key = shopBookKey(row.book)
+    const existing = byKey.get(key)
+    const shopIso = Date.parse(String(row.last_update || ''))
+    const existingIso = Date.parse(String(existing?.last_update || ''))
+    if (!existing || (Number.isFinite(shopIso) && (!Number.isFinite(existingIso) || shopIso >= existingIso))) {
+      byKey.set(key, { ...row, snapshot: false })
+    }
+  }
+  const merged = [...byKey.values()]
+  const pin = merged.filter((row) => /pinnacle/i.test(row.book))
+  const rest = merged.filter((row) => !/pinnacle/i.test(row.book))
+  return [...pin, ...rest].slice(0, 20)
+}
+
+/** Fill missing / bogus 0-0 slate numbers from the Rundown shop when Odds is thin. */
+function applyRundownShopQuotes(games: LoungeSportsGame[], events: RundownEvent[]): LoungeSportsGame[] {
+  if (!events.length) return games
+  return games.map((game) => {
+    const rows = shopRowsForGame(events, game)
+    if (!rows.length) return game
+    const needSpread = !gameHasSpread(game) || gameHasBogusZeroSpread(game)
+    const needMl = numOrNull(game.home?.ml) == null || numOrNull(game.away?.ml) == null
+    const needTotal = numOrNull(game.total) == null
+    if (!needSpread && !needMl && !needTotal) return game
+    const homeSpreads = rows.map((row) => numOrNull(row.home_spread)).filter((n): n is number => n != null)
+    const nonZero = homeSpreads.filter((n) => n !== 0)
+    const medSpread = medianFinite(nonZero.length ? nonZero : homeSpreads)
+    const medTotal = medianFinite(rows.map((row) => numOrNull(row.total)))
+    const freshest = [...rows].sort((a, b) =>
+      Date.parse(String(b.last_update || '')) - Date.parse(String(a.last_update || '')),
+    )[0]
+    const pair = needSpread && medSpread != null
+      ? pairSpreads(medSpread, -medSpread)
+      : { home: game.home.spread ?? null, away: game.away.spread ?? null }
+    return {
+      ...game,
+      total: needTotal ? (medTotal ?? game.total ?? null) : game.total,
+      home: {
+        ...game.home,
+        spread: pair.home,
+        ml: needMl ? (freshest?.home_ml ?? game.home.ml ?? null) : game.home.ml,
+      },
+      away: {
+        ...game.away,
+        spread: pair.away,
+        ml: needMl ? (freshest?.away_ml ?? game.away.ml ?? null) : game.away.ml,
       },
     }
   })
@@ -3370,13 +3512,16 @@ export async function fetchLoungeSportsGameDetail(
   rosters: LoungeSportsRosters | null
 }> {
   const eventId = encodeURIComponent(game.id)
-  // Scores-only event (`affiliate_ids=0`) … Odds API owns books. Skip Rundown `/plays`
-  // (Ultra-only on current tiers; football PBP/clock comes from ESPN below).
-  const [eventRaw, statsRaw, oddsPack, pinPack] = await Promise.all([
+  const liveHub = game.status === 'in'
+  const shopDay = ptDateFromIso(String(game.commence_time || '')) || ptTodayDate()
+  // Scores-only event (`affiliate_ids=0`) for live state. Shop books are a separate cached
+  // day fetch (Circa / Heritage / …). Skip Rundown `/plays` (Ultra-only; football PBP is ESPN).
+  const [eventRaw, statsRaw, oddsPack, pinPack, shopEvents] = await Promise.all([
     rundownGet<unknown>(`/events/${eventId}?affiliate_ids=0`),
     rundownGet<unknown>(`/events/${eventId}/players/stats`),
-    cachedSportOdds(game.sport_key),
-    cachedPinnacleOdds(game.sport_key),
+    cachedSportOdds(game.sport_key, liveHub),
+    cachedPinnacleOdds(game.sport_key, liveHub),
+    cachedRundownShop(String(game.sport_key || ''), [shopDay], liveHub),
   ])
 
   const eventObj = eventRaw && typeof eventRaw === 'object'
@@ -3467,10 +3612,14 @@ export async function fetchLoungeSportsGameDetail(
     oddsNamesHit(String(ev.home_team || ''), game.home) && oddsNamesHit(String(ev.away_team || ''), game.away)
   )
   const matched = matchedRaw ? mergePinnacleBookmaker(matchedRaw, pinPack) : null
-  const odds = matched
-    ? compactOddsBooksFromEvent(matched, String(matched.home_team || game.home.name), String(matched.away_team || game.away.name))
-    : []
-  if (game.status === 'pre' && String(game.sport_key || '').includes('football')) {
+  const odds = mergeRundownShopOdds(
+    matched
+      ? compactOddsBooksFromEvent(matched, String(matched.home_team || game.home.name), String(matched.away_team || game.away.name))
+      : [],
+    shopRowsForGame(shopEvents, game),
+  )
+  const hasCirca = odds.some((row) => /circa/i.test(String(row.book || '')))
+  if (!hasCirca && game.status === 'pre' && String(game.sport_key || '').includes('football')) {
     const circa = circaRowForGame(game, await loadCircaFootballFixtures(admin).catch(() => []))
     if (circa) odds.push(circa)
   }

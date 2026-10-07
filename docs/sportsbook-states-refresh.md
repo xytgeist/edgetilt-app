@@ -5,7 +5,7 @@ The game hub's **Only books in my state** filter reads `src/features/lounge/game
 ## Scope
 
 - **In the file:** DraftKings, FanDuel, BetMGM, Caesars (William Hill), Fanatics, BetRivers, theScore Bet (was ESPN BET), Hard Rock Bet, bet365, Bally Bet, Circa Sports.
-- **Never in the file:** offshore books (Bovada, BetOnline, MyBookie, BetUS, LowVig, BookMaker), Pinnacle, sweepstakes/social apps (Fliff, ReBet). They hold no US state sportsbook license.
+- **Never in the file:** offshore books (Bovada, BetOnline, MyBookie, BetUS, LowVig, BookMaker, Heritage, Bet105, Sportsbetting.ag, Betcris, YouWager, Matchbook, Everygame), Pinnacle, sweepstakes/social apps (Fliff, ReBet). They hold no US state sportsbook license.
 - **Online/mobile only.** A retail-only presence (e.g. an in-casino book) does not count. Mississippi on-property apps do not count.
 - **Live only.** A state counts once real-money mobile betting is open to the public there, not at license approval or "coming soon".
 

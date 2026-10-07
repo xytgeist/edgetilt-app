@@ -83,6 +83,9 @@ export type RundownEvent = {
   score?: RundownScore
   live_game_state?: Record<string, unknown>
   game_state?: Record<string, unknown>
+  /** Present only on the shop fetch (`market_ids` + affiliate list) … never on scores-only `affiliate_ids=0`. */
+  markets?: unknown
+  lines?: Record<string, unknown>
 }
 
 export type ResolvedRundownEvent = {
@@ -252,7 +255,7 @@ async function rundownFetch<T>(path: string): Promise<T | null> {
 /**
  * Day slate: scores / status / schedule / live_game_state only.
  * `affiliate_ids=0` is TheRundown's scores-only filter (no markets / price rows).
- * Odds API owns books … never pull full ML/spread/total snapshots onto this key.
+ * Sharp-shop books (Circa / Heritage / …) use `loadRundownShopDayEvents` on the slower odds TTL.
  */
 async function loadDayEvents(
   sportId: number,

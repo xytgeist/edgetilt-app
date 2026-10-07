@@ -24,7 +24,7 @@ export const US_STATES = {
 /**
  * States where each feed book runs a licensed online/mobile app (`sportsbookStates.json`, refreshed weekly;
  * see docs/sportsbook-states-refresh.md). Offshore books (Bovada, BetOnline, MyBookie, BetUS, LowVig,
- * BookMaker), Pinnacle, and sweepstakes apps (Fliff, ReBet) hold no US sportsbook license, so they never
+ * BookMaker, Heritage, Bet105, Sportsbetting.ag, Betcris, YouWager, Matchbook, Everygame), Pinnacle, and sweepstakes apps (Fliff, ReBet) hold no US sportsbook license, so they never
  * appear there.
  */
 const BOOK_STATES = Object.fromEntries(

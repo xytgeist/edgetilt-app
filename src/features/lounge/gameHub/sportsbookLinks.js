@@ -24,6 +24,15 @@ const SPORTSBOOK_HOME_BY_KEY = {
   fliff: 'https://www.getfliff.com',
   bookmaker: 'https://www.bookmaker.eu',
   ballybet: 'https://play.ballybet.com',
+  heritagesports: 'https://www.heritagesports.eu',
+  heritage: 'https://www.heritagesports.eu',
+  bet105: 'https://bet105.ag',
+  sportsbetting: 'https://www.sportsbetting.ag',
+  betcris: 'https://sportsbook.betcris.com',
+  youwager: 'https://www.youwager.lv',
+  matchbook: 'https://www.matchbook.com',
+  everygame: 'https://sports.everygame.eu',
+  intertops: 'https://sports.everygame.eu',
 }
 
 /** Hard Rock Bet App Store (iOS). Web hardrock.bet is a download interstitial. */

@@ -260,3 +260,24 @@ export function liveBestLines(rows, { legalState = null } = {}) {
     under: bestTotal('under'),
   }
 }
+
+/**
+ * Last book still carrying an h2h pair. Live shop (`liveBestLines`) drops stale
+ * stamps; the scoreboard still wants a number when Stats has one.
+ */
+export function lastKnownMl(rows, side, { legalState = null } = {}) {
+  const list = shopRows(rows, legalState)
+  const s = side === 'home' ? 'home' : 'away'
+  let best = null
+  let bestT = -1
+  for (const row of list) {
+    const dec = decimal(row[`${s}_ml`])
+    if (dec == null) continue
+    const t = stampMs(row) ?? 0
+    if (t >= bestT) {
+      bestT = t
+      best = pickFrom(row, row[`${s}_ml`], null, row[`${s}_ml_link`], legalState)
+    }
+  }
+  return best
+}

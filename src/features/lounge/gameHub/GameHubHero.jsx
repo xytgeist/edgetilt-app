@@ -17,7 +17,7 @@ import GameHubCatchFigure from './GameHubCatchFigure.jsx'
 import { getLuminance, hexToHsl, hexToRgb, resolveTeamKit } from './gameHubFigureColors.js'
 import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregameProps.js'
 import { liveFantasyRails, livePropRails } from './gameHubLiveRails.js'
-import { liveBestLines, pregameBestLines } from './gameHubBestLines.js'
+import { lastKnownMl, liveBestLines, pregameBestLines } from './gameHubBestLines.js'
 import { useLegalBooks } from './gameHubLegalBooks.js'
 import { useSportsBetOddsActions, sportsBetPropTapPayload } from '../../sports-bet-tracker/sportsBetLogContext.jsx'
 import { useOddsLogPress } from '../../sports-bet-tracker/useOddsLogPress.js'
@@ -5119,15 +5119,21 @@ export default function GameHubHero({
           : pregameBestLines(odds, { legalState }),
     [shopLines, odds, game.status, legalState],
   )
+  const awayMlPick = clockExpiredFinal
+    ? null
+    : scoreBest?.away?.ml || lastKnownMl(odds, 'away', { legalState })
+  const homeMlPick = clockExpiredFinal
+    ? null
+    : scoreBest?.home?.ml || lastKnownMl(odds, 'home', { legalState })
   const awayMl = clockExpiredFinal
     ? ''
-    : scoreBest?.away?.ml
-      ? american(scoreBest.away.ml.price)
+    : awayMlPick
+      ? american(awayMlPick.price)
       : formatLoungeSportsMoneyline(game.away?.ml)
   const homeMl = clockExpiredFinal
     ? ''
-    : scoreBest?.home?.ml
-      ? american(scoreBest.home.ml.price)
+    : homeMlPick
+      ? american(homeMlPick.price)
       : formatLoungeSportsMoneyline(game.home?.ml)
   const spreadText = (side, pick) =>
     !shopLines ? '' : pick ? signedPoint(pick.point) : side?.spread != null ? signedPoint(side.spread) : ''
@@ -5276,7 +5282,7 @@ export default function GameHubHero({
                   </div>
                   {awayMl ? (
                     <ScoreboardLine
-                      pick={scoreBest?.away?.ml}
+                      pick={awayMlPick}
                       text={awayMl}
                       label="Moneyline"
                       side="away"
@@ -5335,7 +5341,7 @@ export default function GameHubHero({
                   </div>
                   {homeMl ? (
                     <ScoreboardLine
-                      pick={scoreBest?.home?.ml}
+                      pick={homeMlPick}
                       text={homeMl}
                       label="Moneyline"
                       side="home"
@@ -5382,7 +5388,7 @@ export default function GameHubHero({
               bigPick={paintScore ? null : (awaySpreadText ? scoreBest?.away?.spread : null)}
               bigDim={awayScoreDim}
               ml={awayMl}
-              mlPick={scoreBest?.away?.ml}
+              mlPick={awayMlPick}
             />
 
             <div className="flex max-w-[34%] shrink-0 flex-col items-center justify-center gap-1 px-1 pb-8 text-center">
@@ -5422,7 +5428,7 @@ export default function GameHubHero({
               bigPick={paintScore ? null : (homeSpreadText ? scoreBest?.home?.spread : null)}
               bigDim={homeScoreDim}
               ml={homeMl}
-              mlPick={scoreBest?.home?.ml}
+              mlPick={homeMlPick}
             />
           </div>
         </div>

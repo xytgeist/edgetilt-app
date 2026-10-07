@@ -36,8 +36,13 @@ function sameHubGame(a, b) {
     a.status_label === b.status_label &&
     a.broadcast === b.broadcast &&
     a.broadcast_url === b.broadcast_url &&
+    a.total === b.total &&
     a.home?.score === b.home?.score &&
     a.away?.score === b.away?.score &&
+    a.home?.spread === b.home?.spread &&
+    a.away?.spread === b.away?.spread &&
+    a.home?.ml === b.home?.ml &&
+    a.away?.ml === b.away?.ml &&
     a.home?.record === b.home?.record &&
     a.away?.record === b.away?.record &&
     a.home?.division_record === b.home?.division_record &&
@@ -298,7 +303,24 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       const next = games.find((g) => g.id === prev.id)
       if (!next) return prev
       if (sameHubGame(prev, next)) return prev
-      return { ...prev, ...next, live: next.live || prev.live }
+      return {
+        ...prev,
+        ...next,
+        live: next.live || prev.live,
+        total: next.total ?? prev.total ?? null,
+        home: {
+          ...prev.home,
+          ...next.home,
+          spread: preferSpread(next.home, prev.home),
+          ml: sideNum(next.home, 'ml') ?? sideNum(prev.home, 'ml'),
+        },
+        away: {
+          ...prev.away,
+          ...next.away,
+          spread: preferSpread(next.away, prev.away),
+          ml: sideNum(next.away, 'ml') ?? sideNum(prev.away, 'ml'),
+        },
+      }
     })
   }, [games])
 

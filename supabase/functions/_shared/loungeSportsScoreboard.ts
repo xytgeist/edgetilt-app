@@ -1567,7 +1567,7 @@ async function ingestLeagueBoardPack(opts: {
     await upsertMarketFilesFromEvents(admin, sport.key, pinPack.events as OddsEvent[]).catch(() => null)
   }
   if (lockMarketFiles) {
-    leagueGames = await applyMarketFileCloses(leagueGames, admin, dates)
+    leagueGames = await applyMarketFileCloses(leagueGames, admin, dates, sport.key)
     leagueGames = await fillClosingQuotesFromHistorical(leagueGames, sport.key, admin)
     if (admin) await lockDueMarketFileCloses(admin, sport.key).catch(() => null)
   }
@@ -3710,12 +3710,13 @@ function fileMatchesGame(file: MarketFileRow, game: LoungeSportsGame): boolean {
 async function applyMarketFileCloses(
   games: LoungeSportsGame[],
   admin: SupabaseClient | undefined,
-  nflDates: string[],
+  dates: string[],
+  sportKey: string,
 ): Promise<LoungeSportsGame[]> {
-  if (!admin || !nflDates.length) return games
-  const fromIso = `${nflDates[0]}T00:00:00-07:00`
-  const toIso = `${nflDates[nflDates.length - 1]}T23:59:59-07:00`
-  const files = await loadMarketFilesForSportWindow(admin, 'americanfootball_nfl', fromIso, toIso).catch(() => [])
+  if (!admin || !dates.length || !sportKey) return games
+  const fromIso = `${dates[0]}T00:00:00-07:00`
+  const toIso = `${dates[dates.length - 1]}T23:59:59-07:00`
+  const files = await loadMarketFilesForSportWindow(admin, sportKey, fromIso, toIso).catch(() => [])
   if (!files.length) return games
   return games.map((game) => {
     const file = files.find((row) => fileMatchesGame(row, game))

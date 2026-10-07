@@ -282,7 +282,7 @@ Uploads set object metadata **`Cache-Control: public, max-age=31536000, immutabl
 ## 4. Supabase Edge Functions (parity with **test**)
 
 - [x] **Island APNs (2026-10-04):** prod SQL `20261005040000` + `lounge-live-activity-token` / `lounge-live-activity-push`. Cron `live_activity_island_push`. Prod IPA **1.4.95 (20261005022834)** TestFlight-only.
-- [ ] **Island cron arm + pg_net prune (2026-10-07):** apply **`20261007150000_live_activity_cron_arm_pg_net_prune.sql`** on **prod** (test already). Unschedules empty `live_activity_island_push`; trigger re-arms when a token lands. Daily prune also deletes `net._http_response` older than 3 days. **No Edge redeploy.**
+- [x] **Island cron arm + pg_net prune (2026-10-07):** applied **`20261007150000_live_activity_cron_arm_pg_net_prune.sql`** on **prod**. Unschedules empty `live_activity_island_push`; trigger re-arms when a token lands. Daily prune also deletes `net._http_response` older than 3 days. **No Edge redeploy.** Prod verify: 0 tokens, island cron absent, prune command includes pg_net.
 
 After DB + env are correct, redeploy edge functions whose **logical code lives in repo** (`supabase/functions/…`) against **production** so versions don’t drift:
 

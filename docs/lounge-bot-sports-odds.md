@@ -323,7 +323,7 @@ Alerts publish **immediately** when **`min_post_gap_minutes`** has elapsed since
 | **Normal** | +EV edge, Best Bet, Value Radar, context alerts | 15s–1min |
 | **Low** | Line movement, Sharp Report | 30s–90s |
 
-**`min_post_gap_minutes`** (default **2**) enforces minimum spacing between Scott feed posts. Alerts **publish immediately** when the gap allows; otherwise they queue for the next gap window (typically **under 2 minutes**, never hours). **`lounge_bot_scheduled_posts`** is drained every minute by pg_cron **`lounge_bot_publish_scheduled_odds`** → **`lounge-bot-publish-due`**. **Coffee & Covers** still posts immediately (threaded morning post).
+**`min_post_gap_minutes`** (default **2**) enforces minimum spacing between Scott feed posts. Alerts **publish immediately** when the gap allows; otherwise they queue for the next gap window (typically **under 2 minutes**, never hours). **`lounge_bot_scheduled_posts`** is drained every minute by pg_cron **`lounge_bot_publish_scheduled_odds`** → **`lounge-bot-publish-due`**. **Coffee & Covers** still posts immediately (threaded morning post). Unique **`lounge_bot_scheduled_posts_live_dedupe_idx`** is one live row per bot + `dedupe_key` while status is **pending or published** (failed/cancelled may retry). **`hasPendingScheduleDedupe`** matches that. Publish log `post_kind` is unconstrained as of **`20261007040000`** so context kinds (`fade_the_public`, `starter_spotlight`, …) actually record.
 
 ### Value Bet Radar (peak hours, ~30 min)
 
@@ -540,7 +540,7 @@ Current fetch: **`h2h` + `spreads`**, region **`us`** → **~2 credits/call**.
 | `max_context_alerts_per_day` | Default **6** — cap across all context kinds |
 | `min_post_gap_minutes` | Default **2** — min minutes between Scott feed posts |
 
-Publish log: **`post_kind`** (… `value_bet_radar`, `starter_spotlight`, `injury_impact`, …), **`dedupe_key`** — through **`20260705010000`**. Pending queue: **`lounge_bot_scheduled_posts`**.
+Publish log: **`post_kind`** (any alert slug, including context kinds), **`dedupe_key`**. Queue unique: pending+published (`20261007040000`). Pending queue: **`lounge_bot_scheduled_posts`**.
 
 ---
 

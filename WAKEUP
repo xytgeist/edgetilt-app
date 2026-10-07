@@ -122,6 +122,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Windows Theo ACTIVE TRACK 2026-10-06 ... Fade / context-alert double-print
+**Web `1.4.1082`.** Identical @sharpesignal Fade the Public NHL printed twice because `poll_edges` re-queued the same `dedupe_key` after the first left `pending`, and `lounge_bot_publish_log` CHECK rejected `fade_the_public` (insert error ignored). SQL **`20261007040000` on test + prod**: drop that CHECK, unique on pending+published, backfill missing log rows. Keep the 2-minute gap. Redeployed **`lounge-odds-poll`** + **`lounge-bot-publish-due`** on both. Duplicate Lounge posts left in place. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-06 ... promote 1.4.1081
 **Web `1.4.1081`.** Promoted **`test` → `main`** (`3a19375a`) 2026-10-06. OddsPapi Circa fallback gone. Prod Edge **`lounge-sports-scoreboard`** redeployed. Prod Edge `ODDSPAPI_*` unset. Smoke: SHSU @ LIB Circa + eight shop books, no `snapshot: true`. Marketing still **1.4.95**.
 

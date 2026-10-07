@@ -9,7 +9,11 @@ import {
 import { publishLoungeBotPost, publishLoungeBotPostWithThread, type BotPublishInput, type BotThreadPart } from './loungeBotPublish.ts'
 import { validateLiveScheduledPost } from './loungeBotLiveGuards.ts'
 import { DEFAULT_MIN_POST_GAP_MINUTES } from './loungeBotPublishConstants.ts'
-import { recordAlertDelivery, type AlertDeliveryMeta } from './loungeBotPublishDedupe.ts'
+import {
+  hasActiveDedupePublished,
+  recordAlertDelivery,
+  type AlertDeliveryMeta,
+} from './loungeBotPublishDedupe.ts'
 
 export type BotPostPriority = 'urgent' | 'normal' | 'low'
 
@@ -57,6 +61,7 @@ function jitterMsForPriority(priority: BotPostPriority): number {
   return randomBetween(30_000, 90_000)
 }
 
+/** True when this key is already pending or already published from the gap queue. */
 export async function hasPendingScheduleDedupe(
   admin: SupabaseClient,
   botUserId: string,
@@ -68,9 +73,16 @@ export async function hasPendingScheduleDedupe(
     .select('id')
     .eq('bot_user_id', botUserId)
     .eq('dedupe_key', dedupeKey)
-    .eq('status', 'pending')
-    .maybeSingle()
-  return Boolean(data?.id)
+    .in('status', ['pending', 'published'])
+    .limit(1)
+  return Boolean(data?.[0]?.id)
+}
+
+function isScheduleDedupeConflict(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false
+  if (error.code === '23505') return true
+  const msg = error.message || ''
+  return /dedupe/i.test(msg)
 }
 
 export async function countScheduledKindToday(
@@ -268,6 +280,18 @@ export async function submitLoungeBotAlertPost(
     }
   }
 
+  const publishedSince = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString()
+  if (await hasActiveDedupePublished(admin, input.botUserId, input.dedupeKey, publishedSince)) {
+    return {
+      accepted: false,
+      published: false,
+      scheduled: false,
+      postId: null,
+      error: null,
+      skipped: 'already_posted_today',
+    }
+  }
+
   const priority = input.priority ?? priorityForPostKind(input.postKind)
   const minGap = input.minGapMinutes ?? DEFAULT_MIN_POST_GAP_MINUTES
   const minGapMs = Math.max(1, minGap) * 60 * 1000
@@ -341,7 +365,7 @@ export async function submitLoungeBotAlertPost(
 
   if (error || !data?.id) {
     const msg = error?.message || 'Schedule insert failed.'
-    if (msg.includes('lounge_bot_scheduled_posts_pending_dedupe')) {
+    if (isScheduleDedupeConflict(error)) {
       return {
         accepted: false,
         published: false,
@@ -457,7 +481,7 @@ export async function drainDueScheduledBotPosts(
         })
         .eq('id', row.id)
 
-      await admin.from('lounge_bot_publish_log').insert({
+      const { error: failLogErr } = await admin.from('lounge_bot_publish_log').insert({
         bot_user_id: row.bot_user_id,
         caption: row.caption,
         score: row.score,
@@ -466,6 +490,9 @@ export async function drainDueScheduledBotPosts(
         dedupe_key: row.dedupe_key,
         error_message: result.error?.slice(0, 400),
       })
+      if (failLogErr) {
+        console.error('lounge_bot_publish_log failed-row insert', failLogErr.message, row.post_kind)
+      }
       failed += 1
     }
   }

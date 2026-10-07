@@ -62,4 +62,4 @@ supabase functions deploy lounge-odds-ingest --project-ref YOUR_PROJECT_REF
 
 Requires **`THE_ODDS_API_KEY`**, **`THERUNDOWN_API_KEY`** recommended for live period/halftime milestones, migrations through **`20260706190000`**, and Vault secrets above.
 
-**Scheduled odds posts:** pg_cron **`lounge_bot_publish_scheduled_odds`** every minute drains **`lounge_bot_scheduled_posts`** via **`lounge-bot-publish-due`** (`publishScheduledOdds: true`).
+**Scheduled odds posts:** pg_cron **`lounge_bot_publish_scheduled_odds`** every minute drains **`lounge_bot_scheduled_posts`** via **`lounge-bot-publish-due`** (`publishScheduledOdds: true`). Live unique is pending+published on `(bot_user_id, dedupe_key)` (`20261007040000`) so `poll_edges` cannot re-queue a key after the first row publishes.

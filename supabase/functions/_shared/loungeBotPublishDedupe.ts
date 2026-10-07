@@ -104,7 +104,7 @@ export async function recordAlertDelivery(
     updated_at: new Date().toISOString(),
   }).eq('user_id', meta.botUserId)
 
-  await admin.from('lounge_bot_publish_log').insert({
+  const { error } = await admin.from('lounge_bot_publish_log').insert({
     bot_user_id: meta.botUserId,
     post_id: delivery.postId ?? null,
     sub_chat_message_id: delivery.subChatMessageId ?? null,
@@ -114,4 +114,12 @@ export async function recordAlertDelivery(
     post_kind: meta.postKind,
     dedupe_key: meta.dedupeKey,
   })
+  if (error) {
+    console.error(
+      'lounge_bot_publish_log insert failed',
+      error.message,
+      meta.postKind,
+      meta.dedupeKey,
+    )
+  }
 }

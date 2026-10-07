@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-07:** **Promoted NFL hub slate flicker (`1.4.1086`).** Frontend **`test` → `main`** (`63a5362f`). Redeployed **`lounge-sports-scoreboard`** on **`jtjgtucumuoswnbauxry`**. Marketing still **1.4.95**.
 - **2026-10-07:** **NFL hub slate flicker (`1.4.1086`).** Board poll is 5 min unless a live game is on the open slate / hub / Island (then 10-15s `active` merge). Full payloads union with the current window so Rundown-only TNF cannot hide Sunday. Scoreboard always fetches Odds `/scores` (90s cache) even when Rundown has a day. Empty NFL/CFB week no longer flips on Tue/Wed. Redeploy **test** `lounge-sports-scoreboard`. Marketing still **1.4.95**.
 - **2026-10-06:** **Promoted league-hub slates (`1.4.1085`) + Signal captions (`1.4.1084`).** Frontend **`test` → `main`** (`882d0c15`). No new Edge. Marketing still **1.4.95**.
 - **2026-10-06:** **League hubs keep their slates (`1.4.1085`).** All Sports Hub (`filter=all`) stays PT today + live. NFL/CFB week windows and NHL/NBA/MLB/MLS/PGA boards are not clipped to today. No Edge. Marketing still **1.4.95**.

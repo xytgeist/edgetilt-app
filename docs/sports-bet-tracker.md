@@ -102,7 +102,7 @@ Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`*
 ## Client
 
 - Feature: **`src/features/sports-bet-tracker/`**
-- Tab: **`?tab=sports-bets`** (Sports Hub **Bet Tracker** row; league hubs have a clipboard chip. Not in the hamburger.) Title bar **×** / header back returns to Lounge.
+- Tab: **`?tab=sports-bets`** (Sports Hub **Bet Tracker** row; league hubs have a clipboard chip. Not in the hamburger.) Title bar **×** / header back returns to the Sports Hub / game hub that opened it.
 - Prefill: hub **… → Log a bet** / hold odds / `requestSportsBetLog(prefill)` … closes the sports surface and sets `tab=sports-bets`. Does **not** keep `?game=` (that reopened the league hub). Hollow `?logBet=1` URLs **must not** open the composer (that wiped book / line / odds after a hold). Prefill lives in memory + sessionStorage + the open event.
 - **Tap-through:** opening the book from a hub odds cell inserts an **unconfirmed** 1u bet (`odds_tap`). Confirm / Edit / Delete on the tracker row. Hold still opens the composer first. Same for Kalshi/Poly Yes/No and landscape player-prop rails (Yes = Over, No = Under; implied ¢ → American).
 - Composer **Sport** (NFL / CFB / NBA / MLB / NHL / PGA / MLS / Other) maps to Odds API `sport_key`. **Player prop** market adds Player + Stat.

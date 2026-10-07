@@ -2363,7 +2363,6 @@ export default function AppShell({
   const closeBetTracker = useCallback(() => {
     armShellNavGhostClickGuard()
     closeSportsBetTracker()
-    setTab('home')
     setMenuOpen(false)
   }, [])
 

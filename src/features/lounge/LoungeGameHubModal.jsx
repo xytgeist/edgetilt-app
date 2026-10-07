@@ -218,7 +218,6 @@ export default function LoungeGameHubModal({
 
   function logBetFromHub() {
     if (!game) return
-    sports.closeSlate?.()
     requestSportsBetLog({
       event_id: game.id,
       sport_key: game.sport_key,
@@ -231,7 +230,9 @@ export default function LoungeGameHubModal({
       line: game.home?.spread ?? '',
       odds: '-110',
       source: 'game_hub',
+      hub_filter: sports?.slateFilter,
     })
+    sports.closeSlate?.()
   }
 
   const detailGameId = game?.id || null

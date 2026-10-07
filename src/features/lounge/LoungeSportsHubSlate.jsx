@@ -241,8 +241,8 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
   if (!open || typeof document === 'undefined') return null
 
   const openTracker = () => {
+    openSportsBetTracker({ hubFilter: filter })
     sports.closeSlate?.()
-    openSportsBetTracker()
   }
 
   const title = nflHub
@@ -328,8 +328,8 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
             onOpenLeague={(next) => sports.openSlate?.(next)}
             onOpenTracker={openTracker}
             onOpenTools={() => {
+              openSportsBetTools('1', { hubFilter: filter })
               sports.closeSlate?.()
-              openSportsBetTools()
             }}
           />
         )}

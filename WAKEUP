@@ -122,6 +122,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-07 ... Bet Tracker back (`1.4.1087`)
+**Web `1.4.1087`.** Tracker × / back restores the Sports Hub or game hub that opened it (session return snapshot). Direct `?tab=sports-bets` still lands on Lounge. No Edge. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-07 ... promote 1.4.1086
 **Web `1.4.1086`.** Promoted **`test` → `main`** (`63a5362f`) 2026-10-07. Prod Edge **`lounge-sports-scoreboard`** redeployed. Marketing still **1.4.95**.
 

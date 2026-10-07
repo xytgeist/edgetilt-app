@@ -4,9 +4,14 @@ import { normalizeSportsBetSource } from './sportsBetSources.js'
 import {
   LOUNGE_SPORTS_GAME_PARAM,
   clearLoungeSportsGamePending,
+  normalizeLoungeSportsHubFilter,
+  readLoungeSportsGameIdFromLocation,
+  requestLoungeSportsGameOpen,
+  requestLoungeSportsHubOpen,
 } from '../lounge/loungeSportsHubNav.js'
 
 const PENDING_KEY = 'edge.sportsBetLog.pending.v1'
+const RETURN_KEY = 'edge.sportsBetTracker.return.v1'
 const OPEN_EVENT = 'edge-sports-bet-log'
 const TTL_MS = 15 * 60 * 1000
 
@@ -18,6 +23,91 @@ function stripPendingMeta(row) {
   if (!(Date.now() - Number(row.at) < TTL_MS)) return null
   const { at: _at, ...prefill } = row
   return prefill
+}
+
+/** Page to reopen when Bet Tracker back / X is pressed (Sports Hub, game hub, …). */
+let memoryReturn = null
+
+function writeReturn(row) {
+  memoryReturn = row
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(RETURN_KEY, JSON.stringify(row))
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+function readStoredReturn() {
+  try {
+    if (typeof sessionStorage === 'undefined') return null
+    const raw = sessionStorage.getItem(RETURN_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function consumeSportsBetReturn() {
+  const mem = memoryReturn
+  memoryReturn = null
+  const stored = readStoredReturn()
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(RETURN_KEY)
+  } catch {
+    /* ignore */
+  }
+  const row = mem && typeof mem === 'object' ? mem : stored
+  if (!row || typeof row !== 'object') return null
+  if (!(Date.now() - Number(row.at) < TTL_MS)) return null
+  return row
+}
+
+/**
+ * Snapshot the current SPA page before `tab=sports-bets` so close can restore it.
+ * @param {{ hubFilter?: string, gameId?: string }} [extra]
+ */
+export function rememberSportsBetReturn(extra = {}) {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  if ((url.searchParams.get('tab') || '').trim() === 'sports-bets') return
+  const gameId = String(extra.gameId || readLoungeSportsGameIdFromLocation() || '').trim()
+  const hubRaw = String(extra.hubFilter || '').trim()
+  writeReturn({
+    href: `${url.pathname}${url.search}${url.hash}`,
+    tab: (url.searchParams.get('tab') || '').trim() || 'home',
+    hubFilter: hubRaw ? normalizeLoungeSportsHubFilter(hubRaw) : null,
+    gameId: gameId || null,
+    at: Date.now(),
+  })
+}
+
+function applySportsBetReturn(row) {
+  const url = new URL(window.location.href)
+  try {
+    const ret = new URL(String(row.href || '/'), window.location.origin)
+    if (ret.origin === window.location.origin) {
+      url.pathname = ret.pathname || '/'
+      url.search = ret.search || ''
+      url.hash = ret.hash || ''
+    }
+  } catch {
+    /* keep current origin */
+  }
+  url.searchParams.delete('logBet')
+  url.searchParams.delete('betTools')
+  const tab = String(row.tab || '').trim()
+  if ((url.searchParams.get('tab') || '').trim() === 'sports-bets') {
+    if (tab && tab !== 'sports-bets') url.searchParams.set('tab', tab)
+    else url.searchParams.delete('tab')
+  }
+  if (row.gameId) url.searchParams.set(LOUNGE_SPORTS_GAME_PARAM, row.gameId)
+  window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  if (row.hubFilter) requestLoungeSportsHubOpen(row.hubFilter)
+  else if (row.gameId) requestLoungeSportsGameOpen(row.gameId)
+  window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
 function writePending(row) {
@@ -62,11 +152,17 @@ function readStoredPending() {
 
 /** @param {SportsBetPrefill | null | undefined} prefill */
 export function requestSportsBetLog(prefill) {
+  const incoming = prefill && typeof prefill === 'object' ? prefill : {}
+  const { hub_filter: hubFilterFromPrefill, hubFilter, ...rest } = incoming
   const row = {
-    ...(prefill && typeof prefill === 'object' ? prefill : {}),
-    source: normalizeSportsBetSource(prefill?.source, 'game_hub'),
+    ...rest,
+    source: normalizeSportsBetSource(incoming.source, 'game_hub'),
     at: Date.now(),
   }
+  rememberSportsBetReturn({
+    gameId: row.event_id,
+    hubFilter: hubFilterFromPrefill || hubFilter,
+  })
   writePending(row)
   clearLoungeSportsGamePending()
   if (typeof window !== 'undefined') {
@@ -92,8 +188,9 @@ export function clearSportsBetLogPending() {
 }
 
 /** Open the tracker tab without a log composer (Sports Hub door). */
-export function openSportsBetTracker() {
+export function openSportsBetTracker(opts = {}) {
   if (typeof window === 'undefined') return
+  rememberSportsBetReturn(opts)
   clearSportsBetLogPending()
   const url = new URL(window.location.href)
   url.searchParams.set('tab', 'sports-bets')
@@ -106,8 +203,9 @@ export function openSportsBetTracker() {
 }
 
 /** Open tracker with the Tools sheet (`betTools=1` or a tool id). */
-export function openSportsBetTools(tool = '1') {
+export function openSportsBetTools(tool = '1', opts = {}) {
   if (typeof window === 'undefined') return
+  rememberSportsBetReturn(opts)
   clearSportsBetLogPending()
   const url = new URL(window.location.href)
   url.searchParams.set('tab', 'sports-bets')
@@ -127,6 +225,11 @@ export function sportsBetToolsFromSearch(params) {
 export function closeSportsBetTracker() {
   if (typeof window === 'undefined') return
   clearSportsBetLogPending()
+  const ret = consumeSportsBetReturn()
+  if (ret) {
+    applySportsBetReturn(ret)
+    return
+  }
   const url = new URL(window.location.href)
   url.searchParams.delete('tab')
   url.searchParams.delete('logBet')

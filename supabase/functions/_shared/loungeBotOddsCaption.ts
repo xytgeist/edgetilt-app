@@ -934,6 +934,16 @@ export function formatScottSportContextLines(
   return lines
 }
 
+/** One-line sport · matchup · kickoff stamp (lists / snackable suffixes). */
+export function formatScottGameStamp(
+  awayTeam: string,
+  homeTeam: string,
+  commenceTime: string,
+  categoryLabel?: string,
+): string {
+  return formatScottSportContextLines(awayTeam, homeTeam, commenceTime, categoryLabel).join(' · ')
+}
+
 /** Alert header → league + matchup → body (standard Scott feed layout). */
 export function joinScottAlertCaption(
   header: string,
@@ -952,18 +962,17 @@ export function joinScottAlertCaption(
   ])
 }
 
-/** Compact sport · time suffix for snackable list lines (e.g. Value Radar). */
+/** Compact sport · matchup · kickoff suffix for snackable list lines. */
 export function formatScottPickContextSuffix(
   pick: { awayTeam: string; homeTeam: string; commenceTime: string; categoryLabel?: string },
 ): string {
-  const sport = String(pick.categoryLabel || '').trim()
-  const when = formatOddsCommenceTimeShort(pick.commenceTime)
-  const away = shortDisplayName(pick.awayTeam)
-  const home = shortDisplayName(pick.homeTeam)
-  const parts: string[] = []
-  if (sport) parts.push(sport)
-  if (when) parts.push(when)
-  return parts.length ? ` · ${parts.join(' · ')}` : ` · ${away} vs ${home}`
+  const stamp = formatScottGameStamp(
+    pick.awayTeam,
+    pick.homeTeam,
+    pick.commenceTime,
+    pick.categoryLabel,
+  )
+  return stamp ? ` · ${stamp}` : ''
 }
 
 /** Refine scan-target label for per-event cases (MMA: UFC vs other promotions via Rundown headline). */

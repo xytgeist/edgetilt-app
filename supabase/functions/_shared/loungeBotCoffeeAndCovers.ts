@@ -12,6 +12,8 @@ import {
   formatAmericanOdds,
   formatBookDisplayName,
   formatOddsCommenceTimeShort,
+  formatScottGameStamp,
+  formatScottSportContextLines,
   shortDisplayName,
   type OddsEvent,
   type OddsPick,
@@ -924,24 +926,31 @@ function selectRadarSpots(
 
 function formatRadarBullet(candidate: RadarCandidate, label?: string): string {
   const ev = formatEvSuffix(candidate.edgePct)
+  const stamp = formatScottGameStamp(
+    candidate.pick.awayTeam,
+    candidate.pick.homeTeam,
+    candidate.pick.commenceTime,
+    label,
+  )
+  let pickLine = ''
   if (candidate.kind === 'spread') {
     const team = formatPickNameLabel(candidate.pick.pickName)
     const spread = formatSpreadPoint(candidate.pick.pickPoint)
     const juice = formatAmericanOdds(candidate.pick.pickPrice)
-    const prefix = label ? `${label} · ` : ''
-    return `• ${prefix}${team} ${spread} (${juice}) @ ${candidate.pick.bookTitle} ${ev}`
+    pickLine = `${team} ${spread} (${juice}) @ ${candidate.pick.bookTitle} ${ev}`
+  } else {
+    const pick = candidate.pick
+    const team = formatPickNameLabel(pick.pickName)
+    if (pick.marketKey === 'totals' && pick.linePoint != null) {
+      const side = /^over$/i.test(pick.pickName) ? 'Over' : /^under$/i.test(pick.pickName) ? 'Under' : pick.pickName
+      pickLine = `${side} ${pick.linePoint} (${formatAmericanOdds(pick.pickPrice)}) @ ${pick.bookTitle} ${ev}`
+    } else if (pick.marketKey === 'spreads' && pick.linePoint != null) {
+      pickLine = `${team} ${formatSpreadPoint(pick.linePoint)} (${formatAmericanOdds(pick.pickPrice)}) @ ${pick.bookTitle} ${ev}`
+    } else {
+      pickLine = `${team} ML ${formatAmericanOdds(pick.pickPrice)} @ ${pick.bookTitle} ${ev}`
+    }
   }
-  const pick = candidate.pick
-  const team = formatPickNameLabel(pick.pickName)
-  const prefix = label ? `${label} · ` : ''
-  if (pick.marketKey === 'totals' && pick.linePoint != null) {
-    const side = /^over$/i.test(pick.pickName) ? 'Over' : /^under$/i.test(pick.pickName) ? 'Under' : pick.pickName
-    return `• ${prefix}${side} ${pick.linePoint} (${formatAmericanOdds(pick.pickPrice)}) @ ${pick.bookTitle} ${ev}`
-  }
-  if (pick.marketKey === 'spreads' && pick.linePoint != null) {
-    return `• ${prefix}${team} ${formatSpreadPoint(pick.linePoint)} (${formatAmericanOdds(pick.pickPrice)}) @ ${pick.bookTitle} ${ev}`
-  }
-  return `• ${prefix}${team} ML ${formatAmericanOdds(pick.pickPrice)} @ ${pick.bookTitle} ${ev}`
+  return stamp ? `• ${stamp} · ${pickLine}` : `• ${pickLine}`
 }
 
 function selectDogOfTheDay(dogs: BiggestDog[]): BiggestDog | null {
@@ -952,10 +961,14 @@ function selectDogOfTheDay(dogs: BiggestDog[]): BiggestDog | null {
 function formatDogOfTheDayLines(dog: BiggestDog, contextNote?: string): string[] {
   const pickLabel = formatPickNameLabel(dog.pickName)
   const odds = formatAmericanOdds(dog.pickPrice)
-  const when = formatOddsCommenceTimeShort(dog.commenceTime)
   const lines = [
+    ...formatScottSportContextLines(
+      dog.awayTeam,
+      dog.homeTeam,
+      dog.commenceTime,
+      dog.categoryLabel,
+    ),
     `${pickLabel} ML ${odds} @ ${dog.bookTitle}`,
-    `${formatMatchupTeams(dog.awayTeam, dog.homeTeam)}${when ? ` (${when})` : ''}`,
   ]
   if (contextNote?.trim()) lines.push(contextNote.trim())
   return lines
@@ -978,6 +991,14 @@ function buildMainCaption(
     lines.push(COFFEE_NO_LEAN_LINE)
   } else if (thin) {
     lines.push(`If I'm playing one side today, it's ${formatFeaturedLeanLine(featured)}.`)
+    lines.push(
+      ...formatScottSportContextLines(
+        featured.pick.awayTeam,
+        featured.pick.homeTeam,
+        featured.pick.commenceTime,
+        sportLabelByPick?.(featured.pick),
+      ),
+    )
     lines.push('')
     const featuredKey = rundownEventKey(
       featured.kind === 'spread'
@@ -1006,6 +1027,14 @@ function buildMainCaption(
   } else {
     const isSpreadFeatured = featured.kind === 'spread'
     lines.push(isSpreadFeatured ? COFFEE_FEATURED_SECTION : COFFEE_FEATURED_ML_SECTION)
+    lines.push(
+      ...formatScottSportContextLines(
+        featured.pick.awayTeam,
+        featured.pick.homeTeam,
+        featured.pick.commenceTime,
+        sportLabelByPick?.(featured.pick),
+      ),
+    )
     lines.push(formatFeaturedLeanLine(featured))
     lines.push('')
     const featuredKey = rundownEventKey(

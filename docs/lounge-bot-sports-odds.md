@@ -53,7 +53,7 @@ Calendar sport pick (portal)  →  lounge-odds-ingest (manual) or lounge-odds-po
 | **Value Bet Radar** | **`value_bet_radar`** cron every ~30 min during peak hours (or portal button) | See example below |
 | **Slate** (legacy) | When **`coffee_covers_enabled = false`** | See legacy example below |
 
-**Caption style:** factual labels only (no opinion phrases). Line breaks between sections. Plain keyboard punctuation only (colons, commas, hyphens in odds ... no middle dots or em/en dashes). Sportsbook names use brand labels (FanDuel, MyBookie) ... not bare domains (avoids auto-linkify in feed).
+**Caption style:** every Sharpe Signal post names **sport**, **Away vs Home**, and **kickoff ET** (`joinScottAlertCaption` / `formatScottSportContextLines`) before the pick. Factual labels only (no opinion phrases). Line breaks between sections. Plain keyboard punctuation only (colons, commas, hyphens in odds ... no middle dots or em/en dashes). Sportsbook names use brand labels (FanDuel, MyBookie) ... not bare domains (avoids auto-linkify in feed).
 
 **+EV example:**
 ```text
@@ -69,15 +69,18 @@ Fair +652 (9 books)
 ☕ Coffee & Covers 💵
 
 🎯 Best cover on the board today:
+MLB
+Pirates vs Cubs · Sat 4PM ET
 Pirates -1.5 (+172) @ FanDuel
 
 👀 Other spots on my radar:
-• World Cup · Actis ML +1400 @ DraftKings (+8.1% EV)
-• World Cup · Meza ML +600 @ BetUS (+5.2% EV)
+• World Cup · France vs Paraguay · Sat 5PM ET · Actis ML +1400 @ DraftKings (+8.1% EV)
+• World Cup · Mexico vs Brazil · Sat 1PM ET · Meza ML +600 @ BetUS (+5.2% EV)
 
 🐕 Dog of the Day:
+World Cup
+France vs Paraguay · Sat 5PM ET
 Diaz ML +2000 @ MyBookie
-France vs Paraguay (Sat 5PM ET)
 
 Full board breakdown by sport below 👇
 ```
@@ -332,7 +335,8 @@ Alerts publish **immediately** when **`min_post_gap_minutes`** has elapsed since
 1. Scan every calendar sport today via fresh Odds API fetch (**`h2h`**, **`spreads`**, **`totals`**)
 2. Include **today's unplayed** kickoffs plus **live** in-progress games (same window as Best Bet)
 3. **`findPlusEvOpportunities`** slate-wide; keep the **single** highest **+EV** look (public crumb … not a mini-slate)
-4. Dedupe **`value_bet_radar:{PT half-hour bucket}`** — one post per bot per 30-min window; cap **`max_value_bet_radar_posts_per_day`** (default **12**); **≥ 4 books** per pick; spreads/totals still need min **5%** EV; moneylines use `2 + 0.40 / p_mkt`
+4. Caption is sport + Away vs Home · kickoff ET, then the pick (`Over 7.5` still needs the matchup line so a total is not a naked MLB)
+5. Dedupe **`value_bet_radar:{PT half-hour bucket}`** — one post per bot per 30-min window; cap **`max_value_bet_radar_posts_per_day`** (default **12**); **≥ 4 books** per pick; spreads/totals still need min **5%** EV; moneylines use `2 + 0.40 / p_mkt`
 
 Disable via **`value_bet_radar_enabled = false`**. Default audience **lounge** (snackable crumb). Best Bet Hour is **VIP-only**.
 
@@ -346,7 +350,7 @@ Disable via **`value_bet_radar_enabled = false`**. Default audience **lounge** (
 | **`confirmed_starters`** | ✅ Confirmed Starters | Compact starter list + pick (skipped if Starter Spotlight already posted/scheduled that day for same game) |
 | **`injury_impact`** | 📐 Situational Lean | Hard injury status (OUT, IR, etc.) + pick — opinionated handicapper voice |
 | **`rest_travel_edge`** | 📐 Situational Lean | 7-day Rundown schedule + venue table: rest gap ≥ 1 day, +EV on **rested** team; optional travel line (≥800 mi or cross-TZ) — same voice |
-| **`fade_the_public`** | 🚫 Fade the Public - {league} | **Off by default** ... needs public betting % feed (not in Rundown OpenAPI). Header uses `sportDisplayLabel` (MLS, La Liga, NFL, ...). |
+| **`fade_the_public`** | 🚫 Fade the Public | **Off by default** ... needs public betting % feed (not in Rundown OpenAPI). Sport is a body line (`NHL`, `NCAAF`, ...), then Away vs Home · kickoff ET. |
 
 **Situational Lean** (`injury_impact` + `rest_travel_edge`): captions use pick line with **(+EV%)**, one situational sentence, one lean sentence. Combined cap **`MAX_SITUATIONAL_LEANS_PER_DAY` = 2** (code constant; separate from starter spotlight). EV floor **`MIN_SITUATIONAL_LEAN_EV_PCT` = 2.5%** for these two kinds only (regular ⚡ Edge uses **`loungeBotEdgeAlertThresholds.ts`**). Tie-break among candidates: highest EV, then later tipoff.
 
@@ -367,7 +371,10 @@ Example Situational Lean (rest/travel):
 ```text
 📐 Situational Lean
 
-Warriors -4.5 (-110) @ DraftKings (+3.9% EV)
+NBA
+Lakers vs Warriors · Sat 7:30 PM ET
+
+Warriors -4.5 (-110) @ DraftKings
 
 Lakers on the 2nd night of a back-to-back after cross-time-zone travel (East to West).
 Prefer the rested home side here.
@@ -377,20 +384,22 @@ Example Starter Spotlight:
 ```text
 🔦 Starter Spotlight
 
-Padres vs Dodgers (Sat 10:11 PM ET)
+MLB
+Padres vs Dodgers · Sat 10:11 PM ET
 
 Confirmed Starters:
 • Padres: Dylan Cease
 • Dodgers: TBD
-
-Padres ML +219 @ lowvig (+7.8% EV)
 ```
 
 Example Situational Lean (injury):
 ```text
 📐 Situational Lean
 
-Chiefs -4 (-110) @ DraftKings (+4.1% EV)
+NFL
+Chiefs vs Raiders · Sun 4:25 PM ET
+
+Chiefs -4 (-110) @ DraftKings
 
 Rashee Rice has been ruled out and the market hasn't fully adjusted.
 Still see value on Chiefs.
@@ -398,16 +407,22 @@ Still see value on Chiefs.
 
 Example:
 ```text
-📡 Value Bet Radar
+📡 Value Bet Radar · one look
 
-• Padres ML +219 @ lowvig (+7.8% EV) · MLB · Sat 10:11 PM ET
-• Canada ML +490 @ BetUS (+3.1% EV) · World Cup · Sat 1PM ET
-• Giron ML +900 @ DraftKings (+4.2% EV)
+MLB
+Yankees vs Red Sox · Sun 4PM ET
+
+Over 7.5 (+110) @ FanDuel
++6.5% EV · Fair -103 (11 books)
 ```
 
 Example period report:
 ```text
-📊 Halftime Report - Chiefs 14-10 Bills
+📊 Halftime Report
+
+NFL
+Chiefs vs Bills · Sun 4:25 PM ET
+Chiefs 14-10 Bills
 
 Best bets for 2nd half:
 • Chiefs -2.5 (-108) @ DraftKings (+4.5% EV vs consensus)
@@ -418,6 +433,7 @@ Example live edge:
 🔴 LIVE In-Game Edge • 3rd Quarter
 
 NBA
+Lakers vs Warriors · Sat 7:30 PM ET
 Lakers 88-82 Warriors
 
 Lakers -4.5 (+105) @ DraftKings

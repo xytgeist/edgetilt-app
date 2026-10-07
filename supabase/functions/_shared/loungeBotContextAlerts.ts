@@ -6,8 +6,8 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
 import {
   findPlusEvOpportunities,
-  formatOddsCommenceTimeShort,
   formatOddsPickLine,
+  joinScottAlertCaption,
   shortDisplayName,
   DEFAULT_MIN_EV_PCT,
   type OddsEvent,
@@ -58,7 +58,6 @@ function isCfbRankedTeam(name: string): boolean {
   return (ncaafTop25Keys as string[]).some((k) => n.includes(k) || k.includes(n))
 }
 
-const CAPTION_MAX = 2000
 const CONTEXT_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 'totals']
 const SITUATIONAL_LEAN_HEADER = '📐 Situational Lean'
 /** Combined daily cap for injury_impact + rest_travel_edge (Grok Path A). */
@@ -102,20 +101,10 @@ export type ContextAlertCandidate = {
   }
 }
 
-function joinCaptionLines(lines: string[]): string {
-  const cap = lines.join('\n').trim()
-  return cap.length <= CAPTION_MAX ? cap : `${cap.slice(0, CAPTION_MAX - 3)}...`
-}
-
-function formatMatchupParen(awayTeam: string, homeTeam: string, commenceTime: string): string {
-  const when = formatOddsCommenceTimeShort(commenceTime)
-  const matchup = `${shortDisplayName(awayTeam)} vs ${shortDisplayName(homeTeam)}`
-  return when ? `${matchup} (${when})` : matchup
-}
-
 function formatPickInlineLine(pick: OddsPick | null): string {
   if (!pick) return ''
-  return formatOddsPickLine(pick)
+  const book = String(pick.bookTitle || '').trim()
+  return book ? `${formatOddsPickLine(pick)} @ ${book}` : formatOddsPickLine(pick)
 }
 
 function resolveMarketLinePick(
@@ -285,90 +274,112 @@ export function buildStarterSpotlightCaption(
   homeTeam: string,
   commenceTime: string,
   starters: ConfirmedStarters,
+  sportKey = '',
   _pick?: OddsPick | null,
 ): string {
   const awayLabel = shortDisplayName(awayTeam)
   const homeLabel = shortDisplayName(homeTeam)
-  return joinCaptionLines([
+  return joinScottAlertCaption(
     '🔦 Starter Spotlight',
-    '',
-    formatMatchupParen(awayTeam, homeTeam, commenceTime),
-    '',
-    'Confirmed Starters:',
-    `• ${awayLabel}: ${starters.away}`,
-    `• ${homeLabel}: ${starters.home}`,
-  ])
+    awayTeam,
+    homeTeam,
+    commenceTime,
+    sportContextLabelFromKey(sportKey),
+    [
+      'Confirmed Starters:',
+      `• ${awayLabel}: ${starters.away}`,
+      `• ${homeLabel}: ${starters.home}`,
+    ],
+  )
 }
 
 export function buildConfirmedStartersCaption(
   awayTeam: string,
   homeTeam: string,
+  commenceTime: string,
   sportKey: string,
   starters: ConfirmedStarters,
   _pick?: OddsPick | null,
 ): string {
   const awayLabel = shortDisplayName(awayTeam)
   const homeLabel = shortDisplayName(homeTeam)
-  const sportLabel = sportContextLabelFromKey(sportKey)
-  const header = sportLabel ? `✅ Confirmed Starters - ${sportLabel}` : '✅ Confirmed Starters'
-  return joinCaptionLines([
-    header,
-    '',
-    `• ${awayLabel}: ${starters.away}`,
-    `• ${homeLabel}: ${starters.home}`,
-  ])
+  return joinScottAlertCaption(
+    '✅ Confirmed Starters',
+    awayTeam,
+    homeTeam,
+    commenceTime,
+    sportContextLabelFromKey(sportKey),
+    [
+      `• ${awayLabel}: ${starters.away}`,
+      `• ${homeLabel}: ${starters.home}`,
+    ],
+  )
 }
 
 export function buildInjuryImpactCaption(
-  _awayTeam: string,
-  _homeTeam: string,
-  _commenceTime: string,
+  awayTeam: string,
+  homeTeam: string,
+  commenceTime: string,
   player: { name: string; status: string },
   pick: OddsPick,
+  sportKey = '',
 ): string {
-  return joinCaptionLines([
+  return joinScottAlertCaption(
     SITUATIONAL_LEAN_HEADER,
-    '',
-    formatPickInlineLine(pick),
-    '',
-    buildInjurySituationLine(player),
-    buildInjuryLeanLine(pick),
-  ])
+    awayTeam,
+    homeTeam,
+    commenceTime,
+    sportContextLabelFromKey(sportKey || pick.sportKey),
+    [
+      formatPickInlineLine(pick),
+      '',
+      buildInjurySituationLine(player),
+      buildInjuryLeanLine(pick),
+    ],
+  )
 }
 
 export function buildRestTravelEdgeCaption(
-  _awayTeam: string,
-  _homeTeam: string,
-  _commenceTime: string,
+  awayTeam: string,
+  homeTeam: string,
+  commenceTime: string,
   restTravel: RestTravelMatchup,
   pick: OddsPick,
+  sportKey = '',
 ): string {
-  return joinCaptionLines([
+  return joinScottAlertCaption(
     SITUATIONAL_LEAN_HEADER,
-    '',
-    formatPickInlineLine(pick),
-    '',
-    buildRestTravelSituationLine(restTravel),
-    buildRestTravelLeanLine(restTravel, pick),
-  ])
+    awayTeam,
+    homeTeam,
+    commenceTime,
+    sportContextLabelFromKey(sportKey || pick.sportKey),
+    [
+      formatPickInlineLine(pick),
+      '',
+      buildRestTravelSituationLine(restTravel),
+      buildRestTravelLeanLine(restTravel, pick),
+    ],
+  )
 }
 
 export function buildFadeThePublicCaption(
   awayTeam: string,
   homeTeam: string,
+  commenceTime: string,
   movedTeamLine: string,
   publicSideLine: string,
   sportKey = '',
 ): string {
-  const sportLabel = sportContextLabelFromKey(sportKey)
-  const header = sportLabel ? `🚫 Fade the Public - ${sportLabel}` : '🚫 Fade the Public'
-  return joinCaptionLines([
-    header,
-    '',
-    formatMatchupParen(awayTeam, homeTeam, ''),
-    '',
-    `Line moved toward ${movedTeamLine} while public betting is heavy on ${publicSideLine}.`,
-  ])
+  return joinScottAlertCaption(
+    '🚫 Fade the Public',
+    awayTeam,
+    homeTeam,
+    commenceTime,
+    sportContextLabelFromKey(sportKey),
+    [
+      `Line moved toward ${movedTeamLine} while public betting is heavy on ${publicSideLine}.`,
+    ],
+  )
 }
 
 export function buildCfbRankedHomeDogCaption(
@@ -376,19 +387,23 @@ export function buildCfbRankedHomeDogCaption(
   homeTeam: string,
   commenceTime: string,
   pick: OddsPick,
+  sportKey = '',
 ): string {
   const home = shortDisplayName(homeTeam)
   const away = shortDisplayName(awayTeam)
-  return joinCaptionLines([
+  return joinScottAlertCaption(
     '🏛️ CFB Situational Alert · Ranked Road Trap',
-    '',
-    formatMatchupParen(awayTeam, homeTeam, commenceTime),
-    '',
-    `Ranked ${away} heads on the road into an unranked home spot against ${home}.`,
-    `Classic college trap: unranked home dogs in conference action historically cover at an elevated clip when public money flows heavily to the ranked brand name.`,
-    '',
-    formatOddsPickLine(pick),
-  ])
+    awayTeam,
+    homeTeam,
+    commenceTime,
+    sportContextLabelFromKey(sportKey || pick.sportKey) || 'NCAAF',
+    [
+      `Ranked ${away} heads on the road into an unranked home spot against ${home}.`,
+      'Classic college trap: unranked home dogs in conference action historically cover at an elevated clip when public money flows heavily to the ranked brand name.',
+      '',
+      formatPickInlineLine(pick),
+    ],
+  )
 }
 
 export function buildCfbServiceAcademyUnderCaption(
@@ -396,16 +411,20 @@ export function buildCfbServiceAcademyUnderCaption(
   homeTeam: string,
   commenceTime: string,
   pick: OddsPick,
+  sportKey = '',
 ): string {
-  return joinCaptionLines([
+  return joinScottAlertCaption(
     '🪖 CFB Service Academy · Tempo & Total Spot',
-    '',
-    formatMatchupParen(awayTeam, homeTeam, commenceTime),
-    '',
-    'Heavy flexbone/triple-option rushing attack controls game flow, drains the play clock, and drastically limits total possessions.',
-    '',
-    formatOddsPickLine(pick),
-  ])
+    awayTeam,
+    homeTeam,
+    commenceTime,
+    sportContextLabelFromKey(sportKey || pick.sportKey) || 'NCAAF',
+    [
+      'Heavy flexbone/triple-option rushing attack controls game flow, drains the play clock, and drastically limits total possessions.',
+      '',
+      formatPickInlineLine(pick),
+    ],
+  )
 }
 
 export function buildCfbLookaheadTrapCaption(
@@ -414,17 +433,21 @@ export function buildCfbLookaheadTrapCaption(
   commenceTime: string,
   favoredTeam: string,
   pick: OddsPick,
+  sportKey = '',
 ): string {
   const fav = shortDisplayName(favoredTeam)
-  return joinCaptionLines([
+  return joinScottAlertCaption(
     '⚠️ CFB Lookahead Spot',
-    '',
-    formatMatchupParen(awayTeam, homeTeam, commenceTime),
-    '',
-    `${fav} faces a dangerous sandwich spot on the schedule between major national showdowns. Lookahead games often result in lethargic starts and backdoor cover vulnerability.`,
-    '',
-    formatOddsPickLine(pick),
-  ])
+    awayTeam,
+    homeTeam,
+    commenceTime,
+    sportContextLabelFromKey(sportKey || pick.sportKey) || 'NCAAF',
+    [
+      `${fav} faces a dangerous sandwich spot on the schedule between major national showdowns. Lookahead games often result in lethargic starts and backdoor cover vulnerability.`,
+      '',
+      formatPickInlineLine(pick),
+    ],
+  )
 }
 
 export function contextAlertCaption(candidate: ContextAlertCandidate): string {
@@ -435,12 +458,14 @@ export function contextAlertCaption(candidate: ContextAlertCandidate): string {
         candidate.homeTeam,
         candidate.commenceTime,
         candidate.starters!,
+        candidate.sportKey,
         candidate.pick,
       )
     case 'confirmed_starters':
       return buildConfirmedStartersCaption(
         candidate.awayTeam,
         candidate.homeTeam,
+        candidate.commenceTime,
         candidate.sportKey,
         candidate.starters!,
         candidate.pick,
@@ -452,6 +477,7 @@ export function contextAlertCaption(candidate: ContextAlertCandidate): string {
         candidate.commenceTime,
         candidate.injuryPlayer!,
         candidate.pick,
+        candidate.sportKey,
       )
     case 'rest_travel_edge':
       return buildRestTravelEdgeCaption(
@@ -460,11 +486,13 @@ export function contextAlertCaption(candidate: ContextAlertCandidate): string {
         candidate.commenceTime,
         candidate.restTravel!,
         candidate.pick,
+        candidate.sportKey,
       )
     case 'fade_the_public':
       return buildFadeThePublicCaption(
         candidate.awayTeam,
         candidate.homeTeam,
+        candidate.commenceTime,
         candidate.fadeDetails?.movedTeamLine || candidate.pick.pickName,
         candidate.fadeDetails?.publicSideLine || 'opposing side',
         candidate.sportKey,
@@ -475,6 +503,7 @@ export function contextAlertCaption(candidate: ContextAlertCandidate): string {
         candidate.homeTeam,
         candidate.commenceTime,
         candidate.pick,
+        candidate.sportKey,
       )
     case 'cfb_service_academy_under':
       return buildCfbServiceAcademyUnderCaption(
@@ -482,6 +511,7 @@ export function contextAlertCaption(candidate: ContextAlertCandidate): string {
         candidate.homeTeam,
         candidate.commenceTime,
         candidate.pick,
+        candidate.sportKey,
       )
     case 'cfb_lookahead_trap':
       return buildCfbLookaheadTrapCaption(
@@ -490,6 +520,7 @@ export function contextAlertCaption(candidate: ContextAlertCandidate): string {
         candidate.commenceTime,
         candidate.fadeDetails?.movedTeamLine || candidate.awayTeam,
         candidate.pick,
+        candidate.sportKey,
       )
     default:
       return ''

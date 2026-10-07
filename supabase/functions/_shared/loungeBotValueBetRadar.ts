@@ -15,7 +15,7 @@ import {
   findPlusEvOpportunities,
   formatOddsPickLine,
   formatScottEvDetailLine,
-  formatScottPickContextSuffix,
+  joinScottAlertCaption,
   resolveScottCategoryLabel,
   type OddsEvent,
   type OddsPick,
@@ -38,7 +38,6 @@ import { fetchRundownContextNote, lineMovementMovedTeam } from './loungeBotRundo
 import { hasRecentEventPickAlert } from './loungeBotPublishDedupe.ts'
 
 const RADAR_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 'totals']
-const CAPTION_MAX = 2000
 const DEFAULT_MIN_RADAR_EV_PCT = 5
 const DEFAULT_MAX_RADAR_POSTS_PER_DAY = 12
 const MIN_RADAR_PICKS = 1
@@ -53,11 +52,6 @@ export type RadarPick = OddsPick & {
   calendarPriority: number
   /** @deprecated use coverageRank */
   popularityRank: number
-}
-
-function joinCaptionLines(lines: string[]): string {
-  const cap = lines.join('\n').trim()
-  return cap.length <= CAPTION_MAX ? cap : `${cap.slice(0, CAPTION_MAX - 3)}...`
 }
 
 /** PT half-hour bucket for dedupe (YYYY-MM-DDTHH:00|30). */
@@ -160,27 +154,26 @@ export function selectValueBetRadarPicks(
   return picked.slice(0, maxPicks)
 }
 
-function formatRadarPickLine(pick: RadarPick, inlineNote?: string): string {
-  const ctx = formatScottPickContextSuffix({
-    awayTeam: pick.awayTeam,
-    homeTeam: pick.homeTeam,
-    commenceTime: pick.commenceTime,
-    categoryLabel: pick.categoryLabel,
-  })
-  const note = inlineNote?.trim()
-  const suffix = note ? ` · ${note}` : ''
-  return `• ${formatOddsPickLine(pick)} @ ${pick.bookTitle}${ctx}\n  ${formatScottEvDetailLine(pick)}${suffix}`
-}
-
 export function buildValueBetRadarCaption(
   picks: RadarPick[],
   inlineNotes?: Map<string, string>,
 ): string {
-  return joinCaptionLines([
+  const pick = picks[0]
+  if (!pick) return ''
+  const note = inlineNotes?.get(radarEventKey(pick))?.trim()
+  const body = [
+    `${formatOddsPickLine(pick)} @ ${pick.bookTitle}`,
+    formatScottEvDetailLine(pick),
+  ]
+  if (note) body.push('', note)
+  return joinScottAlertCaption(
     '📡 Value Bet Radar · one look',
-    '',
-    ...picks.map((pick) => formatRadarPickLine(pick, inlineNotes?.get(radarEventKey(pick)))),
-  ])
+    pick.awayTeam,
+    pick.homeTeam,
+    pick.commenceTime,
+    pick.categoryLabel,
+    body,
+  )
 }
 
 async function hasRadarDedupePublished(

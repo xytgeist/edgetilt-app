@@ -9,6 +9,7 @@ import {
   formatOddsPickLine,
   formatPlusEvConsensusBullet,
   formatScottEvDetailLine,
+  formatScottSportContextLines,
   shortDisplayName,
   type OddsEvent,
   type OddsPick,
@@ -278,12 +279,17 @@ export function buildInGameEdgeCaption(
   pick: OddsPick,
   opts: { categoryLabel?: string; scoreLine?: string; periodLabel?: string; contextNote?: string },
 ): string {
-  const matchup = opts.scoreLine || `${shortDisplayName(pick.awayTeam)} vs ${shortDisplayName(pick.homeTeam)}`
   const pickLine = formatOddsPickLine(pick)
   const period = opts.periodLabel?.trim()
   const header = period ? `🔴 LIVE In-Game Edge • ${period}` : '🔴 LIVE In-Game Edge'
-  const sport = String(opts.categoryLabel || '').trim()
-  const contextLines = sport ? [sport, matchup] : [matchup]
+  const contextLines = formatScottSportContextLines(
+    pick.awayTeam,
+    pick.homeTeam,
+    pick.commenceTime,
+    opts.categoryLabel,
+  )
+  const score = String(opts.scoreLine || '').trim()
+  if (score) contextLines.push(score)
 
   const lines = [
     header,
@@ -321,13 +327,22 @@ export function buildPeriodReportCaption(
     contextNote?: string
   },
 ): string {
-  const away = shortDisplayName(String(event.away_team || 'Away'))
-  const home = shortDisplayName(String(event.home_team || 'Home'))
-  const matchup = opts.scoreLine || `${away} vs ${home}`
-  const header = `📊 ${opts.periodLabel} - ${matchup}`
+  const away = String(event.away_team || 'Away')
+  const home = String(event.home_team || 'Home')
+  const header = `📊 ${opts.periodLabel}`
+  const contextLines = formatScottSportContextLines(
+    away,
+    home,
+    String(event.commence_time || ''),
+    opts.categoryLabel,
+  )
+  const score = String(opts.scoreLine || '').trim()
+  if (score) contextLines.push(score)
 
   const lines = [
     header,
+    '',
+    ...contextLines,
     '',
     periodReportPicksHeading(opts.periodLabel),
   ]

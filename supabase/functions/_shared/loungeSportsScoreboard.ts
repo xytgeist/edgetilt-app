@@ -3094,7 +3094,7 @@ function compactOddsBooksFromEvent(ev: OddsEventRow, homeName: string, awayName:
   }
   // Compacted rows are tiny (~0.2KB each). Room for Odds retail + Rundown shop books.
   const out = pinnacleRow ? [pinnacleRow, ...rows] : rows
-  return out.slice(0, 20)
+  return out.slice(0, 24)
 }
 
 /**
@@ -3203,6 +3203,21 @@ function shopRowsForGame(events: RundownEvent[], game: LoungeSportsGame): Lounge
   return []
 }
 
+const RUNDOWN_SHOP_BOOK_KEYS = new Set([
+  'circasports',
+  'circa',
+  'heritagesports',
+  'heritage',
+  'bet105',
+  'bookmaker',
+  'sportsbetting',
+  'betcris',
+  'youwager',
+  'matchbook',
+  'everygame',
+  'intertops',
+])
+
 function mergeRundownShopOdds(
   odds: LoungeSportsOddsRow[],
   shop: RundownShopOddsRow[],
@@ -3220,8 +3235,9 @@ function mergeRundownShopOdds(
   }
   const merged = [...byKey.values()]
   const pin = merged.filter((row) => /pinnacle/i.test(row.book))
-  const rest = merged.filter((row) => !/pinnacle/i.test(row.book))
-  return [...pin, ...rest].slice(0, 20)
+  const shopRows = merged.filter((row) => RUNDOWN_SHOP_BOOK_KEYS.has(shopBookKey(row.book)))
+  const rest = merged.filter((row) => !/pinnacle/i.test(row.book) && !RUNDOWN_SHOP_BOOK_KEYS.has(shopBookKey(row.book)))
+  return [...pin, ...shopRows, ...rest].slice(0, 24)
 }
 
 /** Fill missing / bogus 0-0 slate numbers from the Rundown shop when Odds is thin. */

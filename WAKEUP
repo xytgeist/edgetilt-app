@@ -122,6 +122,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Windows Theo ACTIVE TRACK 2026-10-07 ... Island cron arm + pg_net prune
+**SQL on test.** `live_activity_island_push` was firing every minute with **zero** tokens (1440 cron history writes/day, 246 job-startup-timeouts while Disk IO was already hot). Cron now arms on first Live Activity token and unschedules when the table is empty. Not a second odds poll ... APNs delivery after WKWebView dies. Daily prune also deletes `net._http_response` older than 3 days. Prod SQL not applied. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-07 ... Bet Tracker back (`1.4.1087`)
 **Web `1.4.1087`.** Tracker × / back restores the Sports Hub or game hub that opened it (session return snapshot). Direct `?tab=sports-bets` still lands on Lounge. No Edge. Marketing still **1.4.95**.
 

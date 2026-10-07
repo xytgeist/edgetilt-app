@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-07:** **Island cron arm + pg_net prune (test).** `live_activity_island_push` only schedules while `live_activity_push_tokens` has rows. Daily `cron_prune_job_run_details_daily` also prunes `net._http_response` (keep 3 days). SQL **`20261007150000` on test**. Prod not applied. No Edge redeploy.
 - **2026-10-07:** **Bet Tracker back / × (`1.4.1087`).** Remember the opener (hub filter + game id + href). Close restores that page instead of forcing Lounge `home`. No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **Promoted NFL hub slate flicker (`1.4.1086`).** Frontend **`test` → `main`** (`63a5362f`). Redeployed **`lounge-sports-scoreboard`** on **`jtjgtucumuoswnbauxry`**. Marketing still **1.4.95**.
 - **2026-10-07:** **NFL hub slate flicker (`1.4.1086`).** Board poll is 5 min unless a live game is on the open slate / hub / Island (then 10-15s `active` merge). Full payloads union with the current window so Rundown-only TNF cannot hide Sunday. Scoreboard always fetches Odds `/scores` (90s cache) even when Rundown has a day. Empty NFL/CFB week no longer flips on Tue/Wed. Redeploy **test** `lounge-sports-scoreboard`. Marketing still **1.4.95**.

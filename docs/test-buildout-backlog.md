@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-07:** **Promoted `1.4.1091`** (Golf Hub) + **`1.4.1090`** (league hub back) + Vite trailing-comma fix. Frontend **`test` → `main`** (`8f34313d`). Redeployed **`lounge-sports-scoreboard`** on **`jtjgtucumuoswnbauxry`**. Marketing still **1.4.95**.
 - **2026-10-07:** **Golf Hub (`1.4.1091`).** Tile/title PGA → Golf. Golf Hub paints fat ESPN cards (`LoungeGolfTournamentCard`: dates, course, purse, previous winner, live/final top 5). Tap opens `LoungeGolfTournamentHub` (Board + R1-R4 expand, Odds outrights, This week hole card). Wrapper in `LoungeGameHubModal` so golf never runs football hooks. All Hub + feed keep compact chips. Edge `lounge-sports-scoreboard` uses ESPN leaderboard API + golf detail (no Rundown). Tour tab skipped (OWGR/FedEx JSON 404). Light: `[data-lounge-golf-card]` / `[data-lounge-golf-hub]`. Redeploy **test** scoreboard. Marketing still **1.4.95**.
 - **2026-10-07:** **League hub back → Sports Hub (`1.4.1090`).** NFL/CFB/NHL/NBA/MLB/MLS/PGA slate chevron opens All Sports Hub. All Hub back still closes to Lounge. No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **Promoted `1.4.1089`** (PGA chips) + **`1.4.1088`** (market-file skip) + **`1.4.1087`** (Bet Tracker back). Frontend **`test` → `main`** (`d54ed792`). Redeployed **`lounge-sports-scoreboard`** + **`lounge-odds-poll`** + **`lounge-odds-ingest`** on **`jtjgtucumuoswnbauxry`**. Island SQL already on prod. Marketing still **1.4.95**.

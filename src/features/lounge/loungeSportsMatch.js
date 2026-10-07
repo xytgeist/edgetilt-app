@@ -100,6 +100,16 @@ const CFB_ABBREV_ALIASES = {
   NWU: 'NU',
   NWEST: 'NU',
   HOWARD: 'HOW',
+  NDSU: 'NDSU',
+  NDST: 'NDSU',
+  NDSTATE: 'NDSU',
+  ROBM: 'RMU',
+  ROBMOR: 'RMU',
+  RMU: 'RMU',
+  COLU: 'COLU',
+  CLMB: 'COLU',
+  CORN: 'COR',
+  COR: 'COR',
 }
 
 function resolveCfbCatalogAbbrev(raw) {
@@ -570,9 +580,14 @@ export function enrichLoungeSportsGame(game) {
       const espnId = String(side?.team_id ?? side?.espn_id ?? '').trim()
       if (!/^\d+$/.test(espnId)) return side
       const logo = `https://a.espncdn.com/i/teamlogos/ncaa/500/${espnId}.png`
+      const logoLight = `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${espnId}.png`
       const cur = String(side?.logo || '')
-      if (cur.startsWith('/sports/') || cur.includes(`/ncaa/500/${espnId}.png`)) return side
-      return { ...side, logo }
+      const keep = cur.startsWith('/sports/') || cur.includes(`/ncaa/500/${espnId}.png`)
+      return {
+        ...side,
+        logo: keep ? cur : logo,
+        logoLight: side?.logoLight || logoLight,
+      }
     }
     return {
       ...side,

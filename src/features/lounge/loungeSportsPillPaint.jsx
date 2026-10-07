@@ -60,21 +60,34 @@ function loungeTeamTop25Rank(side) {
 /**
  * `rankCorner` ('left' | 'right') opts into a small Top 25 badge on that top corner of the mark.
  */
+function ncaaEspnLogoSrc(side) {
+  const id = String(side?.team_id ?? side?.espn_id ?? '').trim()
+  if (!/^\d+$/.test(id)) return ''
+  return `https://a.espncdn.com/i/teamlogos/ncaa/500/${id}.png`
+}
+
 export function LoungeSportsTeamLogo({ side, treatment = 'halo', size = null, className = '', rankCorner = null }) {
   const rank = rankCorner ? loungeTeamTop25Rank(side) : null
   const defaultSrc = side?.logo || ''
   const lightSrc = side?.logoLight || ''
+  const espnSrc = ncaaEspnLogoSrc(side)
   const [lightFailed, setLightFailed] = useState(false)
+  const [srcFailed, setSrcFailed] = useState(false)
+  const [gone, setGone] = useState(false)
   useEffect(() => {
     setLightFailed(false)
-  }, [lightSrc, treatment, defaultSrc])
+    setSrcFailed(false)
+    setGone(false)
+  }, [lightSrc, treatment, defaultSrc, espnSrc])
   const wantAssetLight = Boolean(treatment === 'light' && lightSrc && !lightFailed)
-  const src = wantAssetLight ? lightSrc : defaultSrc
+  let src = wantAssetLight ? lightSrc : defaultSrc
+  if (!gone && srcFailed && espnSrc && espnSrc !== src) src = espnSrc
+  if (gone) src = ''
   const paintSrc = useWebkitResumeSrc(src)
   const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
   let logoTone = 'halo'
-  if (wantAssetLight) logoTone = 'light'
-  else if (treatment === 'light') logoTone = 'silhouette'
+  if (wantAssetLight && !srcFailed) logoTone = 'light'
+  else if (treatment === 'light' && !espnSrc) logoTone = 'silhouette'
   return (
     <span
       data-lounge-game-pill-mark
@@ -89,12 +102,16 @@ export function LoungeSportsTeamLogo({ side, treatment = 'halo', size = null, cl
           data-lounge-game-pill-logo={logoTone}
           className="h-full w-full object-contain"
           decoding="async"
-          onError={(ev) => {
-            if (wantAssetLight) {
+          onError={() => {
+            if (wantAssetLight && !srcFailed) {
               setLightFailed(true)
               return
             }
-            void ev
+            if (espnSrc && src !== espnSrc) {
+              setSrcFailed(true)
+              return
+            }
+            setGone(true)
           }}
         />
       ) : (

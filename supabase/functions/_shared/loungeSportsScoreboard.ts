@@ -68,6 +68,16 @@ const CFB_ABBREV_ALIASES: Record<string, string> = {
   NWU: 'NU',
   NWEST: 'NU',
   HOWARD: 'HOW',
+  NDSU: 'NDSU',
+  NDST: 'NDSU',
+  NDSTATE: 'NDSU',
+  ROBM: 'RMU',
+  ROBMOR: 'RMU',
+  RMU: 'RMU',
+  COLU: 'COLU',
+  CLMB: 'COLU',
+  CORN: 'COR',
+  COR: 'COR',
 }
 
 function foldCfbName(value: string): string {
@@ -339,6 +349,8 @@ function espnLogoSlug(league: string, abbrev: string): string {
     const catalog = resolveCfbCatalogAbbrev(a)
     const espnId = CFB_ESPN_BY_ABBREV[catalog] || CFB_ESPN_BY_ABBREV[a.replace(/[^A-Z0-9-]/g, '')] || CFB_ESPN_BY_ABBREV[a]
     if (espnId) return espnId
+    // ESPN college marks are numeric ids … a letter slug 404s and paints a blank pill.
+    return ''
   }
   const lower = a.toLowerCase()
   if (league === 'nfl' && (lower === 'was' || lower === 'wsh')) return 'wsh'

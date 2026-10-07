@@ -3666,15 +3666,27 @@ html.light [data-lounge-pga-pill] .text-white\/60 {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(11rem, 0.8fr);
   gap: 0.85rem 1.1rem;
   padding: 0.95rem 1rem 1rem;
   box-sizing: border-box;
 }
+[data-lounge-golf-card-grid='split'] {
+  grid-template-columns: minmax(0, 1.2fr) minmax(11rem, 0.8fr);
+}
+[data-lounge-golf-card-grid='stack'] {
+  grid-template-columns: minmax(0, 1fr);
+}
 @media (max-width: 520px) {
-  [data-lounge-golf-card-grid] {
+  [data-lounge-golf-card-grid='split'] {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+[data-lounge-golf-card-chips] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.15rem;
 }
 [data-lounge-golf-card-copy],
 [data-lounge-golf-card-board] {

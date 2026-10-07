@@ -31,10 +31,12 @@ export default function LoungeGolfTournamentCard({ game, onOpen }) {
       aria-label={`${title} ${statusLine}`}
     >
       <span data-lounge-golf-card-wash aria-hidden="true" />
-      <span data-lounge-golf-card-grid>
+      <span data-lounge-golf-card-grid={leaders.length ? 'split' : 'stack'}>
         <span data-lounge-golf-card-copy>
-          {game.status === 'in' ? <span data-lounge-golf-card-live>Live</span> : null}
-          {golf.tour_label ? <span data-lounge-golf-card-tour>{golf.tour_label}</span> : null}
+          <span data-lounge-golf-card-chips>
+            {game.status === 'in' ? <span data-lounge-golf-card-live>Live</span> : null}
+            {golf.tour_label ? <span data-lounge-golf-card-tour>{golf.tour_label}</span> : null}
+          </span>
           <span data-lounge-golf-card-title>{title}</span>
           <span data-lounge-golf-card-meta>
             {[dates, broadcast].filter(Boolean).join(' · ')}
@@ -44,10 +46,12 @@ export default function LoungeGolfTournamentCard({ game, onOpen }) {
           {[purse, winner].filter(Boolean).length ? (
             <span data-lounge-golf-card-meta>{[purse, winner].filter(Boolean).join(' · ')}</span>
           ) : null}
-          <span data-lounge-golf-card-status>{statusLine}</span>
+          <span data-lounge-golf-card-status>
+            {leaders.length ? statusLine : [statusLine, game.status === 'pre' ? 'Field set' : 'Leaderboard pending'].filter(Boolean).join(' · ')}
+          </span>
         </span>
-        <span data-lounge-golf-card-board>
-          {leaders.length ? (
+        {leaders.length ? (
+          <span data-lounge-golf-card-board>
             <ol>
               {leaders.map((row, i) => (
                 <li key={row.player_id || `${row.name}-${i}`}>
@@ -58,12 +62,8 @@ export default function LoungeGolfTournamentCard({ game, onOpen }) {
                 </li>
               ))}
             </ol>
-          ) : (
-            <span data-lounge-golf-card-empty>
-              {game.status === 'pre' ? 'Field set' : 'Leaderboard pending'}
-            </span>
-          )}
-        </span>
+          </span>
+        ) : null}
       </span>
     </button>
   )

@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-07:** **Golf one section (`1.4.1094`).** All golf_* rows share one Golf header on Sports Hub and Golf Hub. Fat cards on All Hub; pregame hides the empty top-5 column. Tour chip stays on the card. No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **Promoted `1.4.1093`** (Golf multi-tour + flags) + **`1.4.1092`** (last-week finals). Frontend **`test` → `main`** (`3be4dc5b`). Redeployed **`lounge-sports-scoreboard`** on **`jtjgtucumuoswnbauxry`**. Marketing still **1.4.95**.
 - **2026-10-07:** **Golf multi-tour + flags (`1.4.1093`).** ESPN slugs `pga` / `lpga` / `champions-tour` / `eur` / `ntw`. Hub sections by tour. Headshot + flag on card, compact pill, and Board. `isPgaGame` is any `golf_*`. Redeploy **test** `lounge-sports-scoreboard`. Marketing still **1.4.95**.
 - **2026-10-07:** **Golf last-week card (`1.4.1092`).** Slate hydrates completed ESPN events from `pga/scoreboard?dates=` (leaderboard ignores dates). Bank of Utah stays on Golf Hub after Oct 4. To-par prefers `displayValue`. Client `isLoungeSportsCurrentSlateGame` keeps golf 12d back / 16d ahead. Tour JSON still missing. Redeploy **test** `lounge-sports-scoreboard`. Marketing still **1.4.95**.

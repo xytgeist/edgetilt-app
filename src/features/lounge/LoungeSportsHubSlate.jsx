@@ -175,7 +175,7 @@ function sportSectionLabel(sportKey) {
   if (sk.includes('mlb')) return 'MLB'
   if (sk.includes('nhl')) return 'NHL'
   if (sk.includes('soccer_usa_mls') || sk === 'mls') return 'MLS'
-  if (sk.startsWith('golf_') || sk === 'pga') return 'Golf'
+  if (sk.startsWith('golf_') || sk === 'pga' || sk === 'golf') return 'Golf'
   if (sk.includes('mma') || sk.includes('ufc')) return 'MMA'
   if (sk.includes('soccer')) return 'Soccer'
   return String(sportKey || 'Sports').replace(/_/g, ' ')
@@ -235,29 +235,11 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
     if (nbaHub) return [{ key: 'nba', label: 'NBA', games }]
     if (mlbHub) return [{ key: 'mlb', label: 'MLB', games }]
     if (mlsHub) return [{ key: 'mls', label: 'MLS', games }]
-    if (pgaHub) {
-      const order = ['golf_pga', 'golf_lpga', 'golf_champions', 'golf_dp_world', 'golf_korn_ferry']
-      const byTour = new Map()
-      for (const game of games) {
-        const key = String(game?.sport_key || 'golf_pga')
-        if (!byTour.has(key)) byTour.set(key, [])
-        byTour.get(key).push(game)
-      }
-      return [...byTour.entries()]
-        .sort((a, b) => {
-          const ia = order.indexOf(a[0])
-          const ib = order.indexOf(b[0])
-          return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)
-        })
-        .map(([key, list]) => ({
-          key,
-          label: list[0]?.golf?.tour_label || list[0]?.sport_label || 'Golf',
-          games: list,
-        }))
-    }
+    if (pgaHub) return [{ key: 'golf', label: 'Golf', games }]
     const bySport = new Map()
     for (const game of games) {
-      const key = String(game?.sport_key || 'other')
+      const raw = String(game?.sport_key || 'other')
+      const key = raw.startsWith('golf_') ? 'golf' : raw
       if (!bySport.has(key)) bySport.set(key, [])
       bySport.get(key).push(game)
     }
@@ -391,7 +373,7 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
                 <ul className={phoneLandscape && !embedded ? 'grid grid-cols-2 gap-2' : 'space-y-2'}>
                   {section.games.map((game) => (
                     <li key={game.id}>
-                      {pgaHub && isPgaGame(game) ? (
+                      {isPgaGame(game) ? (
                         <LoungeGolfTournamentCard game={game} onOpen={(next) => sports.openHub?.(next)} />
                       ) : (
                         <LoungeGameScorePill game={game} className="mt-0" />

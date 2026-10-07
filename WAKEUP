@@ -122,8 +122,11 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-06 ... promote 1.4.1085
+**Web `1.4.1085`.** Promoted **`test` → `main`** (`882d0c15`) 2026-10-06. Also carried **`1.4.1084`** (`0a71b8ff`). No new Edge for 1085. 1084 poll/ingest was already on prod. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-06 ... league hubs keep their slates (`1.4.1085`)
-**Web `1.4.1085`.** All Sports Hub stays PT today only. NFL / CFB / NHL / NBA / MLB / MLS / PGA hubs show their own slates again (1.4.1077 had clipped the nightly ones to today). No Edge. Marketing still **1.4.95**.
+**Web `1.4.1085`.** All Sports Hub stays PT today only. NFL / CFB / NHL / NBA / MLB / MLS / PGA hubs show their own slates again (1.4.1077 had clipped the nightly ones to today). No Edge. Marketing still **1.4.95**. Promoted 2026-10-06.
 
 ### Windows Theo ACTIVE TRACK 2026-10-06 ... Signal captions sport + matchup + kickoff
 **Web `1.4.1084`.** Sharpe Signal posts always print sport, Away vs Home, and kickoff ET before the pick. Value Bet Radar was dropping the game whenever sport/time existed (`Over 7.5 @ FanDuel · MLB · Sun 4PM ET`). Fade / Situational Lean were missing opponent and start. Keep the 2-minute gap. Redeployed **`lounge-odds-poll`** + **`lounge-odds-ingest`** on test + prod. Marketing still **1.4.95**.

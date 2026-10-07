@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **Promoted league-hub slates (`1.4.1085`) + Signal captions (`1.4.1084`).** Frontend **`test` → `main`** (`882d0c15`). No new Edge. Marketing still **1.4.95**.
 - **2026-10-06:** **League hubs keep their slates (`1.4.1085`).** All Sports Hub (`filter=all`) stays PT today + live. NFL/CFB week windows and NHL/NBA/MLB/MLS/PGA boards are not clipped to today. No Edge. Marketing still **1.4.95**.
 - **2026-10-06:** **Signal captions always sport + matchup + kickoff (`1.4.1084`).** Value Bet Radar one-look layout names the game (totals were printing `Over 7.5` + MLB with no teams). Fade / Situational Lean / starters / live / Coffee featured+radar bullets use the same stamp. Redeployed **`lounge-odds-poll`** + **`lounge-odds-ingest`** on test + prod.
 - **2026-10-06:** **Promoted CFB FCS logos (`1.4.1083`) + Fade dedupe (`1.4.1082`).** Frontend **`test` → `main`** (`860c08b6`). Redeployed **`lounge-sports-scoreboard`** on **`jtjgtucumuoswnbauxry`**. `20261007040000` was already on prod. Marketing still **1.4.95**.

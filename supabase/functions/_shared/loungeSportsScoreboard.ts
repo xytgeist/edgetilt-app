@@ -334,6 +334,27 @@ export type LoungeSportsGame = {
   broadcast_url?: string | null
   /** Pinnacle game total (share card). */
   total?: number | null
+  /** PGA tournament chip (not a home/away matchup). */
+  golf?: LoungeSportsGolfCard | null
+}
+
+export type LoungeSportsGolfLeader = {
+  name: string
+  short_name: string
+  score: number | null
+  headshot: string
+  player_id: string | null
+}
+
+export type LoungeSportsGolfCard = {
+  tournament: string
+  venue: string | null
+  location: string | null
+  broadcast: string | null
+  round: number | null
+  /** Live/final (or anyone not even-par pre-tee) … hide a fake all-E field. */
+  show_leaders: boolean
+  leaders: LoungeSportsGolfLeader[]
 }
 
 function espnLogo(league: string, abbrev: string): string {
@@ -1597,7 +1618,7 @@ export async function buildLoungeSportsScoreboard(
     })
   }
 
-  // PGA Tour tournaments … not matchups. One card per active ESPN event (leader vs Field).
+  // PGA Tour tournaments … not matchups. One card per ESPN event (`golf` chip + leader/Field sides).
   try {
     const pgaGames = await loadEspnPgaTournamentGames()
     if (pgaGames.length) {
@@ -1906,6 +1927,38 @@ function golferAbbrev(name: string): string {
   return last.slice(0, 3).toUpperCase()
 }
 
+function golferHeadshot(playerId: string): string {
+  const id = String(playerId || '').trim()
+  if (!id || !/^\d+$/.test(id)) return ''
+  return `https://a.espncdn.com/i/headshots/golf/players/full/${id}.png`
+}
+
+function golferShortName(full: string, short: string): string {
+  const s = String(short || '').trim()
+  if (s) return s
+  const parts = String(full || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length < 2) return full || 'Golfer'
+  return `${parts[0].slice(0, 1)}. ${parts.slice(1).join(' ')}`
+}
+
+function parseGolfCompetitor(row: Record<string, unknown> | null): LoungeSportsGolfLeader | null {
+  if (!row) return null
+  const athlete = (row.athlete && typeof row.athlete === 'object')
+    ? row.athlete as Record<string, unknown>
+    : {}
+  const name = String(athlete.displayName || athlete.fullName || row.displayName || '').trim()
+  if (!name) return null
+  const playerId = String(athlete.id || row.id || '').replace(/\D/g, '') || null
+  const fromAthlete = String(athlete.headshot || '').trim()
+  return {
+    name,
+    short_name: golferShortName(name, String(athlete.shortName || '')),
+    score: parseGolfToPar(row.score ?? row.displayValue),
+    headshot: fromAthlete || golferHeadshot(playerId || ''),
+    player_id: playerId,
+  }
+}
+
 function classifyEspnGolfStatus(status: Record<string, unknown> | undefined): {
   status: LoungeSportsGame['status']
   label: string
@@ -1927,7 +1980,7 @@ function classifyEspnGolfStatus(status: Record<string, unknown> | undefined): {
 
 /**
  * PGA Tour is not a home/away sport on Odds API (outrights only).
- * Build one slate card per ESPN tournament: leader (away) vs Field (home).
+ * One slate card per ESPN tournament … chip reads `golf`, hub still has leader/Field sides.
  */
 async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
   const cacheKey = 'pga:active'
@@ -1958,21 +2011,36 @@ async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
     const competitors = Array.isArray(comps?.competitors)
       ? comps!.competitors as Array<Record<string, unknown>>
       : []
-    // ESPN ranks golfers; rank 1 is the leader when available.
     const ranked = [...competitors].sort((a, b) => {
-      const ra = Number(a.order ?? a.rank ?? 999)
-      const rb = Number(b.order ?? b.rank ?? 999)
-      return ra - rb
+      const sa = parseGolfToPar(a.score ?? a.displayValue)
+      const sb = parseGolfToPar(b.score ?? b.displayValue)
+      if (sa != null && sb != null && sa !== sb) return sa - sb
+      if (sa != null && sb == null) return -1
+      if (sa == null && sb != null) return 1
+      return Number(a.order ?? 999) - Number(b.order ?? 999)
     })
-    const leader = ranked[0] || null
-    const athlete = (leader?.athlete && typeof leader.athlete === 'object')
-      ? leader.athlete as Record<string, unknown>
-      : {}
-    const leaderName = String(
-      athlete.displayName || athlete.fullName || leader?.displayName || 'Leader',
-    ).trim()
-    const leaderScore = parseGolfToPar(leader?.score ?? leader?.displayValue)
-    const headshot = String(athlete.headshot || athlete.flag?.href || '').trim()
+    const leaders = ranked.slice(0, 3).map((row) => parseGolfCompetitor(row)).filter(Boolean) as LoungeSportsGolfLeader[]
+    const showLeaders = status !== 'pre' || leaders.some((row) => row.score != null && row.score !== 0)
+    const leader = leaders[0] || null
+    const leaderName = leader?.name || 'Leader'
+    const leaderScore = leader?.score ?? null
+    const venueObj = (comps?.venue && typeof comps.venue === 'object')
+      ? comps.venue as Record<string, unknown>
+      : (ev.venues && Array.isArray(ev.venues) && ev.venues[0] && typeof ev.venues[0] === 'object')
+        ? ev.venues[0] as Record<string, unknown>
+        : null
+    const address = (venueObj?.address && typeof venueObj.address === 'object')
+      ? venueObj.address as Record<string, unknown>
+      : null
+    const venueName = String(venueObj?.fullName || venueObj?.name || '').trim() || null
+    const location = [address?.city, address?.state].filter(Boolean).join(', ') || null
+    const broadcast = String(
+      comps?.broadcast
+      || (Array.isArray(comps?.broadcasts) && comps.broadcasts[0] && typeof comps.broadcasts[0] === 'object'
+        ? (comps.broadcasts[0] as { names?: string[] }).names?.[0]
+        : '')
+      || '',
+    ).trim() || null
     const roundNum = Number(
       (statusObj?.period != null ? statusObj.period : null)
       ?? (comps?.status && typeof comps.status === 'object'
@@ -1989,18 +2057,18 @@ async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
       name: leaderName,
       mascot: '',
       abbrev: golferAbbrev(leaderName),
-      logo: headshot,
+      logo: leader?.headshot || '',
       score: leaderScore,
       linescores: [],
       spread: null,
       ml: null,
       record: null,
-      team_id: Number(athlete.id) > 0 ? Number(athlete.id) : null,
+      team_id: leader?.player_id && Number(leader.player_id) > 0 ? Number(leader.player_id) : null,
     }
     const home: LoungeSportsGameSide = {
       name: tourneyName,
       mascot: '',
-      abbrev: 'FLD',
+      abbrev: 'PGA',
       logo: '',
       score: null,
       linescores: [],
@@ -2018,7 +2086,7 @@ async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
       commence_time: commence,
       away,
       home,
-      aliases: [leaderName, tourneyName, 'PGA', 'golf'].filter(Boolean),
+      aliases: [...leaders.map((row) => row.name), tourneyName, 'PGA', 'golf'].filter(Boolean),
       live: status === 'in'
         ? {
           clock: '',
@@ -2035,9 +2103,18 @@ async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
           status_detail: label,
         }
         : null,
-      broadcast: null,
+      broadcast,
       broadcast_url: null,
       total: null,
+      golf: {
+        tournament: tourneyName,
+        venue: venueName,
+        location,
+        broadcast,
+        round: Number.isFinite(roundNum) && roundNum > 0 ? roundNum : null,
+        show_leaders: showLeaders,
+        leaders,
+      },
     })
   }
 

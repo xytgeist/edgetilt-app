@@ -2,6 +2,7 @@ import {
   LoungeSportsTeamLogo,
   useLoungeSportsPillWashAndLogos,
 } from './loungeSportsPillPaint.jsx'
+import { isPgaGame } from './loungeSportsSlateWindow.js'
 
 function kickoffParts(commenceTime) {
   if (!commenceTime) return { date: '', time: '' }
@@ -19,7 +20,8 @@ function kickoffParts(commenceTime) {
  * @param {{ game: object, active?: boolean, onClick?: () => void }} props
  */
 export default function LoungeGameHubPillChip({ game, active = false, onClick }) {
-  const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
+  const pga = isPgaGame(game)
+  const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(pga ? null : game)
   const pre = game.status === 'pre'
   const { date, time } = pre ? kickoffParts(game.commence_time) : { date: '', time: '' }
   const awayScore = game.away?.score
@@ -30,6 +32,25 @@ export default function LoungeGameHubPillChip({ game, active = false, onClick })
       : game.status === 'in'
         ? game.status_label || 'Live'
         : time || game.status_label || ''
+  if (pga) {
+    const title = String(game.golf?.tournament || game.home?.name || 'PGA').trim()
+    return (
+      <button
+        type="button"
+        data-lounge-hub-game-pill={active ? 'active' : 'idle'}
+        data-lounge-hub-pga-pill
+        onClick={onClick}
+        className="relative isolate shrink-0 touch-manipulation overflow-hidden rounded-full border text-left [-webkit-tap-highlight-color:transparent]"
+        aria-current={active ? 'true' : undefined}
+        aria-label={title}
+      >
+        <span data-lounge-hub-pga-pill-row>
+          <span data-lounge-hub-game-pill-date className="truncate">{title}</span>
+          <span data-lounge-hub-game-pill-meta>{statusLine || date || 'PGA'}</span>
+        </span>
+      </button>
+    )
+  }
 
   return (
     <button

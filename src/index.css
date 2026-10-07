@@ -3572,6 +3572,83 @@ html.light [data-lounge-game-pill-include-overlay] {
 html.light [data-lounge-game-pill-include-hint] {
   color: #fafafa !important;
 }
+[data-lounge-pga-pill] {
+  background-color: #1f4d36;
+}
+[data-lounge-pga-pill] [data-lounge-pga-pill-wash] {
+  position: absolute;
+  inset: -14%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 8% 0%, rgba(190, 230, 150, 0.22), transparent 52%),
+    linear-gradient(168deg, #2f7048 0%, #1b422e 46%, #123024 100%);
+}
+[data-lounge-pga-pill-body] {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 5.625rem;
+  padding: 0.7rem 0.9rem 0.75rem;
+  box-sizing: border-box;
+}
+[data-lounge-pga-pill][data-lounge-game-pill-hub] [data-lounge-pga-pill-body] {
+  padding-right: clamp(1.55rem, 5cqi, 1.85rem);
+}
+[data-lounge-pga-pill-top] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  min-width: 0;
+}
+[data-lounge-pga-pill-leaders] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-lounge-pga-pill-leaders] li {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 7.25rem;
+  align-items: center;
+  gap: 0.3rem;
+}
+[data-lounge-pga-pill-pos] {
+  width: 0.7rem;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+}
+[data-lounge-pga-pill-mark] {
+  width: 1.55rem;
+  height: 1.55rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+}
+[data-lounge-pga-pill-fieldnote] {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
+}
+html.light [data-lounge-pga-pill] {
+  background-color: #1f4d36 !important;
+}
+html.light [data-lounge-pga-pill] .text-white,
+html.light [data-lounge-pga-pill] .text-white\/90,
+html.light [data-lounge-pga-pill] .text-white\/80,
+html.light [data-lounge-pga-pill] .text-white\/70,
+html.light [data-lounge-pga-pill] .text-white\/60 {
+  color: #fff !important;
+}
 html.light [data-lounge-game-hub] {
   background-color: #fafafa !important;
   color: #18181b !important;
@@ -3991,6 +4068,24 @@ html.light [data-lounge-game-more-menu] {
   font-weight: 600;
   color: rgba(255, 255, 255, 0.82);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+[data-lounge-hub-pga-pill] {
+  max-width: 11.5rem;
+  background-color: #1f4d36;
+}
+[data-lounge-hub-pga-pill-row] {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  line-height: 1.1;
+}
+html.light [data-lounge-hub-pga-pill] {
+  background-color: #1f4d36 !important;
+  color: #fafafa !important;
 }
 /* Top 25 rank badge on pill / card logos … both surfaces stay dark in either theme, so no light override. */
 [data-lounge-team-rank-badge] {

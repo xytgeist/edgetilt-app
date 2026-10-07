@@ -18,7 +18,7 @@ import {
   LOUNGE_SPORTS_HUB_FILTER_NFL,
   LOUNGE_SPORTS_HUB_FILTER_PGA,
 } from './loungeSportsHubNav.js'
-import { loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
+import { isPgaGame, loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
 import { probeLogoWashTreatment, resolveNflPillWashes } from './loungeSportsMatch.js'
 import { usePhoneLandscapeNotTablet } from '../../utils/edgeiOSComposerPortraitLock.js'
 import { openSportsBetTracker, openSportsBetTools } from '../sports-bet-tracker/sportsBetNav.js'
@@ -38,6 +38,15 @@ function preloadImage(src) {
 function preloadSlatePillAssets(games) {
   const jobs = []
   for (const game of games) {
+    if (isPgaGame(game)) {
+      const leaders = game?.golf?.show_leaders && Array.isArray(game.golf.leaders)
+        ? game.golf.leaders
+        : []
+      for (const row of leaders) {
+        if (row?.headshot) jobs.push(preloadImage(row.headshot))
+      }
+      continue
+    }
     const { homeWash, awayWash } = resolveNflPillWashes(game?.home, game?.away)
     for (const [side, wash] of [
       [game?.away, awayWash],

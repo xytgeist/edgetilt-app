@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-07:** **PGA tournament chips (`1.4.1089`).** Hub / feed / composer pills for `golf_pga` are one card per ESPN event: tournament title, round/status or tee + broadcast, live/final top 3 (to-par + headshot). Pregame hides the all-E field. Away/home stay on the payload for hub compatibility. Redeploy **test** `lounge-sports-scoreboard`. Marketing still **1.4.95**.
 - **2026-10-07:** **Market-file skip-if-unchanged (`1.4.1088`).** `upsertMarketFilesFromEvents` / `lockDueMarketFileCloses` skip rows whose open/current/close quotes and lock flag match. `updated_at` and current `*_at` only move when the line moves. Redeployed **test** `lounge-sports-scoreboard` + `lounge-odds-poll` + `lounge-odds-ingest`. Prod Edge owed. Marketing still **1.4.95**.
 - **2026-10-07:** **Island cron arm + pg_net prune (test + prod).** `live_activity_island_push` only schedules while `live_activity_push_tokens` has rows. Daily `cron_prune_job_run_details_daily` also prunes `net._http_response` (keep 3 days). SQL **`20261007150000` on test + prod**. Prod verify: 0 tokens, island cron unscheduled. No Edge redeploy.
 - **2026-10-07:** **Bet Tracker back / × (`1.4.1087`).** Remember the opener (hub filter + game id + href). Close restores that page instead of forcing Lounge `home`. No Edge. Marketing still **1.4.95**.

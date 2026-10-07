@@ -7,6 +7,8 @@ import {
   useLoungeSportsPillWashAndLogos,
 } from './loungeSportsPillPaint.jsx'
 import { formatKickoff, stripTimeZoneSuffix } from './gameHub/gameHubFormatters.js'
+import { isPgaGame } from './loungeSportsSlateWindow.js'
+import LoungePgaTournamentPill from './LoungePgaTournamentPill.jsx'
 
 const PRE_SPREAD_MAX_PX = 28
 const PRE_SPREAD_MIN_PX = 13
@@ -152,8 +154,22 @@ export default function LoungeGameScorePill({
 }) {
   const sports = useLoungeSportsFeed()
   const game = gameProp || sports?.matchPost?.(post)
-  const paint = useLoungeSportsPillWashAndLogos(game)
+  const paint = useLoungeSportsPillWashAndLogos(isPgaGame(game) ? null : game)
   if (!game) return null
+  if (isPgaGame(game)) {
+    return (
+      <LoungePgaTournamentPill
+        game={game}
+        className={className}
+        dismissible={dismissible}
+        onDismiss={onDismiss}
+        onInclude={onInclude}
+        pendingInclude={pendingInclude}
+        interactive={interactive}
+        onOpen={(next) => sports.openHub?.(next)}
+      />
+    )
+  }
 
   const homeWon = game.status === 'post' && game.home?.score != null && game.away?.score != null && game.home.score > game.away.score
   const awayWon = game.status === 'post' && game.home?.score != null && game.away?.score != null && game.away.score > game.home.score

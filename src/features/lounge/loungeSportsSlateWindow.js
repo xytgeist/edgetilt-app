@@ -94,7 +94,7 @@ function isMlsGame(game) {
   return String(game?.sport_key || '').includes('soccer_usa_mls')
 }
 
-function isPgaGame(game) {
+export function isPgaGame(game) {
   return String(game?.sport_key || '').includes('golf_pga')
 }
 

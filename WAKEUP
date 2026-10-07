@@ -119,7 +119,7 @@ The agent should treat the following as **standing instructions for this session
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
 ### Mac Theo ACTIVE TRACK 2026-10-06 ... bet tools
-**Web `1.4.1076`.** Bet Tracker **Tools** sheet (Sports Hub chip + tracker). Parlay / hedge / Kelly prefills from open bets and bankroll; payout / converter / implied / EV / no-vig / arb as utilities. Not nine hub tiles. Marketing still **1.4.95**.
+**Web `1.4.1076`.** Promoted **`test` → `main`** 2026-10-06. Bet Tracker **Tools** sheet (Sports Hub chip + tracker). Parlay / hedge / Kelly prefills from open bets and bankroll; payout / converter / implied / EV / no-vig / arb as utilities. Not nine hub tiles. Marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-06 ... promote 1.4.1075
 **Web `1.4.1075`.** Promoted **`test` → `main`** 2026-10-06. Carries NHL/NBA/MLB/MLS live clocks (`1.4.1073`), hub card dedupe (`1.4.1074`), and test `sb_secret` env sync (`1.4.1075`). Scoreboard Edge already on prod. No new SQL. Marketing still **1.4.95**.

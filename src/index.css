@@ -4198,32 +4198,27 @@ html.light [data-lounge-game-chat]::placeholder {
   );
   filter: blur(18px);
 }
-/* Tall-tablet landscape gamecast: phone layout at ~1.58× so type, logos, rails, and
-   pills fill the frame. Inverse box + safe-area / zoom so insets stay real pixels.
-   Phone landscape (height < 700) is unchanged. */
-@media (orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse) {
-  [data-lounge-game-hub].fixed {
-    --gc-tablet-z: 1.58;
-    zoom: 1.58;
-    top: 0 !important;
-    left: 0 !important;
-    right: auto !important;
-    bottom: auto !important;
-    width: calc(100vw / 1.58) !important;
-    height: calc(100dvh / 1.58) !important;
+/* Tall-tablet landscape gamecast: same phone layout, scaled up. `zoom` is ignored
+   in iPad WKWebView, so the field filled the raw tablet height and hid the rails.
+   `transform: scale` is the Safari-safe stand-in. Phone landscape (height < 700) is unchanged. */
+@media (orientation: landscape) and (min-width: 768px) and (min-height: 700px) {
+  [data-lounge-game-hub][data-lounge-gamecast-full] {
+    --gc-tablet-z: 1.62;
   }
-  [data-lounge-game-hub].fixed [data-lounge-game-hero] {
-    padding-left: calc(env(safe-area-inset-left, 0px) / var(--gc-tablet-z, 1.58)) !important;
-    padding-right: calc(env(safe-area-inset-right, 0px) / var(--gc-tablet-z, 1.58)) !important;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) / var(--gc-tablet-z, 1.58)) !important;
+  [data-lounge-game-hub][data-lounge-gamecast-full] [data-lounge-game-hero] {
+    width: calc(100vw / var(--gc-tablet-z, 1.62)) !important;
+    height: calc(100dvh / var(--gc-tablet-z, 1.62)) !important;
+    flex: 0 0 calc(100dvh / var(--gc-tablet-z, 1.62)) !important;
+    max-width: none !important;
+    transform: scale(var(--gc-tablet-z, 1.62));
+    transform-origin: 0 0;
+    padding-left: calc(env(safe-area-inset-left, 0px) / var(--gc-tablet-z, 1.62)) !important;
+    padding-right: calc(env(safe-area-inset-right, 0px) / var(--gc-tablet-z, 1.62)) !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) / var(--gc-tablet-z, 1.62)) !important;
   }
-  [data-lounge-game-hub].fixed [data-lounge-game-scoreboard],
-  [data-lounge-game-hub].fixed [data-lounge-gamecast-chrome] {
-    padding-top: calc(max(0.375rem, env(safe-area-inset-top, 0px)) / var(--gc-tablet-z, 1.58)) !important;
-  }
-  /* Back / … chips stay phone-sized. Nested zoom cancels the tablet scale. */
-  [data-lounge-game-hub].fixed [data-lounge-game-glass-chip] {
-    zoom: calc(1 / var(--gc-tablet-z, 1.58));
+  [data-lounge-game-hub][data-lounge-gamecast-full] [data-lounge-game-scoreboard],
+  [data-lounge-game-hub][data-lounge-gamecast-full] [data-lounge-gamecast-chrome] {
+    padding-top: calc(max(0.375rem, env(safe-area-inset-top, 0px)) / var(--gc-tablet-z, 1.62)) !important;
   }
 }
 /* Game hero (scoreboard + field) is always dark … light mode must not remap anything inside it.

@@ -867,7 +867,7 @@ Desk mapping: **Scott** = PASS unless model−market ≥ 2.5 after PVAL (1.5 onl
 
 **Internal weekly SOP (honest inventory + publish rules):** [`docs/syndicate-cfb-weekly-runbook.md`](./syndicate-cfb-weekly-runbook.md). Keep blend weights out of public UI.
 
-**UFC / MMA 4-desk contract:** [`docs/syndicate-ufc-desk-contract.md`](./syndicate-ufc-desk-contract.md). Data **(1)** + Rocco last-5 landed. Live print is Scott + Rocco. Chedda PASS until a method feed. Tank sits until minutes mapping.
+**UFC / MMA 4-desk contract:** [`docs/syndicate-ufc-desk-contract.md`](./syndicate-ufc-desk-contract.md). Data **(1)** + Rocco last-5 landed. Live print is Scott + Rocco. Chedda PASS until a method feed. Tank sits until minutes mapping. **Live UFC cards parked 2026-10-06** (`UFC_SLATE_LIVE_ENABLED = false`, Saturday cron unscheduled). Ops Preview still builds the card. Do not resume until Scott's fair% is a real price, not career-stat costume math.
 
 Requires **`CFBD_API_KEY`** in `.env.supabase.{test,production}` and GitHub Actions secret `CFBD_API_KEY` ([get key](https://collegefootballdata.com/key)). Free tier is 1k calls/mo … weekly sync is fine; Patreon ~$5/mo if you need more.
 
@@ -909,7 +909,7 @@ Chat and X do **not** render Lounge markdown. Tags like `[gold]`, `**bold**`, `#
 
 **Ops Publish** (`sharpesyndicate.com/ops` Sharp Desk): **House / Scott / Rocco / Chedda / Tank** chips. House is the 4-desk composer. **Desk Math** tab dry-runs the NFL / CFB / UFC slate and lists each equation (formula, live outcome, effect on the vote). A named desk + Preview on today / slate / primetime / UFC returns `deskEvals` (vote + why + `equations` per game … Tank also shows ATS spot). Primetime Preview **and** Publish use the **house slate vote** for that game (Chedda can PASS). No costume Chedda / fake splits on the public card. Sport dropdown, then a **filtered drop** dropdown (Picks for today, slate, primetime, UFC slate, etc.). Drop **(i)** lists every type for that sport (`OPS_DROPS.info`). One Preview / Publish pair. Preview has **Public / Private / Chat / X** tabs (`destPreviews` from dry-run … same fallbacks as fan-out). **Send to** (`loungePublic`, `loungeFanOnly`, `vipChat`, `x`) applies to that Publish, including **Picks for today**. Passed on `lounge-odds-poll` body as `destinations`. Omit / cron = implicit dest. Public Lounge includes X. All boxes off refuses Publish. Monthly Board is ops-only (no Send to).
 
-**Ops week calendar (PT):** Mon-Sun grid on **https://sharpesyndicate.com/ops** (above the desk tabs). Sport chips All / NFL / CFB / UFC. Screenshot cells: Due / In / Missed. Expected Lounge posts show the cron time (Wed 11am TNF VIP, Wed 2pm CFB VIP, Thu 3:30pm TNF + CFB night, Fri 12pm CFB house + 1pm NFL lean + 1:30 Wong, Sat 9am UFC slate, Sat 7pm NFL steam, Sat 10am CFB adds/kills, Sun 8:30/11:30am NFL window locks, Sun 3:30pm SNF, Mon 2:00pm MNF lean, Tue 7:30am weekly recap). **Posted** turns green from `lounge_bot_publish_log` (VIP satellites), same-day `lounge_bot_picks`, or the Syndicate Lounge **caption** (`community_feed_posts.caption` … not `body`). Primetime / recap / slate / lock needles are the live card titles so a missing `post_kind` log still goes green. Action/VSiN splits read `syndicate_betting_splits` rows **updated this shop week** (Tuesday 00:00 PT). No 200-row active cap... leftover older actives do not hide a fresh seed paste. ESPN trench, PVAL/CFB/UFC checks and Grade are mark-in. Tuesday metrics sync stays Auto (GHA, not a Lounge post). Click a cell to jump tabs. Splits paste tab keeps the detailed Action/VSiN list. Desktop alert optional.
+**Ops week calendar (PT):** Mon-Sun grid on **https://sharpesyndicate.com/ops** (above the desk tabs). Sport chips All / NFL / CFB / UFC. Screenshot cells: Due / In / Missed. Expected Lounge posts show the cron time (Wed 11am TNF VIP, Wed 2pm CFB VIP, Thu 3:30pm TNF + CFB night, Fri 12pm CFB house + 1pm NFL lean + 1:30 Wong, Sat 9am UFC slate (parked), Sat 7pm NFL steam, Sat 10am CFB adds/kills, Sun 8:30/11:30am NFL window locks, Sun 3:30pm SNF, Mon 2:00pm MNF lean, Tue 7:30am weekly recap). **Posted** turns green from `lounge_bot_publish_log` (VIP satellites), same-day `lounge_bot_picks`, or the Syndicate Lounge **caption** (`community_feed_posts.caption` … not `body`). Primetime / recap / slate / lock needles are the live card titles so a missing `post_kind` log still goes green. Action/VSiN splits read `syndicate_betting_splits` rows **updated this shop week** (Tuesday 00:00 PT). No 200-row active cap... leftover older actives do not hide a fresh seed paste. ESPN trench, PVAL/CFB/UFC checks and Grade are mark-in. Tuesday metrics sync stays Auto (GHA, not a Lounge post). Click a cell to jump tabs. Splits paste tab keeps the detailed Action/VSiN list. Desktop alert optional.
 
 **Splits auto pull (PT):** Home-PC Windows task runs Action Network public betting + ESPN trench twice daily (`npm run syndicate:sync-action-splits:install-windows-task` … 10am + 6pm local). Action → `syndicate_betting_splits` (`source=action_pro`) for NFL + NCAAF. ESPN → `nfl_team_metrics` win rates. Both write production heartbeats for Edge Monitor + Ops **Weekly Pulls** (fail / stale after ~26h). Ops week calendar greens splits from table writes and ESPN trench from heartbeat (no mark-in). Ops paste / vision stays for VSiN + trench repair. Bulk save still deactivates **same source** only so Action + VSiN can both stay live.
 
@@ -965,11 +965,11 @@ Already-posted chat messages stay as they were; next publish is clean.
 
 ### Weekly ledger (`formatWeeklySyndicateRecapCaption`)
 
-- H1 title / crew / syndicate total; H2 for CLV + boxscore
+- Football shop week only (NFL + CFB, kickoff Tuesday 00:00 PT → next Tuesday 00:00 PT). MMA / UFC is out.
+- H1 title / sport split / crew / syndicate total; H2 for boxscore. No fake CLV line.
 - Crew lines are Scott / Rocco / Chedda / Tank only. Quorum is parked and never prints, even at 0-0
 - Crew lines: comma between units and win% (`+1.03u, 55.6%`)
 - green/red/gold color tags; `==🏆 Top Earner==` on top desk
-- CLV: `[green]+0.6[/green] avg points CLV`
 - Post-mortem: `{hook} · {narrative}` (spread line or total points first)
 - Bad-beat tagline: rotating pool (includes *Variance killed the cover, but the model is sound.*); omitted ~25% of weeks
 

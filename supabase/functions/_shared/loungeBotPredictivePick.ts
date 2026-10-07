@@ -1247,6 +1247,8 @@ export async function loadTankTotalsContextForSlate(
   if (!ids.length) {
     return { weatherByEventId, openTotalByEventId, restTravelByEventId, marketFilesByEventId }
   }
+  /** CFB Saturday boards are 50-80 games. Per-game Rundown+Open-Meteo was blowing the 60s pg_net budget and killing Friday lock. */
+  const TANK_PER_GAME_WEATHER_MAX = 16
 
   try {
     const files = await loadMarketFilesByEventIds(admin, ids)
@@ -1259,26 +1261,32 @@ export async function loadTankTotalsContextForSlate(
   }
 
   const sportId = oddsSportKeyToRundownSportId(sportKey) || (sportKey.includes('ncaaf') ? 1 : 2)
-  await Promise.all(
-    events.map(async (ev) => {
-      const eid = String(ev.id || '').trim()
-      const home = String(ev.home_team || '').trim()
-      const commence = String(ev.commence_time || '').trim()
-      if (!eid || !home || !commence) return
-      try {
-        const rundown = await resolveRundownEvent({
-          sportKey,
-          homeTeam: home,
-          awayTeam: String(ev.away_team || ''),
-          commenceTime: commence,
-        }).catch(() => null)
-        const weather = await fetchGameWeather(sportId, home, commence, rundown?.venueLocation, rundown?.venueName)
-        if (weather) weatherByEventId.set(eid, weather)
-      } catch {
-        // leave unset … no wind veto without a read
-      }
-    }),
-  )
+  if (events.length <= TANK_PER_GAME_WEATHER_MAX) {
+    await Promise.all(
+      events.map(async (ev) => {
+        const eid = String(ev.id || '').trim()
+        const home = String(ev.home_team || '').trim()
+        const commence = String(ev.commence_time || '').trim()
+        if (!eid || !home || !commence) return
+        try {
+          const rundown = await resolveRundownEvent({
+            sportKey,
+            homeTeam: home,
+            awayTeam: String(ev.away_team || ''),
+            commenceTime: commence,
+          }).catch(() => null)
+          const weather = await fetchGameWeather(sportId, home, commence, rundown?.venueLocation, rundown?.venueName)
+          if (weather) weatherByEventId.set(eid, weather)
+        } catch {
+          // leave unset … no wind veto without a read
+        }
+      }),
+    )
+  } else {
+    console.warn(
+      `[slate] skip per-game weather for ${sportKey} (${events.length} events > ${TANK_PER_GAME_WEATHER_MAX})`,
+    )
+  }
 
   try {
     const restMap = await loadRestTravelByEventId(sportKey, events)

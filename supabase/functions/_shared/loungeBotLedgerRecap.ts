@@ -1,9 +1,9 @@
 /**
  * Tuesday Morning Syndicate Weekly Ledger & Post-Mortem Recap Engine.
  *
- * Compiles the full performance breakdown across the crew (Scott, Rocco, Chedda, Tank)
- * over the preceding week (last 7 days), extracts boxscore dominance vs turnover flukes via ESPN,
- * and publishes a natural, swaggered syndicate recap to the Lounge feed + Scott's VIP subscriber channel.
+ * Compiles football (NFL + CFB) desk results for the shop week that just closed
+ * (Tuesday 00:00 PT → next Tuesday 00:00 PT, by kickoff). MMA / UFC is out of this card.
+ * Boxscore post-mortem still uses ESPN when a split-game story exists.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
@@ -70,6 +70,14 @@ export type WeeklyRecapPayload = {
     total: number
     avgPoints: number
   } | null
+  sports: Array<{
+    sportKey: string
+    label: string
+    wins: number
+    losses: number
+    pushes: number
+    unitsNet: number
+  }>
   pickers: Record<WeeklyRecapDesk, PersonaWeeklyTally>
   topPerformer: {
     pickerName: string
@@ -89,6 +97,64 @@ const PICKER_TITLES: Record<string, string> = {
   Rocco: 'Trenches',
   Chedda: 'Dogs & ML',
   Tank: 'Totals',
+}
+
+const LEDGER_SPORT_KEYS = [
+  'americanfootball_nfl',
+  'americanfootball_nfl_preseason',
+  'americanfootball_ncaaf',
+] as const
+
+const LEDGER_SPORT_LABEL: Record<string, string> = {
+  americanfootball_nfl: 'NFL',
+  americanfootball_nfl_preseason: 'NFL',
+  americanfootball_ncaaf: 'CFB',
+}
+
+const PT_TZ = 'America/Los_Angeles'
+
+function isLedgerFootballSport(sportKey: unknown): boolean {
+  return LEDGER_SPORT_KEYS.includes(String(sportKey || '') as (typeof LEDGER_SPORT_KEYS)[number])
+}
+
+function ptYmd(now: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: PT_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now)
+}
+
+function ptWeekdaySun0(now: Date): number {
+  const wk = new Intl.DateTimeFormat('en-US', { timeZone: PT_TZ, weekday: 'short' }).format(now)
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+  return map[wk] ?? 0
+}
+
+function ptYmdStartMs(ymd: string): number {
+  for (const off of ['-07:00', '-08:00'] as const) {
+    const ms = Date.parse(`${ymd}T00:00:00${off}`)
+    if (Number.isFinite(ms) && ptYmd(new Date(ms)) === ymd) return ms
+  }
+  return Date.parse(`${ymd}T00:00:00-07:00`)
+}
+
+/** Closed shop week: last Tuesday 00:00 PT through this Tuesday 00:00 PT (kickoff window). */
+function footballShopWeekWindow(now = new Date()): { startIso: string; endIso: string } {
+  const todayYmd = ptYmd(now)
+  const todayStart = ptYmdStartMs(todayYmd)
+  const daysFromTue = (ptWeekdaySun0(now) + 5) % 7
+  const thisTueMs = todayStart - daysFromTue * 86_400_000
+  const lastTueMs = thisTueMs - 7 * 86_400_000
+  return {
+    startIso: new Date(lastTueMs).toISOString(),
+    endIso: new Date(thisTueMs).toISOString(),
+  }
+}
+
+function formatRecord(wins: number, losses: number, pushes: number): string {
+  return `${wins}-${losses}${pushes > 0 ? `-${pushes}` : ''}`
 }
 
 function isWeeklyRecapDesk(name: unknown): name is WeeklyRecapDesk {
@@ -551,28 +617,31 @@ async function resolvePostMortemHighlights(
 }
 
 /**
- * Fetch graded picks over the last 7 days and build the weekly recap dataset.
+ * Fetch graded NFL + CFB picks for the shop week that just closed (by kickoff).
+ * MMA / UFC rows are excluded on purpose.
  */
 export async function compileWeeklySyndicateRecap(
   admin: SupabaseClient,
   botUserId: string,
 ): Promise<WeeklyRecapPayload | null> {
   const now = new Date()
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const { startIso, endIso } = footballShopWeekWindow(now)
 
   const { data: picks, error } = await admin
     .from('lounge_bot_picks')
     .select('*')
     .eq('bot_user_id', botUserId)
-    .gte('created_at', sevenDaysAgo.toISOString())
+    .gte('commence_time', startIso)
+    .lt('commence_time', endIso)
+    .in('sport_key', [...LEDGER_SPORT_KEYS])
     .in('status', ['won', 'lost', 'push'])
-    .order('created_at', { ascending: false })
+    .order('commence_time', { ascending: false })
 
   if (error || !picks || !picks.length) {
     return null
   }
 
-  const deskPicks = picks.filter((p) => isWeeklyRecapDesk(p.picker_name))
+  const deskPicks = picks.filter((p) => isWeeklyRecapDesk(p.picker_name) && isLedgerFootballSport(p.sport_key))
   if (!deskPicks.length) return null
 
   let totalWins = 0
@@ -633,26 +702,28 @@ export async function compileWeeklySyndicateRecap(
   // ESPN post-mortem: best split-game pair when available; omit section only on thin weeks
   const boxscoreHighlights = await resolvePostMortemHighlights(deskPicks, now.toISOString())
 
-  let clvBeatsCount = 0
+  const sportRoll = new Map<string, { wins: number; losses: number; pushes: number; unitsNet: number }>()
   for (const p of deskPicks) {
-    const ev = Number(p.ev_pct) || 0
-    if (ev >= 1.0 || (p.metadata?.factors && Object.keys(p.metadata.factors).length > 0)) {
-      clvBeatsCount++
-    }
+    const label = LEDGER_SPORT_LABEL[String(p.sport_key)] || 'Other'
+    const cur = sportRoll.get(label) || { wins: 0, losses: 0, pushes: 0, unitsNet: 0 }
+    if (p.status === 'won') cur.wins++
+    else if (p.status === 'lost') cur.losses++
+    else if (p.status === 'push') cur.pushes++
+    cur.unitsNet = Math.round((cur.unitsNet + (Number(p.units_net) || 0)) * 100) / 100
+    sportRoll.set(label, cur)
   }
-  const clvBeats = Math.min(deskPicks.length, Math.max(clvBeatsCount, Math.round(deskPicks.length * 0.73)))
-  const clv =
-    deskPicks.length > 0
-      ? {
-          beats: clvBeats,
-          total: deskPicks.length,
-          avgPoints: 0.6,
-        }
-      : null
+  const sports = ['NFL', 'CFB'].map((label) => {
+    const row = sportRoll.get(label) || { wins: 0, losses: 0, pushes: 0, unitsNet: 0 }
+    return {
+      sportKey: label === 'CFB' ? 'americanfootball_ncaaf' : 'americanfootball_nfl',
+      label,
+      ...row,
+    }
+  })
 
   return {
-    startDateIso: sevenDaysAgo.toISOString(),
-    endDateIso: now.toISOString(),
+    startDateIso: startIso,
+    endDateIso: endIso,
     overall: {
       totalPicks: deskPicks.length,
       wins: totalWins,
@@ -661,7 +732,8 @@ export async function compileWeeklySyndicateRecap(
       winRatePct: overallWinRate,
       unitsNet: totalUnits,
     },
-    clv,
+    clv: null,
+    sports,
     pickers: pickerTallies,
     topPerformer,
     boxscoreHighlights,
@@ -670,7 +742,8 @@ export async function compileWeeklySyndicateRecap(
 
 /**
  * Locked public weekly ledger markdown dialect (paired with slate v5):
- * - H1 title + crew / syndicate total; H2 for CLV + boxscore
+ * - H1 title + crew / syndicate total; H2 for boxscore (no fake CLV)
+ * - Football shop week only (NFL + CFB by kickoff). UFC is not on this card.
  * - Crew lines use comma between units and win%
  * - green/red for +/- unit results; gold for pick lines in post-mortem; ==🏆 Top Earner== highlight
  * - Post-mortem section omitted when no substantive boxscore story; ledger still posts
@@ -691,14 +764,24 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
   const uColored = `**${formatColoredUnits(uNet, 'u net')}**`
 
   lines.push(`# 📊 Sharpe Syndicate · Weekly Ledger`)
-  lines.push(`Official 7-day performance across all 4 desks`)
+  lines.push(`Football shop week · NFL + CFB desks · kickoff Tuesday to Tuesday`)
   lines.push('')
+
+  if (recap.sports?.length) {
+    const sportBits = recap.sports.map((s) => {
+      const decided = s.wins + s.losses + s.pushes
+      if (!decided) return `${s.label}: none`
+      return `${s.label} ${formatRecord(s.wins, s.losses, s.pushes)} (${formatColoredUnits(s.unitsNet)})`
+    })
+    lines.push(sportBits.join(' · '))
+    lines.push('')
+  }
 
   lines.push('# 📋 Crew Breakdown')
   for (const key of WEEKLY_RECAP_DESKS) {
     const p = recap.pickers[key]
     const pUnits = formatColoredUnits(p.unitsNet)
-    const record = `${p.wins}-${p.losses}${p.pushes > 0 ? `-${p.pushes}` : ''}`
+    const record = formatRecord(p.wins, p.losses, p.pushes)
     const top = recap.topPerformer?.pickerName === p.pickerName ? ' ==🏆 Top Earner==' : ''
     lines.push(`- ${formatColoredPickerName(p.pickerName)} (${p.roleTitle}): ${record} (${pUnits}, ${p.winRatePct}%)${top}`)
   }
@@ -708,18 +791,9 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
   lines.push('')
   lines.push('# 🎯 Syndicate Total')
   lines.push(
-    `${uColored} · ${recap.overall.wins}-${recap.overall.losses}${recap.overall.pushes > 0 ? `-${recap.overall.pushes}` : ''} (${recap.overall.winRatePct}% win)`,
+    `${uColored} · ${formatRecord(recap.overall.wins, recap.overall.losses, recap.overall.pushes)} (${recap.overall.winRatePct}% win)`,
   )
   lines.push('')
-
-  if (recap.clv) {
-    lines.push('## 📈 Closing Line Value')
-    const avgSign = recap.clv.avgPoints > 0 ? `+${recap.clv.avgPoints}` : `${recap.clv.avgPoints}`
-    lines.push(
-      `${recap.clv.beats} of ${recap.clv.total} picks beat the closing market line ([green]${avgSign}[/green] avg points CLV)`,
-    )
-    lines.push('')
-  }
 
   if (recap.boxscoreHighlights.biggestWin || recap.boxscoreHighlights.badBeat) {
     lines.push(`## ${recap.boxscoreHighlights.sectionTitle}`)
@@ -738,7 +812,7 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
     lines.push('')
   }
 
-  lines.push('> 🌐 Audited ledger + CLV: sharpesyndicate.com')
+  lines.push('> 🌐 Audited football ledger: sharpesyndicate.com')
   lines.push('> 💬 Full uncut slate cards drop in Sharpe VIP Syndicate chat')
 
   return lines.join('\n').trim()
@@ -747,11 +821,11 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
 export function formatWeeklySyndicateVipCaption(recap: WeeklyRecapPayload): string {
   return [
     `📊 **Sharpe VIP Syndicate · Weekly Ledger Complete**`,
-    `Desk Net: **${formatColoredUnits(recap.overall.unitsNet)}** (${recap.overall.wins}-${recap.overall.losses})`,
+    `Football desk net: **${formatColoredUnits(recap.overall.unitsNet)}** (${formatRecord(recap.overall.wins, recap.overall.losses, recap.overall.pushes)})`,
     '',
     `Top Performer: ${recap.topPerformer?.summary || 'Even contribution across the crew.'}`,
     '',
-    `*Early Week opening line movements and CLV targets posting here tonight.*`,
+    `*NFL + CFB only. UFC stays off this card.*`,
   ].join('\n')
 }
 

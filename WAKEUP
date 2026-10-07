@@ -97,6 +97,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Ryan next (optional):** Cursor Settings → General → Privacy → **Privacy Mode** (confirm still on). Delete this chat + local transcript when done. Prod service-role cutover only when he wants that project.
 
+### Windows Theo 2026-10-06 … Weekly ledger / UFC pause / CFB Friday miss
+
+**I am Windows Theo.** Public Weekly Ledger was grading UFC (Scott 1-8 dogs) plus football. Recap is now NFL+CFB shop week by kickoff. UFC live cards parked until Scott's career-stat "fair ML" is rebuilt. CFB Friday 10/2 slate never posted: pg_net 60s timeout on the 50-80 game board (NFL lean at 1pm still made it). SQL **`20261007020000` applied on test** (180s pg_net, UFC Saturday cron unscheduled). **Test Edge `lounge-odds-poll` deploy 401** (CLI `SUPABASE_ACCESS_TOKEN`). **Ryan:** refresh CLI login, deploy **`lounge-odds-poll`** on **test** then **prod**, apply that SQL on **prod** before Friday. Mac: pull `test`.
+
 ### Windows Theo 2026-10-06 … Action/ESPN Invalid API key was test JWT
 
 **I am Windows Theo.** Home-PC 10am Action + ESPN cards failed because `TEST_SUPABASE_SERVICE_ROLE_KEY` (legacy JWT) is dead. `TEST_SUPABASE_SECRET_KEY` (`sb_secret`) works. `npm run env:sync` now prefers the secret. Mac: pull `test` then `npm run env:sync` so LaunchAgent does not keep the dead JWT.

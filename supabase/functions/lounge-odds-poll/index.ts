@@ -926,7 +926,18 @@ Deno.serve(async (req) => {
         formatUfcFanOnlyBodies,
         publishAndRecordUfcCard,
         ufcDeskEvalBoard,
+        UFC_SLATE_LIVE_ENABLED,
       } = await import('../_shared/loungeBotUfcPredictive.ts')
+
+      if (!dryRun && !force && !UFC_SLATE_LIVE_ENABLED) {
+        return adminOpsJson(200, {
+          ok: true,
+          parked: true,
+          action: 'ufc_slate_card',
+          message:
+            'UFC live slate is parked until the ML model is rebuilt. Ops Preview still works. Pass force=true only to override.',
+        })
+      }
 
       const oddsData = await fetchSportOdds('mma_mixed_martial_arts', ['us', 'us2', 'eu'], ['h2h', 'totals'])
       const card = await buildUfcSlateCard(oddsData.events, admin, body?.cardTitle || 'UFC Fight Night')
@@ -995,7 +1006,7 @@ Deno.serve(async (req) => {
         return adminOpsJson(200, {
           ok: false,
           action: 'weekly_syndicate_recap',
-          message: 'No graded picks found over the last 7 days to compile weekly recap.',
+          message: 'No graded NFL/CFB picks in the closed shop week to compile weekly recap.',
         })
       }
 

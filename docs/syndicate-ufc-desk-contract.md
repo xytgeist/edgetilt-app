@@ -1,7 +1,9 @@
 # Sharpe Syndicate UFC / MMA desk contract (internal)
 
 **Audience:** Ryan + agents. **Not** public marketing copy.  
-**Status:** Locked 2026-09-12. Data order locked the same night. Live print / ledger is **Scott + Rocco** (2026-09-13). Rocco votes from `ufc_fighter_last5` (sit if missing / thin / too close). Independence check: `npm run syndicate:ufc-rocco-independence`. Chedda / Tank stay sat. Current Scott engine still uses career fair% (costume vs this contract). Do not rebuild Chedda / Tank yet.
+**Status:** Locked 2026-09-12. **Live cards PARKED 2026-10-06.** Data order locked the same night. Live print / ledger is **Scott + Rocco** (2026-09-13). Rocco votes from `ufc_fighter_last5` (sit if missing / thin / too close). Independence check: `npm run syndicate:ufc-rocco-independence`. Chedda / Tank stay sat. Current Scott engine still uses career fair% (costume vs this contract). Do not rebuild Chedda / Tank yet.
+
+**Why the last card went 3-12:** Scott's "fair ML" is `50% + SLpM×0.05 + TD-control×0.07 + reach×0.8pp`, clamped 12-88%. That is not a calibrated price. Last Fight Night he took nine plus-money dogs and went **1-8**. Rocco ignores juice (last-5 styles). Chedda is still a costume vote on consensus. Ledger `clv_beat` was `Math.random()`. Weekly Ledger no longer grades UFC. `UFC_SLATE_LIVE_ENABLED = false`. Saturday cron unschedules. Ops Preview still works. Do not flip the flag until Scott sits unless a real win-rate gap vs market clears `2 + 0.40 / p_mkt` from a fitted model, not career-stat costume math.
 
 Football desks stay on **`docs/lounge-bot-sports-odds.md`** + **`docs/syndicate-cfb-weekly-runbook.md`**. This file is the UFC house only.
 

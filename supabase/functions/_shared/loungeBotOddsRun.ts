@@ -311,15 +311,18 @@ export async function fetchSportOdds(
   const key = oddsApiKey()
   if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
   const qs = oddsQuery(key, regions, markets, opts)
+  const timeoutMs = String(sport || '').includes('ncaaf')
+    ? Math.max(ODDS_FETCH_TIMEOUT_MS, 45_000)
+    : ODDS_FETCH_TIMEOUT_MS
   let res: Response
   try {
     res = await fetch(`${ODDS_BASE}/sports/${sport}/odds?${qs}`, {
-      signal: AbortSignal.timeout(ODDS_FETCH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     })
   } catch (err) {
     const name = err instanceof Error ? err.name : ''
     if (name === 'TimeoutError' || name === 'AbortError') {
-      throw new Error(`Odds API timeout after ${ODDS_FETCH_TIMEOUT_MS}ms for ${sport}`)
+      throw new Error(`Odds API timeout after ${timeoutMs}ms for ${sport}`)
     }
     throw err
   }

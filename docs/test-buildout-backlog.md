@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **Weekly ledger football-only + CFB Friday timeout + UFC parked (`1.4.1079`).** Tuesday recap is NFL+CFB shop week by kickoff (no MMA, no fake 73% CLV). UFC live cards parked (`UFC_SLATE_LIVE_ENABLED=false`, Saturday cron unscheduled on apply). CFB Fri lock died 2026-10-02 because `invoke_lounge_odds_poll` pg_net was 60s; NFL lean still fit. SQL **`20261007020000` applied on test**. **Test Edge `lounge-odds-poll` deploy 401** (CLI access token). Prod SQL + Edge wait for Ryan (next Friday lock + next Saturday UFC).
 - **2026-10-06:** **Promoted no-field hub scores + today-only pills (`1.4.1078`).** Frontend **`test` → `main`**. Includes `1.4.1077` hub day filter. No new SQL / Edge. Marketing still **1.4.95**.
 - **2026-10-06:** **No-field hub paints the score (`1.4.1078`).** MLB / NHL / NBA / MLS scoreboard used the shopped spread as the 42px number whenever lines were live, so baseball never showed runs. Live/final now match pills + the football field board: score big, spread small above. Pregame still spread. No Edge. Marketing still **1.4.95**.
 - **2026-10-06:** **Sports Hub today-only pills (`1.4.1077`).** `loungeSportsSlateGames` All + NHL/NBA/MLB/MLS = PT today + live. NFL/CFB week hubs unchanged. Fetch window still yest/today/tomorrow. Marketing still **1.4.95**.

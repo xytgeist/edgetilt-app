@@ -96,6 +96,11 @@ const SHARP_PICKERS = ['Scott', 'Rocco', 'Chedda', 'Tank'] as const
 const UFC_PRINT_DESKS = ['Scott', 'Rocco'] as const
 /** Flip when Tank's UFC round-total model is trained. Football O/U is unchanged. */
 const TANK_UFC_ROUND_TOTALS_ENABLED = false
+/**
+ * Live UFC cards are parked until Scott's ML is a real price vs market, not career-stat costume fair%.
+ * Ops Preview (dryRun) still builds the card. Cron / Publish no-op unless force=true.
+ */
+export const UFC_SLATE_LIVE_ENABLED = false
 
 /** Ops desk board … Scott + Rocco. Chedda and Tank are not on this card. */
 export function ufcDeskEvalBoard(card: UfcSlateCard | null | undefined) {

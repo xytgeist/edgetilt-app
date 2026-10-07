@@ -363,10 +363,10 @@ export const OPS_WEEK_TASKS = [
   {
     id: 'ufc_card',
     sports: ['ufc'],
-    kind: 'post',
+    kind: 'auto',
     label: 'UFC slate',
-    atLabel: '9:00am',
-    detail: 'Sat 9:00am PT. Public tease + fan-only uncut Lounge + VIP chat.',
+    atLabel: 'parked',
+    detail: 'Parked 2026-10-06 until Scott ML is rebuilt. Ops Preview still works. Do not Publish.',
     days: [6],
     startHour: 9,
     endHour: 12,

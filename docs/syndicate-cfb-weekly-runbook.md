@@ -167,7 +167,7 @@ VIP uncut cards lock when injury + splits are real enough … **not** Tue vibes,
 Public crumbs (not a second card): Coffee & Covers · Value Radar **one look**. Best Bet Hour = VIP only.  
 Primetime public posts: TNF / SNF @ 3:30 PM PT, **MNF lean @ 2:00 PM PT**. Full 4-desk card on Lounge + VIP chat + X. No fan-only Lounge twin. Friday house lean is not the MNF/SNF lock ... spotlight owns the book. **90-min inactives lock** (`nfl_primetime_lock`) confirms or kills (pass). Hold if QB / LT / edge is still GTD. Wed TNF VIP is fan-only Lounge + VIP chat (no public, no X).  
 **Sat / Sun AM:** portal tweaks for late scratches … no auto full-card republish.  
-**Window math:** next kickoff within 21d, then games within **5 days** of that kickoff.
+**Window math:** next kickoff within 21d, then games within **5 days** of that kickoff. CFB Friday lock needs a 180s pg_net budget (`20261007020000`). 60s was enough for NFL and killed CFB.
 
 ### Mon–Tue … freeze the map
 
@@ -202,6 +202,8 @@ Run desk scoring **independently**. Preferred publish set:
 ### Fri … CFB lock / NFL lean
 
 Auto publish: **CFB Fri 12:00 PM PT** house lock (`cfb_slate_card`). **NFL Fri 1:00 PM PT** is a **lean** (`nfl_slate_card`), not a lock. Paste Chedda splits before those times. NFL Saturday steam confirms or kills. NFL official lock is Sunday inactives (early ~8:30am PT, late ~11:30am PT).
+
+**Missed lock 2026-10-02:** pg_net timeout was **60s** for `cfb_slate_card`. NFL lean an hour later posted. CFB Saturday board (50-80 games + per-game weather) never wrote picks or a Lounge slate. Only the Thursday night tease posted. Fix in **`20261007020000`**: 180s for CFB/NFL slate; skip per-game weather above 16 games. Redeploy **`lounge-odds-poll`**. Apply that SQL on prod before the next Friday lock.
 
 **Locked definitions (clarified):**
 

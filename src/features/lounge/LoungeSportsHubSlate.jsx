@@ -45,6 +45,7 @@ function preloadSlatePillAssets(games) {
         : []
       for (const row of leaders) {
         if (row?.headshot) jobs.push(preloadImage(row.headshot))
+        if (row?.flag) jobs.push(preloadImage(row.flag))
       }
       continue
     }
@@ -106,7 +107,7 @@ function isMlsHubFilter(filter) {
 
 function isPgaHubFilter(filter) {
   const f = String(filter || '')
-  return f === LOUNGE_SPORTS_HUB_FILTER_PGA || f.includes('golf_pga') || f === 'pga'
+  return f === LOUNGE_SPORTS_HUB_FILTER_PGA || f.startsWith('golf_') || f === 'pga' || f === 'golf'
 }
 
 function SportsHubLeagueButtons({ onOpenLeague, onOpenTracker, onOpenTools }) {
@@ -174,7 +175,7 @@ function sportSectionLabel(sportKey) {
   if (sk.includes('mlb')) return 'MLB'
   if (sk.includes('nhl')) return 'NHL'
   if (sk.includes('soccer_usa_mls') || sk === 'mls') return 'MLS'
-  if (sk.includes('golf_pga') || sk === 'pga') return 'Golf'
+  if (sk.startsWith('golf_') || sk === 'pga') return 'Golf'
   if (sk.includes('mma') || sk.includes('ufc')) return 'MMA'
   if (sk.includes('soccer')) return 'Soccer'
   return String(sportKey || 'Sports').replace(/_/g, ' ')
@@ -234,7 +235,26 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
     if (nbaHub) return [{ key: 'nba', label: 'NBA', games }]
     if (mlbHub) return [{ key: 'mlb', label: 'MLB', games }]
     if (mlsHub) return [{ key: 'mls', label: 'MLS', games }]
-    if (pgaHub) return [{ key: 'pga', label: 'Golf', games }]
+    if (pgaHub) {
+      const order = ['golf_pga', 'golf_lpga', 'golf_champions', 'golf_dp_world', 'golf_korn_ferry']
+      const byTour = new Map()
+      for (const game of games) {
+        const key = String(game?.sport_key || 'golf_pga')
+        if (!byTour.has(key)) byTour.set(key, [])
+        byTour.get(key).push(game)
+      }
+      return [...byTour.entries()]
+        .sort((a, b) => {
+          const ia = order.indexOf(a[0])
+          const ib = order.indexOf(b[0])
+          return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)
+        })
+        .map(([key, list]) => ({
+          key,
+          label: list[0]?.golf?.tour_label || list[0]?.sport_label || 'Golf',
+          games: list,
+        }))
+    }
     const bySport = new Map()
     for (const game of games) {
       const key = String(game?.sport_key || 'other')

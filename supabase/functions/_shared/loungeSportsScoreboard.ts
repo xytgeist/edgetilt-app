@@ -343,6 +343,8 @@ export type LoungeSportsGolfLeader = {
   short_name: string
   score: number | null
   headshot: string
+  flag: string
+  country: string
   player_id: string | null
   pos?: string | null
 }
@@ -358,6 +360,8 @@ export type LoungeSportsGolfPlayer = {
   name: string
   short_name: string
   headshot: string
+  flag: string
+  country: string
   pos: string
   score: number | null
   thru: number | null
@@ -375,6 +379,8 @@ export type LoungeSportsGolfHole = {
 
 export type LoungeSportsGolfCard = {
   tournament: string
+  tour: string
+  tour_label: string
   venue: string | null
   location: string | null
   broadcast: string | null
@@ -970,9 +976,31 @@ function isMlsSportKey(sportKey: string): boolean {
   return String(sportKey || '').includes('soccer_usa_mls')
 }
 
+function isGolfSportKey(sportKey: string): boolean {
+  return String(sportKey || '').startsWith('golf_')
+}
+
 function isPgaSportKey(sportKey: string): boolean {
-  const sk = String(sportKey || '')
-  return sk.includes('golf_pga') || sk === 'golf_pga'
+  return isGolfSportKey(sportKey)
+}
+
+type EspnGolfTour = {
+  league: string
+  scoreboard: string
+  sportKey: string
+  label: string
+}
+
+const ESPN_GOLF_TOURS: EspnGolfTour[] = [
+  { league: 'pga', scoreboard: 'pga', sportKey: 'golf_pga', label: 'PGA' },
+  { league: 'lpga', scoreboard: 'lpga', sportKey: 'golf_lpga', label: 'LPGA' },
+  { league: 'champions-tour', scoreboard: 'champions-tour', sportKey: 'golf_champions', label: 'Champions' },
+  { league: 'eur', scoreboard: 'eur', sportKey: 'golf_dp_world', label: 'DP World' },
+  { league: 'ntw', scoreboard: 'ntw', sportKey: 'golf_korn_ferry', label: 'Korn Ferry' },
+]
+
+function golfTourFromSportKey(sportKey: string): EspnGolfTour {
+  return ESPN_GOLF_TOURS.find((tour) => tour.sportKey === sportKey) || ESPN_GOLF_TOURS[0]
 }
 
 type MajorLeagueEspnPath = {
@@ -1999,6 +2027,8 @@ function parseGolfCompetitor(row: Record<string, unknown> | null): LoungeSportsG
     short_name: player.short_name,
     score: player.score,
     headshot: player.headshot,
+    flag: player.flag,
+    country: player.country,
     player_id: player.player_id,
     pos: player.pos,
   }
@@ -2030,11 +2060,24 @@ function parseGolfPlayer(row: Record<string, unknown> | null): LoungeSportsGolfP
     to_par: parseGolfToPar(line.displayValue),
   })).filter((line) => line.period > 0)
   const earningsRaw = Number(row.officialAmount ?? row.earnings)
+  const flagObj = (athlete.flag && typeof athlete.flag === 'object')
+    ? athlete.flag as { href?: string; alt?: string }
+    : null
+  const birth = (athlete.birthPlace && typeof athlete.birthPlace === 'object')
+    ? athlete.birthPlace as { countryAbbreviation?: string }
+    : null
+  const country = String(flagObj?.alt || birth?.countryAbbreviation || '').trim()
+  const flagHref = typeof athlete.flag === 'string'
+    ? athlete.flag.trim()
+    : String(flagObj?.href || '').trim()
+  const countryCode = String(birth?.countryAbbreviation || '').trim().toLowerCase()
   return {
     player_id: playerId,
     name,
     short_name: golferShortName(name, String(athlete.shortName || '')),
     headshot: fromAthlete || golferHeadshot(playerId || ''),
+    flag: flagHref || (countryCode ? `https://a.espncdn.com/i/teamlogos/countries/500/${countryCode}.png` : ''),
+    country,
     pos: String(position.displayName || '').trim() || '—',
     score: parseGolfToPar(row.score ?? row.displayValue),
     thru: Number.isFinite(Number(status.thru)) ? Number(status.thru) : null,
@@ -2096,7 +2139,11 @@ function espnGolfHeaders(): Record<string, string> {
   return { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
 }
 
-function gameFromEspnGolfEvent(ev: Record<string, unknown>, includeField: boolean): LoungeSportsGame | null {
+function gameFromEspnGolfEvent(
+  ev: Record<string, unknown>,
+  includeField: boolean,
+  tour: EspnGolfTour = ESPN_GOLF_TOURS[0],
+): LoungeSportsGame | null {
   const eventId = String(ev.id || '').trim()
   if (!eventId) return null
   const comps = (Array.isArray(ev.competitions) ? ev.competitions[0] : null) as Record<string, unknown> | null
@@ -2122,6 +2169,8 @@ function gameFromEspnGolfEvent(ev: Record<string, unknown>, includeField: boolea
     short_name: row.short_name,
     score: row.score,
     headshot: row.headshot,
+    flag: row.flag,
+    country: row.country,
     player_id: row.player_id,
     pos: row.pos,
   }))
@@ -2178,14 +2227,14 @@ function gameFromEspnGolfEvent(ev: Record<string, unknown>, includeField: boolea
   }
   return {
     id: `espn-golf-${eventId}`,
-    sport_key: 'golf_pga',
-    sport_label: 'Golf',
+    sport_key: tour.sportKey,
+    sport_label: tour.label,
     status,
     status_label: statusLabel,
     commence_time: commence,
     away,
     home,
-    aliases: [...leaders.map((row) => row.name), tourneyName, 'Golf', 'PGA'].filter(Boolean),
+    aliases: [...leaders.map((row) => row.name), tourneyName, 'Golf', tour.label].filter(Boolean),
     live: status === 'in'
       ? {
         clock: '',
@@ -2207,6 +2256,8 @@ function gameFromEspnGolfEvent(ev: Record<string, unknown>, includeField: boolea
     total: null,
     golf: {
       tournament: tourneyName,
+      tour: tour.league,
+      tour_label: tour.label,
       venue: course.venue,
       location: course.location,
       broadcast,
@@ -2235,9 +2286,12 @@ function ptYmdCompactDaysAgo(days: number): string {
   }).format(new Date(Date.now() - days * 86_400_000)).replace(/-/g, '')
 }
 
-async function fetchEspnGolfLeaderboardEvents(eventId?: string): Promise<Array<Record<string, unknown>>> {
+async function fetchEspnGolfLeaderboardEvents(
+  league: string,
+  eventId?: string,
+): Promise<Array<Record<string, unknown>>> {
   const headers = espnGolfHeaders()
-  const qs = new URLSearchParams({ league: 'pga', region: 'us', lang: 'en' })
+  const qs = new URLSearchParams({ league, region: 'us', lang: 'en' })
   if (eventId) qs.set('event', eventId)
   const url = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?${qs}`
   const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
@@ -2247,61 +2301,68 @@ async function fetchEspnGolfLeaderboardEvents(eventId?: string): Promise<Array<R
 }
 
 /** Leaderboard ignores `dates` and only returns the current tournament. Scoreboard keeps last week. */
-async function loadEspnPgaRecentEventIds(): Promise<string[]> {
+async function loadEspnGolfRecentEvents(scoreboard: string): Promise<Array<{ id: string; date: string }>> {
   const to = ptTodayDate().replace(/-/g, '')
   const from = ptYmdCompactDaysAgo(10)
-  const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?dates=${from}-${to}`
+  const url = `https://site.api.espn.com/apis/site/v2/sports/golf/${scoreboard}/scoreboard?dates=${from}-${to}`
   try {
     const res = await fetch(url, { headers: espnGolfHeaders(), signal: AbortSignal.timeout(8_000) })
     if (!res.ok) return []
-    const pack = await res.json() as { events?: Array<{ id?: string }> }
-    return (pack.events || []).map((row) => String(row.id || '').trim()).filter(Boolean)
+    const pack = await res.json() as { events?: Array<{ id?: string; date?: string }> }
+    return (pack.events || [])
+      .map((row) => ({ id: String(row.id || '').trim(), date: String(row.date || '') }))
+      .filter((row) => row.id)
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)))
   } catch {
     return []
   }
 }
 
-/**
- * Golf Tour is not a home/away sport on Odds API (outrights only).
- * One slate card per ESPN tournament … chip/card reads `golf`.
- * Current week from leaderboard; last week's final from scoreboard dates + event hydrate.
- */
-async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
-  const cacheKey = 'pga:active'
-  const cached = espnPgaCache.get(cacheKey)
-  if (cached && Date.now() - cached.at < ESPN_PGA_TTL_MS) return cached.games
-
-  let events: Array<Record<string, unknown>> = []
-  try {
-    events = await fetchEspnGolfLeaderboardEvents()
-  } catch {
-    return cached?.games || []
-  }
-
+async function loadEspnGolfTourGames(tour: EspnGolfTour): Promise<LoungeSportsGame[]> {
   const games: LoungeSportsGame[] = []
   const seen = new Set<string>()
-  for (const ev of events.slice(0, 6)) {
-    const next = gameFromEspnGolfEvent(ev, false)
-    if (!next) continue
-    games.push(next)
-    seen.add(String(ev.id || ''))
-  }
-
-  const recentIds = await loadEspnPgaRecentEventIds()
-  for (const espnId of recentIds) {
-    if (seen.has(espnId) || games.length >= 6) continue
-    try {
-      const extra = await fetchEspnGolfLeaderboardEvents(espnId)
-      const ev = extra.find((row) => String(row.id) === espnId) || extra[0]
-      const next = ev ? gameFromEspnGolfEvent(ev, false) : null
+  try {
+    const events = await fetchEspnGolfLeaderboardEvents(tour.league)
+    for (const ev of events.slice(0, 3)) {
+      const next = gameFromEspnGolfEvent(ev, false, tour)
       if (!next) continue
       games.push(next)
-      seen.add(espnId)
+      seen.add(String(ev.id || ''))
+    }
+  } catch {
+    // other tours still paint
+  }
+
+  const recent = await loadEspnGolfRecentEvents(tour.scoreboard)
+  for (const row of recent) {
+    if (seen.has(row.id) || games.length >= 2) continue
+    try {
+      const extra = await fetchEspnGolfLeaderboardEvents(tour.league, row.id)
+      const ev = extra.find((item) => String(item.id) === row.id) || extra[0]
+      const next = ev ? gameFromEspnGolfEvent(ev, false, tour) : null
+      if (!next) continue
+      games.push(next)
+      seen.add(row.id)
     } catch {
       // keep the current-week card
     }
   }
+  return games
+}
 
+/**
+ * PGA / LPGA / Champions / DP World / Korn Ferry.
+ * Current week from leaderboard; last week's final from scoreboard dates + event hydrate.
+ */
+async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
+  const cacheKey = 'golf:tours'
+  const cached = espnPgaCache.get(cacheKey)
+  if (cached && Date.now() - cached.at < ESPN_PGA_TTL_MS) return cached.games
+
+  const packs = await Promise.all(
+    ESPN_GOLF_TOURS.map((tour) => loadEspnGolfTourGames(tour).catch(() => [] as LoungeSportsGame[])),
+  )
+  const games = packs.flat()
   espnPgaCache.set(cacheKey, { at: Date.now(), games })
   return games
 }
@@ -2309,10 +2370,11 @@ async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
 async function loadEspnGolfEventDetail(game: LoungeSportsGame): Promise<LoungeSportsGame> {
   const espnId = String(game.id || '').replace(/^espn-golf-/, '').trim()
   if (!espnId) return game
+  const tour = golfTourFromSportKey(game.sport_key)
   try {
-    const events = await fetchEspnGolfLeaderboardEvents(espnId)
+    const events = await fetchEspnGolfLeaderboardEvents(tour.league, espnId)
     const ev = events.find((row) => String(row.id) === espnId) || events[0]
-    const next = ev ? gameFromEspnGolfEvent(ev, true) : null
+    const next = ev ? gameFromEspnGolfEvent(ev, true, tour) : null
     return next || game
   } catch {
     return game
@@ -2321,7 +2383,8 @@ async function loadEspnGolfEventDetail(game: LoungeSportsGame): Promise<LoungeSp
 
 type GolfOutrightRow = { name: string; price: number; book: string }
 
-async function loadGolfOutrights(tournament: string): Promise<GolfOutrightRow[]> {
+async function loadGolfOutrights(tournament: string, sportKey = 'golf_pga'): Promise<GolfOutrightRow[]> {
+  if (sportKey !== 'golf_pga') return []
   const key = String(tournament || '').trim().toLowerCase()
   if (!key) return []
   const cached = golfOutrightsCache.get(key)
@@ -3827,7 +3890,7 @@ export async function fetchLoungeSportsGameDetail(
   if (isPgaSportKey(game.sport_key) || String(game.id || '').startsWith('espn-golf-')) {
     const [rich, golfOdds] = await Promise.all([
       loadEspnGolfEventDetail(game),
-      loadGolfOutrights(String(game.golf?.tournament || game.home?.name || '')),
+      loadGolfOutrights(String(game.golf?.tournament || game.home?.name || ''), game.sport_key),
     ])
     return {
       live: rich.live,

@@ -1,34 +1,10 @@
-import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
 import { formatKickoff, stripTimeZoneSuffix } from './gameHub/gameHubFormatters.js'
-import { formatGolfToPar, golferInitials } from './loungeGolfFormat.js'
+import { formatGolfToPar } from './loungeGolfFormat.js'
+import LoungeGolferMark from './LoungeGolferMark.jsx'
 
 export { formatGolfToPar }
-
-function GolferMark({ leader }) {
-  const src = String(leader?.headshot || '').trim()
-  const letter = golferInitials(leader?.name || leader?.short_name)
-  const [failed, setFailed] = useState(false)
-  if (!src || failed) {
-    return (
-      <span data-lounge-pga-pill-mark className="grid place-items-center text-[10px] font-bold text-white/80">
-        {letter}
-      </span>
-    )
-  }
-  return (
-    <span data-lounge-pga-pill-mark>
-      <img
-        src={src}
-        alt=""
-        className="h-full w-full object-cover"
-        decoding="async"
-        onError={() => setFailed(true)}
-      />
-    </span>
-  )
-}
 
 /**
  * Tournament chip for PGA … not a home/away score pill.
@@ -53,7 +29,8 @@ export default function LoungePgaTournamentPill({
     : stripTimeZoneSuffix(game.status_label) || (live ? 'Live' : 'Final')
   const place = [golf?.venue, golf?.location].filter(Boolean).join(' · ')
   const broadcast = String(golf?.broadcast || game.broadcast || '').trim()
-  const meta = [statusLine, place, broadcast].filter(Boolean).join('  ·  ')
+  const tour = String(golf?.tour_label || game.sport_label || '').trim()
+  const meta = [tour && tour !== title ? tour : '', statusLine, place, broadcast].filter(Boolean).join('  ·  ')
   const leaders = golf?.show_leaders && Array.isArray(golf.leaders) ? golf.leaders.slice(0, 3) : []
   const canOpenHub = interactive && !pendingInclude
   const Tag = canOpenHub || pendingInclude ? 'button' : 'div'
@@ -107,7 +84,7 @@ export default function LoungePgaTournamentPill({
               {leaders.map((row, i) => (
                 <li key={row.player_id || `${row.name}-${i}`}>
                   <span data-lounge-pga-pill-pos>{i + 1}</span>
-                  <GolferMark leader={row} />
+                  <LoungeGolferMark player={row} compact />
                   <span className="min-w-0 truncate text-[13px] font-semibold leading-none">
                     {row.short_name || row.name}
                   </span>

@@ -3683,16 +3683,23 @@ html.light [data-lounge-pga-pill] .text-white\/60 {
   flex-direction: column;
   gap: 0.2rem;
 }
-[data-lounge-golf-card-live] {
+[data-lounge-golf-card-live],
+[data-lounge-golf-card-tour] {
   align-self: flex-start;
   margin-bottom: 0.2rem;
   border-radius: 999px;
-  background: #dc2626;
   padding: 0.1rem 0.45rem;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+[data-lounge-golf-card-live] {
+  background: #dc2626;
+}
+[data-lounge-golf-card-tour] {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.82);
 }
 [data-lounge-golf-card-title] {
   font-size: 1.2rem;
@@ -3721,9 +3728,22 @@ html.light [data-lounge-pga-pill] .text-white\/60 {
 }
 [data-lounge-golf-card-board] li {
   display: grid;
-  grid-template-columns: 1.15rem 1.55rem minmax(0, 1fr) auto;
+  grid-template-columns: 1.15rem auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.35rem;
+}
+[data-lounge-golfer-mark] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex-shrink: 0;
+}
+[data-lounge-golf-flag] {
+  width: 1.05rem;
+  height: 0.72rem;
+  object-fit: cover;
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.28);
 }
 [data-lounge-golf-card-pos] {
   font-size: 11px;
@@ -3797,7 +3817,7 @@ html.light [data-lounge-pga-pill] .text-white\/60 {
   text-align: left;
 }
 [data-lounge-golf-board-main] {
-  grid-template-columns: 2.1rem minmax(0, 1fr) 2.6rem 2.2rem 1rem;
+  grid-template-columns: 2.1rem auto minmax(0, 1fr) 2.6rem 2.2rem 1rem;
 }
 [data-lounge-golf-odds] li {
   grid-template-columns: minmax(0, 1fr) auto;

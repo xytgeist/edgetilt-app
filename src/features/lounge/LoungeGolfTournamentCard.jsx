@@ -1,18 +1,6 @@
 import { formatKickoff, stripTimeZoneSuffix } from './gameHub/gameHubFormatters.js'
-import { formatGolfDateRange, formatGolfMoney, formatGolfToPar, golferInitials } from './loungeGolfFormat.js'
-
-function GolferDot({ player }) {
-  const src = String(player?.headshot || '').trim()
-  const letter = golferInitials(player?.name || player?.short_name)
-  if (!src) {
-    return <span data-lounge-golf-card-dot>{letter}</span>
-  }
-  return (
-    <span data-lounge-golf-card-dot>
-      <img src={src} alt="" decoding="async" />
-    </span>
-  )
-}
+import { formatGolfDateRange, formatGolfMoney, formatGolfToPar } from './loungeGolfFormat.js'
+import LoungeGolferMark from './LoungeGolferMark.jsx'
 
 /**
  * Golf Hub tournament card … ESPN header on the left, top 5 on the right (stacks on phone).
@@ -46,6 +34,7 @@ export default function LoungeGolfTournamentCard({ game, onOpen }) {
       <span data-lounge-golf-card-grid>
         <span data-lounge-golf-card-copy>
           {game.status === 'in' ? <span data-lounge-golf-card-live>Live</span> : null}
+          {golf.tour_label ? <span data-lounge-golf-card-tour>{golf.tour_label}</span> : null}
           <span data-lounge-golf-card-title>{title}</span>
           <span data-lounge-golf-card-meta>
             {[dates, broadcast].filter(Boolean).join(' · ')}
@@ -63,7 +52,7 @@ export default function LoungeGolfTournamentCard({ game, onOpen }) {
               {leaders.map((row, i) => (
                 <li key={row.player_id || `${row.name}-${i}`}>
                   <span data-lounge-golf-card-pos>{row.pos || i + 1}</span>
-                  <GolferDot player={row} />
+                  <LoungeGolferMark player={row} />
                   <span data-lounge-golf-card-name>{row.short_name || row.name}</span>
                   <span data-lounge-golf-card-score>{formatGolfToPar(row.score)}</span>
                 </li>

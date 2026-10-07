@@ -16,6 +16,7 @@ import {
   formatGolfMoney,
   formatGolfToPar,
 } from './loungeGolfFormat.js'
+import LoungeGolferMark from './LoungeGolferMark.jsx'
 
 const TABS = [
   { id: 'board', label: 'Board' },
@@ -41,6 +42,7 @@ function BoardRow({ row, status, open, onToggle }) {
     <li data-lounge-golf-board-row={open ? 'open' : 'shut'}>
       <button type="button" onClick={onToggle} data-lounge-golf-board-main>
         <span data-lounge-golf-board-pos>{row.pos || '—'}</span>
+        <LoungeGolferMark player={row} compact />
         <span data-lounge-golf-board-name>
           {row.short_name || row.name}
           {row.amateur ? <em> (a)</em> : null}
@@ -152,6 +154,7 @@ export default function LoungeGolfTournamentHub({ supabaseClient, embedded = fal
           <div className="truncate text-[17px] font-semibold tracking-tight">{title}</div>
           <div className="truncate text-[12px] text-zinc-500">
             {[
+              golf.tour_label,
               formatGolfDateRange(golf.start_date || game.commence_time, golf.end_date),
               golf.venue,
               stripTimeZoneSuffix(game.status_label),

@@ -94,8 +94,12 @@ function isMlsGame(game) {
   return String(game?.sport_key || '').includes('soccer_usa_mls')
 }
 
+export function isGolfGame(game) {
+  return String(game?.sport_key || '').startsWith('golf_')
+}
+
 export function isPgaGame(game) {
-  return String(game?.sport_key || '').includes('golf_pga')
+  return isGolfGame(game)
 }
 
 function commenceMs(game) {
@@ -277,8 +281,8 @@ function slateGamesUnsorted(games, filter, now) {
   if (key.includes('soccer_usa_mls') || key === 'mls') {
     return list.filter((g) => isMlsGame(g))
   }
-  if (key.includes('golf_pga') || key === 'pga') {
-    return list.filter((g) => isPgaGame(g))
+  if (key.includes('golf_') || key === 'pga' || key === 'golf') {
+    return list.filter((g) => isGolfGame(g))
   }
   return hubGamesUnsorted(list, key, now)
 }

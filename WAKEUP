@@ -122,6 +122,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-07 ... Golf multi-tour + flags (`1.4.1093`)
+**Web `1.4.1093` on `test`.** Golf Hub loads PGA + LPGA + Champions + DP World + Korn Ferry (current week + last final each). Cards / pills / board show headshots and country flags. Tour sections on the hub. Odds outrights stay PGA-only. Redeploy **test** `lounge-sports-scoreboard`. Not promoted. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-07 ... Golf last-week card (`1.4.1092`)
 **Web `1.4.1092` on `test`.** Golf Hub keeps the just-finished tournament (Bank of Utah this week) plus the current one. ESPN leaderboard JSON only returns this week; completed events come from scoreboard `dates`. Final to-par reads `displayValue` (`-26`) not stroke totals (`258`). Client golf cache window is 12 days back / 16 ahead so last week is not dropped. Tour rankings still have no ESPN JSON (core `/rankings` is empty; `espn.com/golf/rankings` is HTML-only). Redeploy **test** `lounge-sports-scoreboard`. Not promoted. Marketing still **1.4.95**.
 

@@ -36,7 +36,7 @@ export function normalizeLoungeSportsHubFilter(filter) {
   if (raw === 'nba' || raw.includes('basketball_nba')) return LOUNGE_SPORTS_HUB_FILTER_NBA
   if (raw === 'mlb' || raw.includes('baseball_mlb')) return LOUNGE_SPORTS_HUB_FILTER_MLB
   if (raw === 'mls' || raw.includes('soccer_usa_mls')) return LOUNGE_SPORTS_HUB_FILTER_MLS
-  if (raw === 'pga' || raw.includes('golf_pga') || (raw.includes('golf') && raw.includes('pga'))) {
+  if (raw === 'pga' || raw === 'golf' || raw.startsWith('golf_') || (raw.includes('golf') && raw.includes('pga'))) {
     return LOUNGE_SPORTS_HUB_FILTER_PGA
   }
   return String(filter || '').trim()

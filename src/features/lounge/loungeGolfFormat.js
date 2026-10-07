@@ -5,18 +5,36 @@ export function formatGolfToPar(score) {
   return n > 0 ? `+${n}` : String(n)
 }
 
+function golfDay(value) {
+  const raw = String(value || '').trim()
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (iso) return { y: Number(iso[1]), m: Number(iso[2]), d: Number(iso[3]) }
+  const t = Date.parse(raw)
+  if (!Number.isFinite(t)) return null
+  const dt = new Date(t)
+  return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate() }
+}
+
+function golfDayDate(day) {
+  return new Date(Date.UTC(day.y, day.m - 1, day.d))
+}
+
+const GOLF_DAY_UTC = { timeZone: 'UTC' }
+
 export function formatGolfDateRange(start, end) {
-  const a = start ? new Date(start) : null
-  const b = end ? new Date(end) : null
-  if (!a || Number.isNaN(a.getTime())) return ''
-  const month = a.toLocaleDateString(undefined, { month: 'long' })
-  const day = a.getDate()
-  const year = a.getFullYear()
-  if (!b || Number.isNaN(b.getTime())) return `${month} ${day}, ${year}`
-  if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) {
-    return `${month} ${day} - ${b.getDate()}, ${year}`
+  const a = golfDay(start)
+  const b = golfDay(end)
+  if (!a) return ''
+  const aDate = golfDayDate(a)
+  if (!b) {
+    return aDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric', ...GOLF_DAY_UTC })
   }
-  return `${a.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${b.toLocaleDateString(undefined, { month: 'short', day: 'numeric, year' })}`
+  const bDate = golfDayDate(b)
+  if (a.m === b.m && a.y === b.y) {
+    const month = aDate.toLocaleDateString(undefined, { month: 'long', ...GOLF_DAY_UTC })
+    return `${month} ${a.d} - ${b.d}, ${a.y}`
+  }
+  return `${aDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...GOLF_DAY_UTC })} - ${bDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', ...GOLF_DAY_UTC })}`
 }
 
 export function formatGolfMoney(value) {

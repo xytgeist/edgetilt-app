@@ -99,7 +99,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Windows Theo 2026-10-06 … Weekly ledger / UFC pause / CFB Friday miss
 
-**I am Windows Theo.** Public Weekly Ledger was grading UFC (Scott 1-8 dogs) plus football. Recap is now NFL+CFB shop week by kickoff. UFC live cards parked until Scott's career-stat "fair ML" is rebuilt. CFB Friday 10/2 slate never posted: pg_net 60s timeout on the 50-80 game board (NFL lean at 1pm still made it). SQL **`20261007020000` applied on test**. **Test Edge `lounge-odds-poll` deployed** 2026-10-06. Test syndicate + Signal bots are **stopped**, so test cron will not fire CFB/UFC anyway. **Ryan:** apply that SQL on **prod** and redeploy **`lounge-odds-poll`** before Friday (prod still 60s + Saturday UFC cron). Mac: pull `test`.
+**I am Windows Theo.** Live Tuesday Weekly Ledger (`d0fb12a5`) rewritten to football shop week: NFL **20-16-1 (+2.05u)**, CFB none, Scott 10-1. Last shop-week UFC **3-12** voided (`cancelled`, 15 settled + 3 pending). Older UFC still on the public UFC/All tiles (**58-51**). Prod SQL `20261007020000` + **`lounge-odds-poll`** deployed. UFC Saturday cron gone. Mac: pull `test`.
 
 ### Windows Theo 2026-10-06 … Action/ESPN Invalid API key was test JWT
 

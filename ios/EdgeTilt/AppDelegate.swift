@@ -26,6 +26,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     return true
   }
 
+  func application(
+    _ application: UIApplication,
+    didDiscardSceneSessions sceneSessions: Set<UISceneSession>
+  ) {
+    // Switcher close (including while we were already dead). Keep lastSpaUrl
+    // for jetsam / long-background remakes only.
+    EdgeLastSpaURL.clear()
+  }
+
   func applicationDidBecomeActive(_ application: UIApplication) {
     EdgeAudioSession.ensurePlaybackUnlessVoiceChat()
     EdgeCallKitManager.shared.handleDidBecomeActive()

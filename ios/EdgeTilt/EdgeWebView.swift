@@ -4,15 +4,28 @@ import WebKit
 
 /// Last in-app SPA URL so a scene remake after a long background does not
 /// `load(edgetilt.com/)` and dump the user out of a game hub.
+///
+/// UserDefaults outlives a swipe-kill. Clear on `didDiscardSceneSessions` so
+/// a fresh icon tap after the user closed the app lands on home. Do **not**
+/// clear in `willTerminate` … jetsam of a backgrounded process can fire that
+/// and would wipe the hold we still want.
 enum EdgeLastSpaURL {
   private static let defaultsKey = "edge.webkit.lastSpaUrl"
+  /// Set when the user closed the scene from the switcher this launch.
+  private static var discardedThisLaunch = false
 
   static func persist(_ url: URL?) {
     guard let url, let allowed = allowed(url) else { return }
     UserDefaults.standard.set(allowed.absoluteString, forKey: defaultsKey)
   }
 
+  static func clear() {
+    discardedThisLaunch = true
+    UserDefaults.standard.removeObject(forKey: defaultsKey)
+  }
+
   static func restore() -> URL? {
+    if discardedThisLaunch { return nil }
     guard let raw = UserDefaults.standard.string(forKey: defaultsKey),
           let url = URL(string: raw)
     else { return nil }

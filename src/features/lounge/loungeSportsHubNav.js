@@ -144,7 +144,7 @@ export function consumeLoungeSportsHubPending() {
   }
 }
 
-/** Currently-open game hub … survives WKWebView process death (URL + localStorage). */
+/** Currently-open game hub … same WKWebView process only. Native `EdgeLastSpaURL` holds `?game=` across a long background; a swipe-kill must not reopen it. */
 export const LOUNGE_SPORTS_GAME_OPEN_KEY = 'loungeSportsGameOpen:v1'
 
 export function readLoungeSportsGameIdFromLocation() {
@@ -159,13 +159,18 @@ export function readLoungeSportsGameIdFromLocation() {
 
 export function peekRememberedLoungeSportsGameOpen() {
   try {
-    if (typeof localStorage === 'undefined') return null
-    const raw = localStorage.getItem(LOUNGE_SPORTS_GAME_OPEN_KEY)
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(LOUNGE_SPORTS_GAME_OPEN_KEY)
+  } catch {
+    /* leftover disk key from 1.4.1095 and earlier */
+  }
+  try {
+    if (typeof sessionStorage === 'undefined') return null
+    const raw = sessionStorage.getItem(LOUNGE_SPORTS_GAME_OPEN_KEY)
     if (!raw) return null
     const row = JSON.parse(raw)
     const id = String(row?.id || '').trim()
     if (!id) {
-      localStorage.removeItem(LOUNGE_SPORTS_GAME_OPEN_KEY)
+      sessionStorage.removeItem(LOUNGE_SPORTS_GAME_OPEN_KEY)
       return null
     }
     return id
@@ -175,15 +180,19 @@ export function peekRememberedLoungeSportsGameOpen() {
 }
 
 /**
- * Keep `?tab=home&game=` on the SPA URL while a hub is open so a WKWebView
- * restore / process-kill reload reopens the same game instead of Lounge home.
+ * Keep `?tab=home&game=` on the SPA URL while a hub is open so a long-background
+ * WKWebView remake (native `EdgeLastSpaURL`) reopens the same game. Session-only
+ * remember covers same-process remakes. A swipe-kill must not reopen it.
  */
 export function syncOpenLoungeSportsGame(eventId) {
   const id = String(eventId || '').trim()
   try {
+    if (typeof sessionStorage !== 'undefined') {
+      if (id) sessionStorage.setItem(LOUNGE_SPORTS_GAME_OPEN_KEY, JSON.stringify({ id, at: Date.now() }))
+      else sessionStorage.removeItem(LOUNGE_SPORTS_GAME_OPEN_KEY)
+    }
     if (typeof localStorage !== 'undefined') {
-      if (id) localStorage.setItem(LOUNGE_SPORTS_GAME_OPEN_KEY, JSON.stringify({ id, at: Date.now() }))
-      else localStorage.removeItem(LOUNGE_SPORTS_GAME_OPEN_KEY)
+      localStorage.removeItem(LOUNGE_SPORTS_GAME_OPEN_KEY)
     }
   } catch {
     /* ignore */

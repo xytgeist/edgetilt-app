@@ -1175,7 +1175,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-10-07:** **Live ML + all-sport close (`1.4.1097`).** Open hub merges board ML/spread (`sameHubGame` was score-only). Hero last-known h2h fallback when live shop (30s / 6%) drops the row. `applyMarketFileCloses` loads that league's `sport_key`, not hardcoded NFL. Redeploy **test** `lounge-sports-scoreboard`. Marketing still **1.4.95**.
+- **2026-10-07:** **Promoted `1.4.1097`** (live ML on game screen + all-sport market-file close). Frontend **`test` → `main`** (`d503a956`). Redeployed **`lounge-sports-scoreboard`** on **`jtjgtucumuoswnbauxry`**. Marketing still **1.4.95**.
+- **2026-10-07:** **Live ML + all-sport close (`1.4.1097`).** Open hub merges board ML/spread (`sameHubGame` was score-only). Hero last-known h2h fallback when live shop (30s / 6%) drops the row. `applyMarketFileCloses` loads that league's `sport_key`, not hardcoded NFL. Marketing still **1.4.95**.
 - **2026-10-07:** **Promoted `1.4.1096`** (last-page hold does not survive swipe-kill). Frontend **`test` → `main`** (`09b71009`). No Edge. **TestFlight-only Prod 1.4.95 (20261007230224)** uploaded (not attached). Marketing still **1.4.95**.
 - **2026-10-07:** **Last page after kill (`1.4.1096`).** `EdgeLastSpaURL` still restores after a long background / jetsam remake. `didDiscardSceneSessions` clears `edge.webkit.lastSpaUrl` so swipe-kill + icon tap is home. `loungeSportsGameOpen` is sessionStorage only (drop leftover localStorage). New IPA required. Marketing still **1.4.95**.
 - **2026-10-07:** **Promoted `1.4.1095`** (Golf Hub date-range crash) + **`1.4.1094`** (one Golf section / fat All-Hub cards). Frontend **`test` → `main`** (`776a35bd`). No Edge. Marketing still **1.4.95**.

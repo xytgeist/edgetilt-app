@@ -107,6 +107,7 @@ Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`*
 - **Tap-through:** opening the book from a hub odds cell inserts an **unconfirmed** 1u bet (`odds_tap`). Confirm / Edit / Delete on the tracker row. Hold still opens the composer first. Same for Kalshi/Poly Yes/No and landscape player-prop rails (Yes = Over, No = Under; implied ¢ → American).
 - Composer **Sport** (NFL / CFB / NBA / MLB / NHL / PGA / MLS / Other) maps to Odds API `sport_key`. **Player prop** market adds Player + Stat.
 - Money: **1u** default stake, **$** field, default **$100** unit size. **Bankroll** and **unit size** are set from the tracker chips / **Set bankroll & unit size** (and Unit size on Log a bet). Bankroll = start + settled $ P&L.
+- **Tools sheet** (`SportsBetToolsSheet.jsx`, `?tab=sports-bets&betTools=`): Sports Hub **Tools** chip + tracker **Tools**. Featured **Parlay / Hedge / Kelly** prefill from open bets and bankroll. Utilities: payout, converter, implied, EV, no-vig, arb. Open-bet **Hedge** / settled **Payout**. Not nine hub tiles. Math: `sportsBetCalcMath.js`.
 - Git: scaffold **`0ef9edbd`** (`1.4.1057`) on **`origin/test`**. Notes commit is the tip after computer-change writeup. Draft PR: `cursor/sports-bet-tracker-9369`.
 
 ## Access

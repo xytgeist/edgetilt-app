@@ -2,6 +2,7 @@ export { default as SportsBetTracker } from './SportsBetTracker.jsx'
 export {
   requestSportsBetLog,
   openSportsBetTracker,
+  openSportsBetTools,
   closeSportsBetTracker,
   consumeSportsBetLogPending,
   clearSportsBetLogPending,

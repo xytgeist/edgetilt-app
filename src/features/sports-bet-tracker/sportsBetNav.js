@@ -98,10 +98,30 @@ export function openSportsBetTracker() {
   const url = new URL(window.location.href)
   url.searchParams.set('tab', 'sports-bets')
   url.searchParams.delete('logBet')
+  url.searchParams.delete('betTools')
   url.searchParams.delete(LOUNGE_SPORTS_GAME_PARAM)
   url.searchParams.delete('event')
   window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
   window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+/** Open tracker with the Tools sheet (`betTools=1` or a tool id). */
+export function openSportsBetTools(tool = '1') {
+  if (typeof window === 'undefined') return
+  clearSportsBetLogPending()
+  const url = new URL(window.location.href)
+  url.searchParams.set('tab', 'sports-bets')
+  url.searchParams.set('betTools', String(tool || '1').trim() || '1')
+  url.searchParams.delete('logBet')
+  url.searchParams.delete(LOUNGE_SPORTS_GAME_PARAM)
+  url.searchParams.delete('event')
+  window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+export function sportsBetToolsFromSearch(params) {
+  if (!params || typeof params.get !== 'function') return ''
+  return String(params.get('betTools') || '').trim()
 }
 
 export function closeSportsBetTracker() {
@@ -110,6 +130,7 @@ export function closeSportsBetTracker() {
   const url = new URL(window.location.href)
   url.searchParams.delete('tab')
   url.searchParams.delete('logBet')
+  url.searchParams.delete('betTools')
   url.searchParams.delete(LOUNGE_SPORTS_GAME_PARAM)
   url.searchParams.delete('event')
   window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)

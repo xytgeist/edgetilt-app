@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **Bet Tracker tools (`1.4.1076`).** Sports Hub **Tools** chip + tracker sheet. Featured parlay / hedge / Kelly (open-bet + bankroll prefill). Utilities: payout, converter, implied, EV, no-vig, arb. Light: `data-sports-bet-tools`. No SQL. Marketing still **1.4.95**.
 - **2026-10-06:** **Promoted live clocks + NHL hub dedupe (`1.4.1075`).** Frontend **`test` → `main`**. Includes `1.4.1073` other-sport clocks, `1.4.1074` card collapse, `1.4.1075` test `sb_secret` env sync. Scoreboard Edge already on prod. No new SQL. Marketing still **1.4.95**.
 - **2026-10-06:** **Test `sb_secret` for home-PC Action/ESPN sync (`1.4.1075`).** Test JWT service_role is rejected (`Invalid API key`). `env:sync` now prefers `TEST_`/`PROD_SUPABASE_SECRET_KEY`. Windows 10am `--target=both` was dying on test before prod write. Action + ESPN feeds themselves were fine.
 - **2026-10-06:** **NHL hub duplicate cards (`1.4.1074`).** Odds last-3 nickname abbrevs (`OIL`/`DUC`) missed Rundown codes (`EDM`/`ANA`) in `slateDedupeKey`, so ESPN painted two identical pills. Catalog name map + post-ESPN collapse on scoreboard; client `dedupeLoungeSportsGames` after enrich / cache / active merge. Same path for NBA / MLB / MLS. Redeploy **`lounge-sports-scoreboard`**. Marketing still **1.4.95**.

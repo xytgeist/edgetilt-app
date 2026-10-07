@@ -3583,23 +3583,28 @@ html.light [data-lounge-sports-hub-slate] {
 html.light [data-lounge-sports-hub-slate] .text-zinc-500 {
   color: #71717a !important;
 }
-[data-sports-hub-tracker='home'] {
+[data-sports-hub-tracker='home'],
+[data-sports-hub-tracker='tools'] {
   border-color: rgb(39 39 42);
   background: rgb(24 24 27 / 0.88);
   color: #fafafa;
 }
-[data-sports-hub-tracker='home']:active {
+[data-sports-hub-tracker='home']:active,
+[data-sports-hub-tracker='tools']:active {
   background: rgb(39 39 42);
 }
-html.light [data-sports-hub-tracker='home'] {
+html.light [data-sports-hub-tracker='home'],
+html.light [data-sports-hub-tracker='tools'] {
   background: #ffffff;
   border-color: #d4d4d8;
   color: #18181b;
 }
-html.light [data-sports-hub-tracker='home'] .text-cyan-400 {
+html.light [data-sports-hub-tracker='home'] .text-cyan-400,
+html.light [data-sports-hub-tracker='tools'] .text-cyan-400 {
   color: #0891b2 !important;
 }
-html.light [data-sports-hub-tracker='home']:active {
+html.light [data-sports-hub-tracker='home']:active,
+html.light [data-sports-hub-tracker='tools']:active {
   background: #f4f4f5;
 }
 [data-lounge-sports-hub-leagues] [data-sports-hub-league] {
@@ -11377,6 +11382,41 @@ html.light [data-sports-bet-composer] .text-white {
 html.light [data-sports-bet-composer] input,
 html.light [data-sports-bet-composer] select,
 html.light [data-sports-bet-composer] textarea {
+  background-color: #fafafa !important;
+  color: #18181b !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-sports-bet-tools] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-sports-bet-tools] .text-white {
+  color: #18181b !important;
+}
+html.light [data-sports-bet-tools] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-sports-bet-tools] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-sports-bet-tools] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-sports-bet-tools] .border-zinc-800,
+html.light [data-sports-bet-tools] .border-zinc-700 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-sports-bet-tools] .bg-zinc-900,
+html.light [data-sports-bet-tools] .bg-zinc-900\/70,
+html.light [data-sports-bet-tools] .bg-zinc-900\/80 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-sports-bet-tools] [data-sports-bet-stat] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-sports-bet-tools] input,
+html.light [data-sports-bet-tools] select {
   background-color: #fafafa !important;
   color: #18181b !important;
   border-color: #d4d4d8 !important;

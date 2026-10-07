@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Check, ChevronLeft, ClipboardList, ClipboardPaste, FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { Calculator, Camera, Check, ChevronLeft, ClipboardList, ClipboardPaste, FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import AppModalOverlay from '../../components/AppModalOverlay.jsx'
@@ -24,7 +24,9 @@ import {
   isUsefulSportsBetPrefill,
   sportsBetLogOpenEventName,
   sportsBetPrefillFromSearchParams,
+  sportsBetToolsFromSearch,
 } from './sportsBetNav.js'
+import SportsBetToolsSheet from './SportsBetToolsSheet.jsx'
 import { parseSportsBetCsv, parseSportsBetIntake } from './sportsBetParse.js'
 import { ocrSportsBetSlipImage } from './sportsBetOcr.js'
 import {
@@ -168,6 +170,9 @@ export default function SportsBetTracker({
   const [unitSize, setUnitSize] = useState(readUnitSizeDollars)
   const [bankrollStart, setBankrollStart] = useState(null)
   const [settingsDraft, setSettingsDraft] = useState({ unit: '', bankroll: '' })
+  const [toolsOpen, setToolsOpen] = useState(false)
+  const [toolsTool, setToolsTool] = useState('')
+  const [toolsSeed, setToolsSeed] = useState(null)
   const csvInputRef = useRef(null)
   const photoInputRef = useRef(null)
 
@@ -426,10 +431,42 @@ export default function SportsBetTracker({
     setError('')
   }
 
+  const openTools = (tool = '', bet = null) => {
+    setToolsTool(String(tool || '').trim() === '1' ? '' : String(tool || '').trim())
+    setToolsSeed(bet || null)
+    setToolsOpen(true)
+    setError('')
+  }
+
+  const closeTools = () => {
+    setToolsOpen(false)
+    setToolsTool('')
+    setToolsSeed(null)
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    if (!url.searchParams.get('betTools')) return
+    url.searchParams.delete('betTools')
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const apply = () => {
+      const params = new URLSearchParams(window.location.search || '')
+      if (params.get('tab') !== 'sports-bets') return
+      const tool = sportsBetToolsFromSearch(params)
+      if (tool) openTools(tool)
+    }
+    apply()
+    window.addEventListener('popstate', apply)
+    return () => window.removeEventListener('popstate', apply)
+  }, [])
+
   const inputClass =
     'w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-[15px] text-white outline-none focus:border-cyan-500'
 
   return (
+    <>
     <ScrollLinkedEdgeTitleBarShell
       publishScrollReveal
       titleBarNavSlot={titleBarNavSlot}
@@ -571,6 +608,14 @@ export default function SportsBetTracker({
           >
             <FileSpreadsheet className="h-3.5 w-3.5" />
             CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => openTools()}
+            className="inline-flex h-10 items-center gap-1.5 rounded-2xl border border-zinc-700 px-3 text-[12px] font-bold text-zinc-200 active:bg-zinc-800"
+          >
+            <Calculator className="h-3.5 w-3.5" />
+            Tools
           </button>
           <input
             ref={photoInputRef}
@@ -723,6 +768,14 @@ export default function SportsBetTracker({
                     ))}
                     <button
                       type="button"
+                      onClick={() => openTools('hedge', bet)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 px-2.5 py-1 text-[11px] font-bold uppercase text-zinc-300 active:bg-zinc-800"
+                    >
+                      <Calculator className="h-3 w-3" />
+                      Hedge
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => openEdit(bet)}
                       className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 px-2.5 py-1 text-[11px] font-bold uppercase text-zinc-300 active:bg-zinc-800"
                     >
@@ -740,6 +793,14 @@ export default function SportsBetTracker({
                   </div>
                 ) : (
                   <div className="mt-2 flex flex-wrap justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => openTools('payout', bet)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-zinc-400 active:bg-zinc-800"
+                    >
+                      <Calculator className="h-3 w-3" />
+                      Payout
+                    </button>
                     <button
                       type="button"
                       onClick={() => openEdit(bet)}
@@ -1135,5 +1196,18 @@ export default function SportsBetTracker({
         </div>
       ) : null}
     </ScrollLinkedEdgeTitleBarShell>
+    {toolsOpen ? (
+      <SportsBetToolsSheet
+        key={`${toolsTool || 'home'}:${toolsSeed?.id || 'none'}`}
+        open
+        onClose={closeTools}
+        bets={bets}
+        bankrollNow={bankrollNow}
+        unitSize={unitSize}
+        initialTool={toolsTool}
+        seedBet={toolsSeed}
+      />
+    ) : null}
+    </>
   )
 }

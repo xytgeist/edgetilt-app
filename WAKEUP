@@ -122,8 +122,11 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-07 ... promote 1.4.1098
+**Web `1.4.1098`.** Promoted **`test` → `main`** (`80550189`) 2026-10-07. iPad landscape gamecast is the iPhone field + rails, scaled. No Edge. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-07 ... iPad gamecast scale (`1.4.1098`)
-**Web `1.4.1098` on `test`.** Tablet landscape football gamecast uses the iPhone layout scaled with `transform` (WKWebView ignores `zoom`, so the field ate the rails and type stayed phone-sized). Phone landscape unchanged. No Edge. Not promoted. Marketing still **1.4.95**.
+**Web `1.4.1098`.** Tablet landscape football gamecast uses the iPhone layout scaled with `transform` (WKWebView ignores `zoom`, so the field ate the rails and type stayed phone-sized). Phone landscape unchanged. Promoted 2026-10-07. Marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-07 ... promote 1.4.1097
 **Web `1.4.1097`.** Promoted **`test` → `main`** (`d503a956`) 2026-10-07. Live ML on the game screen + market-file close for every league. Redeploy **prod** `lounge-sports-scoreboard`. Marketing still **1.4.95**.

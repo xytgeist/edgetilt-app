@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-07:** **Promoted `1.4.1098`** (iPad landscape gamecast scale). Frontend **`test` → `main`** (`80550189`). No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **iPad gamecast scale (`1.4.1098`).** Tablet landscape football gamecast is the iPhone field + side rails, scaled via `transform` (`zoom` is a no-op in iPad WKWebView). Phone landscape (height < 700) unchanged. No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **Promoted `1.4.1097`** (live ML on game screen + all-sport market-file close). Frontend **`test` → `main`** (`d503a956`). Redeployed **`lounge-sports-scoreboard`** on **`jtjgtucumuoswnbauxry`**. Marketing still **1.4.95**.
 - **2026-10-07:** **Live ML + all-sport close (`1.4.1097`).** Open hub merges board ML/spread (`sameHubGame` was score-only). Hero last-known h2h fallback when live shop (30s / 6%) drops the row. `applyMarketFileCloses` loads that league's `sport_key`, not hardcoded NFL. Marketing still **1.4.95**.

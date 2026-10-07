@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-07:** **Promoted `1.4.1096`** (last-page hold does not survive swipe-kill). Frontend **`test` → `main`** (`09b71009`). No Edge. **TestFlight-only Prod 1.4.95 (20261007230224)** uploaded (not attached). Marketing still **1.4.95**.
 - **2026-10-07:** **Last page after kill (`1.4.1096`).** `EdgeLastSpaURL` still restores after a long background / jetsam remake. `didDiscardSceneSessions` clears `edge.webkit.lastSpaUrl` so swipe-kill + icon tap is home. `loungeSportsGameOpen` is sessionStorage only (drop leftover localStorage). New IPA required. Marketing still **1.4.95**.
 - **2026-10-07:** **Promoted `1.4.1095`** (Golf Hub date-range crash) + **`1.4.1094`** (one Golf section / fat All-Hub cards). Frontend **`test` → `main`** (`776a35bd`). No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **Golf Hub date crash (`1.4.1095`).** `formatGolfDateRange` passed `day: 'numeric, year'` to `toLocaleDateString`, which throws when a tournament crosses months in local TZ (Utah `2026-10-01T04:00Z` is Sep 30 PT). Fixed options + UTC calendar day. No Edge. Marketing still **1.4.95**.

@@ -122,11 +122,14 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-07 ... promote 1.4.1095
+**Web `1.4.1095`.** Promoted **`test` → `main`** (`776a35bd`) 2026-10-07. Carries Golf Hub date-range crash fix + one Golf section / fat All-Hub cards (`1.4.1094`). No Edge. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-07 ... Golf Hub date crash (`1.4.1095`)
-**Web `1.4.1095` on `test`.** Golf Hub threw `day must be 2-digit or numeric` because `formatGolfDateRange` used `day: 'numeric, year'`. UTC-calendar range now, so Oct 1 04:00Z stays October 1. No Edge. Not promoted. Marketing still **1.4.95**.
+**Web `1.4.1095`.** Golf Hub threw `day must be 2-digit or numeric` because `formatGolfDateRange` used `day: 'numeric, year'`. UTC-calendar range now, so Oct 1 04:00Z stays October 1. Promoted 2026-10-07. Marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-07 ... Golf one section (`1.4.1094`)
-**Web `1.4.1094` on `test`.** All Sports Hub + Golf Hub put every tour in one Golf list. Tour chip stays on the card (PGA / LPGA / …). All Hub uses the fat tournament card, not the thin Field-set pill. Pregame cards drop the empty leaderboard column. No Edge. Not promoted. Marketing still **1.4.95**.
+**Web `1.4.1094`.** All Sports Hub + Golf Hub put every tour in one Golf list. Tour chip stays on the card (PGA / LPGA / …). All Hub uses the fat tournament card, not the thin Field-set pill. Pregame cards drop the empty leaderboard column. Promoted with **`1.4.1095`**. Marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-07 ... promote 1.4.1093
 **Web `1.4.1093`.** Promoted **`test` → `main`** (`3be4dc5b`) 2026-10-07. Carries Golf multi-tour + flags and last-week finals (`1.4.1092`). Redeploy **prod** `lounge-sports-scoreboard`. Marketing still **1.4.95**.

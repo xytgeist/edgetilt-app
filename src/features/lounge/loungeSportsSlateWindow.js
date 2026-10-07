@@ -286,6 +286,15 @@ function slateGamesUnsorted(games, filter, now) {
 export function isLoungeSportsCurrentSlateGame(game, now = Date.now()) {
   if (!game) return false
   if (game.status === 'in') return true
+  if (isPgaGame(game)) {
+    const start = Date.parse(game.commence_time || '')
+    const end = Date.parse(game.golf?.end_date || '')
+    const from = now - 12 * 86_400_000
+    const to = now + 16 * 86_400_000
+    if (Number.isFinite(start) && start >= from && start <= to) return true
+    if (Number.isFinite(end) && end >= from && end <= to) return true
+    return game.status === 'pre'
+  }
   const day = gameDay(game)
   if (!day) return true
   if (isNflGame(game)) return nflFetchDates(now).includes(day)

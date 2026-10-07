@@ -1955,12 +1955,14 @@ const GOLF_OUTRIGHTS_TTL_MS = 90_000
 function parseGolfToPar(value: unknown): number | null {
   if (value && typeof value === 'object') {
     const row = value as Record<string, unknown>
-    if (row.value != null && Number.isFinite(Number(row.value))) {
-      const display = String(row.displayValue || '').trim()
-      if (display === '-' || display === '') return null
-      return Number(row.value)
-    }
-    return parseGolfToPar(row.displayValue ?? row.score)
+    const fromDisplay = parseGolfToPar(row.displayValue)
+    if (fromDisplay != null) return fromDisplay
+    const display = String(row.displayValue || '').trim()
+    if (display === '-' || display === '') return null
+    const n = Number(row.value)
+    // Finals send stroke totals in `value` (258) and to-par in `displayValue` (-26).
+    if (Number.isFinite(n) && Math.abs(n) <= 40) return n
+    return null
   }
   const raw = String(value ?? '').trim()
   if (!raw || raw === '-') return null
@@ -2224,31 +2226,80 @@ function gameFromEspnGolfEvent(ev: Record<string, unknown>, includeField: boolea
   }
 }
 
+function ptYmdCompactDaysAgo(days: number): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(Date.now() - days * 86_400_000)).replace(/-/g, '')
+}
+
+async function fetchEspnGolfLeaderboardEvents(eventId?: string): Promise<Array<Record<string, unknown>>> {
+  const headers = espnGolfHeaders()
+  const qs = new URLSearchParams({ league: 'pga', region: 'us', lang: 'en' })
+  if (eventId) qs.set('event', eventId)
+  const url = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?${qs}`
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
+  if (!res.ok) return []
+  const pack = await res.json() as { events?: Array<Record<string, unknown>> }
+  return Array.isArray(pack.events) ? pack.events : []
+}
+
+/** Leaderboard ignores `dates` and only returns the current tournament. Scoreboard keeps last week. */
+async function loadEspnPgaRecentEventIds(): Promise<string[]> {
+  const to = ptTodayDate().replace(/-/g, '')
+  const from = ptYmdCompactDaysAgo(10)
+  const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?dates=${from}-${to}`
+  try {
+    const res = await fetch(url, { headers: espnGolfHeaders(), signal: AbortSignal.timeout(8_000) })
+    if (!res.ok) return []
+    const pack = await res.json() as { events?: Array<{ id?: string }> }
+    return (pack.events || []).map((row) => String(row.id || '').trim()).filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
 /**
  * Golf Tour is not a home/away sport on Odds API (outrights only).
  * One slate card per ESPN tournament … chip/card reads `golf`.
+ * Current week from leaderboard; last week's final from scoreboard dates + event hydrate.
  */
 async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
   const cacheKey = 'pga:active'
   const cached = espnPgaCache.get(cacheKey)
   if (cached && Date.now() - cached.at < ESPN_PGA_TTL_MS) return cached.games
 
-  const headers = espnGolfHeaders()
-  const url = 'https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?league=pga&region=us&lang=en'
   let events: Array<Record<string, unknown>> = []
   try {
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
-    if (!res.ok) return cached?.games || []
-    const pack = await res.json() as { events?: Array<Record<string, unknown>> }
-    events = Array.isArray(pack.events) ? pack.events : []
+    events = await fetchEspnGolfLeaderboardEvents()
   } catch {
     return cached?.games || []
   }
 
   const games: LoungeSportsGame[] = []
+  const seen = new Set<string>()
   for (const ev of events.slice(0, 6)) {
     const next = gameFromEspnGolfEvent(ev, false)
-    if (next) games.push(next)
+    if (!next) continue
+    games.push(next)
+    seen.add(String(ev.id || ''))
+  }
+
+  const recentIds = await loadEspnPgaRecentEventIds()
+  for (const espnId of recentIds) {
+    if (seen.has(espnId) || games.length >= 6) continue
+    try {
+      const extra = await fetchEspnGolfLeaderboardEvents(espnId)
+      const ev = extra.find((row) => String(row.id) === espnId) || extra[0]
+      const next = ev ? gameFromEspnGolfEvent(ev, false) : null
+      if (!next) continue
+      games.push(next)
+      seen.add(espnId)
+    } catch {
+      // keep the current-week card
+    }
   }
 
   espnPgaCache.set(cacheKey, { at: Date.now(), games })
@@ -2258,12 +2309,9 @@ async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
 async function loadEspnGolfEventDetail(game: LoungeSportsGame): Promise<LoungeSportsGame> {
   const espnId = String(game.id || '').replace(/^espn-golf-/, '').trim()
   if (!espnId) return game
-  const url = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?league=pga&region=us&lang=en&event=${encodeURIComponent(espnId)}`
   try {
-    const res = await fetch(url, { headers: espnGolfHeaders(), signal: AbortSignal.timeout(8_000) })
-    if (!res.ok) return game
-    const pack = await res.json() as { events?: Array<Record<string, unknown>> }
-    const ev = (pack.events || []).find((row) => String(row.id) === espnId) || (pack.events || [])[0]
+    const events = await fetchEspnGolfLeaderboardEvents(espnId)
+    const ev = events.find((row) => String(row.id) === espnId) || events[0]
     const next = ev ? gameFromEspnGolfEvent(ev, true) : null
     return next || game
   } catch {

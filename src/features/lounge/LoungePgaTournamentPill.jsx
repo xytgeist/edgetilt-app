@@ -2,24 +2,13 @@ import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
 import { formatKickoff, stripTimeZoneSuffix } from './gameHub/gameHubFormatters.js'
+import { formatGolfToPar, golferInitials } from './loungeGolfFormat.js'
 
-export function formatGolfToPar(score) {
-  if (score == null || !Number.isFinite(Number(score))) return '—'
-  const n = Number(score)
-  if (n === 0) return 'E'
-  return n > 0 ? `+${n}` : String(n)
-}
-
-function golferInitial(name) {
-  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
-  if (!parts.length) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase()
-  return `${parts[0].slice(0, 1)}${parts[parts.length - 1].slice(0, 1)}`.toUpperCase()
-}
+export { formatGolfToPar }
 
 function GolferMark({ leader }) {
   const src = String(leader?.headshot || '').trim()
-  const letter = golferInitial(leader?.name || leader?.short_name)
+  const letter = golferInitials(leader?.name || leader?.short_name)
   const [failed, setFailed] = useState(false)
   if (!src || failed) {
     return (
@@ -56,7 +45,7 @@ export default function LoungePgaTournamentPill({
 }) {
   if (!game) return null
   const golf = game.golf && typeof game.golf === 'object' ? game.golf : null
-  const title = String(golf?.tournament || game.home?.name || game.sport_label || 'PGA').trim()
+  const title = String(golf?.tournament || game.home?.name || game.sport_label || 'Golf').trim()
   const live = game.status === 'in'
   const kickoff = formatKickoff(game.commence_time)
   const statusLine = game.status === 'pre'

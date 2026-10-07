@@ -33,7 +33,7 @@ export default function LoungeGameHubPillChip({ game, active = false, onClick })
         ? game.status_label || 'Live'
         : time || game.status_label || ''
   if (pga) {
-    const title = String(game.golf?.tournament || game.home?.name || 'PGA').trim()
+    const title = String(game.golf?.tournament || game.home?.name || 'Golf').trim()
     return (
       <button
         type="button"
@@ -46,7 +46,7 @@ export default function LoungeGameHubPillChip({ game, active = false, onClick })
       >
         <span data-lounge-hub-pga-pill-row>
           <span data-lounge-hub-game-pill-date className="truncate">{title}</span>
-          <span data-lounge-hub-game-pill-meta>{statusLine || date || 'PGA'}</span>
+          <span data-lounge-hub-game-pill-meta>{statusLine || date || 'Golf'}</span>
         </span>
       </button>
     )

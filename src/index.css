@@ -3649,6 +3649,263 @@ html.light [data-lounge-pga-pill] .text-white\/70,
 html.light [data-lounge-pga-pill] .text-white\/60 {
   color: #fff !important;
 }
+[data-lounge-golf-card] {
+  background-color: #14261c;
+  color: #fff;
+}
+[data-lounge-golf-card] [data-lounge-golf-card-wash] {
+  position: absolute;
+  inset: -10%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(90% 70% at 100% 0%, rgba(190, 230, 150, 0.16), transparent 48%),
+    linear-gradient(168deg, #2a5a3b 0%, #163024 54%, #102018 100%);
+}
+[data-lounge-golf-card-grid] {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(11rem, 0.8fr);
+  gap: 0.85rem 1.1rem;
+  padding: 0.95rem 1rem 1rem;
+  box-sizing: border-box;
+}
+@media (max-width: 520px) {
+  [data-lounge-golf-card-grid] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+[data-lounge-golf-card-copy],
+[data-lounge-golf-card-board] {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+[data-lounge-golf-card-live] {
+  align-self: flex-start;
+  margin-bottom: 0.2rem;
+  border-radius: 999px;
+  background: #dc2626;
+  padding: 0.1rem 0.45rem;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+[data-lounge-golf-card-title] {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+[data-lounge-golf-card-meta],
+[data-lounge-golf-card-status],
+[data-lounge-golf-card-empty] {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.68);
+}
+[data-lounge-golf-card-status] {
+  margin-top: 0.28rem;
+  color: rgba(255, 255, 255, 0.86);
+}
+[data-lounge-golf-card-board] ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+[data-lounge-golf-card-board] li {
+  display: grid;
+  grid-template-columns: 1.15rem 1.55rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem;
+}
+[data-lounge-golf-card-pos] {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.5);
+}
+[data-lounge-golf-card-dot] {
+  width: 1.55rem;
+  height: 1.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+}
+[data-lounge-golf-card-dot] img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+[data-lounge-golf-card-name] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+}
+[data-lounge-golf-card-score] {
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+[data-lounge-golf-hub] {
+  background-color: #09090b;
+  color: #fafafa;
+}
+[data-lounge-golf-hub-tabs] {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.15rem 0.75rem 0.65rem;
+}
+[data-lounge-golf-hub-tab] {
+  border-radius: 999px;
+  padding: 0.38rem 0.8rem;
+  font-size: 13px;
+  font-weight: 700;
+  color: #a1a1aa;
+  background: transparent;
+}
+[data-lounge-golf-hub-tab='on'] {
+  color: #18181b;
+  background: #e4e4e7;
+}
+[data-lounge-golf-board],
+[data-lounge-golf-odds] {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-lounge-golf-board-main],
+[data-lounge-golf-odds] li {
+  display: grid;
+  width: 100%;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 0.15rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+[data-lounge-golf-board-main] {
+  grid-template-columns: 2.1rem minmax(0, 1fr) 2.6rem 2.2rem 1rem;
+}
+[data-lounge-golf-odds] li {
+  grid-template-columns: minmax(0, 1fr) auto;
+  font-size: 15px;
+  font-weight: 700;
+}
+[data-lounge-golf-board-pos],
+[data-lounge-golf-board-score],
+[data-lounge-golf-board-thru] {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+[data-lounge-golf-board-pos] {
+  color: #a1a1aa;
+}
+[data-lounge-golf-board-name] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 700;
+}
+[data-lounge-golf-board-chev='open'] {
+  transform: rotate(180deg);
+}
+[data-lounge-golf-board-more] {
+  padding: 0 0.15rem 0.75rem 2.65rem;
+  color: #a1a1aa;
+  font-size: 12px;
+}
+[data-lounge-golf-rounds] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+}
+[data-lounge-golf-week-head] {
+  margin: 0.35rem 0 0.85rem;
+  font-size: 14px;
+  font-weight: 700;
+}
+[data-lounge-golf-week] table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+[data-lounge-golf-week] th,
+[data-lounge-golf-week] td {
+  padding: 0.45rem 0.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+[data-lounge-golf-empty] {
+  padding: 1.25rem 0.15rem;
+  color: #71717a;
+  font-size: 14px;
+}
+html.light [data-lounge-golf-card] {
+  background-color: #1a3d2a;
+}
+html.light [data-lounge-golf-card] [data-lounge-golf-card-wash] {
+  background:
+    radial-gradient(90% 70% at 100% 0%, rgba(190, 230, 150, 0.2), transparent 48%),
+    linear-gradient(168deg, #2f7048 0%, #1b422e 54%, #123024 100%);
+}
+html.light [data-lounge-golf-card] .text-white,
+html.light [data-lounge-golf-card] .text-white\/90,
+html.light [data-lounge-golf-card] .text-white\/80,
+html.light [data-lounge-golf-card] .text-white\/70,
+html.light [data-lounge-golf-card] .text-white\/60,
+html.light [data-lounge-golf-card] .text-white\/50,
+html.light [data-lounge-golf-card] .text-white\/40 {
+  color: #fff !important;
+}
+html.light [data-lounge-golf-hub] {
+  background-color: #fafafa !important;
+  color: #18181b !important;
+}
+html.light [data-lounge-golf-hub] .text-zinc-100,
+html.light [data-lounge-golf-hub] .text-zinc-200,
+html.light [data-lounge-golf-hub] .text-zinc-300 {
+  color: #18181b !important;
+}
+html.light [data-lounge-golf-hub] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-lounge-golf-hub] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-lounge-golf-hub] .bg-zinc-950 {
+  background-color: #fafafa !important;
+}
+html.light [data-lounge-golf-hub-tab] {
+  color: #71717a;
+}
+html.light [data-lounge-golf-hub-tab='on'] {
+  color: #fafafa;
+  background: #18181b;
+}
+html.light [data-lounge-golf-board-main],
+html.light [data-lounge-golf-odds] li,
+html.light [data-lounge-golf-week] th,
+html.light [data-lounge-golf-week] td {
+  border-bottom-color: #e4e4e7;
+}
+html.light [data-lounge-golf-board-pos],
+html.light [data-lounge-golf-board-more] {
+  color: #71717a;
+}
 html.light [data-lounge-game-hub] {
   background-color: #fafafa !important;
   color: #18181b !important;

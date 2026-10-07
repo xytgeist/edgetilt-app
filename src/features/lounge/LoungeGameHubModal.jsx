@@ -47,6 +47,8 @@ import {
 import { readGameHubCache, writeGameHubCache } from './gameHub/gameHubCache.js'
 import { requestSportsBetLog } from '../sports-bet-tracker/sportsBetNav.js'
 import { SportsBetLogGameProvider } from '../sports-bet-tracker/sportsBetLogContext.jsx'
+import { isPgaGame } from './loungeSportsSlateWindow.js'
+import LoungeGolfTournamentHub from './LoungeGolfTournamentHub.jsx'
 
 const EMPTY_DETAIL = { odds: [], plays: [], stats: [], live: null, splits: null }
 
@@ -65,7 +67,7 @@ const EMPTY_POSTS = { top: null, latest: null }
  * Game destination opened from the in-post score pill.
  * X-style hero, News, Stats, Plays (live/final only), Players, Fantasy, Posts (Top/Latest), Chat.
  */
-export default function LoungeGameHubModal({
+function LoungeMatchupGameHubModal({
   supabaseClient,
   hydratePosts,
   onOpenPost,
@@ -933,4 +935,17 @@ export default function LoungeGameHubModal({
 
   if (embedded) return hubRoot
   return createPortal(hubRoot, document.body)
+}
+
+export default function LoungeGameHubModal(props) {
+  const sports = useLoungeSportsFeed()
+  if (isPgaGame(sports?.hubGame)) {
+    return (
+      <LoungeGolfTournamentHub
+        supabaseClient={props.supabaseClient}
+        embedded={props.embedded}
+      />
+    )
+  }
+  return <LoungeMatchupGameHubModal {...props} />
 }

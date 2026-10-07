@@ -17,7 +17,7 @@ export const LOUNGE_SPORTS_HUB_FILTER_NBA = 'basketball_nba'
 export const LOUNGE_SPORTS_HUB_FILTER_MLB = 'baseball_mlb'
 /** MLS short slate (yesterday + today + tomorrow PT). */
 export const LOUNGE_SPORTS_HUB_FILTER_MLS = 'soccer_usa_mls'
-/** PGA Tour tournaments (ESPN cards … not Odds matchups). */
+/** Golf Tour tournaments (ESPN cards … not Odds matchups). */
 export const LOUNGE_SPORTS_HUB_FILTER_PGA = 'golf_pga'
 
 /**

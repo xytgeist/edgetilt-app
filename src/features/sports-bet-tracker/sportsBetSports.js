@@ -15,7 +15,7 @@ export const SPORTS_BET_SPORTS = [
   { key: LOUNGE_SPORTS_HUB_FILTER_NBA, label: 'NBA' },
   { key: LOUNGE_SPORTS_HUB_FILTER_MLB, label: 'MLB' },
   { key: LOUNGE_SPORTS_HUB_FILTER_NHL, label: 'NHL' },
-  { key: LOUNGE_SPORTS_HUB_FILTER_PGA, label: 'PGA' },
+  { key: LOUNGE_SPORTS_HUB_FILTER_PGA, label: 'Golf' },
   { key: LOUNGE_SPORTS_HUB_FILTER_MLS, label: 'MLS' },
   { key: 'other', label: 'Other' },
 ]

@@ -103,8 +103,13 @@ Deno.serve(async (req) => {
         : null
       return {
         ok: true,
-        game: { ...game, live: detail.live || game.live },
+        game: {
+          ...game,
+          live: detail.live || game.live,
+          golf: detail.golf || game.golf || null,
+        },
         odds: detail.odds,
+        golf_odds: detail.golf_odds || [],
         plays: detail.plays,
         stats: detail.stats,
         team_stats: detail.team_stats,

@@ -4,6 +4,7 @@ import { Calculator, ChevronLeft, ClipboardList, Loader2 } from 'lucide-react'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import LoungeGameScorePill from './LoungeGameScorePill.jsx'
+import LoungeGolfTournamentCard from './LoungeGolfTournamentCard.jsx'
 import {
   LOUNGE_FEED_TITLE_BAR_ROW_CLASS,
   LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS,
@@ -69,7 +70,7 @@ const SPORTS_HUB_LEAGUES = [
   { id: 'nba', label: 'NBA', icon: '🏀', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_NBA },
   { id: 'mlb', label: 'MLB', icon: '⚾', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_MLB },
   { id: 'nhl', label: 'NHL', icon: '🏒', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_NHL },
-  { id: 'pga', label: 'PGA', icon: '⛳', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_PGA },
+  { id: 'pga', label: 'Golf', icon: '⛳', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_PGA },
   { id: 'mls', label: 'MLS', icon: '⚽', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_MLS },
 ]
 
@@ -173,7 +174,7 @@ function sportSectionLabel(sportKey) {
   if (sk.includes('mlb')) return 'MLB'
   if (sk.includes('nhl')) return 'NHL'
   if (sk.includes('soccer_usa_mls') || sk === 'mls') return 'MLS'
-  if (sk.includes('golf_pga') || sk === 'pga') return 'PGA'
+  if (sk.includes('golf_pga') || sk === 'pga') return 'Golf'
   if (sk.includes('mma') || sk.includes('ufc')) return 'MMA'
   if (sk.includes('soccer')) return 'Soccer'
   return String(sportKey || 'Sports').replace(/_/g, ' ')
@@ -233,7 +234,7 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
     if (nbaHub) return [{ key: 'nba', label: 'NBA', games }]
     if (mlbHub) return [{ key: 'mlb', label: 'MLB', games }]
     if (mlsHub) return [{ key: 'mls', label: 'MLS', games }]
-    if (pgaHub) return [{ key: 'pga', label: 'PGA', games }]
+    if (pgaHub) return [{ key: 'pga', label: 'Golf', games }]
     const bySport = new Map()
     for (const game of games) {
       const key = String(game?.sport_key || 'other')
@@ -267,7 +268,7 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
             : mlsHub
               ? 'MLS Hub'
               : pgaHub
-                ? 'PGA Hub'
+                ? 'Golf Hub'
                 : 'Sports Hub'
 
   const root = (
@@ -315,7 +316,7 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
             {!leagueReady
               ? 'Loading slate…'
               : games.length
-                ? `${games.length} game${games.length === 1 ? '' : 's'}`
+                ? `${games.length} ${pgaHub ? 'tournament' : 'game'}${games.length === 1 ? '' : 's'}`
                 : boardFetched
                   ? 'No games'
                   : 'Loading slate…'}
@@ -370,7 +371,11 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
                 <ul className={phoneLandscape && !embedded ? 'grid grid-cols-2 gap-2' : 'space-y-2'}>
                   {section.games.map((game) => (
                     <li key={game.id}>
-                      <LoungeGameScorePill game={game} className="mt-0" />
+                      {pgaHub && isPgaGame(game) ? (
+                        <LoungeGolfTournamentCard game={game} onOpen={(next) => sports.openHub?.(next)} />
+                      ) : (
+                        <LoungeGameScorePill game={game} className="mt-0" />
+                      )}
                     </li>
                   ))}
                 </ul>

@@ -126,7 +126,7 @@ export const LOUNGE_SPORTS_SCOREBOARD_SPORTS = [
   { key: 'icehockey_nhl', label: 'NHL', logoLeague: 'nhl' },
   { key: 'soccer_usa_mls', label: 'MLS', logoLeague: 'mls' },
   /** Tournament slate from ESPN (Odds API golf is outrights, not matchups). */
-  { key: 'golf_pga', label: 'PGA', logoLeague: 'pga' },
+  { key: 'golf_pga', label: 'Golf', logoLeague: 'pga' },
 ] as const
 
 export type LoungeSportsGameSide = {
@@ -344,6 +344,33 @@ export type LoungeSportsGolfLeader = {
   score: number | null
   headshot: string
   player_id: string | null
+  pos?: string | null
+}
+
+export type LoungeSportsGolfRound = {
+  period: number
+  strokes: number | null
+  to_par: number | null
+}
+
+export type LoungeSportsGolfPlayer = {
+  player_id: string | null
+  name: string
+  short_name: string
+  headshot: string
+  pos: string
+  score: number | null
+  thru: number | null
+  tee_time: string | null
+  amateur: boolean
+  earnings: number | null
+  rounds: LoungeSportsGolfRound[]
+}
+
+export type LoungeSportsGolfHole = {
+  number: number
+  par: number
+  yards: number
 }
 
 export type LoungeSportsGolfCard = {
@@ -351,10 +378,19 @@ export type LoungeSportsGolfCard = {
   venue: string | null
   location: string | null
   broadcast: string | null
+  start_date: string | null
+  end_date: string | null
+  purse: number | null
+  purse_label: string | null
+  par: number | null
+  yards: number | null
+  previous_winner: string | null
   round: number | null
   /** Live/final (or anyone not even-par pre-tee) … hide a fake all-E field. */
   show_leaders: boolean
   leaders: LoungeSportsGolfLeader[]
+  field?: LoungeSportsGolfPlayer[]
+  course_holes?: LoungeSportsGolfHole[]
 }
 
 function espnLogo(league: string, abbrev: string): string {
@@ -1913,10 +1949,22 @@ async function enrichEspnMajorLeagueSides(
 
 const espnPgaCache = new Map<string, { at: number; games: LoungeSportsGame[] }>()
 const ESPN_PGA_TTL_MS = 60_000
+const golfOutrightsCache = new Map<string, { at: number; rows: GolfOutrightRow[] }>()
+const GOLF_OUTRIGHTS_TTL_MS = 90_000
 
 function parseGolfToPar(value: unknown): number | null {
+  if (value && typeof value === 'object') {
+    const row = value as Record<string, unknown>
+    if (row.value != null && Number.isFinite(Number(row.value))) {
+      const display = String(row.displayValue || '').trim()
+      if (display === '-' || display === '') return null
+      return Number(row.value)
+    }
+    return parseGolfToPar(row.displayValue ?? row.score)
+  }
   const raw = String(value ?? '').trim()
-  if (!raw || raw === '-' || raw.toUpperCase() === 'E') return raw.toUpperCase() === 'E' ? 0 : null
+  if (!raw || raw === '-') return null
+  if (raw.toUpperCase() === 'E') return 0
   const n = Number(raw.replace(/^\+/, ''))
   return Number.isFinite(n) ? n : null
 }
@@ -1942,6 +1990,19 @@ function golferShortName(full: string, short: string): string {
 }
 
 function parseGolfCompetitor(row: Record<string, unknown> | null): LoungeSportsGolfLeader | null {
+  const player = parseGolfPlayer(row)
+  if (!player) return null
+  return {
+    name: player.name,
+    short_name: player.short_name,
+    score: player.score,
+    headshot: player.headshot,
+    player_id: player.player_id,
+    pos: player.pos,
+  }
+}
+
+function parseGolfPlayer(row: Record<string, unknown> | null): LoungeSportsGolfPlayer | null {
   if (!row) return null
   const athlete = (row.athlete && typeof row.athlete === 'object')
     ? row.athlete as Record<string, unknown>
@@ -1949,13 +2010,64 @@ function parseGolfCompetitor(row: Record<string, unknown> | null): LoungeSportsG
   const name = String(athlete.displayName || athlete.fullName || row.displayName || '').trim()
   if (!name) return null
   const playerId = String(athlete.id || row.id || '').replace(/\D/g, '') || null
-  const fromAthlete = String(athlete.headshot || '').trim()
+  const fromAthlete = typeof athlete.headshot === 'string'
+    ? athlete.headshot.trim()
+    : (athlete.headshot && typeof athlete.headshot === 'object')
+      ? String((athlete.headshot as { href?: string }).href || '').trim()
+      : ''
+  const status = (row.status && typeof row.status === 'object')
+    ? row.status as Record<string, unknown>
+    : {}
+  const position = (status.position && typeof status.position === 'object')
+    ? status.position as Record<string, unknown>
+    : {}
+  const lines = Array.isArray(row.linescores) ? row.linescores as Array<Record<string, unknown>> : []
+  const rounds: LoungeSportsGolfRound[] = lines.map((line) => ({
+    period: Number(line.period) || 0,
+    strokes: Number.isFinite(Number(line.value)) ? Number(line.value) : null,
+    to_par: parseGolfToPar(line.displayValue),
+  })).filter((line) => line.period > 0)
+  const earningsRaw = Number(row.officialAmount ?? row.earnings)
   return {
+    player_id: playerId,
     name,
     short_name: golferShortName(name, String(athlete.shortName || '')),
-    score: parseGolfToPar(row.score ?? row.displayValue),
     headshot: fromAthlete || golferHeadshot(playerId || ''),
-    player_id: playerId,
+    pos: String(position.displayName || '').trim() || '—',
+    score: parseGolfToPar(row.score ?? row.displayValue),
+    thru: Number.isFinite(Number(status.thru)) ? Number(status.thru) : null,
+    tee_time: String(status.teeTime || status.displayValue || '').trim() || null,
+    amateur: row.amateur === true,
+    earnings: Number.isFinite(earningsRaw) && earningsRaw > 0 ? earningsRaw : null,
+    rounds,
+  }
+}
+
+function golfCourseFromEvent(ev: Record<string, unknown>): {
+  venue: string | null
+  location: string | null
+  par: number | null
+  yards: number | null
+  holes: LoungeSportsGolfHole[]
+} {
+  const courses = Array.isArray(ev.courses) ? ev.courses as Array<Record<string, unknown>> : []
+  const course = courses.find((row) => row.host === true) || courses[0] || null
+  const address = (course?.address && typeof course.address === 'object')
+    ? course.address as Record<string, unknown>
+    : null
+  const holes = Array.isArray(course?.holes)
+    ? (course!.holes as Array<Record<string, unknown>>).map((hole) => ({
+      number: Number(hole.number) || 0,
+      par: Number(hole.shotsToPar) || 0,
+      yards: Number(hole.totalYards) || 0,
+    })).filter((hole) => hole.number > 0)
+    : []
+  return {
+    venue: String(course?.name || '').trim() || null,
+    location: [address?.city, address?.state || address?.country].filter(Boolean).join(', ') || null,
+    par: Number.isFinite(Number(course?.shotsToPar)) ? Number(course?.shotsToPar) : null,
+    yards: Number.isFinite(Number(course?.totalYards)) ? Number(course?.totalYards) : null,
+    holes,
   }
 }
 
@@ -1978,17 +2090,151 @@ function classifyEspnGolfStatus(status: Record<string, unknown> | undefined): {
   return { status: 'pre', label: detail || 'Upcoming' }
 }
 
+function espnGolfHeaders(): Record<string, string> {
+  return { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
+}
+
+function gameFromEspnGolfEvent(ev: Record<string, unknown>, includeField: boolean): LoungeSportsGame | null {
+  const eventId = String(ev.id || '').trim()
+  if (!eventId) return null
+  const comps = (Array.isArray(ev.competitions) ? ev.competitions[0] : null) as Record<string, unknown> | null
+  const statusObj = (comps?.status || ev.status) as Record<string, unknown> | undefined
+  const { status, label } = classifyEspnGolfStatus(statusObj)
+  const tourneyName = String(ev.shortName || ev.name || 'Golf').trim()
+  const commence = String(ev.date || comps?.date || '').trim() || new Date().toISOString()
+  const endDate = String(ev.endDate || comps?.endDate || '').trim() || null
+  const competitors = Array.isArray(comps?.competitors)
+    ? comps!.competitors as Array<Record<string, unknown>>
+    : []
+  const ranked = [...competitors].sort((a, b) => {
+    const sa = parseGolfToPar(a.score ?? a.displayValue)
+    const sb = parseGolfToPar(b.score ?? b.displayValue)
+    if (sa != null && sb != null && sa !== sb) return sa - sb
+    if (sa != null && sb == null) return -1
+    if (sa == null && sb != null) return 1
+    return Number(a.sortOrder ?? a.order ?? 999) - Number(b.sortOrder ?? b.order ?? 999)
+  })
+  const field = ranked.map((row) => parseGolfPlayer(row)).filter(Boolean) as LoungeSportsGolfPlayer[]
+  const leaders = field.slice(0, 5).map((row) => ({
+    name: row.name,
+    short_name: row.short_name,
+    score: row.score,
+    headshot: row.headshot,
+    player_id: row.player_id,
+    pos: row.pos,
+  }))
+  const showLeaders = status !== 'pre' || leaders.some((row) => row.score != null && row.score !== 0)
+  const leader = leaders[0] || null
+  const leaderName = leader?.name || 'Leader'
+  const leaderScore = leader?.score ?? null
+  const course = golfCourseFromEvent(ev)
+  const broadcasts = Array.isArray(comps?.broadcasts) ? comps!.broadcasts as Array<Record<string, unknown>> : []
+  const broadcastNames = broadcasts.flatMap((row) => Array.isArray(row.names) ? row.names as string[] : [])
+  const broadcast = String(comps?.broadcast || broadcastNames[0] || '').trim() || null
+  const champ = (ev.defendingChampion && typeof ev.defendingChampion === 'object')
+    ? ev.defendingChampion as Record<string, unknown>
+    : null
+  const champAthlete = (champ?.athlete && typeof champ.athlete === 'object')
+    ? champ.athlete as Record<string, unknown>
+    : null
+  const previousWinner = String(champAthlete?.displayName || champAthlete?.fullName || champ?.displayName || '').trim() || null
+  const purse = Number(ev.purse)
+  const roundNum = Number(
+    (statusObj?.period != null ? statusObj.period : null)
+    ?? (comps?.status && typeof comps.status === 'object'
+      ? (comps.status as Record<string, unknown>).period
+      : null),
+  )
+  const roundLabel = Number.isFinite(roundNum) && roundNum > 0 ? `R${roundNum}` : ''
+  const statusLabel = [roundLabel, label].filter(Boolean).join(' · ') || tourneyName
+  const lastPlay = leaderScore != null
+    ? `${leaderName} (${leaderScore === 0 ? 'E' : leaderScore > 0 ? `+${leaderScore}` : String(leaderScore)})`
+    : leaderName
+  const away: LoungeSportsGameSide = {
+    name: leaderName,
+    mascot: '',
+    abbrev: golferAbbrev(leaderName),
+    logo: leader?.headshot || '',
+    score: leaderScore,
+    linescores: [],
+    spread: null,
+    ml: null,
+    record: null,
+    team_id: leader?.player_id && Number(leader.player_id) > 0 ? Number(leader.player_id) : null,
+  }
+  const home: LoungeSportsGameSide = {
+    name: tourneyName,
+    mascot: '',
+    abbrev: 'GLF',
+    logo: '',
+    score: null,
+    linescores: [],
+    spread: null,
+    ml: null,
+    record: null,
+    team_id: null,
+  }
+  return {
+    id: `espn-golf-${eventId}`,
+    sport_key: 'golf_pga',
+    sport_label: 'Golf',
+    status,
+    status_label: statusLabel,
+    commence_time: commence,
+    away,
+    home,
+    aliases: [...leaders.map((row) => row.name), tourneyName, 'Golf', 'PGA'].filter(Boolean),
+    live: status === 'in'
+      ? {
+        clock: '',
+        period: Number.isFinite(roundNum) ? roundNum : null,
+        down: null,
+        distance: null,
+        yard_line: null,
+        yard_side: null,
+        possession: null,
+        home_timeouts: null,
+        away_timeouts: null,
+        last_play: lastPlay,
+        status_name: String((statusObj?.type as Record<string, unknown> | undefined)?.name || '') || null,
+        status_detail: label,
+      }
+      : null,
+    broadcast,
+    broadcast_url: null,
+    total: null,
+    golf: {
+      tournament: tourneyName,
+      venue: course.venue,
+      location: course.location,
+      broadcast,
+      start_date: commence,
+      end_date: endDate,
+      purse: Number.isFinite(purse) && purse > 0 ? purse : null,
+      purse_label: String(ev.displayPurse || '').trim() || null,
+      par: course.par,
+      yards: course.yards,
+      previous_winner: previousWinner,
+      round: Number.isFinite(roundNum) && roundNum > 0 ? roundNum : null,
+      show_leaders: showLeaders,
+      leaders,
+      field: includeField ? field : undefined,
+      course_holes: includeField ? course.holes : undefined,
+    },
+  }
+}
+
 /**
- * PGA Tour is not a home/away sport on Odds API (outrights only).
- * One slate card per ESPN tournament … chip reads `golf`, hub still has leader/Field sides.
+ * Golf Tour is not a home/away sport on Odds API (outrights only).
+ * One slate card per ESPN tournament … chip/card reads `golf`.
  */
 async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
   const cacheKey = 'pga:active'
   const cached = espnPgaCache.get(cacheKey)
   if (cached && Date.now() - cached.at < ESPN_PGA_TTL_MS) return cached.games
 
-  const headers = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
-  const url = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard'
+  const headers = espnGolfHeaders()
+  const url = 'https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?league=pga&region=us&lang=en'
   let events: Array<Record<string, unknown>> = []
   try {
     const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
@@ -2001,125 +2247,64 @@ async function loadEspnPgaTournamentGames(): Promise<LoungeSportsGame[]> {
 
   const games: LoungeSportsGame[] = []
   for (const ev of events.slice(0, 6)) {
-    const eventId = String(ev.id || '').trim()
-    if (!eventId) continue
-    const comps = (Array.isArray(ev.competitions) ? ev.competitions[0] : null) as Record<string, unknown> | null
-    const statusObj = (comps?.status || ev.status) as Record<string, unknown> | undefined
-    const { status, label } = classifyEspnGolfStatus(statusObj)
-    const tourneyName = String(ev.shortName || ev.name || 'PGA Tour').trim()
-    const commence = String(ev.date || comps?.date || '').trim() || new Date().toISOString()
-    const competitors = Array.isArray(comps?.competitors)
-      ? comps!.competitors as Array<Record<string, unknown>>
-      : []
-    const ranked = [...competitors].sort((a, b) => {
-      const sa = parseGolfToPar(a.score ?? a.displayValue)
-      const sb = parseGolfToPar(b.score ?? b.displayValue)
-      if (sa != null && sb != null && sa !== sb) return sa - sb
-      if (sa != null && sb == null) return -1
-      if (sa == null && sb != null) return 1
-      return Number(a.order ?? 999) - Number(b.order ?? 999)
-    })
-    const leaders = ranked.slice(0, 3).map((row) => parseGolfCompetitor(row)).filter(Boolean) as LoungeSportsGolfLeader[]
-    const showLeaders = status !== 'pre' || leaders.some((row) => row.score != null && row.score !== 0)
-    const leader = leaders[0] || null
-    const leaderName = leader?.name || 'Leader'
-    const leaderScore = leader?.score ?? null
-    const venueObj = (comps?.venue && typeof comps.venue === 'object')
-      ? comps.venue as Record<string, unknown>
-      : (ev.venues && Array.isArray(ev.venues) && ev.venues[0] && typeof ev.venues[0] === 'object')
-        ? ev.venues[0] as Record<string, unknown>
-        : null
-    const address = (venueObj?.address && typeof venueObj.address === 'object')
-      ? venueObj.address as Record<string, unknown>
-      : null
-    const venueName = String(venueObj?.fullName || venueObj?.name || '').trim() || null
-    const location = [address?.city, address?.state].filter(Boolean).join(', ') || null
-    const broadcast = String(
-      comps?.broadcast
-      || (Array.isArray(comps?.broadcasts) && comps.broadcasts[0] && typeof comps.broadcasts[0] === 'object'
-        ? (comps.broadcasts[0] as { names?: string[] }).names?.[0]
-        : '')
-      || '',
-    ).trim() || null
-    const roundNum = Number(
-      (statusObj?.period != null ? statusObj.period : null)
-      ?? (comps?.status && typeof comps.status === 'object'
-        ? (comps.status as Record<string, unknown>).period
-        : null),
-    )
-    const roundLabel = Number.isFinite(roundNum) && roundNum > 0 ? `R${roundNum}` : ''
-    const statusLabel = [roundLabel, label].filter(Boolean).join(' · ') || tourneyName
-    const lastPlay = leaderScore != null
-      ? `${leaderName} (${leaderScore === 0 ? 'E' : leaderScore > 0 ? `+${leaderScore}` : String(leaderScore)})`
-      : leaderName
-
-    const away: LoungeSportsGameSide = {
-      name: leaderName,
-      mascot: '',
-      abbrev: golferAbbrev(leaderName),
-      logo: leader?.headshot || '',
-      score: leaderScore,
-      linescores: [],
-      spread: null,
-      ml: null,
-      record: null,
-      team_id: leader?.player_id && Number(leader.player_id) > 0 ? Number(leader.player_id) : null,
-    }
-    const home: LoungeSportsGameSide = {
-      name: tourneyName,
-      mascot: '',
-      abbrev: 'PGA',
-      logo: '',
-      score: null,
-      linescores: [],
-      spread: null,
-      ml: null,
-      record: null,
-      team_id: null,
-    }
-    games.push({
-      id: `espn-golf-${eventId}`,
-      sport_key: 'golf_pga',
-      sport_label: 'PGA',
-      status,
-      status_label: statusLabel,
-      commence_time: commence,
-      away,
-      home,
-      aliases: [...leaders.map((row) => row.name), tourneyName, 'PGA', 'golf'].filter(Boolean),
-      live: status === 'in'
-        ? {
-          clock: '',
-          period: Number.isFinite(roundNum) ? roundNum : null,
-          down: null,
-          distance: null,
-          yard_line: null,
-          yard_side: null,
-          possession: null,
-          home_timeouts: null,
-          away_timeouts: null,
-          last_play: lastPlay,
-          status_name: String((statusObj?.type as Record<string, unknown> | undefined)?.name || '') || null,
-          status_detail: label,
-        }
-        : null,
-      broadcast,
-      broadcast_url: null,
-      total: null,
-      golf: {
-        tournament: tourneyName,
-        venue: venueName,
-        location,
-        broadcast,
-        round: Number.isFinite(roundNum) && roundNum > 0 ? roundNum : null,
-        show_leaders: showLeaders,
-        leaders,
-      },
-    })
+    const next = gameFromEspnGolfEvent(ev, false)
+    if (next) games.push(next)
   }
 
   espnPgaCache.set(cacheKey, { at: Date.now(), games })
   return games
+}
+
+async function loadEspnGolfEventDetail(game: LoungeSportsGame): Promise<LoungeSportsGame> {
+  const espnId = String(game.id || '').replace(/^espn-golf-/, '').trim()
+  if (!espnId) return game
+  const url = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?league=pga&region=us&lang=en&event=${encodeURIComponent(espnId)}`
+  try {
+    const res = await fetch(url, { headers: espnGolfHeaders(), signal: AbortSignal.timeout(8_000) })
+    if (!res.ok) return game
+    const pack = await res.json() as { events?: Array<Record<string, unknown>> }
+    const ev = (pack.events || []).find((row) => String(row.id) === espnId) || (pack.events || [])[0]
+    const next = ev ? gameFromEspnGolfEvent(ev, true) : null
+    return next || game
+  } catch {
+    return game
+  }
+}
+
+type GolfOutrightRow = { name: string; price: number; book: string }
+
+async function loadGolfOutrights(tournament: string): Promise<GolfOutrightRow[]> {
+  const key = String(tournament || '').trim().toLowerCase()
+  if (!key) return []
+  const cached = golfOutrightsCache.get(key)
+  if (cached && Date.now() - cached.at < GOLF_OUTRIGHTS_TTL_MS) return cached.rows
+  try {
+    const pack = await fetchSportOdds('golf_pga', ['us', 'us2'], ['outrights'], { includeLinks: true })
+    const events = Array.isArray(pack?.events) ? pack.events as Array<Record<string, unknown>> : []
+    const hit = events.find((ev) => {
+      const title = String(ev.home_team || ev.away_team || ev.sport_title || '').toLowerCase()
+      return title.includes(key) || key.includes(title) || title.includes('pga')
+    }) || events[0]
+    if (!hit) return []
+    const books = Array.isArray(hit.bookmakers) ? hit.bookmakers as Array<Record<string, unknown>> : []
+    const out: GolfOutrightRow[] = []
+    for (const book of books.slice(0, 8)) {
+      const markets = Array.isArray(book.markets) ? book.markets as Array<Record<string, unknown>> : []
+      const market = markets.find((row) => String(row.key) === 'outrights') || markets[0]
+      const outcomes = Array.isArray(market?.outcomes) ? market!.outcomes as Array<Record<string, unknown>> : []
+      const bookName = String(book.title || book.key || 'Book').trim()
+      for (const row of outcomes.slice(0, 40)) {
+        const name = String(row.name || '').trim()
+        const price = Number(row.price)
+        if (!name || !Number.isFinite(price)) continue
+        out.push({ name, price, book: bookName })
+      }
+    }
+    golfOutrightsCache.set(key, { at: Date.now(), rows: out })
+    return out
+  } catch {
+    return cached?.rows || []
+  }
 }
 
 const RUNDOWN_BASE = 'https://therundown.io/api/v2'
@@ -3588,7 +3773,26 @@ export async function fetchLoungeSportsGameDetail(
   team_stats: LoungeSportsTeamStats | null
   player_box: LoungeSportsPlayerBoxes | null
   rosters: LoungeSportsRosters | null
+  golf?: LoungeSportsGolfCard | null
+  golf_odds?: GolfOutrightRow[]
 }> {
+  if (isPgaSportKey(game.sport_key) || String(game.id || '').startsWith('espn-golf-')) {
+    const [rich, golfOdds] = await Promise.all([
+      loadEspnGolfEventDetail(game),
+      loadGolfOutrights(String(game.golf?.tournament || game.home?.name || '')),
+    ])
+    return {
+      live: rich.live,
+      odds: [],
+      plays: [],
+      stats: [],
+      team_stats: null,
+      player_box: null,
+      rosters: null,
+      golf: rich.golf || game.golf || null,
+      golf_odds: golfOdds,
+    }
+  }
   const eventId = encodeURIComponent(game.id)
   const liveHub = game.status === 'in'
   const shopDay = ptDateFromIso(String(game.commence_time || '')) || ptTodayDate()

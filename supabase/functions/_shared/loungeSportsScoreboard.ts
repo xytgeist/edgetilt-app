@@ -14,7 +14,6 @@ import {
 import { fetchSportScores, type ScoreEvent } from './loungeBotLiveContent.ts'
 import { fetchSportOdds, fetchSportOddsHistorical, ptTodayDate } from './loungeBotOddsRun.ts'
 import { sharedCached, sharedCachedNoMem } from './edgeSharedCache.ts'
-import { type CircaFixture, loadCircaFootballFixtures } from './oddspapiCirca.ts'
 import type { OddsEvent } from './loungeBotOddsCaption.ts'
 import { majorLeagueAbbrevFromName } from './loungeSportsMajorLeagueAbbrevs.ts'
 import {
@@ -182,7 +181,7 @@ export type LoungeSportsOddsRow = {
   away_ml_link?: string | null
   /** Book's Odds API `last_update` (ISO) … live line shopping skips books that stopped moving. */
   last_update?: string | null
-  /** Periodic snapshot (Circa via OddsPapi), not a live feed … client never lets it win on a stale number. */
+  /** Stale/periodic board (unused after OddsPapi Circa died). Client still refuses these for best-line. */
   snapshot?: boolean
 }
 
@@ -3437,31 +3436,6 @@ function sameNflSide(oddsName: string, side: LoungeSportsGameSide): boolean {
   return Boolean(oddsAbbrev) && oddsAbbrev === sideAbbrev
 }
 
-/** Circa (OddsPapi) pregame line as an odds row; `snapshot` = refreshed every few hours, not live. */
-function circaRowForGame(game: LoungeSportsGame, fixtures: CircaFixture[]): LoungeSportsOddsRow | null {
-  const kickoff = Date.parse(String(game.commence_time || ''))
-  const hit = fixtures.find((f) => {
-    const start = Date.parse(f.start)
-    const sameDay = !Number.isFinite(kickoff) || !Number.isFinite(start) || Math.abs(start - kickoff) < 12 * 3600_000
-    return sameDay && oddsNamesHit(f.home, game.home) && oddsNamesHit(f.away, game.away)
-  })
-  if (!hit) return null
-  return {
-    book: 'Circa Sports',
-    home_spread: hit.home_spread,
-    home_spread_price: hit.home_spread_price,
-    away_spread: hit.home_spread != null ? -hit.home_spread : null,
-    away_spread_price: hit.away_spread_price,
-    total: hit.total,
-    over_price: hit.over_price,
-    under_price: hit.under_price,
-    home_ml: hit.home_ml,
-    away_ml: hit.away_ml,
-    last_update: hit.changed_at,
-    snapshot: true,
-  }
-}
-
 function oddsNamesHit(oddsName: string, side: LoungeSportsGameSide): boolean {
   const o = String(oddsName || '').toLowerCase().trim()
   if (!o) return false
@@ -3634,11 +3608,6 @@ export async function fetchLoungeSportsGameDetail(
       : [],
     shopRowsForGame(shopEvents, game),
   )
-  const hasCirca = odds.some((row) => /circa/i.test(String(row.book || '')))
-  if (!hasCirca && game.status === 'pre' && String(game.sport_key || '').includes('football')) {
-    const circa = circaRowForGame(game, await loadCircaFootballFixtures(admin).catch(() => []))
-    if (circa) odds.push(circa)
-  }
 
   return {
     live: liveOut,

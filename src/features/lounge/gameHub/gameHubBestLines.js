@@ -102,7 +102,7 @@ function bestSide(rows, pickA, better, legalState) {
     const r = pickA(row)
     const dec = decimal(r.price)
     if (dec == null || (better !== 0 && r.point == null)) continue
-    // Snapshot books (Circa, refreshed every few hours) only compete at the reference number.
+    // Snapshot rows (old OddsPapi Circa) only compete at the reference number.
     if (row.snapshot && better !== 0 && ref?.point != null && r.point !== ref.point) continue
     let ev = null
     let score = dec

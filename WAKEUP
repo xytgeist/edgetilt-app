@@ -122,6 +122,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-06 ... kill OddsPapi Circa
+**Web `1.4.1081`.** Hub Circa is Rundown shop only. Deleted `oddspapiCirca.ts` / catalog / catalog script. Client snapshot guard stays. Redeploy **`lounge-sports-scoreboard`**. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-06 ... promote 1.4.1080
 **Web `1.4.1080`.** Promoted **`test` → `main`** (`cc62fbb5`) 2026-10-06. Hub line diet + Rundown shop. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-odds-poll`**. Prod SQL **`20261007020000`**. Smoke: SHSU @ LIB had all nine shop books under Pinnacle (`snapshot=false`). Marketing still **1.4.95**.
 

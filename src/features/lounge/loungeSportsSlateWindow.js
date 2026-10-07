@@ -27,13 +27,26 @@ export function ptDateFromIsoLocal(iso) {
   return Number.isFinite(t) ? ptYmd(t) : ''
 }
 
-/** Yesterday + today + tomorrow (PT) … nightly NHL/NBA/MLB need the next tip-off. */
+/** Yesterday + today + tomorrow (PT) … fetch / cache window so late and next-day games are ready. */
 export function otherSportSlateDates(now = Date.now()) {
   const today = ptYmd(now)
   const yest = ptYmd(now - 36 * 3600 * 1000)
   const tomorrow = addDaysYmd(today, 1)
   const days = yest === today ? [today, tomorrow] : [yest, today, tomorrow]
   return [...new Set(days)]
+}
+
+/** Sports Hub + NHL/NBA/MLB/MLS lists … PT today only. Live games still show if they spilled past midnight. */
+export function hubSlateDates(now = Date.now()) {
+  return [ptYmd(now)]
+}
+
+export function isLoungeSportsHubDayGame(game, now = Date.now()) {
+  if (!game) return false
+  if (game.status === 'in') return true
+  const day = gameDay(game)
+  if (!day) return true
+  return day === ptYmd(now)
 }
 
 /** Thursday that starts the calendar NFL week. Tue/Wed roll forward to the next Thursday. */
@@ -234,7 +247,7 @@ function hubGamesUnsorted(games, sportKey, now) {
     || sport.includes('baseball_mlb')
     || sport.includes('soccer_usa_mls')
   ) {
-    const dates = new Set(otherSportSlateDates(now))
+    const dates = new Set(hubSlateDates(now))
     return same.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
   }
   // PGA tournament cards are already windowed by ESPN … keep whatever is on the board.
@@ -242,7 +255,7 @@ function hubGamesUnsorted(games, sportKey, now) {
   return same
 }
 
-/** Sports Hub slate list: `all` = current multi-sport slate; NFL/CFB use week windows. */
+/** Sports Hub slate list: `all` + nightly leagues = PT today; NFL/CFB hubs keep the week. */
 export function loungeSportsSlateGames(games, filter, now = Date.now()) {
   const list = slateGamesUnsorted(games, filter, now)
   return String(filter || '').includes('ncaaf') ? sortCfbGamesTop25First(list) : sortLoungeSportsGamesByKickoffRank(list)
@@ -252,7 +265,7 @@ function slateGamesUnsorted(games, filter, now) {
   const list = Array.isArray(games) ? games : []
   const key = String(filter || '').trim()
   if (!key || key === 'all') {
-    return list.filter((g) => isLoungeSportsCurrentSlateGame(g, now))
+    return list.filter((g) => isLoungeSportsHubDayGame(g, now))
   }
   if (key.includes('ncaaf')) {
     const cfb = list.filter((g) => isCfbGame(g))
@@ -266,22 +279,22 @@ function slateGamesUnsorted(games, filter, now) {
   }
   if (key.includes('icehockey_nhl') || key === 'nhl') {
     const nhl = list.filter((g) => isNhlGame(g))
-    const dates = new Set(otherSportSlateDates(now))
+    const dates = new Set(hubSlateDates(now))
     return nhl.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
   }
   if (key.includes('basketball_nba') || key === 'nba') {
     const nba = list.filter((g) => isNbaGame(g))
-    const dates = new Set(otherSportSlateDates(now))
+    const dates = new Set(hubSlateDates(now))
     return nba.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
   }
   if (key.includes('baseball_mlb') || key === 'mlb') {
     const mlb = list.filter((g) => isMlbGame(g))
-    const dates = new Set(otherSportSlateDates(now))
+    const dates = new Set(hubSlateDates(now))
     return mlb.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
   }
   if (key.includes('soccer_usa_mls') || key === 'mls') {
     const mls = list.filter((g) => isMlsGame(g))
-    const dates = new Set(otherSportSlateDates(now))
+    const dates = new Set(hubSlateDates(now))
     return mls.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
   }
   if (key.includes('golf_pga') || key === 'pga') {

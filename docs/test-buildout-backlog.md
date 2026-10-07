@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **Sports Hub today-only pills (`1.4.1077`).** `loungeSportsSlateGames` All + NHL/NBA/MLB/MLS = PT today + live. NFL/CFB week hubs unchanged. Fetch window still yest/today/tomorrow. Marketing still **1.4.95**.
 - **2026-10-06:** **Promoted Bet Tracker tools (`1.4.1076`).** Frontend **`test` → `main`**. No new SQL / Edge. Marketing still **1.4.95**.
 - **2026-10-06:** **Bet Tracker tools (`1.4.1076`).** Sports Hub **Tools** chip + tracker sheet. Featured parlay / hedge / Kelly (open-bet + bankroll prefill). Utilities: payout, converter, implied, EV, no-vig, arb. Light: `data-sports-bet-tools`. No SQL. Marketing still **1.4.95**.
 - **2026-10-06:** **Promoted live clocks + NHL hub dedupe (`1.4.1075`).** Frontend **`test` → `main`**. Includes `1.4.1073` other-sport clocks, `1.4.1074` card collapse, `1.4.1075` test `sb_secret` env sync. Scoreboard Edge already on prod. No new SQL. Marketing still **1.4.95**.

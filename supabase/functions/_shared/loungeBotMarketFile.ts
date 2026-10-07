@@ -436,6 +436,72 @@ function intOrNull(n: number | null | undefined): number | null {
   return Math.round(n)
 }
 
+function sameNum(a: number | null | undefined, b: number | null | undefined): boolean {
+  if (a == null && b == null) return true
+  if (a == null || b == null) return false
+  return Number.isFinite(a) && Number.isFinite(b) && a === b
+}
+
+function sameText(a: string | null | undefined, b: string | null | undefined): boolean {
+  return String(a || '') === String(b || '')
+}
+
+function quoteStampAt(
+  moved: boolean,
+  quotePresent: boolean,
+  prevAt: string | null | undefined,
+  nowIso: string,
+): string | null {
+  if (!moved) return prevAt ?? null
+  if (quotePresent) return nowIso
+  return prevAt ?? null
+}
+
+/** Open / current / close quotes + lock. Ignores updated_at and *_at stamps. */
+export function marketFileRowUnchanged(prev: MarketFileRow, next: MarketFileRow): boolean {
+  return (
+    sameText(prev.event_id, next.event_id)
+    && sameText(prev.sport_key, next.sport_key)
+    && sameText(prev.home_team, next.home_team)
+    && sameText(prev.away_team, next.away_team)
+    && sameText(prev.commence_time, next.commence_time)
+    && prev.close_locked === next.close_locked
+    && sameNum(prev.open_spread_home, next.open_spread_home)
+    && sameNum(prev.open_spread_home_price, next.open_spread_home_price)
+    && sameNum(prev.open_spread_away_price, next.open_spread_away_price)
+    && sameText(prev.open_spread_source, next.open_spread_source)
+    && sameNum(prev.current_spread_home, next.current_spread_home)
+    && sameNum(prev.current_spread_home_price, next.current_spread_home_price)
+    && sameNum(prev.current_spread_away_price, next.current_spread_away_price)
+    && sameText(prev.current_spread_source, next.current_spread_source)
+    && sameNum(prev.close_spread_home, next.close_spread_home)
+    && sameNum(prev.close_spread_home_price, next.close_spread_home_price)
+    && sameNum(prev.close_spread_away_price, next.close_spread_away_price)
+    && sameText(prev.close_spread_source, next.close_spread_source)
+    && sameNum(prev.open_total, next.open_total)
+    && sameNum(prev.open_over_price, next.open_over_price)
+    && sameNum(prev.open_under_price, next.open_under_price)
+    && sameText(prev.open_total_source, next.open_total_source)
+    && sameNum(prev.current_total, next.current_total)
+    && sameNum(prev.current_over_price, next.current_over_price)
+    && sameNum(prev.current_under_price, next.current_under_price)
+    && sameText(prev.current_total_source, next.current_total_source)
+    && sameNum(prev.close_total, next.close_total)
+    && sameNum(prev.close_over_price, next.close_over_price)
+    && sameNum(prev.close_under_price, next.close_under_price)
+    && sameText(prev.close_total_source, next.close_total_source)
+    && sameNum(prev.open_home_ml, next.open_home_ml)
+    && sameNum(prev.open_away_ml, next.open_away_ml)
+    && sameText(prev.open_ml_source, next.open_ml_source)
+    && sameNum(prev.current_home_ml, next.current_home_ml)
+    && sameNum(prev.current_away_ml, next.current_away_ml)
+    && sameText(prev.current_ml_source, next.current_ml_source)
+    && sameNum(prev.close_home_ml, next.close_home_ml)
+    && sameNum(prev.close_away_ml, next.close_away_ml)
+    && sameText(prev.close_ml_source, next.close_ml_source)
+  )
+}
+
 export function mergeMarketFileRow(args: {
   existing: MarketFileRow | null
   sportKey: string
@@ -473,19 +539,33 @@ export function mergeMarketFileRow(args: {
   let currentSpreadHome = args.quote.spreadHome ?? prev?.current_spread_home ?? null
   let currentSpreadHomePrice = intOrNull(args.quote.spreadHomePrice) ?? prev?.current_spread_home_price ?? null
   let currentSpreadAwayPrice = intOrNull(args.quote.spreadAwayPrice) ?? prev?.current_spread_away_price ?? null
-  let currentSpreadAt = args.quote.spreadHome != null ? nowIso : prev?.current_spread_at ?? null
   let currentSpreadSource = args.quote.spreadSource ?? prev?.current_spread_source ?? null
+  const spreadMoved = !prev
+    || !sameNum(currentSpreadHome, prev.current_spread_home)
+    || !sameNum(currentSpreadHomePrice, prev.current_spread_home_price)
+    || !sameNum(currentSpreadAwayPrice, prev.current_spread_away_price)
+    || !sameText(currentSpreadSource, prev.current_spread_source)
+  let currentSpreadAt = quoteStampAt(spreadMoved, args.quote.spreadHome != null, prev?.current_spread_at, nowIso)
 
   let currentTotal = args.quote.total ?? prev?.current_total ?? null
   let currentOverPrice = intOrNull(args.quote.overPrice) ?? prev?.current_over_price ?? null
   let currentUnderPrice = intOrNull(args.quote.underPrice) ?? prev?.current_under_price ?? null
-  let currentTotalAt = args.quote.total != null ? nowIso : prev?.current_total_at ?? null
   let currentTotalSource = args.quote.totalSource ?? prev?.current_total_source ?? null
+  const totalMoved = !prev
+    || !sameNum(currentTotal, prev.current_total)
+    || !sameNum(currentOverPrice, prev.current_over_price)
+    || !sameNum(currentUnderPrice, prev.current_under_price)
+    || !sameText(currentTotalSource, prev.current_total_source)
+  let currentTotalAt = quoteStampAt(totalMoved, args.quote.total != null, prev?.current_total_at, nowIso)
 
   let currentHomeMl = intOrNull(args.quote.homeMl) ?? prev?.current_home_ml ?? null
   let currentAwayMl = intOrNull(args.quote.awayMl) ?? prev?.current_away_ml ?? null
-  let currentMlAt = args.quote.homeMl != null ? nowIso : prev?.current_ml_at ?? null
   let currentMlSource = args.quote.mlSource ?? prev?.current_ml_source ?? null
+  const mlMoved = !prev
+    || !sameNum(currentHomeMl, prev.current_home_ml)
+    || !sameNum(currentAwayMl, prev.current_away_ml)
+    || !sameText(currentMlSource, prev.current_ml_source)
+  let currentMlAt = quoteStampAt(mlMoved, args.quote.homeMl != null, prev?.current_ml_at, nowIso)
 
   // Once locked, freeze current as the last pre-lock quote for grading clarity.
   if (locked) {
@@ -556,7 +636,7 @@ export function mergeMarketFileRow(args: {
     if (!currentMlSource) currentMlSource = closeMlSource
   }
 
-  return {
+  const next: MarketFileRow = {
     event_id: eventId,
     sport_key: args.sportKey,
     home_team: home,
@@ -605,8 +685,10 @@ export function mergeMarketFileRow(args: {
     close_away_ml: closeAwayMl,
     close_ml_at: closeMlAt,
     close_ml_source: closeMlSource,
-    updated_at: nowIso,
+    updated_at: prev?.updated_at || nowIso,
   }
+  if (!prev || !marketFileRowUnchanged(prev, next)) next.updated_at = nowIso
+  return next
 }
 
 function rowFromDb(row: Record<string, unknown>): MarketFileRow {
@@ -718,7 +800,9 @@ export async function lockDueMarketFileCloses(
         mlSource: prev.current_ml_source,
       },
     })
-    if (merged?.close_locked) rows.push(merged)
+    if (!merged?.close_locked) continue
+    if (marketFileRowUnchanged(prev, merged)) continue
+    rows.push(merged)
   }
 
   if (!rows.length) return { locked: 0 }
@@ -759,14 +843,16 @@ export async function upsertMarketFilesFromEvents(
     const quote = extractMarketFileQuote(event)
     if (!quote) continue
     if (quote.spreadHome == null && quote.total == null && quote.homeMl == null) continue
+    const prev = existingById.get(String(event.id || '').trim()) || null
     const merged = mergeMarketFileRow({
-      existing: existingById.get(String(event.id || '').trim()) || null,
+      existing: prev,
       sportKey,
       event,
       quote,
       nowIso,
     })
     if (!merged) continue
+    if (prev && marketFileRowUnchanged(prev, merged)) continue
     if (merged.close_locked) locked += 1
     rows.push(merged)
   }

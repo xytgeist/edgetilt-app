@@ -300,9 +300,12 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
       >
         <button
           type="button"
-          onClick={() => sports.closeSlate?.()}
+          onClick={() => {
+            if (leagueHub) sports.openSlate?.(LOUNGE_SPORTS_HUB_FILTER_ALL)
+            else sports.closeSlate?.()
+          }}
           className={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-zinc-800`}
-          aria-label="Back"
+          aria-label={leagueHub ? 'Back to Sports Hub' : 'Back'}
         >
           <ChevronLeft className="h-6 w-6" />
         </button>

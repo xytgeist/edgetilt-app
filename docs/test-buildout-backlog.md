@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-07:** **League hub back → Sports Hub (`1.4.1090`).** NFL/CFB/NHL/NBA/MLB/MLS/PGA slate chevron opens All Sports Hub. All Hub back still closes to Lounge. No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **Promoted `1.4.1089`** (PGA chips) + **`1.4.1088`** (market-file skip) + **`1.4.1087`** (Bet Tracker back). Frontend **`test` → `main`** (`d54ed792`). Redeployed **`lounge-sports-scoreboard`** + **`lounge-odds-poll`** + **`lounge-odds-ingest`** on **`jtjgtucumuoswnbauxry`**. Island SQL already on prod. Marketing still **1.4.95**.
 - **2026-10-07:** **PGA tournament chips (`1.4.1089`).** Hub / feed / composer pills for `golf_pga` are one card per ESPN event: tournament title, round/status or tee + broadcast, live/final top 3 (to-par + headshot). Pregame hides the all-E field. Away/home stay on the payload for hub compatibility. Redeploy **test** `lounge-sports-scoreboard`. Marketing still **1.4.95**.
 - **2026-10-07:** **Market-file skip-if-unchanged (`1.4.1088`).** `upsertMarketFilesFromEvents` / `lockDueMarketFileCloses` skip rows whose open/current/close quotes and lock flag match. `updated_at` and current `*_at` only move when the line moves. Redeployed **test + prod** `lounge-sports-scoreboard` + `lounge-odds-poll` + `lounge-odds-ingest`. Marketing still **1.4.95**.

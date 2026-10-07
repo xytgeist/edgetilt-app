@@ -122,6 +122,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-07 ... league hub back (`1.4.1090`)
+**Web `1.4.1090` on `test`.** Back from an individual sports hub returns to All Sports Hub. All Hub back still Lounge. No Edge. Not promoted. Marketing still **1.4.95**.
+
 ### Windows Theo ACTIVE TRACK 2026-10-07 ... promote 1.4.1089
 **Web `1.4.1089`.** Promoted **`test` → `main`** (`d54ed792`) 2026-10-07. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-odds-poll`** + **`lounge-odds-ingest`** redeployed (market-file skip + PGA tournament chips). Also ships **`1.4.1088`** skip-if-unchanged and **`1.4.1087`** Bet Tracker back. Island SQL was already on prod. Marketing still **1.4.95**.
 

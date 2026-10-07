@@ -118,6 +118,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-06 ... no-field hub scores
+**Web `1.4.1078`.** MLB / NHL / NBA / MLS hub scoreboard was painting the shopped spread as the big number on live games (football field board already showed the score). Live/final now: score big, spread small above. Pregame still spread. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-06 ... hub today-only pills
 **Web `1.4.1077`.** Sports Hub + NHL/NBA/MLB/MLS lists show PT today (plus anything still live). NFL/CFB hubs keep the week. Edge still fetches yest/tomorrow so the board is ready. Marketing still **1.4.95**.
 

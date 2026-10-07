@@ -4592,10 +4592,24 @@ function ScoreboardLine({ pick, text, label, className = '', side = null }) {
 }
 
 /**
- * One side of the no-field board (pregame / non-football final): logo, name (full name wraps to two lines
- * pregame), record, then the big number (best spread pregame, score after) with the moneyline under it.
+ * One side of the no-field board (MLB / NHL / NBA / MLS + football pregame): logo, name, record,
+ * then the big number. Pregame: best spread. Live/final: score, with the spread as a small line above
+ * (same stack as feed pills and the football field board). Moneyline stays under.
  */
-function BoardTeamColumn({ side, label, treatment, preLabels, bigText, bigPick, bigDim, ml, mlPick, sideKey }) {
+function BoardTeamColumn({
+  side,
+  label,
+  treatment,
+  preLabels,
+  spreadText = '',
+  spreadPick = null,
+  bigText,
+  bigPick,
+  bigDim,
+  ml,
+  mlPick,
+  sideKey,
+}) {
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center text-center">
       <LoungeSportsTeamLogo side={side} treatment={treatment} size={76} />
@@ -4613,10 +4627,19 @@ function BoardTeamColumn({ side, label, treatment, preLabels, bigText, bigPick, 
       </div>
       <TeamRecordLine side={side} className="mt-1 text-white/60" />
       <div className="mt-auto flex flex-col items-center pt-2.5">
+        {spreadText ? (
+          <ScoreboardLine
+            pick={spreadPick}
+            text={spreadText}
+            label="Spread"
+            side={sideKey}
+            className="mb-0.5 text-[13px] font-semibold text-white/70"
+          />
+        ) : null}
         <ScoreboardLine
           pick={bigPick}
           text={bigText}
-          label="Spread"
+          label={bigPick ? 'Spread' : 'Score'}
           side={sideKey}
           className={`text-[42px] font-bold ${bigDim ? 'text-white/45' : 'text-white'}`}
         />
@@ -5110,6 +5133,8 @@ export default function GameHubHero({
     !shopLines ? '' : pick ? signedPoint(pick.point) : side?.spread != null ? signedPoint(side.spread) : ''
   const awaySpreadText = spreadText(game.away, scoreBest?.away?.spread)
   const homeSpreadText = spreadText(game.home, scoreBest?.home?.spread)
+  const awaySpreadLine = awaySpreadText || (game.away?.spread != null ? signedPoint(game.away.spread) : '')
+  const homeSpreadLine = homeSpreadText || (game.home?.spread != null ? signedPoint(game.home.spread) : '')
   const totalPick = scoreBest?.over || scoreBest?.under || null
   const totalPoint =
     totalPick?.point != null
@@ -5124,6 +5149,13 @@ export default function GameHubHero({
   const awayLabel = hubTeamLabel(game.away, game.status, game.sport_key)
   const homeLabel = hubTeamLabel(game.home, game.status, game.sport_key)
   const preLabels = game.status === 'pre'
+  // No-field board used to prefer the shopped spread as the 42px number whenever lines were live,
+  // so MLB/NHL/NBA/MLS never painted the score. Match pills + the football field board: score big,
+  // spread small above. Also treat a Final/FT label as played if status is still stuck on pre.
+  const paintScore =
+    game.status === 'in'
+    || isFinal
+    || /^(final|ft)\b/i.test(String(game.status_label || ''))
 
   // Opening-kickoff whistle fires from the field's kick animation … arm audio unlock while the hub is up.
   useEffect(() => {
@@ -5340,8 +5372,14 @@ export default function GameHubHero({
               label={awayLabel}
               treatment={awayTreatment}
               preLabels={preLabels}
-              bigText={awaySpreadText || scoreText(game.away, game.status)}
-              bigPick={awaySpreadText ? scoreBest?.away?.spread : null}
+              spreadText={paintScore ? awaySpreadLine : ''}
+              spreadPick={paintScore ? scoreBest?.away?.spread : null}
+              bigText={
+                paintScore
+                  ? (game.away?.score == null ? '-' : String(game.away.score))
+                  : (awaySpreadText || scoreText(game.away, game.status))
+              }
+              bigPick={paintScore ? null : (awaySpreadText ? scoreBest?.away?.spread : null)}
               bigDim={awayScoreDim}
               ml={awayMl}
               mlPick={scoreBest?.away?.ml}
@@ -5374,8 +5412,14 @@ export default function GameHubHero({
               label={homeLabel}
               treatment={homeTreatment}
               preLabels={preLabels}
-              bigText={homeSpreadText || scoreText(game.home, game.status)}
-              bigPick={homeSpreadText ? scoreBest?.home?.spread : null}
+              spreadText={paintScore ? homeSpreadLine : ''}
+              spreadPick={paintScore ? scoreBest?.home?.spread : null}
+              bigText={
+                paintScore
+                  ? (game.home?.score == null ? '-' : String(game.home.score))
+                  : (homeSpreadText || scoreText(game.home, game.status))
+              }
+              bigPick={paintScore ? null : (homeSpreadText ? scoreBest?.home?.spread : null)}
               bigDim={homeScoreDim}
               ml={homeMl}
               mlPick={scoreBest?.home?.ml}

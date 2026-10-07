@@ -179,7 +179,8 @@ export function nflMnfWeekComplete(games, weekDates, now = Date.now()) {
   const monday = weekDates[4]
   const mondayGames = week.filter((g) => gameDay(g) === monday)
   if (mondayGames.length) return mondayGames.every((g) => g.status === 'post')
-  if (!week.length) return ptWeekdaySun0(now) === 1 || ptWeekdaySun0(now) === 2 || ptWeekdaySun0(now) === 3
+  // Tue/Wed already sit on next Thursday … an empty payload is not "week over."
+  if (!week.length) return ptWeekdaySun0(now) === 1
   const last = [...week].sort((a, b) => commenceMs(b) - commenceMs(a))[0]
   return last?.status === 'post'
 }
@@ -205,10 +206,7 @@ export function cfbWeekComplete(games, weekDates, now = Date.now()) {
     const dayGames = week.filter((g) => gameDay(g) === day)
     if (dayGames.length) return dayGames.every((g) => g.status === 'post')
   }
-  if (!week.length) {
-    const dow = ptWeekdaySun0(now)
-    return dow === 0 || dow === 1 || dow === 2 || dow === 3
-  }
+  if (!week.length) return ptWeekdaySun0(now) === 1
   const last = [...week].sort((a, b) => commenceMs(b) - commenceMs(a))[0]
   return last?.status === 'post'
 }

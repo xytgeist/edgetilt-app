@@ -6,7 +6,7 @@ import {
   writeLoungeSportsScoreboardCache,
 } from '../../utils/loungeSportsApi.js'
 import { dedupeLoungeSportsGames, enrichLoungeSportsGame } from './loungeSportsMatch.js'
-import { isLoungeSportsCurrentSlateGame, ptDateFromIsoLocal } from './loungeSportsSlateWindow.js'
+import { isLoungeSportsCurrentSlateGame, loungeSportsSlateGames, ptDateFromIsoLocal } from './loungeSportsSlateWindow.js'
 import { parseLoungeSportsGameField } from './loungeSportsGameField.js'
 import {
   clearLoungeSportsGamePending,
@@ -79,6 +79,68 @@ function preferSpread(nextSide, prevSide) {
   if (n === 0 && p != null && p !== 0) return p
   return n
 }
+
+/**
+ * Full boards can be thin (Rundown-only TNF) after a fat Odds week. Keep current-window
+ * games the new payload missed. Active ticks only patch live/soon rows.
+ */
+function unionScoreboardGames(incoming, prev, { active = false } = {}) {
+  if (!Array.isArray(incoming) || !incoming.length) return prev || []
+  if (!Array.isArray(prev) || !prev.length) return incoming
+  const incomingById = new Map(incoming.map((game) => [String(game.id), game]))
+  const incomingByMatch = new Map(incoming.map((game) => [matchupKey(game), game]))
+  const seenId = new Set()
+  const seenMatch = new Set()
+  const out = []
+  const mark = (game) => {
+    seenId.add(String(game?.id || ''))
+    if (!normAbbrev(game?.away?.abbrev) || !normAbbrev(game?.home?.abbrev)) return
+    seenMatch.add(matchupKey(game))
+  }
+  for (const old of prev) {
+    const neu = incomingById.get(String(old.id)) || incomingByMatch.get(matchupKey(old))
+    if (neu) {
+      out.push(neu)
+      mark(neu)
+      mark(old)
+      continue
+    }
+    if (active || isLoungeSportsCurrentSlateGame(old)) {
+      out.push(old)
+      mark(old)
+    }
+  }
+  for (const neu of incoming) {
+    if (seenId.has(String(neu.id)) || seenMatch.has(matchupKey(neu))) continue
+    out.push(neu)
+  }
+  return out
+}
+
+function gameIsLive(game) {
+  return game?.status === 'in'
+}
+
+/** Fast board ticks only when a live game is on the open slate / open hub / Island. */
+function needsLiveBoardTick(games, slateFilter, hubGame, watchedId) {
+  if (gameIsLive(hubGame)) return true
+  if (watchedId) {
+    const watched = (Array.isArray(games) ? games : []).find((g) => String(g.id) === String(watchedId))
+    if (gameIsLive(watched)) return true
+  }
+  const list = Array.isArray(games) ? games : []
+  if (slateFilter) return loungeSportsSlateGames(list, slateFilter).some(gameIsLive)
+  return list.some((g) => gameIsLive(g) && isLoungeSportsCurrentSlateGame(g))
+}
+
+function liveBoardTickMs(hubGame, watchedId) {
+  if (gameIsLive(hubGame)) return 10_000
+  if (watchedId) return 12_000
+  return 15_000
+}
+
+const BOARD_SCHEDULER_MS = 5_000
+const FULL_BOARD_MS = 5 * 60_000
 
 /** Odds drop completed games; keep the last Pinnacle close we already painted. */
 function preserveSpreads(next, prev) {
@@ -164,8 +226,13 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   const watchedGameIdRef = useRef(null)
 
   const lastFullBoardAtRef = useRef(0)
+  const lastActiveBoardAtRef = useRef(0)
+  const slateFilterRef = useRef(slateFilter)
+  slateFilterRef.current = slateFilter
+  const hubGameRef = useRef(hubGame)
+  hubGameRef.current = hubGame
 
-  /** `active` = server's live / about-to-start / recently-final slice, merged by id into the full slate. */
+  /** `active` = live / about-to-start / recently-final, merged into the slate. Never wipes the week. */
   const loadBoard = useCallback(async ({ active = false } = {}) => {
     if (!supabaseClient || inflightRef.current) return
     const useActive = active && gamesRef.current.length > 0
@@ -175,16 +242,9 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       if (data?.error || !Array.isArray(data?.games)) return
       const incoming = data.games.map(enrichLoungeSportsGame)
       if (!useActive) lastFullBoardAtRef.current = Date.now()
+      if (useActive) lastActiveBoardAtRef.current = Date.now()
       if (!incoming.length) return
-      let merged = incoming
-      if (useActive) {
-        const byId = new Map(incoming.map((g) => [String(g.id), g]))
-        const known = new Set(gamesRef.current.map((g) => String(g.id)))
-        merged = [
-          ...gamesRef.current.map((g) => byId.get(String(g.id)) || g),
-          ...incoming.filter((g) => !known.has(String(g.id))),
-        ]
-      }
+      const merged = unionScoreboardGames(incoming, gamesRef.current, { active: useActive })
       const next = preserveSpreads(dedupeLoungeSportsGames(merged), gamesRef.current)
       setGames(next)
       writeLoungeSportsScoreboardCache(next)
@@ -199,25 +259,24 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   useEffect(() => {
     if (!feedActive || !supabaseClient) return undefined
     void loadBoard()
-    const live = gamesRef.current.some((g) => g.status === 'in') || hubGame?.status === 'in'
-    const watching = Boolean(watchedGameIdRef.current)
-    // Island stays alive after hub close … keep a live tick while watching.
-    const ms = hubGame
-      ? (hubGame.status === 'in' ? 10_000 : 60_000)
-      : watching
-        ? 12_000
-        : live
-          ? 15_000
-          : 5 * 60_000
-    // Fast live ticks only need the games that are changing; the full slate refreshes every 2 min.
-    const fullEveryMs = ms < 60_000 ? 2 * 60_000 : 0
     const id = setInterval(() => {
-      // Skip while tabbed away unless a watched-game Island needs board ticks.
       const keepForIsland = Boolean(watchedGameIdRef.current)
       if (typeof document !== 'undefined' && document.hidden && !keepForIsland) return
-      const fullDue = !fullEveryMs || Date.now() - lastFullBoardAtRef.current >= fullEveryMs
-      void loadBoard({ active: !fullDue })
-    }, ms)
+      const now = Date.now()
+      if (now - lastFullBoardAtRef.current >= FULL_BOARD_MS) {
+        void loadBoard({ active: false })
+        return
+      }
+      if (!needsLiveBoardTick(
+        gamesRef.current,
+        slateFilterRef.current,
+        hubGameRef.current,
+        watchedGameIdRef.current,
+      )) return
+      const liveMs = liveBoardTickMs(hubGameRef.current, watchedGameIdRef.current)
+      if (now - lastActiveBoardAtRef.current < liveMs) return
+      void loadBoard({ active: true })
+    }, BOARD_SCHEDULER_MS)
     const onVis = () => {
       if (typeof document === 'undefined' || document.hidden) return
       void loadBoard({ active: true })
@@ -231,7 +290,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
         document.removeEventListener('visibilitychange', onVis)
       }
     }
-  }, [feedActive, hubGame, loadBoard, supabaseClient, games.some((g) => g.status === 'in')])
+  }, [feedActive, loadBoard, supabaseClient])
 
   useEffect(() => {
     setHubGame((prev) => {

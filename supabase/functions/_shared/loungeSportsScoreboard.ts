@@ -1,7 +1,7 @@
 /**
  * Lounge in-post game pill scoreboard.
  * TheRundown day slates first (scores-only via affiliate_ids=0 … period scores + status).
- * Odds API /scores as fallback when Rundown is empty; Odds /odds + Pinnacle + Rundown shop own books.
+ * Odds API /scores fill days Rundown missed (TNF vs Sunday). Odds /odds + Pinnacle + Rundown shop own books.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { listRundownDayEvents, ptDateFromIso, rundownApiKey, type RundownEvent } from './loungeBotRundownContext.ts'
@@ -1417,10 +1417,9 @@ async function fetchLeagueBoardPack(sportKey: string, dates: string[]): Promise<
   const rundownBatches = await Promise.all(
     dates.map((date) => listRundownDayEvents(sportKey, date).catch(() => [])),
   )
-  const hasRundown = rundownBatches.some((batch) => batch.length > 0)
   const shopDates = uniqueShopDates(rundownBatches, dates)
   const [scores, oddsPack, pinPack, shopEvents] = await Promise.all([
-    hasRundown ? Promise.resolve([]) : cachedSportScores(sportKey),
+    cachedSportScores(sportKey),
     cachedSportOdds(sportKey, false),
     cachedPinnacleOdds(sportKey, false),
     cachedRundownShop(sportKey, shopDates, false),

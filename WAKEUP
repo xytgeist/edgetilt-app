@@ -122,6 +122,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-07 ... NFL hub slate flicker (`1.4.1086`)
+**Web `1.4.1086`.** Fast board ticks only when a live game is on the open slate / open hub / Island (10-15s `scope: active`). Full board every 5 min, unioned so a thin Rundown NFL pack cannot wipe a fat week. Odds `/scores` fills days Rundown missed. Empty NFL/CFB week is not "complete" on Tue/Wed. Redeploy **test** `lounge-sports-scoreboard`. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-06 ... promote 1.4.1085
 **Web `1.4.1085`.** Promoted **`test` → `main`** (`882d0c15`) 2026-10-06. Also carried **`1.4.1084`** (`0a71b8ff`). No new Edge for 1085. 1084 poll/ingest was already on prod. Marketing still **1.4.95**.
 

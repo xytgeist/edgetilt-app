@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-08:** **App Store 1.4.96 Waiting for Review.** Build **`20261008181941`** attached and submitted. Auto-release after approval. 1.4.95 (`20260928212300`) is Ready for Distribution. Web stays **1.4.1098**.
 - **2026-10-07:** **Promoted `1.4.1098`** (iPad landscape gamecast scale). Frontend **`test` → `main`** (`80550189`). No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **iPad gamecast scale (`1.4.1098`).** Tablet landscape football gamecast is the iPhone field + side rails, scaled via `transform` (`zoom` is a no-op in iPad WKWebView). Phone landscape (height < 700) unchanged. No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **Promoted `1.4.1097`** (live ML on game screen + all-sport market-file close). Frontend **`test` → `main`** (`d503a956`). Redeployed **`lounge-sports-scoreboard`** on **`jtjgtucumuoswnbauxry`**. Marketing still **1.4.95**.

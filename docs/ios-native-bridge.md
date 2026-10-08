@@ -12,7 +12,7 @@
 
 ## After the next App Store build goes live (do these, then delete the line)
 
-- [ ] **Ship the bet sheet update.** When 1.4.95 is approved: bump `MARKETING_VERSION` to **1.4.96** (`ios/project.yml` + `project.pbxproj`), archive **EdgeTilt Prod**, upload, submit. Prod web already serves `/native/bet-sheet-polymarket.js`. (1.4.95 build `20260929024139` has the sheet but can only be a TestFlight / swap-in for the current review.)
+- [x] **Ship the bet sheet update.** 1.4.95 Ready for Distribution. **1.4.96** (`20261008181941`) submitted 2026-10-08 (Waiting for Review, auto-release). Prod web already serves `/native/bet-sheet-polymarket.js`.
 
 Any agent (Mac or Windows) handling an App Store release or seeing a new build go **Ready for Distribution** must work this list. Web-only follow-ups that would break the *previous* IPA if shipped early.
 

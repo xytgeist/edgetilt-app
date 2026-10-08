@@ -81,7 +81,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 **Ryan's call, recorded so it survives sessions:** get the **IPA to publishable quality as a wrapper** first, ship it, *then* rewrite Edge natively and carry **three codebases … Swift + Kotlin + web**. Driver is **motion quality**: the Lounge media lightbox in the IPA feels materially less smooth than X / Instagram, which are fully native.
 
-**Not started. Do not begin native rewrite work on any surface unless Ryan names it.** Current sprint is unchanged: wrapper IPA → App Store.
+**Not started. Do not begin native rewrite work on any surface unless Ryan names it.** First wrapper IPA is live (**1.4.95 Ready for Distribution**, 2026-10-08). **1.4.96** is Waiting for Review.
 
 **Immediate step Ryan chose (option A):** fix the known main-thread sheet animation on **web** and **measure on device** before any native motion work … see the 2026-08-27 lightbox smoothness entry in the Update log. That fix is a prerequisite either way, since a native media layer over a sheet that still animates `height` would drift visibly against it.
 
@@ -96,18 +96,18 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **Bridges v1 remaining:** ~~push (`requestPushPermission` / `getPushToken`)~~ **native signed 2026-08-25** + Windows token upload 2026-08-25; call audio session (`setAudioSession` foreground-solid; CallKit → v1.1), ~~unmuted media autoplay **web unlock** under shell~~ **done (Windows 2026-08-24)** … ~~device smoke~~ **Ryan sign-off 2026-08-25** (Tap for sound → next clips stay audible). ~~APNs **send**~~ **Ryan device banner 2026-08-25** (test Edge `APNS_*`). ~~Tap deep links~~ **Ryan smoke PASSED 2026-08-25** (`b66986cf`).
 - [ ] **Native UA web gates (Windows):** ~~hide in-WebView Stripe / subscribe CTAs → `openInSafari`~~ **done** (`openExternalBillingUrl`); ~~skip `push-sw` register~~ **done**; ~~hide A2HS / install-for-push chrome~~ (How to Install chip + `iosPwaInstallRequired` + web push hook). UA token **`EdgeiOS/0.1.0`**; **`src/utils/edgeNative.js`** landed.
 - [x] **Billing v1 (US) Safari link-out:** Stripe Checkout / portal / Connect never `location.assign` inside EdgeiOS … `openExternalBillingUrl` → `openInSafari`. StoreKit IAP deferred to v1.1. Counsel + App Review notes still before submit.
-- [x] **Store listing leftovers:** 1.4.95 / build **125** (lockstate out, iPhone-only) added for Review **2026-09-10** (UTC `2026-09-11T04:34:28Z`). Draft `75504e35-…`. **WAITING_FOR_REVIEW.** Manual release. Lifetime still out.
+- [x] **Store listing leftovers:** first ship **1.4.95 Ready for Distribution** (build `20260928212300`, 2026-10-08). Update **1.4.96** (`20261008181941`) **Waiting for Review** (auto-release). Do not swap that binary. Lifetime + Creator Fan SKUs rode the approved 1.4.95 packet.
 - [x] **App Information leftovers (2026-09-06):** Age Ratings saved (calculated 16+, override **18+** for ToS 18+; Brazil 19+). Content Rights Yes (third-party / UGC). Encryption: do not upload docs … Xcode `ITSAppUsesNonExemptEncryption = NO`. Vietnam Game License / Medical Device N/A.
 - [x] **DSA trader:** Ryan submitted 2026-09-10. ASC Business → Compliance → Digital Services Act is **In Review** (27 EU countries, last updated Sep 10). Complete Compliance Requirements banner is gone. Apple still verifying contact. Not a submit hold.
 
 ### Before IAP / App Store submit (Ryan 2026-09-06)
 
-**1.4.95 / build 125 is Waiting for Review** (submitted 2026-09-10). Age Ratings / Content Rights / encryption plist are already in. Same Apple team … do not open a second developer account. Higher price-point request **approved 2026-09-14**. IPA carousel shows Lifetime again (`1.4.210`). Do not attach a new binary to that submission.
+**First version is live.** **1.4.95 Ready for Distribution** (build `20260928212300`). **1.4.96 Waiting for Review** (`20261008181941`, auto-release). Age Ratings / Content Rights / encryption plist are in. Same Apple team. Higher price-point request **approved 2026-09-14**. Do not attach a different binary to the 1.4.96 submission.
 
 - [x] **App Store account changeover to Digiverse Ventures LLC.** Ryan signed off 2026-09-07. DSA trader as the LLC is now unblocked.
 - [x] **[digiverse.ventures](https://digiverse.ventures)** LLC site live. Static files in **`sites/digiverse-ventures/`**. Pages project **`digiverse-ventures`**. Custom domain attached 2026-09-06 (`digiverse.ventures` + `www`, proxied CNAME to `digiverse-ventures.pages.dev`). Apex MX stays Cloudflare Email Routing. No street address. Contact **`contact@digiverse.ventures`**. Ryan signed off 2026-09-07. Not an Edge product surface.
 - [x] **Cloudflare email** for **edgetilt** and **digiverse** … mailboxes + reply-from. Ryan signed off 2026-09-07.
-- [x] **Increased price request approval** from App Store Connect (Lifetime / price points above Apple’s `$1,000` cap). Ryan: approved **2026-09-14**. IPA carousel is Starter + Pro + Lifetime again (`1.4.210`). ASC Lifetime SKU list is now **`$1,499.99`** US (founding window; was `$1,999.00`). Offer-code path parked. Still Prepare for Submission until it rides a new app version.
+- [x] **Increased price request approval** from App Store Connect (Lifetime / price points above Apple’s `$1,000` cap). Ryan: approved **2026-09-14**. IPA carousel is Starter + Pro + Lifetime again. ASC Lifetime SKU list is **`$1,499.99`** US (founding window). Offer-code path parked. Lifetime + Creator Fan SKUs rode the approved **1.4.95** packet.
 
 ### Native gap checklist (audit 2026-08-23)
 
@@ -1175,7 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-10-08:** **App Store 1.4.96 Waiting for Review.** Build **`20261008181941`** attached and submitted. Auto-release after approval. 1.4.95 (`20260928212300`) is Ready for Distribution. Web stays **1.4.1098**.
+- **2026-10-08:** **App Store accepted.** **1.4.95 Ready for Distribution** (build `20260928212300`). Latest IPA submitted as **1.4.96** (`20261008181941`) ... **Waiting for Review**, auto-release. Marketing **1.4.96** on `test` (`dbe1e9ac`). Web stays **1.4.1098**. Do not swap the 1.4.96 binary. Leftover: Windows AASA `/lounge/g/*` + `?game=` (live 1.4.95 already has the Swift allowlist).
 - **2026-10-07:** **Promoted `1.4.1098`** (iPad landscape gamecast scale). Frontend **`test` → `main`** (`80550189`). No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **iPad gamecast scale (`1.4.1098`).** Tablet landscape football gamecast is the iPhone field + side rails, scaled via `transform` (`zoom` is a no-op in iPad WKWebView). Phone landscape (height < 700) unchanged. No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **Promoted `1.4.1097`** (live ML on game screen + all-sport market-file close). Frontend **`test` → `main`** (`d503a956`). Redeployed **`lounge-sports-scoreboard`** on **`jtjgtucumuoswnbauxry`**. Marketing still **1.4.95**.

@@ -16,6 +16,10 @@ import { initGoogleAnalytics } from './utils/googleAnalytics.js'
 import { installChatCallPushProbeListener } from './utils/chatCallPushProbeListener.js'
 import { installEdgeAppVisibilityBeacon } from './utils/edgeAppVisibilityBeacon.js'
 import { installWebkitImageResumeRepair } from './utils/webkitImageResumeRepair.js'
+import {
+  installFfmpegWasmRejectionGuard,
+  isFfmpegWasmLoadRejection,
+} from './utils/ffmpegWasmRejectionGuard.js'
 
 // Capture console output for in-app debug log (staff only)
 installAppDebugLog()
@@ -31,6 +35,7 @@ applyPlatformClass()
 watchSystemTheme()
 
 installStaleChunkReloadListener()
+installFfmpegWasmRejectionGuard()
 installGlobalTapHaptic()
 initGoogleAnalytics()
 
@@ -50,11 +55,19 @@ Sentry.init({
     'Network request failed',
     /Non-Error promise rejection captured with value:.*Load failed/i,
     /Non-Error promise rejection captured with value:.*module script is cancel/i,
+    // Lounge @ffmpeg/core on browsers without Wasm SIMD (s128).
+    /experimental-wasm-simd/i,
+    /invalid value type ['"]?s128/i,
+    /WebAssembly\.instantiate/i,
+    /Non-Error promise rejection captured with value:.*CompileError/i,
+    /Non-Error promise rejection captured with value:.*RuntimeError: Aborted/i,
   ],
   beforeSend(event, hint) {
     if (isCanceledModuleImport(hint?.originalException)) return null
+    if (isFfmpegWasmLoadRejection(hint?.originalException)) return null
     const value = event?.exception?.values?.[0]?.value || event?.message || ''
     if (isCanceledModuleImport(value)) return null
+    if (isFfmpegWasmLoadRejection(value)) return null
     return event
   },
 })

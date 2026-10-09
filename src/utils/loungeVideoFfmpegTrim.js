@@ -9,6 +9,9 @@ import {
   hasBrowserVideoAudioUserActivation,
 } from './loungeVideoBrowserAudio.js'
 import { probeVideoFileDurationSeconds, probeVideoFileHasAudio, isLikelyIphoneScreenRecording, isIOSBrowser, isLoungeVideoQuicktimeMov, isLoungeVideoMp4Container } from './loungeVideoUpload.js'
+import { isFfmpegWasmLoadRejection } from './ffmpegWasmRejectionGuard.js'
+
+export { isFfmpegWasmLoadRejection, installFfmpegWasmRejectionGuard } from './ffmpegWasmRejectionGuard.js'
 
 const LOUNGE_ENCODE_SCALE_VF = 'scale=720:-2:flags=bicubic:in_range=full:out_range=mpeg'
 const LOUNGE_ENCODE_CRF = '30'
@@ -29,6 +32,19 @@ const MEMFS_INPUT_MAX_BYTES = 4 * 1024 * 1024
 
 let ffmpegSingleton = null
 let loadPromise = null
+/** Permanent load failure (e.g. no Wasm SIMD) ... do not keep re-fetching the core. */
+let ffmpegUnsupportedError = null
+
+/**
+ * @param {unknown} e
+ * @returns {Error}
+ */
+function normalizeFfmpegLoadError(e) {
+  if (isFfmpegWasmLoadRejection(e)) {
+    return new Error('Video encoder is not supported in this browser.')
+  }
+  return e instanceof Error ? e : new Error(String(e ?? 'Video encoder failed to start.'))
+}
 
 /**
  * iOS module workers hang forever on `import(blob:)` of the core (the promise never rejects).
@@ -50,6 +66,7 @@ async function resolveFfmpegCoreUrls() {
 }
 
 async function getFfmpeg() {
+  if (ffmpegUnsupportedError) return Promise.reject(ffmpegUnsupportedError)
   if (ffmpegSingleton) return ffmpegSingleton
   if (loadPromise) return loadPromise
   loadPromise = (async () => {
@@ -87,7 +104,11 @@ async function getFfmpeg() {
     return ffmpeg
   })().catch((e) => {
     loadPromise = null
-    throw e
+    const err = normalizeFfmpegLoadError(e)
+    if (isFfmpegWasmLoadRejection(e) || /not supported in this browser/i.test(err.message)) {
+      ffmpegUnsupportedError = err
+    }
+    throw err
   })
   return loadPromise
 }
@@ -187,9 +208,16 @@ async function deleteFfmpegFileSafe(ffmpeg, name, timeoutMs = 4000) {
   }
 }
 
-/** Warm ffmpeg core in the background (first open of trim modal). */
+/** Warm ffmpeg core in the background. Never rejects (Lounge mount / crop open). */
 export function prefetchFfmpegCore() {
-  return getFfmpeg().then(() => {})
+  return getFfmpeg()
+    .then(() => {})
+    .catch((e) => {
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `wasm core prefetch skip: ${e instanceof Error ? e.message : String(e)}`,
+      )
+    })
 }
 
 /** @returns {boolean} */

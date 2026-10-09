@@ -1741,7 +1741,7 @@ export default function SocialFeed({
   }, [])
 
   useEffect(() => {
-    void prefetchFfmpegCore()
+    void prefetchFfmpegCore() // never rejects; see loungeVideoFfmpegTrim.prefetchFfmpegCore
   }, [])
 
   useEffect(() => {

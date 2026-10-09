@@ -122,6 +122,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac / Windows Theo ACTIVE TRACK 2026-10-09 ... Legal / compliance todos (Limestone)
+**Notes only.** Ryan asked to park follow-ups from the Limestone “10 legal traps” post. Canonical checklist: **`docs/test-buildout-backlog.md` → Planned (Legal / compliance — Limestone audit)**. Priority open item: **DMCA designated agent** + public page. Also: keep marketing email dark until CAN-SPAM footer; AI disclosure only if conversational AI ships; soft a11y; optional age gate. Already good: RLS, counsel privacy/terms, 18+, no session replay / health pixels, Manage membership cancel. No code this note.
+
 ### Mac Theo ACTIVE TRACK 2026-10-07 ... promote 1.4.1098
 ### Mac Theo ACTIVE TRACK 2026-10-08 … App Store accepted + 1.4.96 in review
 

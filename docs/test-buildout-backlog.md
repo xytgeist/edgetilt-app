@@ -41,6 +41,28 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ---
 
+## Planned (Legal / compliance — Limestone audit)
+
+**Source:** Limestone Digital X post ([status/2108174605722526126](https://x.com/LimestoneHQ/status/2108174605722526126)) … “10 legal traps in vibe-coded apps.” Ryan ask 2026-10-09: score EdgeTilt and park follow-ups here. **Not legal advice.** Counsel already signed Terms / Privacy / Guidelines (**2026-07-01**).
+
+**Already good (do not reopen unless something regresses):**
+
+- RLS + anon-only client (no service-role in frontend)
+- Counsel-reviewed `/privacy` `/terms` `/guidelines` + signup / version re-accept + ASC privacy URL
+- App Store **18+**; Privacy “not directed under 18”
+- No session-replay SDKs; no Meta Pixel / health-data pixels
+- Recurring billing cancel path via **Manage membership** (Stripe portal / App Store)
+
+**Open todos:**
+
+- [ ] **DMCA designated agent (priority).** Lounge UGC (photos / video / captions) needs a Copyright Office designated-agent registration (~$6 / 3 yr) plus a public page or Terms section (`dmca@…` / Digiverse postal). Without it we do not get the safe harbor. Copy through counsel before ship; bump **`LEGAL_POLICY_VERSION`** if Terms change.
+- [ ] **Marketing email CAN-SPAM gate.** Keep marketing blasts dark until every send has unsubscribe + postal address + opt-outs within 10 business days. Resend today is transactional only (billing / poker / affiliate) … that is fine. Do not ship a newsletter without the footer.
+- [ ] **AI chatbot disclosure (if/when).** Lounge `is_bot` editorial / odds accounts are not companion chat. If we ship conversational AI (especially EU or CA companion-style), disclose it is AI in the first message.
+- [ ] **Accessibility (soft).** ASC does not claim Accessibility. No full WCAG 2.1 AA program. Revisit when Ryan wants a pass (alt text, labels, keyboard, contrast) … not panic, industry-wide risk.
+- [ ] **Age gate (optional).** Product is adult gambling social + store 18+; no DOB at signup. Only add a hard age gate if counsel wants affirmative collection beyond “not directed under 18.”
+
+---
+
 ## Planned (Native shells / app stores)
 
 **When:** Ryan back in Vegas (target **2026-08-19** or **2026-08-20**). Next **major** push after current web work.
@@ -1175,6 +1197,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-09:** **Legal / compliance todos (Limestone audit).** Scored EdgeTilt against Limestone’s 10 vibe-code traps. Mostly good (RLS, privacy, 18+, no session replay / health pixels, cancel paths). Parked open items under **Planned (Legal / compliance — Limestone audit)**: DMCA agent (priority), marketing-email CAN-SPAM gate, AI disclosure if/when, soft a11y, optional age gate. No code.
 - **2026-10-08:** **App Store accepted.** **1.4.95 Ready for Distribution** (build `20260928212300`). Latest IPA submitted as **1.4.96** (`20261008181941`) ... **Waiting for Review**, auto-release. Marketing **1.4.96** on `test` (`dbe1e9ac`). Web stays **1.4.1098**. Do not swap the 1.4.96 binary. Leftover: Windows AASA `/lounge/g/*` + `?game=` (live 1.4.95 already has the Swift allowlist).
 - **2026-10-07:** **Promoted `1.4.1098`** (iPad landscape gamecast scale). Frontend **`test` → `main`** (`80550189`). No Edge. Marketing still **1.4.95**.
 - **2026-10-07:** **iPad gamecast scale (`1.4.1098`).** Tablet landscape football gamecast is the iPhone field + side rails, scaled via `transform` (`zoom` is a no-op in iPad WKWebView). Phone landscape (height < 700) unchanged. No Edge. Marketing still **1.4.95**.

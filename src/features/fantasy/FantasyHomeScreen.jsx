@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import {
   loadFantasySnapshot,
   loadLeagueDetail,
@@ -304,28 +306,27 @@ export default function FantasyHomeScreen({
   const oppTeam = detail?.teams?.find((t) => t.id === detail?.matchup?.opp_team_id)
 
   return (
-    <div
-      data-fantasy-home
-      className="flex h-full min-h-0 flex-col overflow-hidden bg-zinc-950 text-white"
+    <ScrollLinkedEdgeTitleBarShell
+      publishScrollReveal
+      titleBarNavSlot={titleBarNavSlot}
+      titleBarCenterSlot={titleBarCenterSlot}
+      titleBarToolCloseVisible
+      titleBarBrand={<TitleBarScreenTitle>Fantasy</TitleBarScreenTitle>}
+      contentClassName="px-4 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
     >
-      <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2">
-        {titleBarNavSlot}
-        <div className="min-w-0 flex-1">{titleBarCenterSlot || (
-          <div className="truncate text-[17px] font-semibold tracking-tight">Fantasy</div>
-        )}</div>
+      <div data-fantasy-home className="text-white">
         {hasConnection ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void onSync()}
-            className="rounded-full border border-zinc-700 px-3 py-1 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
-          >
-            {busy ? '…' : 'Sync'}
-          </button>
+          <div className="mb-3 flex justify-end">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void onSync()}
+              className="rounded-full border border-zinc-700 px-3 py-1 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
+            >
+              {busy ? '…' : 'Sync'}
+            </button>
+          </div>
         ) : null}
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
         {err ? (
           <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-950/30 px-3 py-2 text-[13px] text-rose-200">
             {err}
@@ -566,6 +567,6 @@ export default function FantasyHomeScreen({
           </div>
         ) : null}
       </div>
-    </div>
+    </ScrollLinkedEdgeTitleBarShell>
   )
 }

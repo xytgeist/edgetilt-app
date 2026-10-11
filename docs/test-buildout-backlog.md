@@ -1198,6 +1198,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-11:** **Fantasy title bar safe area (`1.4.1111`).** Fantasy used a custom top bar with no `edge-sat` / safe-area inset (title + ☰ / × under the Island). Now **`ScrollLinkedEdgeTitleBarShell`** + **`TitleBarScreenTitle`** like Chat / Bet Tracker.
 - **2026-10-11:** **Promoted `1.4.1110`** (Yahoo Connect EdgeiOS crash fix). Frontend **`test` → `main`**. No SQL / Edge.
 - **2026-10-11:** **Fantasy Connect Yahoo EdgeiOS crash fix (`1.4.1110`).** Connect Yahoo used `location.assign` into the WKWebView and hard-crashed the IPA. Now **`openExternalUrl(..., { system: true })`** on EdgeiOS; web keeps same-tab assign. AASA claims `?yahoo=`; Fantasy refreshes on return / `yahoo=linked`.
 - **2026-10-11:** **Promoted `1.4.1109`** (Fantasy Connect Yahoo OAuth). Frontend **`test` → `main`**. SQL **`20261011190000`** on **prod**. Deployed **`fantasy-yahoo-oauth-start`** / **`fantasy-yahoo-oauth-callback`** / **`fantasy-yahoo-sync`** on **`jtjgtucumuoswnbauxry`**. Edge secrets **`YAHOO_FANTASY_CLIENT_ID`** / **`YAHOO_FANTASY_CLIENT_SECRET`** set on test + prod (Yahoo app EdgeTilt Fantasy).

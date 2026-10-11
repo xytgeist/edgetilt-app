@@ -2585,7 +2585,7 @@ const ODDS_SLATE_CACHE_MS = 90_000
 /** Open live hub can shop Odds/Pinnacle a bit faster without paying every board rebuild. */
 const ODDS_HUB_LIVE_CACHE_MS = 40_000
 /** Rundown sharp-shop only … slower than Odds API to cut datapoint burn. */
-const RUNDOWN_SHOP_SLATE_CACHE_MS = 12 * 60_000
+const RUNDOWN_SHOP_SLATE_CACHE_MS = 60 * 60_000
 const RUNDOWN_SHOP_LIVE_CACHE_MS = 2 * 60_000
 type OddsPack = Awaited<ReturnType<typeof fetchSportOdds>>
 

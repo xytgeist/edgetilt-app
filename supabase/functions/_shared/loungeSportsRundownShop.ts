@@ -1,7 +1,7 @@
 /**
  * TheRundown sharp-shop books Odds API does not carry (or carries poorly).
  * Scores-only slates stay on `affiliate_ids=0`. This fetch is `main_line` ML/spread/total
- * for a short affiliate list, cached slower than Odds lines (12m slate / 2m live).
+ * for a short affiliate list, cached slower than Odds lines (60m slate / 2m live).
  *
  * Test sandbox never pulls shop odds … `isRundownEnabled()` is false on test
  * (same THERUNDOWN key as prod; no Rundown at all on lvslotpro).
@@ -219,7 +219,7 @@ async function rundownFetch<T>(path: string): Promise<T | null> {
   }
 }
 
-/** One PT date of main-line shop books. Caller caches (12m slate / 2m live hub). */
+/** One PT date of main-line shop books. Caller caches (60m slate / 2m live hub). */
 export async function loadRundownShopDayEvents(sportKey: string, ptDate: string): Promise<RundownEvent[]> {
   // Test shares the prod Rundown key … shop snapshots are the Odds datapoint furnace.
   if (isTestSupabaseProject()) return []

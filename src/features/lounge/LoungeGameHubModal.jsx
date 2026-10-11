@@ -112,6 +112,10 @@ function LoungeMatchupGameHubModal({
   const tabBarRef = useRef(null)
   const tabScrollSyncLock = useRef(0)
   const tabSettleRef = useRef(0)
+  /** Bumps each time the hub opens (including reopen of the same game) so panes refresh + pager resyncs. */
+  const [hubOpenNonce, setHubOpenNonce] = useState(0)
+  const hubWasOpenRef = useRef(false)
+  const hubGameIdRef = useRef(null)
 
   const sameSportGames = useMemo(
     () => loungeSportsHubGames(sports?.games || [], game?.sport_key),
@@ -289,7 +293,7 @@ function LoungeMatchupGameHubModal({
       clearInterval(id)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [detailGameId, detailGameLive, supabaseClient])
+  }, [detailGameId, detailGameLive, supabaseClient, hubOpenNonce])
 
   useEffect(() => {
     if (!game || !supabaseClient) return undefined
@@ -388,7 +392,7 @@ function LoungeMatchupGameHubModal({
       fantasyRefreshRef.current = null
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient])
+  }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient, hubOpenNonce])
 
   const newsGameId = showNewsTab ? game?.id || null : null
   useEffect(() => {
@@ -431,7 +435,7 @@ function LoungeMatchupGameHubModal({
     }
     // Game object churns on every board poll … id + status is the real identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newsGameId, game?.status, supabaseClient])
+  }, [newsGameId, game?.status, supabaseClient, hubOpenNonce])
 
   // Prefetch both Top and Latest as soon as the hub opens so neither the tab nor the sort toggle reloads.
   // Keyed on game id (not the game object, which churns on every board poll).
@@ -476,12 +480,22 @@ function LoungeMatchupGameHubModal({
     return () => {
       cancelled = true
     }
-  }, [postsGameId, hydratePosts, searchQuery, supabaseClient])
+  }, [postsGameId, hydratePosts, searchQuery, supabaseClient, hubOpenNonce])
   const posts = postsBySort[postsSort === 'top' ? 'top' : 'latest'] || []
 
+  // Hub tree unmounts while closed (`if (!game) return null`) but React state (tab) survives.
+  // Reopen of the same game used to keep Plays underlined while the pager remounted on News (scroll 0).
   useEffect(() => {
-    // Live → Plays; pregame + final → News (football) / Posts
-    if (!game?.id) return
+    if (!game?.id) {
+      hubWasOpenRef.current = false
+      hubGameIdRef.current = null
+      return
+    }
+    const justOpened = !hubWasOpenRef.current
+    const switched = Boolean(hubGameIdRef.current && hubGameIdRef.current !== game.id)
+    hubWasOpenRef.current = true
+    hubGameIdRef.current = game.id
+    if (!justOpened && !switched) return
     const football = String(game.sport_key || '').includes('americanfootball')
     if (game.status === 'in') setTab('plays')
     else setTab(football ? 'news' : 'posts')
@@ -489,9 +503,8 @@ function LoungeMatchupGameHubModal({
     setDraft('')
     setChatErr('')
     setFieldReplay({ text: '', team: null, nonce: 0 })
-    // Reset chrome when switching games only (status is read for default tab).
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: game.id gate
-  }, [game?.id])
+    setHubOpenNonce((n) => n + 1)
+  }, [game?.id, game?.status, game?.sport_key])
 
   const pillsScrollRef = useRef(null)
   const landscapePillsScrollRef = useRef(null)
@@ -540,30 +553,51 @@ function LoungeMatchupGameHubModal({
 
   const scrollTabPagerTo = useCallback((id, behavior = 'smooth') => {
     const pager = tabPagerRef.current
+    if (!pager) return
     const pane = tabPaneRefs.current[id]
-    if (!pager || !pane) return
-    const left = pane.offsetLeft
+    const w = pager.clientWidth
+    const idx = tabs.findIndex((t) => t.id === id)
+    const fallback = idx >= 0 && w >= 8 ? idx * w : null
+    const measured = pane && Number.isFinite(pane.offsetLeft) ? pane.offsetLeft : null
+    // Before layout, every pane can report offsetLeft 0 … prefer index × width then.
+    const left =
+      measured != null && fallback != null && Math.abs(measured - fallback) <= Math.max(8, w * 0.5)
+        ? measured
+        : (fallback ?? measured)
+    if (left == null) return
     if (Math.abs(pager.scrollLeft - left) < 2) return
     tabScrollSyncLock.current = Date.now()
     const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     pager.scrollTo({ left, behavior: reduce ? 'instant' : behavior })
-  }, [])
+  }, [tabs])
 
   useLayoutEffect(() => {
+    if (!game?.id) return undefined
+    const sync = () => scrollTabPagerTo(activeTab, 'instant')
+    sync()
+    // Reopen remounts the pager at scrollLeft 0 before panes have width … retry after paint.
+    let raf2 = 0
+    const raf1 = window.requestAnimationFrame(() => {
+      sync()
+      raf2 = window.requestAnimationFrame(sync)
+    })
     const pager = tabPagerRef.current
-    const w = pager?.clientWidth || 0
-    if (w >= 8) {
-      const nearest = Math.round(pager.scrollLeft / w)
-      const want = tabs.findIndex((t) => t.id === activeTab)
-      if (want >= 0 && nearest === want) return
+    let ro = null
+    if (pager && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => sync())
+      ro.observe(pager)
     }
-    scrollTabPagerTo(activeTab, 'instant')
-  }, [activeTab, tabIdsKey, game?.id, scrollTabPagerTo])
+    return () => {
+      window.cancelAnimationFrame(raf1)
+      window.cancelAnimationFrame(raf2)
+      ro?.disconnect()
+    }
+  }, [activeTab, tabIdsKey, game?.id, hubOpenNonce, scrollTabPagerTo])
 
   useEffect(() => {
     const btn = tabBarRef.current?.querySelector(`[data-lounge-game-hub-tab="${activeTab}"]`)
     btn?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
-  }, [activeTab])
+  }, [activeTab, hubOpenNonce])
 
   useEffect(() => () => window.clearTimeout(tabSettleRef.current), [])
 
@@ -652,6 +686,7 @@ function LoungeMatchupGameHubModal({
           gameStatus={game.status}
           game={game}
           live={live}
+          playerBox={detail.playerBox}
         />
       )
     }

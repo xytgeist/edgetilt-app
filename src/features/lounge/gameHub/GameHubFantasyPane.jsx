@@ -8,6 +8,7 @@ import {
   useFantasyScoring,
 } from './gameHubFantasyScoring.js'
 import { toggleFantasyPin, useFantasyPins } from './gameHubFantasyPins.js'
+import { boxForPlayer, indexPlayerBox, liveDetailLine } from './gameHubPropStats.js'
 
 function isDefOrDst(player) {
   const p = String(player?.position || '')
@@ -810,6 +811,7 @@ export default function GameHubFantasyPane({
   gameStatus = 'pre',
   game = null,
   live = null,
+  playerBox = null,
 }) {
   // Prefer slate status; if live state already has a period, treat as in-game
   // so the H2H chip flips even if the slate poll lags a beat after kickoff.
@@ -825,6 +827,10 @@ export default function GameHubFantasyPane({
   const scoring = useFantasyScoring()
   const pins = useFantasyPins()
   const pinSet = useMemo(() => new Set(pins.map(String)), [pins])
+  const boxIndex = useMemo(
+    () => (liveOrFinal ? indexPlayerBox(playerBox) : null),
+    [liveOrFinal, playerBox],
+  )
 
   const { matchups, rest } = useMemo(() => {
     const list = players || []
@@ -898,7 +904,12 @@ export default function GameHubFantasyPane({
           <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
             {rest.slice(0, 40).map((p) => {
               const season = playerFantasyPts(p, 'season', scoring)
-              const detail = seasonDetailLine(p)
+              const boxLoaded = Boolean(liveOrFinal && boxIndex?.any)
+              const box = boxLoaded ? boxForPlayer(boxIndex, p) : null
+              // Live/final: ESPN box only … never keep season YTD on the subline after kickoff.
+              const detail = liveOrFinal
+                ? liveDetailLine(box, p.position, { boxLoaded })
+                : seasonDetailLine(p)
               const col = restBoardPointsColumn(p, status, live, scoring)
               const pinned = pinSet.has(String(p.sleeper_id))
               return (

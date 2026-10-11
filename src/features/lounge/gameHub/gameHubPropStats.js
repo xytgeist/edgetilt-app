@@ -213,3 +213,97 @@ export function boxSummaryParts(box) {
   }
   return parts
 }
+
+function normalizeSkillPos(pos) {
+  const p = String(pos || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+  if (p === 'FB' || p === 'HB') return 'RB'
+  if (p === 'PK') return 'K'
+  return p
+}
+
+function liveDetailStub(pos) {
+  if (pos === 'QB') return '0 pass yd'
+  if (pos === 'RB') return '0 rush yd'
+  if (pos === 'WR' || pos === 'TE') return '0 rec · 0 yd'
+  if (pos === 'K') return '0/0 FG'
+  return ''
+}
+
+/**
+ * Fantasy / roster subline during live+final … same shape as seasonDetailLine but from ESPN box.
+ * When `boxLoaded` and the player is missing from the box, return a zero stub (never season YTD).
+ */
+export function liveDetailLine(box, position, { boxLoaded = false } = {}) {
+  const pos = normalizeSkillPos(position)
+  if (!box) return boxLoaded ? liveDetailStub(pos) : ''
+  const g = Array.isArray(box.groups) ? box.groups : []
+  const parts = []
+  if (pos === 'QB' || g.includes('passing')) {
+    if (has(box.pass_yds) || has(box.pass_td) || has(box.pass_int) || has(box.pass_att)) {
+      if (has(box.pass_yds)) parts.push(`${Math.round(Number(box.pass_yds))} pass yd`)
+      if (has(box.pass_td)) parts.push(`${Math.round(Number(box.pass_td))} TD`)
+      if (has(box.pass_int)) parts.push(`${Math.round(Number(box.pass_int))} INT`)
+    }
+  } else if (pos === 'RB' || (g.includes('rushing') && !g.includes('passing'))) {
+    if (has(box.rush_yds)) parts.push(`${Math.round(Number(box.rush_yds))} rush yd`)
+    if (has(box.rec)) parts.push(`${Math.round(Number(box.rec))} rec`)
+    else if (has(box.rec_yds)) parts.push(`${Math.round(Number(box.rec_yds))} rec yd`)
+    if (has(box.rush_td) && Number(box.rush_td) > 0) parts.push(`${Math.round(Number(box.rush_td))} TD`)
+  } else if (pos === 'WR' || pos === 'TE' || g.includes('receiving')) {
+    if (has(box.rec)) parts.push(`${Math.round(Number(box.rec))} rec`)
+    if (has(box.rec_yds)) parts.push(`${Math.round(Number(box.rec_yds))} yd`)
+    if (has(box.rec_td)) parts.push(`${Math.round(Number(box.rec_td))} TD`)
+  } else if (pos === 'K' || g.includes('kicking')) {
+    if (has(box.fg_made) || has(box.fg_att)) {
+      const made = Number(box.fg_made) || 0
+      const att = Number(box.fg_att) || made
+      parts.push(`${made}/${att} FG`)
+    }
+  }
+  if (parts.length) return parts.join(' · ')
+  // Skill player on the box with zeros only … still show a live stub so YTD never leaks.
+  const stub = liveDetailStub(pos)
+  if (stub) return stub
+  return boxSummaryParts(box).join(' · ')
+}
+
+/** Right-rail Players headline during live+final (`186` / `Pass yd`). */
+export function liveHeadline(box, position) {
+  if (!box) return null
+  const pos = normalizeSkillPos(position)
+  const g = Array.isArray(box.groups) ? box.groups : []
+  const fmt = (n) => {
+    if (n == null || !Number.isFinite(Number(n))) return null
+    return String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  }
+  if (pos === 'QB' || g.includes('passing')) {
+    const v = fmt(box.pass_yds ?? 0)
+    return v != null ? { value: v, label: 'Pass yd' } : null
+  }
+  if (pos === 'RB' || (g.includes('rushing') && num(box.rush_yds) >= num(box.rec_yds))) {
+    const v = fmt(box.rush_yds ?? 0)
+    return v != null ? { value: v, label: 'Rush yd' } : null
+  }
+  if (pos === 'WR' || pos === 'TE' || g.includes('receiving')) {
+    const v = fmt(box.rec_yds ?? 0)
+    return v != null ? { value: v, label: 'Rec yd' } : null
+  }
+  if (pos === 'K' || g.includes('kicking')) {
+    const made = Number(box.fg_made) || 0
+    const att = Number(box.fg_att) || made
+    return { value: `${made}/${att}`, label: 'FG' }
+  }
+  return null
+}
+
+/** Sort key for live Players roster (primary yards). */
+export function livePrimaryYards(box, position) {
+  if (!box) return 0
+  const pos = normalizeSkillPos(position)
+  if (pos === 'QB') return num(box.pass_yds) || 0
+  if (pos === 'RB') return num(box.rush_yds) || 0
+  if (pos === 'WR' || pos === 'TE') return num(box.rec_yds) || 0
+  return num(box.pass_yds) || num(box.rush_yds) || num(box.rec_yds) || 0
+}

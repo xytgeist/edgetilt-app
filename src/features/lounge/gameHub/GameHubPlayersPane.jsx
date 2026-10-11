@@ -5,6 +5,12 @@ import {
   LoungeSportsTeamLogo,
   useLoungeSportsPillWashAndLogos,
 } from '../loungeSportsPillPaint.jsx'
+import {
+  boxForPlayer,
+  indexPlayerBox,
+  liveHeadline,
+  livePrimaryYards,
+} from './gameHubPropStats.js'
 
 function InjuryPill({ status }) {
   const tag = injuryTag(status)
@@ -661,8 +667,7 @@ function rosterAccentForPlayer(player, game, paint) {
 }
 
 /** Faded team logo + Fantasy jersey mesh (card-color tint, not team wash). */
-function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle, logoBase }) {
-  const headline = seasonHeadline(player)
+function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle, logoBase, headline }) {
   return (
     <div data-roster-player-header className="relative overflow-hidden px-3.5 py-3.5">
       <span
@@ -745,7 +750,7 @@ function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle, logo
   )
 }
 
-function RosterBoard({ players, game }) {
+function RosterBoard({ players, game, liveOrFinal = false, boxIndex = null }) {
   const [expandedId, setExpandedId] = useState(null)
   const paint = useLoungeSportsPillWashAndLogos(game)
   const logoBase = isCfbGame(game) ? '/sports/cfb/logos' : '/sports/nfl/logos'
@@ -764,13 +769,17 @@ function RosterBoard({ players, game }) {
       const ja = Number(a.jersey)
       const jb = Number(b.jersey)
       if (Number.isFinite(ja) && Number.isFinite(jb) && ja !== jb) return ja - jb
-      const ya = seasonPrimaryYards(a)
-      const yb = seasonPrimaryYards(b)
+      const ya = liveOrFinal
+        ? livePrimaryYards(boxForPlayer(boxIndex, a), a.position)
+        : seasonPrimaryYards(a)
+      const yb = liveOrFinal
+        ? livePrimaryYards(boxForPlayer(boxIndex, b), b.position)
+        : seasonPrimaryYards(b)
       if (yb !== ya) return yb - ya
       return (a.search_rank ?? 9999) - (b.search_rank ?? 9999)
     })
     return list
-  }, [players])
+  }, [players, liveOrFinal, boxIndex])
 
   if (!sorted.length) {
     return <div className="py-6 text-center text-sm text-zinc-500">No players for that filter.</div>
@@ -788,6 +797,12 @@ function RosterBoard({ players, game }) {
         const hasStats = buildStatGroups(p).length > 0
         const accent = rosterAccentForPlayer(p, game, paint)
         const expanded = expandedId === id
+        const box = liveOrFinal ? boxForPlayer(boxIndex, p) : null
+        const seasonHead = seasonHeadline(p)
+        const headline = liveOrFinal
+          ? liveHeadline(box, p.position) ||
+            (seasonHead ? { value: '0', label: seasonHead.label } : null)
+          : seasonHead
         return (
           <li
             key={id}
@@ -807,6 +822,7 @@ function RosterBoard({ players, game }) {
               expanded={expanded}
               hasStats={hasStats}
               logoBase={logoBase}
+              headline={headline}
               onToggle={() => {
                 if (!hasStats) return
                 setExpandedId((cur) => (cur === id ? null : id))
@@ -860,6 +876,14 @@ export default function GameHubPlayersPane({
   const positionFilters = cfb ? CFB_POSITION_FILTERS : NFL_POSITION_FILTERS
   const [view, setView] = useState(defaultView === 'props' && !cfb ? 'props' : 'roster')
   const [position, setPosition] = useState('all')
+  const liveOrFinal =
+    game?.status === 'post' ||
+    game?.status === 'in' ||
+    Number(live?.period) >= 1
+  const boxIndex = useMemo(
+    () => (liveOrFinal ? indexPlayerBox(playerBox) : null),
+    [liveOrFinal, playerBox],
+  )
 
   useEffect(() => {
     setView(defaultView === 'props' && !cfb ? 'props' : 'roster')
@@ -946,7 +970,12 @@ export default function GameHubPlayersPane({
         !players?.length ? (
           <div className="py-10 text-center text-sm text-zinc-500">No roster data for this matchup yet.</div>
         ) : (
-          <RosterBoard players={filteredPlayers} game={game} />
+          <RosterBoard
+            players={filteredPlayers}
+            game={game}
+            liveOrFinal={liveOrFinal}
+            boxIndex={boxIndex?.any ? boxIndex : null}
+          />
         )
       ) : null}
 

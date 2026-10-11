@@ -110,7 +110,39 @@ function isPgaHubFilter(filter) {
   return f === LOUNGE_SPORTS_HUB_FILTER_PGA || f.startsWith('golf_') || f === 'pga' || f === 'golf'
 }
 
-function SportsHubLeagueButtons({ onOpenLeague, onOpenTracker, onOpenTools, onOpenFantasy }) {
+function NflHubFantasyComingSoon() {
+  return (
+    <div className="px-1 pb-3 pt-1">
+      <div
+        data-sports-hub-fantasy="nfl-soon"
+        data-hub-tool-coming-soon
+        aria-disabled="true"
+        aria-label="Fantasy, coming soon"
+        className="relative flex min-h-[3.25rem] w-full items-center gap-3 rounded-2xl border px-3.5 text-left opacity-90"
+      >
+        <Shirt className="h-5 w-5 shrink-0 text-sky-400" strokeWidth={2.25} aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold tracking-tight">Fantasy</span>
+          <span className="block text-[11px] font-medium text-zinc-500">Sleeper · Yahoo · Hub pins</span>
+        </span>
+        <span
+          data-sports-hub-fantasy-soon-veil
+          className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center rounded-2xl bg-zinc-950/55 backdrop-blur-[1px]"
+          aria-hidden
+        >
+          <span
+            data-sports-hub-fantasy-soon-pill
+            className="rounded-full border border-zinc-500/50 bg-zinc-900/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-zinc-200"
+          >
+            Coming soon
+          </span>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function SportsHubLeagueButtons({ onOpenLeague, onOpenTracker, onOpenTools }) {
   return (
     <div className="px-1 pb-4 pt-1">
       <div className="mb-3 flex gap-2">
@@ -125,19 +157,6 @@ function SportsHubLeagueButtons({ onOpenLeague, onOpenTracker, onOpenTools, onOp
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-semibold tracking-tight">Bet Tracker</span>
           <span className="block text-[11px] font-medium text-zinc-500">Units · ROI · CLV</span>
-        </span>
-      </button>
-      <button
-        type="button"
-        data-sports-hub-fantasy="home"
-        onClick={() => onOpenFantasy?.()}
-        aria-label="Open Fantasy"
-        className="flex min-h-[3.25rem] min-w-0 flex-1 items-center gap-3 rounded-2xl border px-3.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent]"
-      >
-        <Shirt className="h-5 w-5 shrink-0 text-sky-400" strokeWidth={2.25} />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-semibold tracking-tight">Fantasy</span>
-          <span className="block text-[11px] font-medium text-zinc-500">Sleeper · Hub pins</span>
         </span>
       </button>
       <button
@@ -355,28 +374,13 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
           <SportsHubLeagueButtons
             onOpenLeague={(next) => sports.openSlate?.(next)}
             onOpenTracker={openTracker}
-            onOpenFantasy={() => {
-              try {
-                const u = new URL(window.location.href)
-                u.searchParams.set('tab', 'fantasy')
-                const qs = u.searchParams.toString()
-                window.history.pushState(
-                  {},
-                  document.title,
-                  `${u.pathname || '/'}${qs ? `?${qs}` : ''}${u.hash || ''}`,
-                )
-                window.dispatchEvent(new PopStateEvent('popstate'))
-              } catch {
-                /* ignore */
-              }
-              sports.closeSlate?.()
-            }}
             onOpenTools={() => {
               openSportsBetTools('1', { hubFilter: filter })
               sports.closeSlate?.()
             }}
           />
         )}
+        {nflHub ? <NflHubFantasyComingSoon /> : null}
         {!leagueReady ? (
           <div
             data-lounge-sports-hub-loading

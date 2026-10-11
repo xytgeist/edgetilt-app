@@ -66,7 +66,8 @@ Setup notes: **`supabase/functions/fantasy-yahoo-oauth-start/README.md`**.
 | --- | --- |
 | `src/features/fantasy/FantasyHomeScreen.jsx` | Connect Sleeper / Yahoo, league pick, matchup, standings |
 | `src/features/fantasy/fantasyApi.js` | invoke Edges + RLS reads; `setPrimaryFantasyLeague` is client RLS |
-| AppShell tab **`fantasy`** | Hamburger + Sports Hub Fantasy tile |
+| AppShell tab **`fantasy`** | Hamburger / `?tab=fantasy` (still wired). Entry tile lives on **NFL Hub** as Coming soon until Yahoo API approval + soft launch |
+| NFL Hub Fantasy tile | `data-sports-hub-fantasy="nfl-soon"` … Coming soon veil (not on Sports Hub home) |
 | Light mode | `html.light [data-fantasy-home]` |
 
 ## Hub pin roles

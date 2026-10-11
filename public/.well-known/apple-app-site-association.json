@@ -41,6 +41,13 @@
               "profile": "?*"
             },
             "comment": "SPA profile deep link (?profile=uuid)"
+          },
+          {
+            "/": "/",
+            "?": {
+              "yahoo": "?*"
+            },
+            "comment": "Yahoo Fantasy OAuth return (?tab=fantasy&yahoo=linked|error)"
           }
         ]
       }

@@ -80,10 +80,14 @@ Setup notes: **`supabase/functions/fantasy-yahoo-oauth-start/README.md`**.
 
 On NFL hub open: `hub_pins: true` reads the user’s **primary** league (any provider) and applies mine/enemy sleeper ids present in that game.
 
+## EdgeiOS note
+
+**Connect Yahoo** must not `location.assign` into the WKWebView (Yahoo login has hard-crashed the IPA). Shell uses **`openExternalUrl(url, { system: true })`** (system Safari), same idea as Stripe. Callback redirects to `/?tab=fantasy&yahoo=linked` … AASA claims the `yahoo` query so Universal Links can reopen the app; Fantasy also refreshes on `visibilitychange` after a pending Safari authorize.
+
 ## Smoke (test)
 
 1. Set Yahoo Edge secrets (above) on test, redeploy yahoo Edges.
-2. lvslotpro → Fantasy → **Connect Yahoo** → authorize → land on Fantasy with leagues.
+2. lvslotpro / EdgeiOS → Fantasy → **Connect Yahoo** → authorize in Safari → return → leagues load.
 3. Pick primary league → lineup + matchup + standings.
 4. Open an NFL hub with a starter → Watch / Enemy pins.
 5. Sleeper username link still works alongside Yahoo.

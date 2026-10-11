@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   loadFantasySnapshot,
   loadLeagueDetail,
@@ -7,6 +7,7 @@ import {
   startYahooOAuth,
   syncAllFantasy,
 } from './fantasyApi.js'
+import { isEdgeiOSShell, openExternalUrl } from '../../utils/edgeNative.js'
 
 const PROVIDER_STUBS = [
   { id: 'espn', label: 'ESPN' },
@@ -105,6 +106,8 @@ export default function FantasyHomeScreen({
   const [leagueId, setLeagueId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
+  /** EdgeiOS opens Yahoo in system Safari … refresh when the user returns. */
+  const yahooOAuthPendingRef = useRef(false)
 
   const sleeper = useMemo(
     () => (snap.connections || []).find((c) => c.provider === 'sleeper'),
@@ -141,15 +144,20 @@ export default function FantasyHomeScreen({
     }
   }, [refresh])
 
-  // Return from Yahoo OAuth redirect.
+  // Return from Yahoo OAuth redirect (same-tab web, or Universal Link into the IPA).
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
       const u = new URL(window.location.href)
       const yahooFlag = (u.searchParams.get('yahoo') || '').trim()
       if (!yahooFlag) return
-      if (yahooFlag === 'linked') setInfo('Yahoo linked. Syncing your leagues…')
+      if (yahooFlag === 'linked') {
+        yahooOAuthPendingRef.current = false
+        setInfo('Yahoo linked. Loading your leagues…')
+        void refresh().catch((e) => setErr(e?.message || 'Could not load fantasy.'))
+      }
       if (yahooFlag === 'error') {
+        yahooOAuthPendingRef.current = false
         setErr(u.searchParams.get('yahoo_error') || 'Yahoo connect failed.')
       }
       u.searchParams.delete('yahoo')
@@ -163,7 +171,23 @@ export default function FantasyHomeScreen({
     } catch {
       /* ignore */
     }
-  }, [])
+  }, [refresh])
+
+  // EdgeiOS: Yahoo OAuth runs in system Safari. When the user comes back, reload connections.
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return
+      if (!yahooOAuthPendingRef.current) return
+      yahooOAuthPendingRef.current = false
+      setInfo('Checking Yahoo connection…')
+      void refresh()
+        .then(() => setInfo(''))
+        .catch((e) => setErr(e?.message || 'Could not load fantasy.'))
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [refresh])
 
   useEffect(() => {
     if (!supabaseClient || !leagueId || !signedIn) {
@@ -221,8 +245,22 @@ export default function FantasyHomeScreen({
     setInfo('')
     try {
       const url = await startYahooOAuth(supabaseClient)
+      // Never load Yahoo login inside the EdgeiOS WKWebView … it has hard-crashed the IPA.
+      // System Safari (same path as Stripe). Web / PWA stay same-tab assign.
+      if (isEdgeiOSShell()) {
+        yahooOAuthPendingRef.current = true
+        const result = await openExternalUrl(url, { system: true })
+        if (!result?.ok) {
+          yahooOAuthPendingRef.current = false
+          throw new Error('Could not open Safari for Yahoo connect.')
+        }
+        setInfo('Finish authorizing in Safari, then return here.')
+        setBusy(false)
+        return
+      }
       window.location.assign(url)
     } catch (e) {
+      yahooOAuthPendingRef.current = false
       setErr(e?.message || 'Could not start Yahoo connect.')
       setBusy(false)
     }

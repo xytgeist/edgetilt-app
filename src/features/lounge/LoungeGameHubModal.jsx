@@ -49,6 +49,8 @@ import { requestSportsBetLog } from '../sports-bet-tracker/sportsBetNav.js'
 import { SportsBetLogGameProvider } from '../sports-bet-tracker/sportsBetLogContext.jsx'
 import { isPgaGame } from './loungeSportsSlateWindow.js'
 import LoungeGolfTournamentHub from './LoungeGolfTournamentHub.jsx'
+import { fetchHubFantasyPins } from '../fantasy/fantasyApi.js'
+import { applyFantasyPinsFromLeague } from './gameHub/gameHubFantasyPins.js'
 
 const EMPTY_DETAIL = { odds: [], plays: [], stats: [], live: null, splits: null }
 
@@ -393,6 +395,36 @@ function LoungeMatchupGameHubModal({
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient, hubOpenNonce])
+
+  // Auto Watch (mine) + Enemy pins from primary Sleeper league for players in this NFL game.
+  const fantasyPresentKey = useMemo(() => {
+    const ids = (fantasy.players || [])
+      .map((p) => String(p?.sleeper_id || '').trim())
+      .filter(Boolean)
+    return ids.length ? [...new Set(ids)].sort().join(',') : ''
+  }, [fantasy.players])
+
+  useEffect(() => {
+    if (!game || !supabaseClient || !fantasyPresentKey) return undefined
+    const sk = String(game.sport_key || '')
+    if (!sk.includes('americanfootball') || sk.includes('ncaaf')) return undefined
+    const present = fantasyPresentKey.split(',')
+    let cancelled = false
+    void fetchHubFantasyPins(supabaseClient)
+      .then((data) => {
+        if (cancelled || !data?.ok) return
+        applyFantasyPinsFromLeague(
+          { mine: data.mine || [], enemy: data.enemy || [] },
+          present,
+        )
+      })
+      .catch(() => {
+        /* no Sleeper link / signed out … keep local pins */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [game?.id, game?.sport_key, fantasyPresentKey, supabaseClient, hubOpenNonce])
 
   const newsGameId = showNewsTab ? game?.id || null : null
   useEffect(() => {

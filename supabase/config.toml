@@ -48,6 +48,13 @@ verify_jwt = false
 [functions.lounge-nfl-game-fantasy]
 verify_jwt = false
 
+# Fantasy Connect (Sleeper). Client sends user JWT; function re-checks via userIdFromJwt.
+[functions.fantasy-sleeper-link]
+verify_jwt = false
+
+[functions.fantasy-sleeper-sync]
+verify_jwt = false
+
 [functions.lounge-cfb-game-players]
 verify_jwt = false
 

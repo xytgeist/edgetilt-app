@@ -3950,17 +3950,20 @@ html.light [data-lounge-sports-hub-slate] .text-zinc-500 {
   color: #71717a !important;
 }
 [data-sports-hub-tracker='home'],
-[data-sports-hub-tracker='tools'] {
+[data-sports-hub-tracker='tools'],
+[data-sports-hub-fantasy='home'] {
   border-color: rgb(39 39 42);
   background: rgb(24 24 27 / 0.88);
   color: #fafafa;
 }
 [data-sports-hub-tracker='home']:active,
-[data-sports-hub-tracker='tools']:active {
+[data-sports-hub-tracker='tools']:active,
+[data-sports-hub-fantasy='home']:active {
   background: rgb(39 39 42);
 }
 html.light [data-sports-hub-tracker='home'],
-html.light [data-sports-hub-tracker='tools'] {
+html.light [data-sports-hub-tracker='tools'],
+html.light [data-sports-hub-fantasy='home'] {
   background: #ffffff;
   border-color: #d4d4d8;
   color: #18181b;
@@ -3969,8 +3972,12 @@ html.light [data-sports-hub-tracker='home'] .text-cyan-400,
 html.light [data-sports-hub-tracker='tools'] .text-cyan-400 {
   color: #0891b2 !important;
 }
+html.light [data-sports-hub-fantasy='home'] .text-sky-400 {
+  color: #0284c7 !important;
+}
 html.light [data-sports-hub-tracker='home']:active,
-html.light [data-sports-hub-tracker='tools']:active {
+html.light [data-sports-hub-tracker='tools']:active,
+html.light [data-sports-hub-fantasy='home']:active {
   background: #f4f4f5;
 }
 [data-lounge-sports-hub-leagues] [data-sports-hub-league] {
@@ -11715,6 +11722,57 @@ html.light [data-play-logbook-ledger-remain] {
 }
 html.light [data-play-logbook-ledger-settled] .text-zinc-300 {
   color: #3f3f46 !important;
+}
+
+/* Fantasy Connect home (light mode) */
+html.light [data-fantasy-home] {
+  background-color: #fafafa !important;
+  color: #18181b !important;
+}
+html.light [data-fantasy-home] .bg-zinc-950 {
+  background-color: #fafafa !important;
+}
+html.light [data-fantasy-home] .bg-zinc-900,
+html.light [data-fantasy-home] .bg-zinc-900\/60,
+html.light [data-fantasy-home] .bg-zinc-900\/80 {
+  background-color: #ffffff !important;
+}
+html.light [data-fantasy-home] .border-zinc-800,
+html.light [data-fantasy-home] .border-zinc-800\/80,
+html.light [data-fantasy-home] .border-zinc-700 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-fantasy-home] .text-white,
+html.light [data-fantasy-home] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-fantasy-home] .text-zinc-200 {
+  color: #27272a !important;
+}
+html.light [data-fantasy-home] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-fantasy-home] .text-zinc-400,
+html.light [data-fantasy-home] .text-zinc-500,
+html.light [data-fantasy-home] .text-zinc-600 {
+  color: #71717a !important;
+}
+html.light [data-fantasy-home] .divide-zinc-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-fantasy-home] input {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-fantasy-home] .bg-sky-950\/20 {
+  background-color: rgb(224 242 254 / 0.65) !important;
+}
+html.light [data-fantasy-home] .bg-rose-950\/20 {
+  background-color: rgb(255 228 230 / 0.7) !important;
+}
+html.light [data-fantasy-home] .bg-sky-500\/10 {
+  background-color: rgb(14 165 233 / 0.12) !important;
 }
 
 /* Sports bet tracker (light mode) */

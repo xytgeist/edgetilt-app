@@ -122,6 +122,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Fantasy Connect MVP Sleeper (`1.4.1108`)
+**Done on test.** Sleeper username link → Fantasy home (leagues / lineup / matchup / standings) + NFL hub auto **mine** (blue Watch) / **enemy** (rose) pins. SQL **`20261011180000`** + Edge **`fantasy-sleeper-link`** / **`fantasy-sleeper-sync`** on test. Spec **`docs/fantasy-connect.md`**. Web **`1.4.1108`** on **`test`** only. Yahoo/ESPN/CBS = Soon. Marketing still **1.4.96**.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Game hub live player stats + tab sync (`1.4.1107`)
 **Done + promoted.** Players + Fantasy keep season YTD after kickoff … now read ESPN `player_box` for the right-rail / subline when status is in/final. Hub reopen left Plays underlined while the pager remounted on News (scroll 0); open/switch bumps a nonce, force-refreshes panes, and re-scrolls the focused tab (rAF + ResizeObserver). Web **`1.4.1107`** on **`main`** (`61ceb7aa`). Marketing still **1.4.96**.
 

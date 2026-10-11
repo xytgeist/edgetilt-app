@@ -7,7 +7,12 @@ import {
   setFantasyScoring,
   useFantasyScoring,
 } from './gameHubFantasyScoring.js'
-import { toggleFantasyPin, useFantasyPins } from './gameHubFantasyPins.js'
+import {
+  getFantasyPinIds,
+  getFantasyPinRole,
+  toggleFantasyPin,
+  useFantasyPins,
+} from './gameHubFantasyPins.js'
 import { boxForPlayer, indexPlayerBox, liveDetailLine } from './gameHubPropStats.js'
 
 function isDefOrDst(player) {
@@ -826,7 +831,8 @@ export default function GameHubFantasyPane({
   const paint = useLoungeSportsPillWashAndLogos(game)
   const scoring = useFantasyScoring()
   const pins = useFantasyPins()
-  const pinSet = useMemo(() => new Set(pins.map(String)), [pins])
+  const pinIds = useMemo(() => getFantasyPinIds(pins), [pins])
+  const pinSet = useMemo(() => new Set(pinIds), [pinIds])
   const boxIndex = useMemo(
     () => (liveOrFinal ? indexPlayerBox(playerBox) : null),
     [liveOrFinal, playerBox],
@@ -858,7 +864,7 @@ export default function GameHubFantasyPane({
       if (aPin !== bPin) return aPin ? -1 : 1
       if (aPin && bPin) {
         // Preserve most-recently-selected order from the pin list.
-        return pins.indexOf(String(a.sleeper_id)) - pins.indexOf(String(b.sleeper_id))
+        return pinIds.indexOf(String(a.sleeper_id)) - pinIds.indexOf(String(b.sleeper_id))
       }
       if (liveOrFinal) {
         const ga = playerFantasyPts(a, 'game', scoring) ?? -1
@@ -875,7 +881,7 @@ export default function GameHubFantasyPane({
     })
 
     return { matchups: slots, rest: board }
-  }, [players, liveOrFinal, scoring, pinSet, pins])
+  }, [players, liveOrFinal, scoring, pinSet, pinIds])
 
   if (loading) return <div className="py-10 text-center text-sm text-zinc-500">Loading fantasy…</div>
   if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
@@ -911,21 +917,29 @@ export default function GameHubFantasyPane({
                 ? liveDetailLine(box, p.position, { boxLoaded })
                 : seasonDetailLine(p)
               const col = restBoardPointsColumn(p, status, live, scoring)
-              const pinned = pinSet.has(String(p.sleeper_id))
+              const pinRole = getFantasyPinRole(p.sleeper_id, pins)
+              const pinned = Boolean(pinRole)
+              const enemy = pinRole === 'enemy'
               return (
                 <li key={p.sleeper_id}>
                   <button
                     type="button"
-                    data-lounge-fantasy-pin={pinned ? '1' : '0'}
+                    data-lounge-fantasy-pin={pinned ? (enemy ? 'enemy' : 'mine') : '0'}
                     onClick={() => toggleFantasyPin(p.sleeper_id)}
                     aria-pressed={pinned}
                     aria-label={
                       pinned
-                        ? `Deselect ${p.name} from fantasy watch`
+                        ? enemy
+                          ? `Clear enemy highlight for ${p.name}`
+                          : `Deselect ${p.name} from fantasy watch`
                         : `Select ${p.name} for fantasy watch`
                     }
                     className={`relative grid w-full grid-cols-[minmax(0,1fr)_3.25rem_3.25rem] items-center gap-x-2 px-3 py-2.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] first:rounded-t-2xl last:rounded-b-2xl ${
-                      pinned ? 'bg-sky-500/10' : 'active:bg-zinc-800/80'
+                      enemy
+                        ? 'bg-rose-500/10'
+                        : pinned
+                          ? 'bg-sky-500/10'
+                          : 'active:bg-zinc-800/80'
                     }`}
                   >
                     {pinned ? (
@@ -933,7 +947,9 @@ export default function GameHubFantasyPane({
                       // rounded top no longer clips the watch outline.
                       <span
                         aria-hidden="true"
-                        className="pointer-events-none absolute inset-1 z-[1] rounded-xl ring-1 ring-sky-400/45"
+                        className={`pointer-events-none absolute inset-1 z-[1] rounded-xl ring-1 ${
+                          enemy ? 'ring-rose-400/50' : 'ring-sky-400/45'
+                        }`}
                       />
                     ) : null}
                     <div className="relative z-[2] flex min-w-0 items-center gap-3">
@@ -945,8 +961,14 @@ export default function GameHubFantasyPane({
                         <div className="flex min-w-0 items-center gap-1.5">
                           <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
                           {pinned ? (
-                            <span className="shrink-0 rounded-full bg-sky-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-300">
-                              Watch
+                            <span
+                              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                                enemy
+                                  ? 'bg-rose-500/25 text-rose-300'
+                                  : 'bg-sky-500/25 text-sky-300'
+                              }`}
+                            >
+                              {enemy ? 'Enemy' : 'Watch'}
                             </span>
                           ) : null}
                           <InjuryPill status={p.injury_status} />

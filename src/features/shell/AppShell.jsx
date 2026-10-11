@@ -166,7 +166,7 @@ import {
   clearLoungeSportsGamePending,
 } from '../lounge/loungeSportsHubNav.js'
 import { isSportsBetTrackerSearch, isUsefulSportsBetPrefill, sportsBetLogOpenEventName, sportsBetPrefillFromSearchParams, closeSportsBetTracker } from '../sports-bet-tracker/sportsBetNav.js'
-import { BadgeCheck, Bot, ChartSpline, Cherry, ClipboardList, Handshake, MessagesSquare, Spade, Sparkles, Trophy } from 'lucide-react'
+import { BadgeCheck, Bot, ChartSpline, Cherry, ClipboardList, Handshake, MessagesSquare, Shirt, Spade, Sparkles, Trophy } from 'lucide-react'
 import { football, footballHelmet } from '@lucide/lab'
 import LucideLabIcon from '../../components/LucideLabIcon.jsx'
 
@@ -183,6 +183,7 @@ const NAV_ICONS = {
   'nfl-hub': { Glyph: FootballHelmetIcon, tint: '#34d399' },
   'cfb-hub': { Glyph: FootballIcon, tint: '#fb923c' },
   'sports-bets': { Glyph: ClipboardList, tint: '#22d3ee' },
+  fantasy: { Glyph: Shirt, tint: '#38bdf8' },
   chat: { Glyph: MessagesSquare, tint: '#a78bfa' },
   monitor: { Glyph: ChartSpline, tint: '#22d3ee' },
   bots: { Glyph: Bot, tint: '#cbd5e1' },
@@ -220,6 +221,7 @@ const LocalIntel = lazyRoute(() => import('../intel/LocalIntel.jsx'))
 const CalculatorsTab = lazyRoute(() => import('../calculators/CalculatorsTab.jsx'))
 const PlayLogbook = lazyRoute(() => import('../play-logbook/PlayLogbook.jsx'))
 const SportsBetTracker = lazyRoute(() => import('../sports-bet-tracker/SportsBetTracker.jsx'))
+const FantasyHomeScreen = lazyRoute(() => import('../fantasy/FantasyHomeScreen.jsx'))
 const W2GScannerScreen = lazyRoute(() => import('../w2g-scanner/W2GScannerScreen.jsx'))
 const SlotsScreen = lazyRoute(() => import('../slots/SlotsScreen.jsx'))
 const PokerScreen = lazyRoute(() => import('../poker/PokerScreen.jsx'))
@@ -1527,6 +1529,7 @@ export default function AppShell({
         'offers',
         'logbook',
         'sports-bets',
+        'fantasy',
         'w2g-scanner',
         'chat',
         'monitor',
@@ -1623,6 +1626,20 @@ export default function AppShell({
         setTab((prev) => {
           if (prev !== 'sports-bets') return prev
           if (targetTab && targetTab !== 'sports-bets') return targetTab
+          return 'home'
+        })
+      }
+      if (targetTab === 'fantasy') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('fantasy')
+          setMenuOpen(false)
+        }
+      } else if (targetTab !== 'sports-bets') {
+        setTab((prev) => {
+          if (prev !== 'fantasy') return prev
+          if (targetTab && targetTab !== 'fantasy') return targetTab
           return 'home'
         })
       }
@@ -2376,6 +2393,28 @@ export default function AppShell({
     setMenuOpen(false)
   }, [])
 
+  const closeFantasyHome = useCallback(() => {
+    armShellNavGhostClickGuard()
+    try {
+      if (typeof window !== 'undefined') {
+        const u = new URL(window.location.href)
+        if ((u.searchParams.get('tab') || '').trim() === 'fantasy') {
+          u.searchParams.delete('tab')
+          const qs = u.searchParams.toString()
+          window.history.pushState(
+            {},
+            document.title,
+            `${u.pathname || '/'}${qs ? `?${qs}` : ''}${u.hash || ''}`,
+          )
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    setTab('home')
+    setMenuOpen(false)
+  }, [])
+
   // `intel` - routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)
   const isPokerAreaTab = (activeTab) => activeTab === 'poker' || POKER_TOOL_TAB_IDS.has(activeTab)
@@ -2405,6 +2444,7 @@ export default function AppShell({
     { id: 'sports-hub', label: 'Sports Hub', icon: NAV_ICONS['sports-hub'], subscriberGated: false },
     { id: 'nfl-hub', label: 'NFL Hub', icon: NAV_ICONS['nfl-hub'], subscriberGated: false },
     { id: 'cfb-hub', label: 'CFB Hub', icon: NAV_ICONS['cfb-hub'], subscriberGated: false },
+    { id: 'fantasy', label: 'Fantasy', icon: NAV_ICONS.fantasy, subscriberGated: false },
     { id: 'chat', label: 'Chat', icon: NAV_ICONS.chat, subscriberGated: false },
     ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: NAV_ICONS.monitor, subscriberGated: false }] : []),
     ...(isAdmin ? [{ id: 'bots', label: 'Bots', icon: NAV_ICONS.bots, subscriberGated: false }] : []),
@@ -2485,16 +2525,35 @@ export default function AppShell({
         if (item.id !== 'home') {
           armShellNavGhostClickGuard()
         }
+        const clearFantasyTabParam = () => {
+          try {
+            if (typeof window === 'undefined') return
+            const u = new URL(window.location.href)
+            if ((u.searchParams.get('tab') || '').trim() !== 'fantasy') return
+            u.searchParams.delete('tab')
+            const qs = u.searchParams.toString()
+            window.history.pushState(
+              {},
+              document.title,
+              `${u.pathname || '/'}${qs ? `?${qs}` : ''}${u.hash || ''}`,
+            )
+          } catch {
+            /* ignore */
+          }
+        }
         if (item.id === 'slots') {
+          clearFantasyTabParam()
           setActiveCalculator(null)
           setTab(ipadSlotsLandscape ? 'guides' : 'slots')
           triggerTapHapticLight()
         } else if (item.id === 'poker') {
+          clearFantasyTabParam()
           acknowledgePokerOfferMenu()
           setActiveCalculator(null)
           setTab(ipadSlotsLandscape ? 'poker-bankroll' : 'poker')
           triggerTapHapticLight()
         } else if (item.id === 'sports-hub' || item.id === 'nfl-hub' || item.id === 'cfb-hub') {
+          clearFantasyTabParam()
           setActiveCalculator(null)
           setTab('home')
           requestLoungeSportsHubOpen(
@@ -2505,7 +2564,26 @@ export default function AppShell({
                 : LOUNGE_SPORTS_HUB_FILTER_ALL,
           )
           triggerTapHapticLight()
+        } else if (item.id === 'fantasy') {
+          setActiveCalculator(null)
+          try {
+            if (typeof window !== 'undefined') {
+              const u = new URL(window.location.href)
+              u.searchParams.set('tab', 'fantasy')
+              const qs = u.searchParams.toString()
+              window.history.pushState(
+                {},
+                document.title,
+                `${u.pathname || '/'}${qs ? `?${qs}` : ''}${u.hash || ''}`,
+              )
+            }
+          } catch {
+            /* ignore */
+          }
+          setTab('fantasy')
+          triggerTapHapticLight()
         } else {
+          clearFantasyTabParam()
           setActiveCalculator(null)
           setTab(item.id)
           if (item.id === 'chat') triggerTapHapticLight()
@@ -2615,6 +2693,8 @@ export default function AppShell({
         <TitleBarCloseButton onClick={backToSlotsHub} ariaLabel="Close" />
       ) : tab === 'sports-bets' ? (
         <TitleBarCloseButton onClick={closeBetTracker} ariaLabel="Close Bet Tracker" />
+      ) : tab === 'fantasy' ? (
+        <TitleBarCloseButton onClick={closeFantasyHome} ariaLabel="Close Fantasy" />
       ) : pokerToolTitleBarCloseVisible ? (
         <TitleBarCloseButton onClick={backToPokerHub} ariaLabel="Close" />
       ) : null}
@@ -3838,6 +3918,16 @@ export default function AppShell({
           pendingPrefill={pendingSportsBetPrefill}
           onPendingPrefillConsumed={() => setPendingSportsBetPrefill(null)}
           onBack={closeBetTracker}
+        />
+      )
+    } else if (tab === 'fantasy') {
+      visibleTab = (
+        <FantasyHomeScreen
+          supabaseClient={supabaseClient}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
+          signedIn={browseMode === 'member'}
+          onRequireAuth={(mode) => onOpenAuth?.(mode || 'login')}
         />
       )
     } else if (tab === 'w2g-scanner') {

@@ -30,7 +30,7 @@ import {
   setFantasyScoring,
   useFantasyScoring,
 } from './gameHubFantasyScoring.js'
-import { useFantasyPins } from './gameHubFantasyPins.js'
+import { getFantasyPinIds, getFantasyPinRole, useFantasyPins } from './gameHubFantasyPins.js'
 import {
   CATCH_HANDS_LOCAL,
   CATCH_VIEWBOX_H,
@@ -3083,7 +3083,7 @@ function FieldViz({
   // Play anim just finished → pop each involved player's fantasy points for that play.
   const [fantasyToast, setFantasyToast] = useState(null)
   const fantasyPins = useFantasyPins()
-  const fantasyPinSet = useMemo(() => new Set(fantasyPins.map(String)), [fantasyPins])
+  const fantasyPinSet = useMemo(() => new Set(getFantasyPinIds(fantasyPins)), [fantasyPins])
   const prevAnyPlayAnimRef = useRef(false)
   useEffect(() => {
     const was = prevAnyPlayAnimRef.current
@@ -4147,16 +4147,33 @@ function FieldViz({
             aria-live="polite"
           >
             {fantasyToast.rows.map((r) => {
-              const watched = Boolean(r.sleeperId) && fantasyPinSet.has(String(r.sleeperId))
+              const pinRole =
+                r.sleeperId && fantasyPinSet.has(String(r.sleeperId))
+                  ? getFantasyPinRole(r.sleeperId, fantasyPins)
+                  : null
+              const watched = pinRole === 'mine'
+              const enemy = pinRole === 'enemy'
               const ptsColor =
-                r.points < 0 ? '#fda4af' : watched ? '#7dd3fc' : '#6ee7b7'
+                r.points < 0
+                  ? '#fda4af'
+                  : enemy
+                    ? '#fda4af'
+                    : watched
+                      ? '#7dd3fc'
+                      : '#6ee7b7'
               return (
               <div
                 key={r.key}
-                data-lounge-fantasy-toast-watched={watched ? '1' : '0'}
+                data-lounge-fantasy-toast-watched={watched ? '1' : enemy ? 'enemy' : '0'}
                 className="flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2.5 shadow-lg"
                 style={
-                  watched
+                  enemy
+                    ? {
+                        background: 'rgba(76, 5, 25, 0.9)',
+                        border: '1px solid rgba(251, 113, 133, 0.55)',
+                        boxShadow: '0 0 18px rgba(244, 63, 94, 0.3)',
+                      }
+                    : watched
                     ? {
                         background: 'rgba(12, 74, 110, 0.88)',
                         border: '1px solid rgba(56, 189, 248, 0.55)',

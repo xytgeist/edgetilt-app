@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Calculator, ChevronLeft, ClipboardList, Loader2 } from 'lucide-react'
+import { Calculator, ChevronLeft, ClipboardList, Loader2, Shirt } from 'lucide-react'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import LoungeGameScorePill from './LoungeGameScorePill.jsx'
@@ -110,7 +110,7 @@ function isPgaHubFilter(filter) {
   return f === LOUNGE_SPORTS_HUB_FILTER_PGA || f.startsWith('golf_') || f === 'pga' || f === 'golf'
 }
 
-function SportsHubLeagueButtons({ onOpenLeague, onOpenTracker, onOpenTools }) {
+function SportsHubLeagueButtons({ onOpenLeague, onOpenTracker, onOpenTools, onOpenFantasy }) {
   return (
     <div className="px-1 pb-4 pt-1">
       <div className="mb-3 flex gap-2">
@@ -125,6 +125,19 @@ function SportsHubLeagueButtons({ onOpenLeague, onOpenTracker, onOpenTools }) {
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-semibold tracking-tight">Bet Tracker</span>
           <span className="block text-[11px] font-medium text-zinc-500">Units · ROI · CLV</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        data-sports-hub-fantasy="home"
+        onClick={() => onOpenFantasy?.()}
+        aria-label="Open Fantasy"
+        className="flex min-h-[3.25rem] min-w-0 flex-1 items-center gap-3 rounded-2xl border px-3.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent]"
+      >
+        <Shirt className="h-5 w-5 shrink-0 text-sky-400" strokeWidth={2.25} />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold tracking-tight">Fantasy</span>
+          <span className="block text-[11px] font-medium text-zinc-500">Sleeper · Hub pins</span>
         </span>
       </button>
       <button
@@ -342,6 +355,22 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
           <SportsHubLeagueButtons
             onOpenLeague={(next) => sports.openSlate?.(next)}
             onOpenTracker={openTracker}
+            onOpenFantasy={() => {
+              try {
+                const u = new URL(window.location.href)
+                u.searchParams.set('tab', 'fantasy')
+                const qs = u.searchParams.toString()
+                window.history.pushState(
+                  {},
+                  document.title,
+                  `${u.pathname || '/'}${qs ? `?${qs}` : ''}${u.hash || ''}`,
+                )
+                window.dispatchEvent(new PopStateEvent('popstate'))
+              } catch {
+                /* ignore */
+              }
+              sports.closeSlate?.()
+            }}
             onOpenTools={() => {
               openSportsBetTools('1', { hubFilter: filter })
               sports.closeSlate?.()

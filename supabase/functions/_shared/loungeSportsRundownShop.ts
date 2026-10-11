@@ -2,6 +2,9 @@
  * TheRundown sharp-shop books Odds API does not carry (or carries poorly).
  * Scores-only slates stay on `affiliate_ids=0`. This fetch is `main_line` ML/spread/total
  * for a short affiliate list, cached on the same 90s / 40s cadence as Odds lines.
+ *
+ * Test sandbox never pulls shop odds … same THERUNDOWN key as prod, and Circa/Heritage
+ * rows are not needed on lvslotpro. Scores-only slate (`affiliate_ids=0`) still runs.
  */
 import type { RundownEvent, RundownTeam } from './loungeBotRundownContext.ts'
 import {
@@ -9,6 +12,7 @@ import {
   oddsSportKeyToRundownSportId,
   rundownApiKey,
 } from './loungeBotRundownContext.ts'
+import { isTestSupabaseProject } from './publicAppOrigin.ts'
 
 const RUNDOWN_BASE = 'https://therundown.io/api/v2'
 const PT_OFFSET_MIN = 420
@@ -218,6 +222,8 @@ async function rundownFetch<T>(path: string): Promise<T | null> {
 
 /** One PT date of main-line shop books. Caller caches (90s slate / 40s live hub). */
 export async function loadRundownShopDayEvents(sportKey: string, ptDate: string): Promise<RundownEvent[]> {
+  // Test shares the prod Rundown key … shop snapshots are the Odds datapoint furnace.
+  if (isTestSupabaseProject()) return []
   const sportId = oddsSportKeyToRundownSportId(sportKey)
   if (!sportId || !isRundownEnabled() || !ptDate) return []
   const data = await rundownFetch<{ events?: RundownEvent[] }>(

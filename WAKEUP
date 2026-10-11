@@ -125,6 +125,9 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... CFB logo identity (ESPN team_id)
 **Done.** CFB Hub wrong Texas/Hawaii cards were abbrev collisions (D2 “Texas…” / “Hawks” → FBS). Logos now follow ESPN `team_id` then name, abbrev last. Web **`1.4.1101`** + Edge **`lounge-sports-scoreboard`** redeployed test + prod. Backlog Update log **2026-10-11**.
 
+### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Rundown shop odds off on test
+**Done.** TheRundown dashboard projected 171% quota; Odds datapoints were the shop poll (9 books × ML/spread/total × full slate × 90s). Test `lounge-sports-scoreboard` no longer calls `loadRundownShopDayEvents` (same key as prod). Scores-only + Odds API / Pinnacle on test still run. Prod shop unchanged. Redeploy **test** scoreboard only.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Prod Disk IO (Micro → Small)
 **Done (ops).** Supabase Disk IO Budget alert + slow app on **`jtjgtucumuoswnbauxry`**. Truncated bloated `net._http_response`; pruned `lounge_odds_snapshots` (keep 3 days) + `VACUUM FULL` → **17 MB**. Migration **`20261011043000`** on test + prod. Ryan upgraded compute **Micro → Small**. Details: backlog Update log **2026-10-11**.
 

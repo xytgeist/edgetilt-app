@@ -1198,6 +1198,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-11:** **Promoted `1.4.1105`** (Bet Tracker × / back stuck). Frontend **`test` → `main`** (`27928653`). No Edge.
 - **2026-10-11:** **Bet Tracker × / back stuck (`1.4.1105`).** Close updated the URL + hub-open event but left React `tab=sports-bets` when there was no `?game=` restore path (Sports Hub door). `closeBetTracker` now `setTab('home')`; `applyFromUrl` leaves sports-bets when the URL drops it. No Edge.
 - **2026-10-11:** **Promoted `1.4.1104`** (Sports Hub double pills). Frontend **`test` → `main`** (`bc294651`). No Edge.
 - **2026-10-11:** **Sports Hub double pills (`1.4.1104`).** ESPN numeric `team_id` rows and Odds abbrev-only rows for the same NFL matchup (e.g. Raiders@Pats) keyed differently (`id:75@id:63` vs `LV@NE`). Dedupe + board union now prefer catalog abbrevs when both sides resolve. No Edge.

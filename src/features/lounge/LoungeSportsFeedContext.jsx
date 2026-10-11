@@ -5,8 +5,12 @@ import {
   readLoungeSportsScoreboardCache,
   writeLoungeSportsScoreboardCache,
 } from '../../utils/loungeSportsApi.js'
-import { dedupeLoungeSportsGames, enrichLoungeSportsGame } from './loungeSportsMatch.js'
-import { isLoungeSportsCurrentSlateGame, loungeSportsSlateGames, ptDateFromIsoLocal } from './loungeSportsSlateWindow.js'
+import {
+  dedupeLoungeSportsGames,
+  enrichLoungeSportsGame,
+  loungeSportsMatchupDedupeKey,
+} from './loungeSportsMatch.js'
+import { isLoungeSportsCurrentSlateGame, loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
 import { parseLoungeSportsGameField } from './loungeSportsGameField.js'
 import {
   clearLoungeSportsGamePending,
@@ -57,25 +61,9 @@ function gamesFromCache() {
   return dedupeLoungeSportsGames(cached.map(enrichLoungeSportsGame).filter(isLoungeSportsCurrentSlateGame))
 }
 
-function normAbbrev(value) {
-  const x = String(value || '').toUpperCase()
-  if (x === 'WSH') return 'WAS'
-  if (x === 'JAC') return 'JAX'
-  return x
-}
-
-function sideMatchToken(side) {
-  const id = String(side?.team_id ?? side?.espn_id ?? '').trim()
-  if (/^\d+$/.test(id)) return `id:${id}`
-  return normAbbrev(side?.abbrev)
-}
-
+/** Same key as slate dedupe … ESPN numeric ids and Odds abbrev-only rows must collapse. */
 function matchupKey(game) {
-  const away = sideMatchToken(game?.away)
-  const home = sideMatchToken(game?.home)
-  // Incomplete sides must not share a key (was `@ASU:day` for every thin away → score collisions).
-  if (!away || !home) return `id:${String(game?.id || '')}`
-  return `${String(game?.sport_key || '')}:${away}@${home}:${ptDateFromIsoLocal(game?.commence_time)}`
+  return loungeSportsMatchupDedupeKey(game)
 }
 
 function sideNum(side, key) {
@@ -110,10 +98,12 @@ function unionScoreboardGames(incoming, prev, { active: _active = false } = {}) 
   const out = []
   const mark = (game) => {
     seenId.add(String(game?.id || ''))
-    const away = sideMatchToken(game?.away)
-    const home = sideMatchToken(game?.home)
-    if (!away || !home) return
-    seenMatch.add(matchupKey(game))
+    const key = matchupKey(game)
+    if (!key || key.startsWith('id:')) {
+      // Incomplete matchup keys are per-game-id only … still mark id.
+      return
+    }
+    seenMatch.add(key)
   }
   for (const old of prev) {
     const neu = incomingById.get(String(old.id)) || incomingByMatch.get(matchupKey(old))

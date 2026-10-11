@@ -1198,6 +1198,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-11:** **Sports Hub double pills (`1.4.1104`).** ESPN numeric `team_id` rows and Odds abbrev-only rows for the same NFL matchup (e.g. Raiders@Pats) keyed differently (`id:75@id:63` vs `LV@NE`). Dedupe + board union now prefer catalog abbrevs when both sides resolve. No Edge.
 - **2026-10-11:** **Promoted `1.4.1103`** (Bet Tracker auto-grade + $10k bankroll). Frontend **`test` → `main`** (`8019c6c8`). SQL **`20261011050000`** on **prod**. Deployed **`sports-bets-grade`** + **`lounge-odds-poll`** on **`jtjgtucumuoswnbauxry`**.
 - **2026-10-11:** **Bet Tracker auto-grade + $10k bankroll (`1.4.1103`).** Open spread / ML / total settle from ESPN (`sports-bets-grade` on load/refresh; also hooked into `lounge-odds-poll` `grade_picks`). Props / other stay manual + Manual override. Defaults: bankroll **$10,000**, unit **$100**. SQL **`20261011050000`** on **test + prod**. Edge on test + prod.
 - **2026-10-11:** **Promoted `1.4.1102`** (CFB Hub balloon / ASU collision / ESPN logos / conference-tier sort). Frontend **`test` → `main`** (`b64e3625`). No Edge redeploy this promote (scoreboard already on prod from earlier today). Hard-refresh sports cache on edgetilt.com.

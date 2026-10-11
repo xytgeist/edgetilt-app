@@ -641,15 +641,22 @@ export function cfbMatchupConferenceTier(game) {
 export function loungeSportsMatchupDedupeKey(game) {
   const sport = String(game?.sport_key || '')
   const day = ptDateFromIsoLocal(game?.commence_time)
+  const awayRow = catalogRowForSide(game?.away, sport)
+  const homeRow = catalogRowForSide(game?.home, sport)
+  // Catalog abbrevs when both sides resolve … collapses ESPN (numeric team_id) + Odds (abbrev-only) twins
+  // like Raiders@Pats as id:75@id:63 vs LV@NE. Identity for logos stays id-first in catalogRowForSide.
+  if (awayRow?.abbrev && homeRow?.abbrev) {
+    return `${sport}:${String(awayRow.abbrev).toUpperCase()}@${String(homeRow.abbrev).toUpperCase()}:${day}`
+  }
   const awayId = String(game?.away?.team_id ?? game?.away?.espn_id ?? '').trim()
   const homeId = String(game?.home?.team_id ?? game?.home?.espn_id ?? '').trim()
-  // Prefer ESPN ids so ASU abbrev collisions cannot merge Hawaii@ASU into another home.
   if (/^\d+$/.test(awayId) && /^\d+$/.test(homeId)) {
     return `${sport}:id:${awayId}@id:${homeId}:${day}`
   }
-  const away = catalogRowForSide(game?.away, sport)?.abbrev || sideAbbrev(game?.away)
-  const home = catalogRowForSide(game?.home, sport)?.abbrev || sideAbbrev(game?.home)
-  return `${sport}:${String(away || '').toUpperCase()}@${String(home || '').toUpperCase()}:${day}`
+  const away = sideAbbrev(game?.away)
+  const home = sideAbbrev(game?.home)
+  if (!away || !home) return `id:${String(game?.id || '')}`
+  return `${sport}:${String(away).toUpperCase()}@${String(home).toUpperCase()}:${day}`
 }
 
 function richerLoungeSportsGame(a, b) {

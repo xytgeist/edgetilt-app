@@ -298,6 +298,44 @@ export async function openExternalUrl(url, opts = {}) {
 }
 
 /**
+ * True when the IPA can present `ASWebAuthenticationSession` (Gameday-style OAuth sheet).
+ * @returns {boolean}
+ */
+export function canStartEdgeWebAuthSession() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  return typeof window.EdgeNative?.startWebAuthSession === 'function'
+}
+
+/**
+ * Present an in-app OAuth auth sheet. Resolves when the callback scheme is hit or cancelled.
+ * Old IPA / non-shell → `{ ok: false, via: 'noop' }` (caller should fall back).
+ *
+ * @param {string} url
+ * @param {{ callbackScheme?: string }} [opts]
+ * @returns {Promise<{ ok: boolean, url?: string, cancelled?: boolean, error?: string, via: string }>}
+ */
+export async function startEdgeWebAuthSession(url, opts = {}) {
+  const href = String(url || '').trim()
+  if (!href) return { ok: false, via: 'noop', error: 'url required' }
+  if (!canStartEdgeWebAuthSession()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('startWebAuthSession', {
+      url: href,
+      callbackScheme: String(opts.callbackScheme || 'edgetilt').trim() || 'edgetilt',
+    })
+    return {
+      ok: result?.ok === true,
+      url: typeof result?.url === 'string' ? result.url : undefined,
+      cancelled: result?.cancelled === true,
+      error: typeof result?.error === 'string' ? result.error : undefined,
+      via: 'webauth',
+    }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/**
  * Open a Stripe Checkout / Customer Portal / Connect onboarding URL.
  * EdgeiOS shell → system Safari (`openInSafari`). Everywhere else → same-tab assign.
  * Never load Stripe-hosted checkout inside the WKWebView.

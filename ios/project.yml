@@ -116,6 +116,16 @@ schemes:
       askForAppToLaunch: false
     archive:
       config: Release
+  # Daily sim / Xcode Cloud TestFlight Internal (lvslotpro.com). Do not archive locally.
+  EdgeTilt Test Fast:
+    build:
+      targets:
+        EdgeTilt: all
+    run:
+      config: ReleaseTest
+      askForAppToLaunch: false
+    archive:
+      config: ReleaseTest
   EdgeTilt Prod:
     build:
       targets:
@@ -127,5 +137,16 @@ schemes:
         - name: Stamp App Store status bar
           settingsTarget: EdgeTilt
           script: '"${SRCROOT}/scripts/stamp-app-store-status-bar.sh"'
+    archive:
+      config: Release
+  # Embed-only … do not Run this scheme; use EdgeTilt Test Fast.
+  EdgeTiltLiveActivity:
+    build:
+      targets:
+        EdgeTiltLiveActivity: all
+        EdgeTilt: all
+    run:
+      config: Debug
+      askForAppToLaunch: true
     archive:
       config: Release

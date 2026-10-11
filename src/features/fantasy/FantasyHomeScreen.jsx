@@ -9,7 +9,12 @@ import {
   startYahooOAuth,
   syncAllFantasy,
 } from './fantasyApi.js'
-import { isEdgeiOSShell, openExternalUrl } from '../../utils/edgeNative.js'
+import {
+  canStartEdgeWebAuthSession,
+  isEdgeiOSShell,
+  openExternalUrl,
+  startEdgeWebAuthSession,
+} from '../../utils/edgeNative.js'
 
 const PROVIDER_STUBS = [
   { id: 'espn', label: 'ESPN' },
@@ -165,7 +170,7 @@ export default function FantasyHomeScreen({
   const [leagueId, setLeagueId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  /** EdgeiOS opens Yahoo in system Safari … refresh when the user returns. */
+  /** EdgeiOS ASWebAuth / Safari fallback … refresh when the user returns. */
   const yahooOAuthPendingRef = useRef(false)
 
   const sleeper = useMemo(
@@ -193,6 +198,23 @@ export default function FantasyHomeScreen({
     setLeagueId((cur) => cur || primary)
   }, [supabaseClient, signedIn])
 
+  const applyYahooHandoffResult = useCallback(
+    (handoff) => {
+      if (!handoff?.yahoo) return
+      yahooOAuthPendingRef.current = false
+      if (handoff.yahoo === 'linked') {
+        setInfo('Yahoo linked. Loading your leagues…')
+        void refresh()
+          .then(() => setInfo(''))
+          .catch((e) => setErr(friendlyYahooError(e?.message || 'Could not load fantasy.')))
+      } else if (handoff.yahoo === 'error') {
+        setErr(friendlyYahooError(handoff.yahoo_error || 'Yahoo connect failed.'))
+      }
+      clearYahooHandoff()
+    },
+    [refresh],
+  )
+
   useEffect(() => {
     let cancelled = false
     void refresh().catch((e) => {
@@ -209,16 +231,7 @@ export default function FantasyHomeScreen({
     try {
       const handoff = readYahooHandoff()
       if (!handoff?.yahoo) return
-      yahooOAuthPendingRef.current = false
-      if (handoff.yahoo === 'linked') {
-        setInfo('Yahoo linked. Loading your leagues…')
-        void refresh()
-          .then(() => setInfo(''))
-          .catch((e) => setErr(friendlyYahooError(e?.message || 'Could not load fantasy.')))
-      } else if (handoff.yahoo === 'error') {
-        setErr(friendlyYahooError(handoff.yahoo_error || 'Yahoo connect failed.'))
-      }
-      clearYahooHandoff()
+      applyYahooHandoffResult(handoff)
       const u = new URL(window.location.href)
       if (u.searchParams.has('yahoo') || u.searchParams.has('yahoo_error')) {
         u.searchParams.delete('yahoo')
@@ -233,9 +246,9 @@ export default function FantasyHomeScreen({
     } catch {
       /* ignore */
     }
-  }, [refresh])
+  }, [applyYahooHandoffResult])
 
-  // EdgeiOS: Yahoo OAuth runs in system Safari. When the user comes back, reload connections.
+  // EdgeiOS Safari fallback: when the user comes back from system Safari, reload connections.
   useEffect(() => {
     if (typeof document === 'undefined') return undefined
     const onVis = () => {
@@ -306,9 +319,39 @@ export default function FantasyHomeScreen({
     setErr('')
     setInfo('')
     try {
-      const url = await startYahooOAuth(supabaseClient)
       // Never load Yahoo login inside the EdgeiOS WKWebView … it has hard-crashed the IPA.
-      // System Safari (same path as Stripe). Web / PWA stay same-tab assign.
+      // Prefer ASWebAuthenticationSession (Gameday-style). Old IPA → system Safari + HTML handoff.
+      // Web / PWA stay same-tab assign.
+      if (isEdgeiOSShell() && canStartEdgeWebAuthSession()) {
+        const url = await startYahooOAuth(supabaseClient, { returnMode: 'native' })
+        yahooOAuthPendingRef.current = true
+        setInfo('Connecting Yahoo…')
+        const result = await startEdgeWebAuthSession(url, { callbackScheme: 'edgetilt' })
+        yahooOAuthPendingRef.current = false
+        if (result?.cancelled) {
+          setInfo('')
+          setBusy(false)
+          return
+        }
+        if (!result?.ok) {
+          throw new Error(result?.error || 'Could not open Yahoo connect.')
+        }
+        // Parse edgetilt://yahoo-oauth?tab=fantasy&yahoo=…
+        let handoff = { yahoo: 'linked', yahoo_error: '' }
+        try {
+          const cb = new URL(String(result.url || ''))
+          handoff = {
+            yahoo: (cb.searchParams.get('yahoo') || 'linked').trim(),
+            yahoo_error: (cb.searchParams.get('yahoo_error') || '').trim(),
+          }
+        } catch {
+          /* treat as linked + refresh */
+        }
+        applyYahooHandoffResult(handoff)
+        setBusy(false)
+        return
+      }
+      const url = await startYahooOAuth(supabaseClient, { returnMode: 'web' })
       if (isEdgeiOSShell()) {
         yahooOAuthPendingRef.current = true
         const result = await openExternalUrl(url, { system: true })
@@ -323,7 +366,7 @@ export default function FantasyHomeScreen({
       window.location.assign(url)
     } catch (e) {
       yahooOAuthPendingRef.current = false
-      setErr(e?.message || 'Could not start Yahoo connect.')
+      setErr(friendlyYahooError(e?.message || 'Could not start Yahoo connect.'))
       setBusy(false)
     }
   }

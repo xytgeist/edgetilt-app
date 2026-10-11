@@ -122,8 +122,8 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
-### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Fantasy Connect Yahoo OAuth (`1.4.1113`)
-**Yahoo API approval gate + handoff.** OAuth works; Fantasy endpoints **403** until Yahoo approves App ID **`i4wW6xoc`** at sports.yahoo.com/developer. Handoff → Fantasy tab (not Sports Hub). Web **`1.4.1113`**. ESPN/CBS still Soon. Marketing still **1.4.96**.
+### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Fantasy Connect Yahoo OAuth (`1.4.1114`)
+**Gameday-style ASWebAuth + Yahoo API approval gate.** EdgeiOS Connect Yahoo uses `startWebAuthSession` (in-app sheet → `edgetilt://yahoo-oauth`). Edge yahoo trio on test+prod. Fantasy endpoints still **403** until Yahoo approves App ID **`i4wW6xoc`** at sports.yahoo.com/developer. Web **`1.4.1114`** on **`test`** (new IPA). ESPN/CBS still Soon. Marketing still **1.4.96**.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Fantasy Connect MVP Sleeper (`1.4.1108`)
 **Done + promoted.** Sleeper username link → Fantasy home (leagues / lineup / matchup / standings) + NFL hub auto **mine** (blue Watch) / **enemy** (rose) pins. SQL **`20261011180000`** + Edge **`fantasy-sleeper-link`** / **`fantasy-sleeper-sync`** on **test + prod**. Spec **`docs/fantasy-connect.md`**. Web **`1.4.1108`** on **`main`** (`1fcba1fa`). Marketing still **1.4.96**.

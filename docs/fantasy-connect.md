@@ -38,8 +38,8 @@ Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves 
 | --- | --- | --- |
 | `fantasy-sleeper-link` | user JWT | `{ username }` → upsert Sleeper connection + sync |
 | `fantasy-sleeper-sync` | user JWT | sync / `{ primary_league_id }` / `{ hub_pins: true }` (provider-agnostic pins) |
-| `fantasy-yahoo-oauth-start` | user JWT | returns Yahoo authorize `url` |
-| `fantasy-yahoo-oauth-callback` | browser redirect | exchange code, store tokens, sync, redirect `/fantasy-yahoo-return.html?tab=fantasy&yahoo=…` (app scheme handoff) |
+| `fantasy-yahoo-oauth-start` | user JWT | returns Yahoo authorize `url`. Body `{ returnMode?: 'native'\|'web' }` encodes return channel in OAuth `state` (`n.*` / `w.*`) |
+| `fantasy-yahoo-oauth-callback` | browser redirect | exchange code, store tokens, sync; **native** → `edgetilt://yahoo-oauth?tab=fantasy&yahoo=…`; **web** → `/fantasy-yahoo-return.html?…` |
 | `fantasy-yahoo-sync` | user JWT | refresh token if needed, re-sync Yahoo leagues |
 
 Shared: **`fantasySleeperSync.ts`**, **`fantasyYahooSync.ts`**. `verify_jwt = false` (manual JWT via `userIdFromJwt` except the Yahoo callback).
@@ -82,9 +82,11 @@ On NFL hub open: `hub_pins: true` reads the user’s **primary** league (any pro
 
 ## EdgeiOS note
 
-**Connect Yahoo** must not `location.assign` into the WKWebView (Yahoo login has hard-crashed the IPA). Shell uses **`openExternalUrl(url, { system: true })`** (system Safari), same idea as Stripe.
+**Connect Yahoo** must not `location.assign` into the WKWebView (Yahoo login has hard-crashed the IPA).
 
-OAuth redirect chains (Yahoo → Supabase callback → https SPA) do **not** Universal-Link back into the IPA, so Safari would stick on a logged-out edgetilt.com login modal. Callback therefore lands on **`/fantasy-yahoo-return.html`**, which opens **`edgetilt://live-session?tab=fantasy&yahoo=…`** (shipped IPA already maps that host into the WKWebView). Tap **Open EdgeTilt** if Safari does not auto-jump. AppShell persists the handoff in `sessionStorage` so Fantasy opens even if session hydrate briefly left the user on home / Sports Hub.
+**Current IPA (Gameday-style):** `EdgeNative.startWebAuthSession` → `ASWebAuthenticationSession` under Edge chrome. Start with `returnMode: 'native'`. After Yahoo authorizes, Edge callback **302**s to **`edgetilt://yahoo-oauth?tab=fantasy&yahoo=…`**; the auth sheet intercepts that scheme, dismisses, and Fantasy refreshes in place (no handoff tap). Bridge: **`docs/ios-native-bridge.md`** → `startWebAuthSession`.
+
+**Old IPA / web fallback:** system Safari (or same-tab web) with `returnMode: 'web'`. Callback lands on **`/fantasy-yahoo-return.html`**, which opens **`edgetilt://yahoo-oauth?…`** (then `live-session` for older binaries). Tap **Open EdgeTilt** if Safari does not auto-jump. AppShell persists the handoff in `sessionStorage` so Fantasy opens even if session hydrate briefly left the user on home / Sports Hub.
 
 ## Yahoo Fantasy API access (required)
 
@@ -99,7 +101,7 @@ Authorize URL requests `scope=fspt-r`.
 ## Smoke (test)
 
 1. Set Yahoo Edge secrets (above) on test, redeploy yahoo Edges.
-2. lvslotpro / EdgeiOS → Fantasy → **Connect Yahoo** → authorize in Safari → return → leagues load.
+2. lvslotpro / EdgeiOS → Fantasy → **Connect Yahoo** → in-app auth sheet (or Safari on old IPA) → return → leagues load.
 3. Pick primary league → lineup + matchup + standings.
 4. Open an NFL hub with a starter → Watch / Enemy pins.
 5. Sleeper username link still works alongside Yahoo.

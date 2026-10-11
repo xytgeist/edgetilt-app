@@ -22,8 +22,10 @@ Yahoo Fantasy Connect (OAuth 2.0).
 
 ## Flow
 
-1. Client `POST fantasy-yahoo-oauth-start` (user JWT) → `{ url }`
-2. Browser opens Yahoo authorize URL
+1. Client `POST fantasy-yahoo-oauth-start` (user JWT, optional `{ returnMode: 'native'|'web' }`) → `{ url }`
+2. EdgeiOS: `ASWebAuthenticationSession` (`startWebAuthSession`). Web: same-tab assign. Old IPA: system Safari.
 3. Yahoo redirects to `fantasy-yahoo-oauth-callback?code=&state=`
-4. Edge exchanges code, stores tokens in `fantasy_provider_tokens` (service-role only), syncs leagues, redirects to `/?tab=fantasy&yahoo=linked`
+4. Edge exchanges code, stores tokens in `fantasy_provider_tokens` (service-role only), syncs leagues:
+   - `returnMode: native` (`n.*` state) → `edgetilt://yahoo-oauth?tab=fantasy&yahoo=linked`
+   - `web` → `/fantasy-yahoo-return.html?tab=fantasy&yahoo=linked`
 5. Client Sync → `fantasy-yahoo-sync`

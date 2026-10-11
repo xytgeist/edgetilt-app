@@ -50,21 +50,23 @@
         var q = window.location.search || '?tab=fantasy&yahoo=linked'
         if (q.charAt(0) !== '?') q = '?' + q
         var spa = '/' + q
-        // Shipped IPA maps live-session → https://<site>/?<query> in the WKWebView.
-        var app = 'edgetilt://live-session' + q
+        // Prefer yahoo-oauth (current IPA / ASWebAuth cold open). Fall back to
+        // live-session for older binaries that only map that host.
+        var appPrimary = 'edgetilt://yahoo-oauth' + q
+        var appFallback = 'edgetilt://live-session' + q
         var open = document.getElementById('open')
         var web = document.getElementById('web')
-        open.setAttribute('href', app)
+        open.setAttribute('href', appPrimary)
         web.setAttribute('href', spa)
 
-        function tryOpenApp() {
-          window.location.href = app
+        function tryOpenApp(href) {
+          window.location.href = href
         }
 
         // Auto-attempt. Do NOT auto-navigate to the SPA … that left people on a
         // logged-out Safari login modal instead of the IPA. User can tap the button.
-        setTimeout(tryOpenApp, 80)
-        setTimeout(tryOpenApp, 600)
+        setTimeout(function () { tryOpenApp(appPrimary) }, 80)
+        setTimeout(function () { tryOpenApp(appFallback) }, 700)
       })()
     </script>
   </body>

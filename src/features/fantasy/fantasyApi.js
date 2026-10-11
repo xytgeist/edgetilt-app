@@ -11,9 +11,14 @@ export async function linkSleeperUsername(supabase, username) {
   return data
 }
 
-export async function startYahooOAuth(supabase) {
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {{ returnMode?: 'native' | 'web' }} [opts]
+ */
+export async function startYahooOAuth(supabase, opts = {}) {
+  const returnMode = opts.returnMode === 'native' ? 'native' : 'web'
   const { data, error } = await supabase.functions.invoke('fantasy-yahoo-oauth-start', {
-    body: {},
+    body: { returnMode },
   })
   if (error) throw new Error(error.message || 'Could not start Yahoo connect.')
   if (data?.error) throw new Error(String(data.error))

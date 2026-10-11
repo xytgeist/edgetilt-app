@@ -93,6 +93,22 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       EdgeInAppBrowser.open(url) { ok in
         completion(.success(["ok": ok, "inApp": true]))
       }
+    case "startWebAuthSession":
+      guard let urlString = payload?["url"] as? String,
+            let url = URL(string: urlString),
+            let scheme = url.scheme?.lowercased(),
+            scheme == "http" || scheme == "https"
+      else {
+        completion(.success(["ok": false, "error": "url required"]))
+        return
+      }
+      let callbackScheme = (payload?["callbackScheme"] as? String)?
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+      EdgeWebAuthSession.start(
+        url: url,
+        callbackScheme: (callbackScheme?.isEmpty == false) ? callbackScheme! : "edgetilt",
+        completion: completion
+      )
     case "openSportsbookUrl":
       guard let urlString = payload?["url"] as? String,
             let url = URL(string: urlString)
@@ -804,6 +820,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     window.EdgeNative = {
       getInfo: function () { return call('getInfo', null); },
       openInSafari: function (payload) { return call('openInSafari', payload || {}); },
+      startWebAuthSession: function (payload) { return call('startWebAuthSession', payload || {}); },
       openSportsbookUrl: function (payload) { return call('openSportsbookUrl', payload || {}); },
       openAppSettings: function () { return call('openAppSettings', null); },
       getPushPermissionStatus: function () {

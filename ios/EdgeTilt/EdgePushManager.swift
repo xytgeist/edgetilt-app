@@ -108,7 +108,8 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
 
   /// `edgetilt://auth/confirm?token_hash=&type=` from Gmail / in-app browsers that ignore Universal Links.
   /// `edgetilt://live-session?tab=bankroll` / `poker-bankroll` from the Live Activity.
-  /// `edgetilt://open?tab=fantasy&yahoo=linked` … Yahoo Fantasy OAuth handoff (alias of live-session SPA open).
+  /// `edgetilt://yahoo-oauth?tab=fantasy&yahoo=linked` … Yahoo Fantasy OAuth (ASWebAuth + cold open).
+  /// `edgetilt://open?tab=fantasy&yahoo=linked` … older Yahoo handoff alias of live-session SPA open.
   /// `edgetilt://live-game?id=` from the watched-game Live Activity.
   func handleCustomSchemeLink(_ url: URL) {
     if let httpsURL = Self.httpsConfirmURL(fromCustomScheme: url) {
@@ -228,12 +229,13 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     return comps?.url
   }
 
-  /// `edgetilt://live-session?…` / `edgetilt://open?…` → `https://<site>/?…`
-  /// `open` is the Fantasy Yahoo OAuth handoff host; `live-session` stays for Live Activity + older handoffs.
+  /// `edgetilt://live-session?…` / `edgetilt://yahoo-oauth?…` / `edgetilt://open?…` → `https://<site>/?…`
+  /// `yahoo-oauth` is the Fantasy Yahoo OAuth callback host (ASWebAuth). `open` is the older handoff alias.
+  /// `live-session` stays for Live Activity + older handoffs.
   static func httpsSpaOpenURL(fromCustomScheme url: URL) -> URL? {
     guard url.scheme?.lowercased() == "edgetilt" else { return nil }
     let host = url.host?.lowercased() ?? ""
-    guard host == "live-session" || host == "open" else { return nil }
+    guard host == "live-session" || host == "yahoo-oauth" || host == "open" else { return nil }
     var comps = URLComponents(url: AppConfig.baseURL, resolvingAgainstBaseURL: false)
     comps?.path = "/"
     comps?.query = url.query

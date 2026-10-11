@@ -338,9 +338,18 @@ async function accessTokenForConnection(
   return next.access_token
 }
 
+/** OAuth return channel … encoded in the state key so the callback can choose without a SQL column. */
+export type YahooOAuthReturnMode = 'native' | 'web'
+
+/** `n.<nonce>` = ASWebAuth custom-scheme return; anything else = HTML handoff (web / old IPA). */
+export function yahooOAuthReturnModeFromState(state: string): YahooOAuthReturnMode {
+  return String(state || '').startsWith('n.') ? 'native' : 'web'
+}
+
 export async function createYahooOAuthStart(
   admin: SupabaseClient,
   edgeUserId: string,
+  opts: { returnMode?: YahooOAuthReturnMode } = {},
 ): Promise<{ url: string; state: string }> {
   const env = yahooEnv()
   if (!env) {
@@ -348,7 +357,10 @@ export async function createYahooOAuthStart(
       'Yahoo Fantasy is not configured yet. Add YAHOO_FANTASY_CLIENT_ID / YAHOO_FANTASY_CLIENT_SECRET Edge secrets.',
     )
   }
-  const state = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
+  const returnMode: YahooOAuthReturnMode = opts.returnMode === 'native' ? 'native' : 'web'
+  const nonce = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
+  // Prefix encodes return mode for the callback (no schema change).
+  const state = returnMode === 'native' ? `n.${nonce}` : `w.${nonce}`
   const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString()
   await admin.from('fantasy_oauth_states').insert({
     state,
@@ -362,29 +374,46 @@ export async function createYahooOAuthStart(
 }
 
 /**
- * Land on a tiny static handoff page that opens `edgetilt://live-session?…`
- * (current IPA already handles that host) then falls back to the SPA.
- * Direct https://edgetilt.com/?yahoo= never Universal-Links out of an OAuth
- * redirect chain (Yahoo → Supabase → us), so Safari would stick on a logged-out
- * login modal instead of returning to the WKWebView session.
+ * Build the post-OAuth redirect.
+ * - `native` (ASWebAuthenticationSession): `edgetilt://yahoo-oauth?…` so the auth sheet
+ *   intercepts the scheme and dismisses back into Fantasy.
+ * - `web` / old IPA Safari: static HTML that opens the app scheme (or Continue in browser).
  */
-function yahooHandoffRedirect(extra: Record<string, string>): string {
+function yahooHandoffRedirect(
+  extra: Record<string, string>,
+  returnMode: YahooOAuthReturnMode = 'web',
+): string {
+  const params = new URLSearchParams()
+  params.set('tab', 'fantasy')
+  for (const [k, v] of Object.entries(extra)) params.set(k, v)
+  const qs = params.toString()
+  if (returnMode === 'native') {
+    return `edgetilt://yahoo-oauth?${qs}`
+  }
   const origin = resolvePublicAppOrigin()
   const u = new URL('/fantasy-yahoo-return.html', origin)
-  u.searchParams.set('tab', 'fantasy')
-  for (const [k, v] of Object.entries(extra)) u.searchParams.set(k, v)
+  u.search = qs
   return u.toString()
 }
 
-export function yahooSuccessRedirect(extra: Record<string, string> = {}): string {
-  return yahooHandoffRedirect({ yahoo: 'linked', ...extra })
+export function yahooSuccessRedirect(
+  extra: Record<string, string> = {},
+  returnMode: YahooOAuthReturnMode = 'web',
+): string {
+  return yahooHandoffRedirect({ yahoo: 'linked', ...extra }, returnMode)
 }
 
-export function yahooErrorRedirect(message: string): string {
-  return yahooHandoffRedirect({
-    yahoo: 'error',
-    yahoo_error: message.slice(0, 180),
-  })
+export function yahooErrorRedirect(
+  message: string,
+  returnMode: YahooOAuthReturnMode = 'web',
+): string {
+  return yahooHandoffRedirect(
+    {
+      yahoo: 'error',
+      yahoo_error: message.slice(0, 180),
+    },
+    returnMode,
+  )
 }
 
 /**

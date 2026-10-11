@@ -1,6 +1,8 @@
 /**
  * Live-game freshness guards — shared by poll_edges scheduling and publish-due drain.
  */
+import { isTestSupabaseProject } from './publicAppOrigin.ts'
+
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
 export type LiveScoreRow = {
@@ -62,6 +64,7 @@ export function parseLiveScheduleDedupe(
 }
 
 export async function fetchSportScoresForGuard(sportKey: string): Promise<LiveScoreRow[]> {
+  if (isTestSupabaseProject()) return []
   const key = oddsApiKey()
   if (!key) return []
   const qs = new URLSearchParams({

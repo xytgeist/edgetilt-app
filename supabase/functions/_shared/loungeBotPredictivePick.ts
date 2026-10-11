@@ -95,6 +95,7 @@ import {
   computePickClvPts,
   mapConsensusTypeToBucket,
 } from './loungeBotSyndicateScoreboard.ts'
+import { isTestSupabaseProject } from './publicAppOrigin.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -3018,15 +3019,18 @@ export async function gradePendingPicks(
     try {
       const eventById = new Map<string, ScoreEvent>()
       try {
-        const url = `${ODDS_BASE}/sports/${encodeURIComponent(sportKey)}/scores/?apiKey=${encodeURIComponent(apiKey)}&daysFrom=3`
-        const res = await fetchWithTimeout(url, GRADE_SCORES_FETCH_MS)
-        if (!res.ok) {
-          errors.push(`Scores API ${sportKey}: HTTP ${res.status}`)
-        } else {
-          const scoreEvents = await res.json()
-          if (Array.isArray(scoreEvents)) {
-            for (const ev of scoreEvents as ScoreEvent[]) {
-              if (ev.id) eventById.set(ev.id, ev)
+        // Test shares the live Odds API key … grade via Rundown/ESPN only.
+        if (!isTestSupabaseProject()) {
+          const url = `${ODDS_BASE}/sports/${encodeURIComponent(sportKey)}/scores/?apiKey=${encodeURIComponent(apiKey)}&daysFrom=3`
+          const res = await fetchWithTimeout(url, GRADE_SCORES_FETCH_MS)
+          if (!res.ok) {
+            errors.push(`Scores API ${sportKey}: HTTP ${res.status}`)
+          } else {
+            const scoreEvents = await res.json()
+            if (Array.isArray(scoreEvents)) {
+              for (const ev of scoreEvents as ScoreEvent[]) {
+                if (ev.id) eventById.set(ev.id, ev)
+              }
             }
           }
         }

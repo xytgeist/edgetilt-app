@@ -1,8 +1,12 @@
 /**
  * Shared odds fetch, slate, and edge-alert publish logic.
+ *
+ * Test sandbox never calls The Odds API (same live key as prod). Scoreboard still
+ * gets Rundown scores-only; Scott polls soft-no-op without paying credits.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { sharedCached, sharedCachedNoMem } from './edgeSharedCache.ts'
+import { isTestSupabaseProject } from './publicAppOrigin.ts'
 import {
   buildOddsEdgeAlertCaption,
   resolveScottCategoryLabel,
@@ -130,6 +134,11 @@ export type OddsCfgRow = {
 
 export function oddsApiKey(): string {
   return String(Deno.env.get('THE_ODDS_API_KEY') || '').trim()
+}
+
+/** Paid Odds API is prod-only … test shares the live key. */
+export function isOddsApiEnabled(): boolean {
+  return !isTestSupabaseProject() && Boolean(oddsApiKey())
 }
 
 export function ptTodayDate(): string {
@@ -260,6 +269,7 @@ export type ActiveSportsCatalog = {
 }
 
 export async function fetchActiveSportsCatalog(): Promise<ActiveSportsCatalog> {
+  if (isTestSupabaseProject()) return { keys: new Set(), titles: new Map() }
   const key = oddsApiKey()
   if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
   const res = await fetch(`${ODDS_BASE}/sports/?apiKey=${encodeURIComponent(key)}`)
@@ -308,6 +318,9 @@ export async function fetchSportOdds(
   markets: string[],
   opts?: OddsFetchOpts,
 ) {
+  if (isTestSupabaseProject()) {
+    return { events: [], remaining: null, used: null }
+  }
   const key = oddsApiKey()
   if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
   const qs = oddsQuery(key, regions, markets, opts)
@@ -353,6 +366,7 @@ export function fetchSportOddsShared(
 
 /** `/events` costs 0 credits and lists in-play + upcoming games … the free gate before paying for `/odds`. */
 function fetchSportEventTimes(sport: string): Promise<number[]> {
+  if (isTestSupabaseProject()) return Promise.resolve([])
   return sharedCached<number[]>(`odds:events:${sport}`, { ttlMs: 5 * 60 * 1000 }, async () => {
     const key = oddsApiKey()
     if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
@@ -394,6 +408,9 @@ export async function fetchSportOddsHistorical(
   markets: string[],
   opts?: OddsFetchOpts,
 ) {
+  if (isTestSupabaseProject()) {
+    return { events: [], timestamp: dateIso, remaining: null, used: null }
+  }
   const key = oddsApiKey()
   if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
   const qs = oddsQuery(key, regions, markets, opts)

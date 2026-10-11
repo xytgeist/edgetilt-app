@@ -21,6 +21,7 @@ import {
   liveVerifyFooterLine,
 } from './loungeBotLivePickGuards.ts'
 import { ptTodayDate, readOddsApiError } from './loungeBotOddsRun.ts'
+import { isTestSupabaseProject } from './publicAppOrigin.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import {
   countScheduledKindToday,
@@ -110,6 +111,7 @@ const PERIOD_RULES: Record<string, PeriodMilestone[]> = {
 }
 
 export async function fetchSportScores(sportKey: string, daysFrom = 1): Promise<ScoreEvent[]> {
+  if (isTestSupabaseProject()) return []
   const key = oddsApiKey()
   if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
   const days = Math.min(3, Math.max(1, Number(daysFrom) || 1))

@@ -3,8 +3,8 @@
  * Scores-only slates stay on `affiliate_ids=0`. This fetch is `main_line` ML/spread/total
  * for a short affiliate list, cached on the same 90s / 40s cadence as Odds lines.
  *
- * Test sandbox never pulls shop odds … same THERUNDOWN key as prod, and Circa/Heritage
- * rows are not needed on lvslotpro. Scores-only slate (`affiliate_ids=0`) still runs.
+ * Test sandbox never pulls shop odds … `isRundownEnabled()` is false on test
+ * (same THERUNDOWN key as prod; no Rundown at all on lvslotpro).
  */
 import type { RundownEvent, RundownTeam } from './loungeBotRundownContext.ts'
 import {

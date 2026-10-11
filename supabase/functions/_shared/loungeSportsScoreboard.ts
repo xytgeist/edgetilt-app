@@ -4,7 +4,13 @@
  * Odds API /scores fill days Rundown missed (TNF vs Sunday). Odds /odds + Pinnacle + Rundown shop own books.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { listRundownDayEvents, ptDateFromIso, rundownApiKey, type RundownEvent } from './loungeBotRundownContext.ts'
+import {
+  isRundownEnabled,
+  listRundownDayEvents,
+  ptDateFromIso,
+  rundownApiKey,
+  type RundownEvent,
+} from './loungeBotRundownContext.ts'
 import {
   loadRundownShopDayEvents,
   rundownShopEventSides,
@@ -2635,6 +2641,7 @@ function cachedRundownShop(sportKey: string, dates: string[], live = false): Pro
 }
 
 async function rundownGet<T>(path: string): Promise<T | null> {
+  if (!isRundownEnabled()) return null
   const key = rundownApiKey()
   if (!key) return null
   try {

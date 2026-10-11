@@ -1,8 +1,12 @@
 /**
  * TheRundown API enrichment for Scott captions (pitchers, headlines, player status).
  * Fetches only at publish time; never fabricates injury or matchup copy.
+ *
+ * Test sandbox never calls TheRundown (same live key as prod). Scoreboard / Scott
+ * on lvslotpro use ESPN where available; prod keeps scores-only + shop.
  */
 import type { LineMovementAlert } from './loungeBotLineMovement.ts'
+import { isTestSupabaseProject } from './publicAppOrigin.ts'
 
 export { sportContextLabelFromKey } from './loungeBotSportLabels.ts'
 
@@ -136,6 +140,7 @@ export function rundownApiKey(): string {
 }
 
 export function isRundownEnabled(): boolean {
+  if (isTestSupabaseProject()) return false
   return rundownApiKey().length > 0
 }
 
@@ -239,6 +244,7 @@ function eventsMatchTeamsAndTime(
 }
 
 async function rundownFetch<T>(path: string): Promise<T | null> {
+  if (isTestSupabaseProject()) return null
   const key = rundownApiKey()
   if (!key) return null
   try {

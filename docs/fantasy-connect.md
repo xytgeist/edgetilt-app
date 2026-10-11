@@ -39,7 +39,7 @@ Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves 
 | `fantasy-sleeper-link` | user JWT | `{ username }` → upsert Sleeper connection + sync |
 | `fantasy-sleeper-sync` | user JWT | sync / `{ primary_league_id }` / `{ hub_pins: true }` (provider-agnostic pins) |
 | `fantasy-yahoo-oauth-start` | user JWT | returns Yahoo authorize `url` |
-| `fantasy-yahoo-oauth-callback` | browser redirect | exchange code, store tokens, sync, redirect `/?tab=fantasy&yahoo=linked` |
+| `fantasy-yahoo-oauth-callback` | browser redirect | exchange code, store tokens, sync, redirect `/fantasy-yahoo-return.html?tab=fantasy&yahoo=…` (app scheme handoff) |
 | `fantasy-yahoo-sync` | user JWT | refresh token if needed, re-sync Yahoo leagues |
 
 Shared: **`fantasySleeperSync.ts`**, **`fantasyYahooSync.ts`**. `verify_jwt = false` (manual JWT via `userIdFromJwt` except the Yahoo callback).
@@ -82,7 +82,9 @@ On NFL hub open: `hub_pins: true` reads the user’s **primary** league (any pro
 
 ## EdgeiOS note
 
-**Connect Yahoo** must not `location.assign` into the WKWebView (Yahoo login has hard-crashed the IPA). Shell uses **`openExternalUrl(url, { system: true })`** (system Safari), same idea as Stripe. Callback redirects to `/?tab=fantasy&yahoo=linked` … AASA claims the `yahoo` query so Universal Links can reopen the app; Fantasy also refreshes on `visibilitychange` after a pending Safari authorize.
+**Connect Yahoo** must not `location.assign` into the WKWebView (Yahoo login has hard-crashed the IPA). Shell uses **`openExternalUrl(url, { system: true })`** (system Safari), same idea as Stripe.
+
+OAuth redirect chains (Yahoo → Supabase callback → https SPA) do **not** Universal-Link back into the IPA, so Safari would stick on a logged-out edgetilt.com login modal. Callback therefore lands on **`/fantasy-yahoo-return.html`**, which opens **`edgetilt://live-session?tab=fantasy&yahoo=…`** (shipped IPA already maps that host into the WKWebView) and falls back to the SPA for web. Fantasy also refreshes on `visibilitychange` / `yahoo=linked`.
 
 ## Smoke (test)
 

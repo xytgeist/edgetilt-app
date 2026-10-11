@@ -328,22 +328,30 @@ export async function createYahooOAuthStart(
   return { url: yahooAuthorizeUrl(env, state), state }
 }
 
-export function yahooSuccessRedirect(extra: Record<string, string> = {}): string {
+/**
+ * Land on a tiny static handoff page that opens `edgetilt://live-session?…`
+ * (current IPA already handles that host) then falls back to the SPA.
+ * Direct https://edgetilt.com/?yahoo= never Universal-Links out of an OAuth
+ * redirect chain (Yahoo → Supabase → us), so Safari would stick on a logged-out
+ * login modal instead of returning to the WKWebView session.
+ */
+function yahooHandoffRedirect(extra: Record<string, string>): string {
   const origin = resolvePublicAppOrigin()
-  const u = new URL(origin)
+  const u = new URL('/fantasy-yahoo-return.html', origin)
   u.searchParams.set('tab', 'fantasy')
-  u.searchParams.set('yahoo', 'linked')
   for (const [k, v] of Object.entries(extra)) u.searchParams.set(k, v)
   return u.toString()
 }
 
+export function yahooSuccessRedirect(extra: Record<string, string> = {}): string {
+  return yahooHandoffRedirect({ yahoo: 'linked', ...extra })
+}
+
 export function yahooErrorRedirect(message: string): string {
-  const origin = resolvePublicAppOrigin()
-  const u = new URL(origin)
-  u.searchParams.set('tab', 'fantasy')
-  u.searchParams.set('yahoo', 'error')
-  u.searchParams.set('yahoo_error', message.slice(0, 180))
-  return u.toString()
+  return yahooHandoffRedirect({
+    yahoo: 'error',
+    yahoo_error: message.slice(0, 180),
+  })
 }
 
 /**

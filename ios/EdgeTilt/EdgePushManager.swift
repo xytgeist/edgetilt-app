@@ -108,6 +108,7 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
 
   /// `edgetilt://auth/confirm?token_hash=&type=` from Gmail / in-app browsers that ignore Universal Links.
   /// `edgetilt://live-session?tab=bankroll` / `poker-bankroll` from the Live Activity.
+  /// `edgetilt://open?tab=fantasy&yahoo=linked` … Yahoo Fantasy OAuth handoff (alias of live-session SPA open).
   /// `edgetilt://live-game?id=` from the watched-game Live Activity.
   func handleCustomSchemeLink(_ url: URL) {
     if let httpsURL = Self.httpsConfirmURL(fromCustomScheme: url) {
@@ -116,7 +117,7 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
       }
       return
     }
-    if let httpsURL = Self.httpsLiveSessionURL(fromCustomScheme: url) {
+    if let httpsURL = Self.httpsSpaOpenURL(fromCustomScheme: url) {
       DispatchQueue.main.async {
         self.openDeepLink(httpsURL)
       }
@@ -148,7 +149,9 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
         let name = item.name.lowercased()
         let value = (item.value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if value.isEmpty { continue }
-        if name == "post" || name == "u" || name == "profile" || name == "game" { return true }
+        if name == "post" || name == "u" || name == "profile" || name == "game" || name == "yahoo" {
+          return true
+        }
       }
     }
     return false
@@ -225,15 +228,21 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     return comps?.url
   }
 
-  /// `edgetilt://live-session?tab=&pokerSession=` → `https://<site>/?tab=&pokerSession=`
-  static func httpsLiveSessionURL(fromCustomScheme url: URL) -> URL? {
+  /// `edgetilt://live-session?…` / `edgetilt://open?…` → `https://<site>/?…`
+  /// `open` is the Fantasy Yahoo OAuth handoff host; `live-session` stays for Live Activity + older handoffs.
+  static func httpsSpaOpenURL(fromCustomScheme url: URL) -> URL? {
     guard url.scheme?.lowercased() == "edgetilt" else { return nil }
     let host = url.host?.lowercased() ?? ""
-    guard host == "live-session" else { return nil }
+    guard host == "live-session" || host == "open" else { return nil }
     var comps = URLComponents(url: AppConfig.baseURL, resolvingAgainstBaseURL: false)
     comps?.path = "/"
     comps?.query = url.query
     return comps?.url
+  }
+
+  /// Back-compat name for Live Activity callers.
+  static func httpsLiveSessionURL(fromCustomScheme url: URL) -> URL? {
+    httpsSpaOpenURL(fromCustomScheme: url)
   }
 
   /// `edgetilt://live-game?id=` → `https://<site>/?tab=home&game=`

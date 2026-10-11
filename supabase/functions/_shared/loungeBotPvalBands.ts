@@ -112,8 +112,10 @@ export function resolvePvalBandKey(
 
   if (/^(K|PK|P|LS|KOS)$/.test(p) || p.includes('KICK') || p.includes('PUNT')) return 'special'
   if (p === 'QB' || p.includes('QUARTER')) {
-    if (depth != null && depth >= 2) return 'backup_qb'
-    return 'starting_qb'
+    // Missing depth must NOT default to starting_qb … Rundown ghosts (stale
+    // Inactive QBs) were eating VIP locks / bandage PVALs as "listed starters."
+    if (depth === 1) return 'starting_qb'
+    return 'backup_qb'
   }
   if (p === 'WR' || p.includes('WIDE')) {
     if (depth === 1) return 'wr1'

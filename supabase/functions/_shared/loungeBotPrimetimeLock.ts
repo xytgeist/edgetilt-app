@@ -82,6 +82,9 @@ export function listedStarterShocks(injuries: GameInjurySummary | null, teamName
   const hits: string[] = []
   for (const a of report?.keyAbsences || []) {
     if (!isListedStarterPos(a.pos)) continue
+    // Kill only on confirmed depth-chart #1. Null depth used to fire on every
+    // Inactive QB/EDGE from TheRundown's stale team dump (Philip Rivers, etc.).
+    if (a.depthOrder !== 1) continue
     hits.push(`${a.name} (${a.pos} ${a.status})`)
   }
   return hits
@@ -109,6 +112,8 @@ export function listedStarterGtds(injuries: GameInjurySummary | null): string[] 
     for (const a of report?.keyAbsences || []) {
       if (!isHoldLockPos(a.pos)) continue
       if (!isUnresolvedGameTimeStatus(a.status)) continue
+      // Same depth gate as kills … do not hold a lock on a ghost Inactive QB.
+      if (a.depthOrder !== 1) continue
       hits.push(`${a.name} (${a.pos} ${a.status})`)
     }
   }

@@ -340,7 +340,7 @@ export async function findPrimetimeGameCandidate(
     tankCtx,
   ] = await Promise.all([
     loadDbTeamMetricsMap(admin),
-    fetchGameInjuryPval(admin, sportId, homeTeam, awayTeam, matchedEvent.commence_time),
+    fetchGameInjuryPval(sportKey, homeTeam, awayTeam, matchedEvent.commence_time, admin),
     fetchGameWeather(sportId, homeTeam, matchedEvent.commence_time, rundown?.venueLocation, rundown?.venueName),
     loadPersonaWeights(admin),
     loadDbCfbPowerRatingsMap(admin),

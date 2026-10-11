@@ -349,7 +349,7 @@ export async function syncSleeperConnection(
   }
 }
 
-/** sleeper_ids for mine + enemy starters in the primary league this NFL week. */
+/** sleeper_ids for mine + enemy starters in the user's primary league this NFL week (any provider). */
 export async function hubPinsForUser(
   admin: SupabaseClient,
   edgeUserId: string,
@@ -357,26 +357,55 @@ export async function hubPinsForUser(
   const state = await fetchNflState()
   const week = Math.max(1, Number(state.week) || 1)
 
-  const { data: conn } = await admin
-    .from('fantasy_connections')
-    .select('id, primary_league_id')
+  const { data: primaryLeague } = await admin
+    .from('fantasy_leagues')
+    .select('id')
     .eq('user_id', edgeUserId)
-    .eq('provider', 'sleeper')
-    .eq('status', 'active')
+    .eq('is_primary', true)
     .maybeSingle()
 
-  if (!conn?.primary_league_id) {
+  let leagueId = primaryLeague?.id ? String(primaryLeague.id) : null
+  if (!leagueId) {
+    const { data: conn } = await admin
+      .from('fantasy_connections')
+      .select('primary_league_id')
+      .eq('user_id', edgeUserId)
+      .eq('status', 'active')
+      .not('primary_league_id', 'is', null)
+      .order('last_sync_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle()
+    leagueId = conn?.primary_league_id ? String(conn.primary_league_id) : null
+  }
+
+  if (!leagueId) {
     return { week, mine: [], enemy: [], leagueId: null }
   }
 
-  const leagueId = String(conn.primary_league_id)
-  const { data: matchup } = await admin
-    .from('fantasy_matchups')
-    .select('mine_team_id, opp_team_id')
-    .eq('league_id', leagueId)
-    .eq('week', week)
-    .maybeSingle()
+  // Prefer matchup row for Sleeper state week; else latest matchup for that league.
+  let matchup =
+    (
+      await admin
+        .from('fantasy_matchups')
+        .select('mine_team_id, opp_team_id, week')
+        .eq('league_id', leagueId)
+        .eq('week', week)
+        .maybeSingle()
+    ).data || null
+  if (!matchup) {
+    matchup =
+      (
+        await admin
+          .from('fantasy_matchups')
+          .select('mine_team_id, opp_team_id, week')
+          .eq('league_id', leagueId)
+          .order('week', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ).data || null
+  }
 
+  const pinWeek = matchup?.week != null ? Number(matchup.week) : week
   const mineTeam = matchup?.mine_team_id ? String(matchup.mine_team_id) : null
   const oppTeam = matchup?.opp_team_id ? String(matchup.opp_team_id) : null
 
@@ -386,11 +415,11 @@ export async function hubPinsForUser(
       .from('fantasy_rosters')
       .select('sleeper_id')
       .eq('team_id', teamId)
-      .eq('week', week)
+      .eq('week', pinWeek)
       .eq('slot', 'starter')
     return (data || []).map((r) => String(r.sleeper_id || '').trim()).filter(Boolean)
   }
 
   const [mine, enemy] = await Promise.all([loadStarters(mineTeam), loadStarters(oppTeam)])
-  return { week, mine, enemy, leagueId }
+  return { week: pinWeek, mine, enemy, leagueId }
 }

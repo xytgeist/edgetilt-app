@@ -1,5 +1,5 @@
 /**
- * Fantasy Connect client … Sleeper link/sync + RLS reads.
+ * Fantasy Connect client … Sleeper + Yahoo link/sync + RLS reads.
  */
 
 export async function linkSleeperUsername(supabase, username) {
@@ -11,6 +11,17 @@ export async function linkSleeperUsername(supabase, username) {
   return data
 }
 
+export async function startYahooOAuth(supabase) {
+  const { data, error } = await supabase.functions.invoke('fantasy-yahoo-oauth-start', {
+    body: {},
+  })
+  if (error) throw new Error(error.message || 'Could not start Yahoo connect.')
+  if (data?.error) throw new Error(String(data.error))
+  const url = String(data?.url || '').trim()
+  if (!url) throw new Error('Yahoo authorize URL missing.')
+  return url
+}
+
 export async function syncSleeperFantasy(supabase, body = {}) {
   const { data, error } = await supabase.functions.invoke('fantasy-sleeper-sync', {
     body: body && typeof body === 'object' ? body : {},
@@ -20,12 +31,77 @@ export async function syncSleeperFantasy(supabase, body = {}) {
   return data
 }
 
+export async function syncYahooFantasy(supabase, body = {}) {
+  const { data, error } = await supabase.functions.invoke('fantasy-yahoo-sync', {
+    body: body && typeof body === 'object' ? body : {},
+  })
+  if (error) throw new Error(error.message || 'Yahoo sync failed.')
+  if (data?.error) throw new Error(String(data.error))
+  return data
+}
+
+/** Sync every active provider the user has linked. */
+export async function syncAllFantasy(supabase, connections = []) {
+  const list = Array.isArray(connections) ? connections : []
+  const has = (p) => list.some((c) => c.provider === p && c.status !== 'revoked')
+  const out = { sleeper: null, yahoo: null }
+  const errors = []
+  if (has('sleeper') || !list.length) {
+    try {
+      if (has('sleeper')) out.sleeper = await syncSleeperFantasy(supabase)
+    } catch (e) {
+      errors.push(e?.message || 'Sleeper sync failed.')
+    }
+  }
+  if (has('yahoo')) {
+    try {
+      out.yahoo = await syncYahooFantasy(supabase)
+    } catch (e) {
+      errors.push(e?.message || 'Yahoo sync failed.')
+    }
+  }
+  if (errors.length && !out.sleeper && !out.yahoo) {
+    throw new Error(errors.join(' '))
+  }
+  return { ...out, warnings: errors }
+}
+
 export async function fetchHubFantasyPins(supabase) {
   return syncSleeperFantasy(supabase, { hub_pins: true })
 }
 
+/** Mark one league primary across all providers (hub pins). */
 export async function setPrimaryFantasyLeague(supabase, leagueId) {
-  return syncSleeperFantasy(supabase, { primary_league_id: leagueId })
+  const id = String(leagueId || '').trim()
+  if (!id) throw new Error('league id required.')
+
+  const { data: league, error: lgErr } = await supabase
+    .from('fantasy_leagues')
+    .select('id, connection_id')
+    .eq('id', id)
+    .maybeSingle()
+  if (lgErr) throw new Error(lgErr.message)
+  if (!league?.id) throw new Error('League not found.')
+
+  const { error: clearErr } = await supabase
+    .from('fantasy_leagues')
+    .update({ is_primary: false })
+    .eq('is_primary', true)
+  if (clearErr) throw new Error(clearErr.message)
+
+  const { error: setErr } = await supabase
+    .from('fantasy_leagues')
+    .update({ is_primary: true })
+    .eq('id', id)
+  if (setErr) throw new Error(setErr.message)
+
+  const { error: connErr } = await supabase
+    .from('fantasy_connections')
+    .update({ primary_league_id: id })
+    .eq('id', league.connection_id)
+  if (connErr) throw new Error(connErr.message)
+
+  return { ok: true, leagueId: id }
 }
 
 export async function loadFantasySnapshot(supabase) {

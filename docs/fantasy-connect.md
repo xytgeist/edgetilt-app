@@ -1,68 +1,90 @@
-# Fantasy Connect (Sleeper first)
+# Fantasy Connect (Sleeper + Yahoo)
 
 Signed-in users link a fantasy account, sync leagues/rosters/matchups, and auto-highlight **mine** + **enemy** players on NFL game hubs.
 
-## Product (MVP)
+## Product
 
 | Item | Spec |
 | --- | --- |
-| Provider 1 | **Sleeper** username link (public API … no OAuth) |
+| Providers | **Sleeper** (username) · **Yahoo** (OAuth 2.0) |
 | Surfaces | Fantasy home (`?tab=fantasy`) + NFL game-hub pins |
 | Gate | Free for signed-in users |
-| Primary league | Last picked / only league … drives hub pins |
+| Primary league | Last picked … drives hub pins (one across all providers) |
 
-**Soon (same tables, new Edge modules):** Yahoo OAuth, ESPN, CBS. Out of MVP: waivers/AI, multi-league simultaneous hub highlight, paid gate.
+**Soon (same tables, new Edge modules):** ESPN, CBS. Out of scope for now: waivers/AI, multi-league simultaneous hub highlight, paid gate.
 
 ## Tables (provider-agnostic)
 
-Migration **`20261011180000_fantasy_connect.sql`**. RLS: owner-only via `auth.uid()`.
+| Migration | Role |
+| --- | --- |
+| **`20261011180000_fantasy_connect.sql`** | connections / leagues / teams / rosters / matchups + RLS |
+| **`20261011190000_fantasy_yahoo_oauth.sql`** | `fantasy_oauth_states`, `fantasy_provider_tokens` (service-role only), `fantasy_rosters.yahoo_player_key` |
 
 | Table | Role |
 | --- | --- |
 | `fantasy_connections` | `user_id`, `provider` (`sleeper` / `yahoo` / `espn` / `cbs`), external username/id, status, `primary_league_id`, last sync |
-| `fantasy_leagues` | connection, external league id, name, season, scoring snapshot, `is_primary` |
+| `fantasy_provider_tokens` | OAuth access/refresh for Yahoo (etc.) … **never** readable by authenticated clients |
+| `fantasy_oauth_states` | Short-lived CSRF state for OAuth starts |
+| `fantasy_leagues` | connection, external league id, name, season, `is_primary` |
 | `fantasy_teams` | league, external roster/team id, owner label, `is_mine`, W-L, PF |
-| `fantasy_rosters` | team + week + slot (`starter` / `bench`), **`sleeper_id`** (canonical), name/pos/team |
+| `fantasy_rosters` | team + week + slot, **`sleeper_id`** (canonical), optional `yahoo_player_key`, name/pos/team |
 | `fantasy_matchups` | league + week, mine/opp team ids + scores |
 
-Player identity joins **`nfl_players.sleeper_id`** (same as game-hub Fantasy board).
+Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves players by name + team (+ position).
 
-## Edge Functions (test first)
+## Edge Functions
 
-| Function | Body | Behavior |
+| Function | Auth | Behavior |
 | --- | --- | --- |
-| `fantasy-sleeper-link` | `{ username }` | Resolve Sleeper user, upsert connection, sync |
-| `fantasy-sleeper-sync` | `{}` / `{ connection_id }` / `{ primary_league_id }` / `{ hub_pins: true }` | Sync leagues/rosters/matchups for current NFL week (`/v1/state/nfl`), or return `{ mine, enemy }` starter sleeper ids for the primary league |
+| `fantasy-sleeper-link` | user JWT | `{ username }` → upsert Sleeper connection + sync |
+| `fantasy-sleeper-sync` | user JWT | sync / `{ primary_league_id }` / `{ hub_pins: true }` (provider-agnostic pins) |
+| `fantasy-yahoo-oauth-start` | user JWT | returns Yahoo authorize `url` |
+| `fantasy-yahoo-oauth-callback` | browser redirect | exchange code, store tokens, sync, redirect `/?tab=fantasy&yahoo=linked` |
+| `fantasy-yahoo-sync` | user JWT | refresh token if needed, re-sync Yahoo leagues |
 
-Shared logic: **`supabase/functions/_shared/fantasySleeperSync.ts`**. `config.toml`: `verify_jwt = false` (manual JWT via `userIdFromJwt`, same pattern as other user Edges).
+Shared: **`fantasySleeperSync.ts`**, **`fantasyYahooSync.ts`**. `verify_jwt = false` (manual JWT via `userIdFromJwt` except the Yahoo callback).
 
-MVP sync triggers: link, Fantasy home Sync, optional open home. Cron later.
+### Yahoo secrets (test + prod)
+
+| Secret | Notes |
+| --- | --- |
+| `YAHOO_FANTASY_CLIENT_ID` | Yahoo Developer Consumer Key |
+| `YAHOO_FANTASY_CLIENT_SECRET` | Consumer Secret |
+| `YAHOO_FANTASY_REDIRECT_URI` | Optional; default `{SUPABASE_URL}/functions/v1/fantasy-yahoo-oauth-callback` |
+| `PUBLIC_APP_URL` | SPA host after OAuth (`lvslotpro.com` / `edgetilt.com`) |
+
+Yahoo app redirect URIs (exact):
+
+- Test: `https://kcosfvmreeiosdjdzycb.supabase.co/functions/v1/fantasy-yahoo-oauth-callback`
+- Prod: `https://jtjgtucumuoswnbauxry.supabase.co/functions/v1/fantasy-yahoo-oauth-callback`
+
+Setup notes: **`supabase/functions/fantasy-yahoo-oauth-start/README.md`**.
 
 ## Client
 
 | Path | Role |
 | --- | --- |
-| `src/features/fantasy/FantasyHomeScreen.jsx` | Connect Sleeper, league pick, my team + this-week matchup, standings |
-| `src/features/fantasy/fantasyApi.js` | invoke link/sync + RLS reads |
-| AppShell tab **`fantasy`** | Hamburger + Sports Hub Fantasy tile + `?tab=fantasy` |
-| Light mode | `html.light [data-fantasy-home]` in `src/index.css` |
+| `src/features/fantasy/FantasyHomeScreen.jsx` | Connect Sleeper / Yahoo, league pick, matchup, standings |
+| `src/features/fantasy/fantasyApi.js` | invoke Edges + RLS reads; `setPrimaryFantasyLeague` is client RLS |
+| AppShell tab **`fantasy`** | Hamburger + Sports Hub Fantasy tile |
+| Light mode | `html.light [data-fantasy-home]` |
 
 ## Hub pin roles
 
-`src/features/lounge/gameHub/gameHubFantasyPins.js` stores `{ id, role, source }`:
+`gameHubFantasyPins.js` stores `{ id, role, source }`:
 
 | Role | UI | Source |
 | --- | --- | --- |
-| `mine` | Blue **Watch** (Fantasy board, Players badge, play toasts) | Manual tap or league auto |
+| `mine` | Blue **Watch** | Manual tap or league auto |
 | `enemy` | Rose **Enemy** | League auto (opponent starters in this game) |
 
-Legacy localStorage string ids migrate to `{ id, role: 'mine', source: 'manual' }`.
-
-On NFL hub open (after fantasy.players load): client calls `hub_pins: true`, then **`applyFantasyPinsFromLeague`** intersects mine/enemy with players in that game. Replaces prior `source: 'league'` pins; keeps manual Watch pins. Tap still toggles mine / clears a pin.
+On NFL hub open: `hub_pins: true` reads the user’s **primary** league (any provider) and applies mine/enemy sleeper ids present in that game.
 
 ## Smoke (test)
 
-1. Sign in on lvslotpro → hamburger **Fantasy** (or Sports Hub tile) → link Sleeper username → Sync.
-2. Pick a league → see lineup + week matchup + standings.
-3. Open an NFL game hub that includes a starter from your matchup → Fantasy / Players show Watch (blue) / Enemy (rose); play toast matches.
-4. Manual Watch tap still works; Yahoo/ESPN/CBS show **Soon**.
+1. Set Yahoo Edge secrets (above) on test, redeploy yahoo Edges.
+2. lvslotpro → Fantasy → **Connect Yahoo** → authorize → land on Fantasy with leagues.
+3. Pick primary league → lineup + matchup + standings.
+4. Open an NFL hub with a starter → Watch / Enemy pins.
+5. Sleeper username link still works alongside Yahoo.
+6. ESPN / CBS remain **Soon**.

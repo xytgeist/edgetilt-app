@@ -55,6 +55,15 @@ verify_jwt = false
 [functions.fantasy-sleeper-sync]
 verify_jwt = false
 
+[functions.fantasy-yahoo-oauth-start]
+verify_jwt = false
+
+[functions.fantasy-yahoo-oauth-callback]
+verify_jwt = false
+
+[functions.fantasy-yahoo-sync]
+verify_jwt = false
+
 [functions.lounge-cfb-game-players]
 verify_jwt = false
 

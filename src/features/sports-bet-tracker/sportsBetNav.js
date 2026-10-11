@@ -237,6 +237,7 @@ export function closeSportsBetTracker() {
   url.searchParams.delete(LOUNGE_SPORTS_GAME_PARAM)
   url.searchParams.delete('event')
   window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  // AppShell popstate leaves `sports-bets` React tab when URL drops it (see setTab home).
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 

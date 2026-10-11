@@ -1617,6 +1617,14 @@ export default function AppShell({
             if (isUsefulSportsBetPrefill(fromUrl)) setPendingSportsBetPrefill(fromUrl)
           }
         }
+      } else if (!wantSportsBets) {
+        // Close / history back clears `tab=sports-bets` but used to leave React stuck on
+        // the tracker (hub-open events only work once SocialFeed/home is mounted).
+        setTab((prev) => {
+          if (prev !== 'sports-bets') return prev
+          if (targetTab && targetTab !== 'sports-bets') return targetTab
+          return 'home'
+        })
       }
       if (targetTab === 'w2g-scanner') {
         if (browseMode === 'anonymous') {
@@ -2363,6 +2371,8 @@ export default function AppShell({
   const closeBetTracker = useCallback(() => {
     armShellNavGhostClickGuard()
     closeSportsBetTracker()
+    // URL + hub-open event are not enough … SocialFeed only mounts on `home`.
+    setTab('home')
     setMenuOpen(false)
   }, [])
 

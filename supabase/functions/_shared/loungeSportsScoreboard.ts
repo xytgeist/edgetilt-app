@@ -37,6 +37,9 @@ const CFB_ESPN_BY_ABBREV: Record<string, string> = {
   ...Object.fromEntries(Object.values(CFB_ODDS_ALIASES).map((v) => [v.abbrev, v.espn])),
   ...(cfbTeamEspnByAbbrev as Record<string, string>),
 }
+const CFB_ABBREV_BY_ESPN: Record<string, string> = Object.fromEntries(
+  Object.entries(CFB_ESPN_BY_ABBREV).map(([abbrev, espn]) => [String(espn), abbrev]),
+)
 const CFB_NAME_ABBREV = cfbTeamNameAbbrev as Record<string, string>
 
 const CFB_ABBREV_ALIASES: Record<string, string> = {
@@ -99,6 +102,24 @@ function resolveCfbCatalogAbbrev(raw: string): string {
   return a
 }
 
+/** Catalog key must anchor at the start … "West Texas A&M" must not hit "Texas A&M". */
+function cfbNameKeyAnchored(hay: string, key: string, mascot = ''): boolean {
+  const h = String(hay || '').trim()
+  const k = String(key || '').trim()
+  if (!h || !k || k.length < 3) return false
+  const prefixes = h.startsWith('the ') ? [k, `the ${k}`] : [k]
+  for (const prefix of prefixes) {
+    if (h === prefix) return true
+    if (!h.startsWith(`${prefix} `)) continue
+    const rest = h.slice(prefix.length + 1).trim()
+    if (!rest) return true
+    const m = String(mascot || '').trim()
+    if (m && (rest === m || rest.startsWith(`${m} `))) return true
+    return false
+  }
+  return false
+}
+
 function cfbAbbrevFromOddsName(name: string): string {
   const n = foldCfbName(name)
   if (!n) return ''
@@ -109,10 +130,10 @@ function cfbAbbrevFromOddsName(name: string): string {
   let bestLen = 0
   for (const [key, abbrev] of Object.entries(CFB_NAME_ABBREV)) {
     if (key.length < 4 || key.length <= bestLen) continue
-    if (` ${n} `.includes(` ${key} `)) {
-      best = abbrev
-      bestLen = key.length
-    }
+    // Mascot unknown at this layer … full keys ("texas a m aggies") still anchor; school+"kingsville" fails.
+    if (!cfbNameKeyAnchored(n, key, '')) continue
+    best = abbrev
+    bestLen = key.length
   }
   if (best) return best
   // Do NOT mash the last word to 3 letters into an FBS abbrev … "Hawks" → HAW → Hawaii.
@@ -128,16 +149,14 @@ function cfbAbbrevTrustedForSide(abbrevRaw: string, name: string, mascot: string
   if (!abb || !CFB_ESPN_BY_ABBREV[abb]) return ''
   const hay = foldCfbName(`${name || ''} ${mascot || ''}`)
   if (!hay) return abb
-  const padded = ` ${hay} `
-  // Resolve school/mascot labels from name map keys that point at this abbrev.
+  const sideMascot = foldCfbName(mascot || '')
   for (const [key, mapped] of Object.entries(CFB_NAME_ABBREV)) {
     if (mapped !== abb || key.length < 3) continue
-    // Skip bare single-token mascots under 6 chars when they aren't the full key alone.
-    if (padded.includes(` ${key} `) || hay === key) return abb
+    if (cfbNameKeyAnchored(hay, key, sideMascot)) return abb
   }
   for (const [key, meta] of Object.entries(CFB_ODDS_ALIASES)) {
     if (meta.abbrev !== abb || key.length < 3) continue
-    if (padded.includes(` ${key} `) || hay === key) return abb
+    if (cfbNameKeyAnchored(hay, key, sideMascot)) return abb
   }
   return ''
 }
@@ -429,14 +448,18 @@ function espnLogo(league: string, abbrev: string): string {
   return `https://a.espncdn.com/i/teamlogos/${league}/500/${slug}.png`
 }
 
+/** CFB logos are numeric ESPN team ids … never letter abbrevs (HAW/TEX collide across divisions). */
+function espnNcaaLogoByTeamId(teamId: number | string | null | undefined): string {
+  const id = String(teamId ?? '').trim()
+  if (!/^\d+$/.test(id) || id === '0') return ''
+  return `https://a.espncdn.com/i/teamlogos/ncaa/500/${id}.png`
+}
+
 function espnLogoSlug(league: string, abbrev: string): string {
   const a = String(abbrev || '').trim().toUpperCase()
   if (!a) return ''
   if (league === 'ncaa') {
-    const catalog = resolveCfbCatalogAbbrev(a)
-    const espnId = CFB_ESPN_BY_ABBREV[catalog] || CFB_ESPN_BY_ABBREV[a.replace(/[^A-Z0-9-]/g, '')] || CFB_ESPN_BY_ABBREV[a]
-    if (espnId) return espnId
-    // ESPN college marks are numeric ids … a letter slug 404s and paints a blank pill.
+    // Intentionally no abbrev→id here. Callers must pass espnNcaaLogoByTeamId.
     return ''
   }
   const lower = a.toLowerCase()
@@ -444,20 +467,81 @@ function espnLogoSlug(league: string, abbrev: string): string {
   return lower.replace(/[^a-z0-9]/g, '')
 }
 
-/** Prefer ESPN team ids on CFB sides so hub PBP can match college-football scoreboard. */
+function cfbFallbackAbbrev(side: LoungeSportsGameSide, stolenAbbrev: string): string {
+  const raw = String(side?.abbrev || '').toUpperCase().replace(/[^A-Z0-9-]/g, '')
+  const stolen = String(stolenAbbrev || '').toUpperCase()
+  if (raw && raw !== stolen && !CFB_ESPN_BY_ABBREV[resolveCfbCatalogAbbrev(raw)]) return raw
+  const stop = new Set(['of', 'the', 'university', 'college', 'at', 'and', 'a', 'm'])
+  const parts = foldCfbName(side?.name || '')
+    .split(/\s+/)
+    .filter((w) => w && !stop.has(w))
+  const initials = parts.slice(0, 4).map((w) => w[0]).join('').toUpperCase()
+  if (initials.length >= 2 && !CFB_ESPN_BY_ABBREV[initials]) return initials.slice(0, 4)
+  const guess = String(parts[0] || 'TEAM').slice(0, 4).toUpperCase()
+  return CFB_ESPN_BY_ABBREV[guess] ? 'TEAM' : guess
+}
+
+/**
+ * Resolve CFB side identity for logos / PBP:
+ * 1) Keep provider team_id when it is non-FBS, or FBS and name agrees
+ * 2) Name → FBS espn id
+ * 3) Abbrev only when name agrees
+ * Logo always from numeric team_id … never from abbrev alone.
+ */
 function attachCfbEspnTeamIds(game: LoungeSportsGame): LoungeSportsGame {
   if (!isCfbSportKey(game.sport_key)) return game
   const patch = (side: LoungeSportsGameSide): LoungeSportsGameSide => {
-    const fromName = cfbAbbrevFromOddsName(`${side?.name || ''} ${side?.mascot || ''}`)
-    const fromAbbrev = cfbAbbrevTrustedForSide(side?.abbrev || '', side?.name || '', side?.mascot || '')
-    // Prefer name hits over raw abbrev … stops Shorter Hawks (HAW) stealing Hawaii's ESPN id.
-    const abb = (fromName && CFB_ESPN_BY_ABBREV[fromName] ? fromName : '') ||
-      (fromAbbrev && CFB_ESPN_BY_ABBREV[fromAbbrev] ? fromAbbrev : '')
-    const espnId = Number(CFB_ESPN_BY_ABBREV[abb] || 0)
-    if (!Number.isFinite(espnId) || espnId <= 0) return side
-    const logo = espnLogo('ncaa', abb) || side.logo
-    if (side.team_id === espnId && side.logo === logo && side.abbrev === abb) return side
-    return { ...side, abbrev: abb || side.abbrev, team_id: espnId, logo }
+    const fromNameAbb = cfbAbbrevFromOddsName(`${side?.name || ''} ${side?.mascot || ''}`)
+    const fromNameId = fromNameAbb ? Number(CFB_ESPN_BY_ABBREV[fromNameAbb] || 0) : 0
+    const fromAbbTrusted = cfbAbbrevTrustedForSide(side?.abbrev || '', side?.name || '', side?.mascot || '')
+    const fromAbbId = fromAbbTrusted ? Number(CFB_ESPN_BY_ABBREV[fromAbbTrusted] || 0) : 0
+    const existingId = Number(side?.team_id)
+    const existingIsFbs = Number.isFinite(existingId) && existingId > 0 && Boolean(CFB_ABBREV_BY_ESPN[String(existingId)])
+
+    let espnId = 0
+    let abb = ''
+
+    if (fromNameId > 0) {
+      espnId = fromNameId
+      abb = fromNameAbb
+    } else if (Number.isFinite(existingId) && existingId > 0 && !existingIsFbs) {
+      // D2 / FCS provider id … keep it; do not overwrite with Longhorns/Aggies.
+      espnId = existingId
+      const rawAbb = resolveCfbCatalogAbbrev(side?.abbrev || '')
+      abb = rawAbb && CFB_ESPN_BY_ABBREV[rawAbb] && !fromAbbTrusted
+        ? cfbFallbackAbbrev(side, rawAbb)
+        : (side?.abbrev || '')
+    } else if (existingIsFbs) {
+      const existingAbb = CFB_ABBREV_BY_ESPN[String(existingId)] || ''
+      if (existingAbb && cfbAbbrevTrustedForSide(existingAbb, side?.name || '', side?.mascot || '')) {
+        espnId = existingId
+        abb = existingAbb
+      }
+    }
+
+    if (!espnId && fromAbbId > 0) {
+      espnId = fromAbbId
+      abb = fromAbbTrusted
+    }
+
+    if (espnId > 0) {
+      const logo = espnNcaaLogoByTeamId(espnId)
+      const nextAbb = abb || side.abbrev
+      if (side.team_id === espnId && side.logo === logo && side.abbrev === nextAbb) return side
+      return { ...side, abbrev: nextAbb, team_id: espnId, logo }
+    }
+
+    // Unknown: strip stolen FBS abbrev; no logo from letter codes.
+    const rawAbb = resolveCfbCatalogAbbrev(side?.abbrev || '')
+    if (rawAbb && CFB_ESPN_BY_ABBREV[rawAbb] && !cfbAbbrevTrustedForSide(rawAbb, side?.name || '', side?.mascot || '')) {
+      return {
+        ...side,
+        abbrev: cfbFallbackAbbrev(side, rawAbb),
+        team_id: null,
+        logo: '',
+      }
+    }
+    return { ...side, logo: '' }
   }
   return { ...game, away: patch(game.away), home: patch(game.home) }
 }
@@ -514,25 +598,51 @@ function sideFromRundown(
   const name = String(team?.name || '').trim()
   const mascot = String(team?.mascot || '').trim()
   const abbrevRaw = String(team?.abbreviation || '').trim().toUpperCase()
-  const abbrev = logoLeague === 'ncaa'
-    ? (cfbAbbrevTrustedForSide(abbrevRaw, name, mascot) ||
-      cfbAbbrevFromOddsName([name, mascot].filter(Boolean).join(' ')) ||
-      abbrevRaw)
+  const providerId = Number(team?.team_id ?? team?.id)
+  const fromNameAbb = logoLeague === 'ncaa'
+    ? cfbAbbrevFromOddsName([name, mascot].filter(Boolean).join(' '))
+    : ''
+  const fromNameId = fromNameAbb ? Number(CFB_ESPN_BY_ABBREV[fromNameAbb] || 0) : 0
+  const trustedAbb = logoLeague === 'ncaa'
+    ? cfbAbbrevTrustedForSide(abbrevRaw, name, mascot)
+    : ''
+  let abbrev = logoLeague === 'ncaa'
+    ? (fromNameAbb || trustedAbb || abbrevRaw)
     : abbrevRaw === 'WSH' ? 'WAS' : abbrevRaw === 'JAC' ? 'JAX' : abbrevRaw
+  if (logoLeague === 'ncaa') {
+    const resolved = resolveCfbCatalogAbbrev(abbrev)
+    // Raw letter code mapped to FBS without a name/id hit … do not keep Longhorns/HAW codes.
+    if (
+      resolved
+      && CFB_ESPN_BY_ABBREV[resolved]
+      && resolved !== fromNameAbb
+      && resolved !== trustedAbb
+    ) {
+      abbrev = cfbFallbackAbbrev(
+        { name, mascot, abbrev: abbrevRaw, logo: '', score: null, linescores: [] },
+        resolved,
+      )
+    }
+  }
   const display = [name, mascot].filter(Boolean).join(' ').trim() || abbrev || 'Team'
-  const teamId = Number(team?.team_id ?? team?.id)
-  const logoAbbrev = logoLeague === 'ncaa' && abbrev && CFB_ESPN_BY_ABBREV[abbrev] ? abbrev : ''
+  // Prefer provider ESPN id (works for D2/FCS). Fall back to name-resolved FBS id only.
+  const teamId = Number.isFinite(providerId) && providerId > 0
+    ? providerId
+    : (fromNameId > 0 ? fromNameId : null)
+  const logo = logoLeague === 'ncaa'
+    ? espnNcaaLogoByTeamId(teamId)
+    : espnLogo(logoLeague, abbrev || name)
   return {
     name: display,
     mascot,
     abbrev: abbrev || display.slice(0, 3).toUpperCase(),
-    logo: espnLogo(logoLeague, logoAbbrev || (logoLeague === 'ncaa' ? '' : abbrev || name)),
+    logo,
     score,
     linescores: lines,
     spread: null,
     ml: null,
     record: null,
-    team_id: Number.isFinite(teamId) && teamId > 0 ? teamId : null,
+    team_id: teamId,
   }
 }
 
@@ -911,39 +1021,56 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
   const status: LoungeSportsGame['status'] = completed ? 'post' : kicked && (homeScore != null || awayScore != null) ? 'in' : 'pre'
   const useNflAbbrev = isNflSportKey(sportKey)
   const stubAbbrev = (name: string) => (name.split(/\s+/).pop() || name).slice(0, 3).toUpperCase()
+  const homeFromName = isCfbSportKey(sportKey) ? cfbAbbrevFromOddsName(homeName) : ''
+  const awayFromName = isCfbSportKey(sportKey) ? cfbAbbrevFromOddsName(awayName) : ''
   const homeAbbrev = useNflAbbrev
     ? nflAbbrevFromOddsName(homeName)
     : isCfbSportKey(sportKey)
-      ? cfbAbbrevFromOddsName(homeName)
+      ? homeFromName
       : majorLeagueAbbrevFromName(sportKey, homeName, stubAbbrev(homeName))
   const awayAbbrev = useNflAbbrev
     ? nflAbbrevFromOddsName(awayName)
     : isCfbSportKey(sportKey)
-      ? cfbAbbrevFromOddsName(awayName)
+      ? awayFromName
       : majorLeagueAbbrevFromName(sportKey, awayName, stubAbbrev(awayName))
   const homeMascot = homeName.split(/\s+/).pop() || homeName
   const awayMascot = awayName.split(/\s+/).pop() || awayName
+  // CFB: team_id/logo only from a name-resolved FBS abbrev … never stub "HAW"/"TEX".
+  const cfbHomeId = homeFromName ? Number(CFB_ESPN_BY_ABBREV[homeFromName] || 0) : 0
+  const cfbAwayId = awayFromName ? Number(CFB_ESPN_BY_ABBREV[awayFromName] || 0) : 0
+  const homeDisplayAbb = homeAbbrev || (isCfbSportKey(sportKey)
+    ? cfbFallbackAbbrev({ name: homeName, mascot: homeMascot, abbrev: '', logo: '', score: null, linescores: [] }, '')
+    : stubAbbrev(homeName))
+  const awayDisplayAbb = awayAbbrev || (isCfbSportKey(sportKey)
+    ? cfbFallbackAbbrev({ name: awayName, mascot: awayMascot, abbrev: '', logo: '', score: null, linescores: [] }, '')
+    : stubAbbrev(awayName))
   const home: LoungeSportsGameSide = {
     name: homeName,
     mascot: homeMascot,
-    abbrev: homeAbbrev,
-    logo: espnLogo(logoLeague, homeAbbrev),
+    abbrev: homeDisplayAbb,
+    logo: isCfbSportKey(sportKey)
+      ? espnNcaaLogoByTeamId(cfbHomeId > 0 ? cfbHomeId : null)
+      : espnLogo(logoLeague, homeAbbrev),
     score: homeScore,
     linescores: [],
     spread: null,
     ml: null,
     record: null,
+    team_id: cfbHomeId > 0 ? cfbHomeId : null,
   }
   const away: LoungeSportsGameSide = {
     name: awayName,
     mascot: awayMascot,
-    abbrev: awayAbbrev,
-    logo: espnLogo(logoLeague, awayAbbrev),
+    abbrev: awayDisplayAbb,
+    logo: isCfbSportKey(sportKey)
+      ? espnNcaaLogoByTeamId(cfbAwayId > 0 ? cfbAwayId : null)
+      : espnLogo(logoLeague, awayAbbrev),
     score: awayScore,
     linescores: [],
     spread: null,
     ml: null,
     record: null,
+    team_id: cfbAwayId > 0 ? cfbAwayId : null,
   }
   return {
     id: String(ev.id || `${sportKey}:${awayName}@${homeName}`).trim(),

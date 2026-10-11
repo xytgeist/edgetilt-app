@@ -121,7 +121,31 @@ function resolveCfbCatalogAbbrev(raw) {
   return a
 }
 
+/**
+ * Catalog name must anchor at the start of the side label.
+ * After a school-only key, the rest must be the catalog mascot (or empty).
+ * Blocks: West Texas A&M → TAM, UT Permian Basin → TEX, Texas A&M-Kingsville → TAM.
+ */
+function cfbNameKeyAnchored(hay, key, mascot = '') {
+  const h = String(hay || '').trim()
+  const k = String(key || '').trim()
+  if (!h || !k || k.length < 3) return false
+  const prefixes = h.startsWith('the ') ? [k, `the ${k}`] : [k]
+  for (const prefix of prefixes) {
+    if (h === prefix) return true
+    if (!h.startsWith(`${prefix} `)) continue
+    const rest = h.slice(prefix.length + 1).trim()
+    if (!rest) return true
+    const m = String(mascot || '').trim()
+    if (m && (rest === m || rest.startsWith(`${m} `))) return true
+    // Full team keys already include the mascot ("texas a m aggies") … any extra = different school.
+    return false
+  }
+  return false
+}
+
 function cfbRowByLongestName(hay) {
+  const compact = String(hay || '').trim()
   let best = null
   let bestLen = 0
   for (const row of CFB_TEAM_CATALOG) {
@@ -132,7 +156,7 @@ function cfbRowByLongestName(hay) {
       if (p.length < 4) continue
       const isBareMascot = Boolean(mascotN) && p === mascotN && p !== schoolN
       if (isBareMascot) continue
-      if (!hay.includes(` ${p} `)) continue
+      if (!cfbNameKeyAnchored(compact, p, mascotN)) continue
       if (p.length > bestLen) {
         best = row
         bestLen = p.length
@@ -232,33 +256,66 @@ function softNormForCommit(value) {
 function cfbSideAgreesWithRow(side, row) {
   if (!row) return false
   const hay = softNormForCommit(`${side?.name || ''} ${side?.mascot || ''}`).trim()
+  // No name from provider … allow id/abbrev only as a last resort for bare feeds.
   if (!hay) return true
-  const padded = ` ${hay} `
+  const schoolN = softNormForCommit(row.school).trim()
+  const mascotN = softNormForCommit(row.mascot).trim()
   const candidates = [row.school, ...(row.names || [])]
     .map((n) => softNormForCommit(n).trim())
     .filter((n) => n.length >= 3)
   for (const token of candidates) {
-    // Bare mascot-only tokens ("hawks", "eagles") are too collision-prone for abbrev trust.
-    const schoolN = softNormForCommit(row.school).trim()
-    const mascotN = softNormForCommit(row.mascot).trim()
+    // Bare mascot-only tokens ("hawks", "eagles") are too collision-prone.
     if (mascotN && token === mascotN && token !== schoolN) continue
-    if (padded.includes(` ${token} `) || hay === token) return true
+    if (cfbNameKeyAnchored(hay, token, mascotN)) return true
   }
   return false
 }
 
+function cfbFallbackAbbrev(side, stolenAbbrev) {
+  const raw = String(side?.abbrev || '').toUpperCase().replace(/[^A-Z0-9-]/g, '')
+  const stolen = String(stolenAbbrev || '').toUpperCase()
+  if (raw && raw !== stolen && !CFB_BY_ABBREV.has(resolveCfbCatalogAbbrev(raw))) return raw
+  const stop = new Set(['of', 'the', 'university', 'college', 'at', 'and', 'a', 'm'])
+  const parts = softNormForCommit(side?.name || '')
+    .split(/\s+/)
+    .filter((w) => w && !stop.has(w))
+  const initials = parts.slice(0, 4).map((w) => w[0]).join('').toUpperCase()
+  if (initials.length >= 2 && !CFB_BY_ABBREV.has(initials)) return initials.slice(0, 4)
+  const guess = String(parts[0] || 'TEAM').slice(0, 4).toUpperCase()
+  return CFB_BY_ABBREV.has(guess) ? 'TEAM' : guess
+}
+
+function cfbEspnLogoUrl(espnId, { dark = false } = {}) {
+  const id = String(espnId || '').trim()
+  if (!/^\d+$/.test(id)) return ''
+  return dark
+    ? `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${id}.png`
+    : `https://a.espncdn.com/i/teamlogos/ncaa/500/${id}.png`
+}
+
+/**
+ * CFB identity order (logos follow the row, never abbrev alone):
+ * 1) ESPN team_id when it agrees with the side name
+ * 2) Anchored full-name / school+mascot match
+ * 3) Abbrev only when the name also agrees
+ */
 function catalogRowForSide(side, sportKey) {
   const hay = ` ${norm(`${side?.name || ''} ${side?.mascot || ''}`)} `
   if (isCfbSportKey(sportKey)) {
     const espnId = String(side?.team_id ?? side?.espn_id ?? '').trim()
-    if (espnId && CFB_BY_ESPN_ID.has(espnId)) return CFB_BY_ESPN_ID.get(espnId)
+    if (espnId && CFB_BY_ESPN_ID.has(espnId)) {
+      const byId = CFB_BY_ESPN_ID.get(espnId)
+      // Reject stolen FBS ids (UTPB painted as Texas Longhorns espn 251).
+      if (cfbSideAgreesWithRow(side, byId)) return byId
+    }
+    const byName = cfbRowByLongestName(hay)
+    if (byName) return byName
     const abbrev = resolveCfbCatalogAbbrev(side?.abbrev)
     if (abbrev.length >= 2 && CFB_BY_ABBREV.has(abbrev)) {
       const row = CFB_BY_ABBREV.get(abbrev)
-      // Abbrev alone is not enough … Rundown "Hawks" → HAW was painting Hawaii logos.
       if (cfbSideAgreesWithRow(side, row)) return row
     }
-    return cfbRowByLongestName(hay)
+    return null
   }
   const major = majorLeagueCatalog(sportKey)
   if (major) {
@@ -598,24 +655,45 @@ export function enrichLoungeSportsGame(game) {
   const patchSide = (side) => {
     const row = catalogRowForSide(side, sportKey)
     if (!row) {
-      // FCS / unknown CFB: keep local if already set; else ESPN numeric id (not letter slug).
       if (!isCfbSportKey(sportKey)) return side
-      const espnId = String(side?.team_id ?? side?.espn_id ?? '').trim()
-      if (!/^\d+$/.test(espnId)) return side
-      const logo = `https://a.espncdn.com/i/teamlogos/ncaa/500/${espnId}.png`
-      const logoLight = `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${espnId}.png`
-      const cur = String(side?.logo || '')
-      const keep = cur.startsWith('/sports/') || cur.includes(`/ncaa/500/${espnId}.png`)
+      let abbrev = side?.abbrev
+      let teamId = side?.team_id ?? side?.espn_id ?? null
+      // Strip FBS abbrev / catalog espn id that does not match the side name.
+      const stolenAbb = resolveCfbCatalogAbbrev(abbrev)
+      const stolenAbbRow = stolenAbb && CFB_BY_ABBREV.get(stolenAbb)
+      if (stolenAbbRow && !cfbSideAgreesWithRow(side, stolenAbbRow)) {
+        abbrev = cfbFallbackAbbrev(side, stolenAbb)
+      }
+      const idStr = String(teamId ?? '').trim()
+      if (idStr && CFB_BY_ESPN_ID.has(idStr) && !cfbSideAgreesWithRow(side, CFB_BY_ESPN_ID.get(idStr))) {
+        teamId = null
+      }
+      // Unknown / D2 / FCS: logo only from a non-stolen numeric ESPN id … never from abbrev.
+      const logoId = String(teamId ?? '').trim()
+      if (/^\d+$/.test(logoId)) {
+        return {
+          ...side,
+          abbrev,
+          team_id: Number(logoId),
+          logo: cfbEspnLogoUrl(logoId),
+          logoLight: cfbEspnLogoUrl(logoId, { dark: true }),
+        }
+      }
       return {
         ...side,
-        logo: keep ? cur : logo,
-        logoLight: side?.logoLight || logoLight,
+        abbrev,
+        team_id: null,
+        logo: '',
+        logoLight: '',
       }
     }
+    const espnId = String(row.espn || '').trim()
     return {
       ...side,
       abbrev: row.abbrev,
+      team_id: /^\d+$/.test(espnId) ? Number(espnId) : side?.team_id ?? null,
       mascot: side?.mascot || row.mascot || side?.mascot,
+      // Local pack when present; ESPN id CDN is the correctness guarantee.
       logo: `${logoBase}/${row.abbrev}.png`,
       logoLight: `${logoBase}/${row.abbrev}-light.png`,
       color: row.color,

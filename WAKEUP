@@ -125,8 +125,11 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... CFB logo identity (ESPN team_id)
 **Done.** CFB Hub wrong Texas/Hawaii cards were abbrev collisions (D2 “Texas…” / “Hawks” → FBS). Logos now follow ESPN `team_id` then name, abbrev last. Web **`1.4.1101`** + Edge **`lounge-sports-scoreboard`** redeployed test + prod. Backlog Update log **2026-10-11**.
 
+### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Rundown shop cull + slower TTL
+**Done.** Prod Rundown shop: Circa / Heritage / Bet105 / BookMaker / Betcris only; TTL **12m** pregame / **2m** live (Odds API unchanged). Test still Rundown-off + Odds-off. Redeploy **prod** `lounge-sports-scoreboard`.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Rundown + Odds API off on test
-**Done.** TheRundown projected 171% quota. Test now skips **all** TheRundown (scores-only + shop + detail) and all The Odds API fetches. lvslotpro sports hub ≈ ESPN golf only; Scott soft-empty. Prod unchanged. Redeploy **test** `lounge-sports-scoreboard` + `lounge-odds-poll` + `lounge-odds-ingest`.
+**Done.** TheRundown projected 171% quota. Test skips **all** TheRundown and The Odds API. lvslotpro sports hub ≈ ESPN golf only. Prod shop later culled (row above).
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Prod Disk IO (Micro → Small)
 **Done (ops).** Supabase Disk IO Budget alert + slow app on **`jtjgtucumuoswnbauxry`**. Truncated bloated `net._http_response`; pruned `lounge_odds_snapshots` (keep 3 days) + `VACUUM FULL` → **17 MB**. Migration **`20261011043000`** on test + prod. Ryan upgraded compute **Micro → Small**. Details: backlog Update log **2026-10-11**.

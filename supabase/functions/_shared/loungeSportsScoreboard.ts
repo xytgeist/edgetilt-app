@@ -2580,14 +2580,21 @@ async function loadGolfOutrights(tournament: string, sportKey = 'golf_pga'): Pro
 }
 
 const RUNDOWN_BASE = 'https://therundown.io/api/v2'
-/** Pill / slate shop. Lines do not need the 8s score tick. */
+/** Odds API + Pinnacle slate. Lines do not need the 8s score tick. */
 const ODDS_SLATE_CACHE_MS = 90_000
-/** Open live hub can shop a bit faster without paying every board rebuild. */
+/** Open live hub can shop Odds/Pinnacle a bit faster without paying every board rebuild. */
 const ODDS_HUB_LIVE_CACHE_MS = 40_000
+/** Rundown sharp-shop only … slower than Odds API to cut datapoint burn. */
+const RUNDOWN_SHOP_SLATE_CACHE_MS = 12 * 60_000
+const RUNDOWN_SHOP_LIVE_CACHE_MS = 2 * 60_000
 type OddsPack = Awaited<ReturnType<typeof fetchSportOdds>>
 
 function oddsLineTtlMs(live: boolean): number {
   return live ? ODDS_HUB_LIVE_CACHE_MS : ODDS_SLATE_CACHE_MS
+}
+
+function rundownShopTtlMs(live: boolean): number {
+  return live ? RUNDOWN_SHOP_LIVE_CACHE_MS : RUNDOWN_SHOP_SLATE_CACHE_MS
 }
 
 function cachedSportOdds(sportKey: string, live = false): Promise<OddsPack | null> {
@@ -2632,7 +2639,7 @@ function cachedRundownShop(sportKey: string, dates: string[], live = false): Pro
   const lane = live ? 'hub' : 'slate'
   return sharedCached<RundownEvent[]>(
     `rundown:shop:${lane}:${sportKey}:${days.join(',')}`,
-    { ttlMs: oddsLineTtlMs(live), shouldStore: (rows) => Array.isArray(rows) },
+    { ttlMs: rundownShopTtlMs(live), shouldStore: (rows) => Array.isArray(rows) },
     async () => {
       const batches = await Promise.all(days.map((day) => loadRundownShopDayEvents(sportKey, day).catch(() => [])))
       return batches.flat()
@@ -3755,12 +3762,7 @@ const RUNDOWN_SHOP_BOOK_KEYS = new Set([
   'heritage',
   'bet105',
   'bookmaker',
-  'sportsbetting',
   'betcris',
-  'youwager',
-  'matchbook',
-  'everygame',
-  'intertops',
 ])
 
 function mergeRundownShopOdds(

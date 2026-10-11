@@ -1,7 +1,7 @@
 /**
  * TheRundown sharp-shop books Odds API does not carry (or carries poorly).
  * Scores-only slates stay on `affiliate_ids=0`. This fetch is `main_line` ML/spread/total
- * for a short affiliate list, cached on the same 90s / 40s cadence as Odds lines.
+ * for a short affiliate list, cached slower than Odds lines (12m slate / 2m live).
  *
  * Test sandbox never pulls shop odds … `isRundownEnabled()` is false on test
  * (same THERUNDOWN key as prod; no Rundown at all on lvslotpro).
@@ -17,17 +17,16 @@ import { isTestSupabaseProject } from './publicAppOrigin.ts'
 const RUNDOWN_BASE = 'https://therundown.io/api/v2'
 const PT_OFFSET_MIN = 420
 
-/** Books Odds `us`/`us2` do not list (plus Matchbook / Everygame). */
+/**
+ * Sharp books Odds `us`/`us2` do not carry. Soft offshore (Sportsbetting.ag) and
+ * thin books (YouWager / Matchbook / Everygame) were dropped to cut Rundown Odds datapoints.
+ */
 export const RUNDOWN_SHOP_BOOKS = [
   { id: 32, name: 'Circa Sports' },
   { id: 34, name: 'Heritage Sports' },
   { id: 33, name: 'Bet105' },
   { id: 7, name: 'BookMaker' },
-  { id: 4, name: 'Sportsbetting.ag' },
   { id: 9, name: 'Betcris' },
-  { id: 18, name: 'YouWager' },
-  { id: 16, name: 'Matchbook' },
-  { id: 14, name: 'Everygame' },
 ] as const
 
 const SHOP_AFFILIATE_QUERY = RUNDOWN_SHOP_BOOKS.map((b) => b.id).join(',')
@@ -220,7 +219,7 @@ async function rundownFetch<T>(path: string): Promise<T | null> {
   }
 }
 
-/** One PT date of main-line shop books. Caller caches (90s slate / 40s live hub). */
+/** One PT date of main-line shop books. Caller caches (12m slate / 2m live hub). */
 export async function loadRundownShopDayEvents(sportKey: string, ptDate: string): Promise<RundownEvent[]> {
   // Test shares the prod Rundown key … shop snapshots are the Odds datapoint furnace.
   if (isTestSupabaseProject()) return []

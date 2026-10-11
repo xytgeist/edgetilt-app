@@ -18,9 +18,15 @@
         font-family: system-ui, -apple-system, Segoe UI, sans-serif;
         text-align: center;
       }
-      a {
-        color: #38bdf8;
-        font-weight: 600;
+      a.btn {
+        display: inline-block;
+        margin-top: 1rem;
+        padding: 0.85rem 1.25rem;
+        border-radius: 999px;
+        background: #38bdf8;
+        color: #082f49;
+        font-weight: 700;
+        text-decoration: none;
       }
       p {
         margin: 0.5rem 0;
@@ -35,27 +41,30 @@
   <body>
     <div>
       <p id="msg">Returning to EdgeTilt…</p>
-      <p class="muted">If the app does not open, tap below.</p>
-      <p><a id="open" href="#">Open EdgeTilt</a></p>
+      <p class="muted">Tap below if the app does not open automatically.</p>
+      <p><a class="btn" id="open" href="#">Open EdgeTilt</a></p>
+      <p class="muted"><a id="web" href="/" style="color: #a1a1aa">Continue in browser</a></p>
     </div>
     <script>
       (function () {
         var q = window.location.search || '?tab=fantasy&yahoo=linked'
         if (q.charAt(0) !== '?') q = '?' + q
         var spa = '/' + q
-        // live-session is already handled by the shipped IPA (Live Activity taps).
-        // It maps query → https://<site>/?<query> inside the WKWebView.
+        // Shipped IPA maps live-session → https://<site>/?<query> in the WKWebView.
         var app = 'edgetilt://live-session' + q
         var open = document.getElementById('open')
+        var web = document.getElementById('web')
         open.setAttribute('href', app)
-        open.addEventListener('click', function (e) {
-          e.preventDefault()
+        web.setAttribute('href', spa)
+
+        function tryOpenApp() {
           window.location.href = app
-        })
-        window.location.href = app
-        setTimeout(function () {
-          window.location.replace(spa)
-        }, 900)
+        }
+
+        // Auto-attempt. Do NOT auto-navigate to the SPA … that left people on a
+        // logged-out Safari login modal instead of the IPA. User can tap the button.
+        setTimeout(tryOpenApp, 80)
+        setTimeout(tryOpenApp, 600)
       })()
     </script>
   </body>

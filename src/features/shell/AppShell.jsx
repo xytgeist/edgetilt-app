@@ -1525,6 +1525,34 @@ export default function AppShell({
       consumeApSlotsLoungeIntroArrival()
       const params = new URLSearchParams(window.location.search || '')
       const targetTab = params.get('tab')
+      // Yahoo OAuth handoff (Safari → edgetilt:// → WKWebView). Persist so a cold
+      // session hydrate cannot leave the user on Sports Hub / home while ?yahoo= is lost.
+      const yahooHandoffFlag = (params.get('yahoo') || '').trim()
+      if (yahooHandoffFlag) {
+        try {
+          sessionStorage.setItem(
+            'edge.fantasy.yahooHandoff',
+            JSON.stringify({
+              yahoo: yahooHandoffFlag,
+              yahoo_error: (params.get('yahoo_error') || '').trim(),
+              at: Date.now(),
+            }),
+          )
+        } catch {
+          /* ignore */
+        }
+      }
+      let pendingYahooHandoff = false
+      try {
+        const raw = sessionStorage.getItem('edge.fantasy.yahooHandoff')
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          const age = Date.now() - (Number(parsed?.at) || 0)
+          pendingYahooHandoff = Boolean(parsed?.yahoo) && age >= 0 && age < 15 * 60_000
+        }
+      } catch {
+        pendingYahooHandoff = false
+      }
       const memberDeepLinkTabs = new Set([
         'offers',
         'logbook',
@@ -1545,7 +1573,8 @@ export default function AppShell({
         targetTab &&
         memberDeepLinkTabs.has(targetTab) &&
         browseMode === 'anonymous' &&
-        !authSessionReady
+        !authSessionReady &&
+        !pendingYahooHandoff
       ) {
         return
       }
@@ -1629,7 +1658,7 @@ export default function AppShell({
           return 'home'
         })
       }
-      if (targetTab === 'fantasy') {
+      if (targetTab === 'fantasy' || pendingYahooHandoff) {
         if (browseMode === 'anonymous') {
           onRequireAuthRef.current?.()
         } else {

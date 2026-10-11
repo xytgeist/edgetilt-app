@@ -84,7 +84,17 @@ On NFL hub open: `hub_pins: true` reads the user’s **primary** league (any pro
 
 **Connect Yahoo** must not `location.assign` into the WKWebView (Yahoo login has hard-crashed the IPA). Shell uses **`openExternalUrl(url, { system: true })`** (system Safari), same idea as Stripe.
 
-OAuth redirect chains (Yahoo → Supabase callback → https SPA) do **not** Universal-Link back into the IPA, so Safari would stick on a logged-out edgetilt.com login modal. Callback therefore lands on **`/fantasy-yahoo-return.html`**, which opens **`edgetilt://live-session?tab=fantasy&yahoo=…`** (shipped IPA already maps that host into the WKWebView) and falls back to the SPA for web. Fantasy also refreshes on `visibilitychange` / `yahoo=linked`.
+OAuth redirect chains (Yahoo → Supabase callback → https SPA) do **not** Universal-Link back into the IPA, so Safari would stick on a logged-out edgetilt.com login modal. Callback therefore lands on **`/fantasy-yahoo-return.html`**, which opens **`edgetilt://live-session?tab=fantasy&yahoo=…`** (shipped IPA already maps that host into the WKWebView). Tap **Open EdgeTilt** if Safari does not auto-jump. AppShell persists the handoff in `sessionStorage` so Fantasy opens even if session hydrate briefly left the user on home / Sports Hub.
+
+## Yahoo Fantasy API access (required)
+
+Yahoo moved Fantasy Sports API behind an **approval gate** (mid-2026). Creating a Developer app + checking Fantasy Sports Read is not enough … OAuth can succeed while every `fantasysports.yahooapis.com` call returns **403 not authorized**.
+
+1. Keep the existing app (**App ID `i4wW6xoc`**, EdgeTilt Fantasy). Do **not** delete/recreate it.
+2. Apply at **[sports.yahoo.com/developer](https://sports.yahoo.com/developer/)** (Access / Apply) with org + use case.
+3. After approval (often days–weeks), reconnect Yahoo in the app. Until then the Fantasy banner explains the gate.
+
+Authorize URL requests `scope=fspt-r`.
 
 ## Smoke (test)
 

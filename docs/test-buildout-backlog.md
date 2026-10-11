@@ -1198,6 +1198,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-11:** **Yahoo Fantasy 403 + Fantasy tab handoff (`1.4.1113`).** OAuth succeeds but Yahoo returns **403** until Fantasy API access is approved for App ID **`i4wW6xoc`** at sports.yahoo.com/developer. Clearer error + `scope=fspt-r`. Handoff no longer auto-falls into Safari SPA; AppShell `sessionStorage` opens Fantasy tab after return (was landing on Sports Hub).
 - **2026-10-11:** **Yahoo OAuth return to IPA (`1.4.1112`).** Safari stuck on logged-out edgetilt.com login after Yahoo authorize (OAuth redirect chain never Universal-Links). Callback → **`/fantasy-yahoo-return.html`** → **`edgetilt://live-session?tab=fantasy&yahoo=`** (shipped IPA). Edge yahoo callback redeployed test + prod. Swift also allows UL `?yahoo=` + `edgetilt://open` alias.
 - **2026-10-11:** **Fantasy title bar safe area (`1.4.1111`).** Fantasy used a custom top bar with no `edge-sat` / safe-area inset (title + ☰ / × under the Island). Now **`ScrollLinkedEdgeTitleBarShell`** + **`TitleBarScreenTitle`** like Chat / Bet Tracker.
 - **2026-10-11:** **Promoted `1.4.1110`** (Yahoo Connect EdgeiOS crash fix). Frontend **`test` → `main`**. No SQL / Edge.

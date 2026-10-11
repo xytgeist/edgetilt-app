@@ -35,6 +35,8 @@ export function yahooAuthorizeUrl(env: YahooEnv, state: string): string {
   u.searchParams.set('client_id', env.clientId)
   u.searchParams.set('redirect_uri', env.redirectUri)
   u.searchParams.set('response_type', 'code')
+  // Fantasy Sports Read … required for fantasysports.yahooapis.com
+  u.searchParams.set('scope', 'fspt-r')
   u.searchParams.set('language', 'en-us')
   u.searchParams.set('state', state)
   return u.toString()
@@ -89,6 +91,37 @@ async function refreshAccessToken(env: YahooEnv, refreshToken: string): Promise<
   return json
 }
 
+function yahooApiErrorMessage(status: number, bodyText: string): string {
+  const text = String(bodyText || '').trim()
+  let description = ''
+  try {
+    const json = JSON.parse(text) as {
+      error?: { description?: string }
+      description?: string
+    }
+    description = String(json?.error?.description || json?.description || '').trim()
+  } catch {
+    /* plain / xml */
+  }
+  if (!description) {
+    const m = text.match(/"description"\s*:\s*"([^"]+)"/i)
+    if (m?.[1]) description = m[1]
+  }
+  const lower = `${description} ${text}`.toLowerCase()
+  if (
+    status === 403 &&
+    (lower.includes('not authorized') || lower.includes('not allowed') || lower.includes('not authorised'))
+  ) {
+    return (
+      'Yahoo Fantasy API access is not approved for this EdgeTilt app yet. ' +
+      'OAuth sign-in worked, but Yahoo is blocking league data until they approve App ID i4wW6xoc ' +
+      '(apply at sports.yahoo.com/developer).'
+    )
+  }
+  if (description) return `Yahoo Fantasy API ${status}: ${description.slice(0, 180)}`
+  return `Yahoo Fantasy API ${status}. ${text.slice(0, 160)}`
+}
+
 async function yahooGet(accessToken: string, path: string): Promise<unknown> {
   const url = path.includes('?')
     ? `${YAHOO_FANTASY}${path}&format=json`
@@ -101,7 +134,7 @@ async function yahooGet(accessToken: string, path: string): Promise<unknown> {
   })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    throw new Error(`Yahoo ${path} → ${res.status} ${text.slice(0, 240)}`)
+    throw new Error(yahooApiErrorMessage(res.status, text))
   }
   return await res.json()
 }

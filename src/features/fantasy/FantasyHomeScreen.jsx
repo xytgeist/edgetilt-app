@@ -29,6 +29,63 @@ function providerLabel(provider) {
   return provider || ''
 }
 
+const YAHOO_HANDOFF_KEY = 'edge.fantasy.yahooHandoff'
+
+function readYahooHandoff() {
+  if (typeof window === 'undefined') return null
+  try {
+    const u = new URL(window.location.href)
+    const fromUrl = (u.searchParams.get('yahoo') || '').trim()
+    if (fromUrl) {
+      return {
+        yahoo: fromUrl,
+        yahoo_error: (u.searchParams.get('yahoo_error') || '').trim(),
+        fromUrl: true,
+      }
+    }
+    const raw = sessionStorage.getItem(YAHOO_HANDOFF_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const age = Date.now() - (Number(parsed?.at) || 0)
+    if (!parsed?.yahoo || age < 0 || age > 15 * 60_000) return null
+    return {
+      yahoo: String(parsed.yahoo || '').trim(),
+      yahoo_error: String(parsed.yahoo_error || '').trim(),
+      fromUrl: false,
+    }
+  } catch {
+    return null
+  }
+}
+
+function clearYahooHandoff() {
+  try {
+    sessionStorage.removeItem(YAHOO_HANDOFF_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Decode / shorten Yahoo Edge errors for the Fantasy banner. */
+function friendlyYahooError(raw) {
+  let s = String(raw || '').trim()
+  try {
+    s = decodeURIComponent(s)
+  } catch {
+    /* already plain */
+  }
+  if (/not approved for this EdgeTilt app|sports\.yahoo\.com\/developer/i.test(s)) return s
+  if (/403/i.test(s) && /not authorized|not allowed|not authorised/i.test(s)) {
+    return (
+      'Yahoo Fantasy API access is not approved for this EdgeTilt app yet. ' +
+      'OAuth worked, but Yahoo is blocking league data until they approve App ID i4wW6xoc ' +
+      '(apply at sports.yahoo.com/developer).'
+    )
+  }
+  if (s.length > 240) return `${s.slice(0, 240)}…`
+  return s
+}
+
 function RosterList({ title, rows, tone = 'mine' }) {
   const starters = (rows || []).filter((r) => r.slot === 'starter')
   const bench = (rows || []).filter((r) => r.slot !== 'starter')
@@ -146,30 +203,33 @@ export default function FantasyHomeScreen({
     }
   }, [refresh])
 
-  // Return from Yahoo OAuth redirect (same-tab web, or Universal Link into the IPA).
+  // Return from Yahoo OAuth redirect (same-tab web, custom-scheme handoff, or sessionStorage).
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
-      const u = new URL(window.location.href)
-      const yahooFlag = (u.searchParams.get('yahoo') || '').trim()
-      if (!yahooFlag) return
-      if (yahooFlag === 'linked') {
-        yahooOAuthPendingRef.current = false
+      const handoff = readYahooHandoff()
+      if (!handoff?.yahoo) return
+      yahooOAuthPendingRef.current = false
+      if (handoff.yahoo === 'linked') {
         setInfo('Yahoo linked. Loading your leagues…')
-        void refresh().catch((e) => setErr(e?.message || 'Could not load fantasy.'))
+        void refresh()
+          .then(() => setInfo(''))
+          .catch((e) => setErr(friendlyYahooError(e?.message || 'Could not load fantasy.')))
+      } else if (handoff.yahoo === 'error') {
+        setErr(friendlyYahooError(handoff.yahoo_error || 'Yahoo connect failed.'))
       }
-      if (yahooFlag === 'error') {
-        yahooOAuthPendingRef.current = false
-        setErr(u.searchParams.get('yahoo_error') || 'Yahoo connect failed.')
+      clearYahooHandoff()
+      const u = new URL(window.location.href)
+      if (u.searchParams.has('yahoo') || u.searchParams.has('yahoo_error')) {
+        u.searchParams.delete('yahoo')
+        u.searchParams.delete('yahoo_error')
+        const qs = u.searchParams.toString()
+        window.history.replaceState(
+          {},
+          document.title,
+          `${u.pathname || '/'}${qs ? `?${qs}` : ''}${u.hash || ''}`,
+        )
       }
-      u.searchParams.delete('yahoo')
-      u.searchParams.delete('yahoo_error')
-      const qs = u.searchParams.toString()
-      window.history.replaceState(
-        {},
-        document.title,
-        `${u.pathname || '/'}${qs ? `?${qs}` : ''}${u.hash || ''}`,
-      )
     } catch {
       /* ignore */
     }

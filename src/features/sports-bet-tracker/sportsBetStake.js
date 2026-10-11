@@ -2,6 +2,7 @@ const UNIT_KEY = 'edge.sportsBet.unitSize.v1'
 const BANKROLL_KEY = 'edge.sportsBet.bankrollStart.v1'
 
 export const DEFAULT_UNIT_SIZE_DOLLARS = 100
+export const DEFAULT_BANKROLL_START = 10_000
 export const DEFAULT_STAKE_UNITS = 1
 
 function readPositive(key, fallback) {
@@ -37,11 +38,13 @@ export function writeUnitSizeDollars(dollars) {
 export function readBankrollStart() {
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(BANKROLL_KEY) : null
-    if (raw == null || raw === '') return null
+    if (raw == null || raw === '') return DEFAULT_BANKROLL_START
     const n = Number(raw)
-    return Number.isFinite(n) ? n : null
+    // Pre-1.4.1103 default was 0 … treat that as unset so chips show $10k.
+    if (!Number.isFinite(n) || n === 0) return DEFAULT_BANKROLL_START
+    return n
   } catch {
-    return null
+    return DEFAULT_BANKROLL_START
   }
 }
 

@@ -285,13 +285,27 @@ Deno.serve(async (req) => {
 
     if (action === 'grade_picks') {
       const { gradePendingPicks } = await import('../_shared/loungeBotPredictivePick.ts')
+      const { gradeOpenSportsBets } = await import('../_shared/sportsBetsGrade.ts')
+      // Tracker bets grade via ESPN even when Odds API is off (test) or the key is missing.
+      const sportsBets = await gradeOpenSportsBets(admin)
       const key = oddsApiKey()
-      if (!key) return adminOpsJson(500, { error: 'THE_ODDS_API_KEY not configured.' })
+      if (!key) {
+        return adminOpsJson(200, {
+          ok: true,
+          action: 'grade_picks',
+          resolved: 0,
+          espnResolved: 0,
+          rundownResolved: 0,
+          errors: ['THE_ODDS_API_KEY not configured; bot picks skipped'],
+          sports_bets: sportsBets,
+        })
+      }
       const gradeResult = await gradePendingPicks(admin, key)
       return adminOpsJson(200, {
         ok: true,
         action: 'grade_picks',
         ...gradeResult,
+        sports_bets: sportsBets,
       })
     }
 

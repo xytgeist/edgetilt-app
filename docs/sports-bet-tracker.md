@@ -79,7 +79,7 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 | **Hold odds cell** to log that book/line | Tap-replaces-open-book (tap still opens the sportsbook) |
 | Paste slip + IPA photo OCR + CSV import (heuristic, confirm first) | Trained slip Vision model / share-sheet auto-ingest |
 | Units stake, American odds, market (spread / ML / total / **player prop** / other), **Sport** (NFL, CFB, …) | White-label / official book connect |
-| Open → won / lost / push / void settle | Parlay legs; verified public record |
+| Open → **auto-grade** spread / ML / total (ESPN); props stay manual | Parlay legs; verified public record |
 | P&L units + ROI + record | Hard `sports-edge` paywall |
 | CLV vs locked **`lounge_market_files`** close (RPC) |  |
 | Free for verified users while Sports Edge SKU is dark |  |
@@ -92,7 +92,7 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 
 - Table **`sports_bets`** (RLS: own rows only) … migration **`20261006010000_sports_bet_tracker.sql`**
 - Intake sources `odds_cell` / `slip` / `csv` … **`20261006020000_sports_bets_intake_sources.sql`**
-- Settings **`sports_bet_settings`** (unit size + starting bankroll) … **`20261006030000_sports_bet_settings.sql`**
+- Settings **`sports_bet_settings`** (unit size + starting bankroll) … **`20261006030000_sports_bet_settings.sql`**; default bankroll **$10k** … **`20261011050000_sports_bet_settings_default_bankroll.sql`**
 - Tap-through confirm flag **`sports_bets.confirmed`** + source `odds_tap` … **`20261006040000_sports_bets_tap_confirm.sql`**
 - Player prop market + `player_name` / `prop_stat` … **`20261006050000_sports_bets_prop_market.sql`**
 - CLV: **`sports_bets_refresh_clv()`** security definer reads locked closes for the caller’s event ids (does not widen market-file RLS to the client)
@@ -106,7 +106,8 @@ Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`*
 - Prefill: hub **… → Log a bet** / hold odds / `requestSportsBetLog(prefill)` … closes the sports surface and sets `tab=sports-bets`. Does **not** keep `?game=` (that reopened the league hub). Hollow `?logBet=1` URLs **must not** open the composer (that wiped book / line / odds after a hold). Prefill lives in memory + sessionStorage + the open event.
 - **Tap-through:** opening the book from a hub odds cell inserts an **unconfirmed** 1u bet (`odds_tap`). Confirm / Edit / Delete on the tracker row. Hold still opens the composer first. Same for Kalshi/Poly Yes/No and landscape player-prop rails (Yes = Over, No = Under; implied ¢ → American).
 - Composer **Sport** (NFL / CFB / NBA / MLB / NHL / PGA / MLS / Other) maps to Odds API `sport_key`. **Player prop** market adds Player + Stat.
-- Money: **1u** default stake, **$** field, default **$100** unit size. **Bankroll** and **unit size** are set from the tracker chips / **Set bankroll & unit size** (and Unit size on Log a bet). Bankroll = start + settled $ P&L.
+- Money: **1u** default stake, **$** field, default **$100** unit size, default bankroll start **$10,000**. **Bankroll** and **unit size** are set from the tracker chips / **Set bankroll & unit size** (and Unit size on Log a bet). Bankroll = start + settled $ P&L.
+- **Auto-grade:** open spread / h2h / total bets settle from ESPN finals via Edge **`sports-bets-grade`** (tracker load/refresh) and the existing **`lounge-odds-poll` `grade_picks`** cron. Props / other stay manual; Manual override still available on auto-gradeable rows.
 - **Tools sheet** (`SportsBetToolsSheet.jsx`, `?tab=sports-bets&betTools=`): Sports Hub **Tools** chip + tracker **Tools**. Featured **Parlay / Hedge / Kelly** prefill from open bets and bankroll. Utilities: payout, converter, implied, EV, no-vig, arb. Open-bet **Hedge** / settled **Payout**. Not nine hub tiles. Math: `sportsBetCalcMath.js`.
 - Git: scaffold **`0ef9edbd`** (`1.4.1057`) on **`origin/test`**. Notes commit is the tip after computer-change writeup. Draft PR: `cursor/sports-bet-tracker-9369`.
 

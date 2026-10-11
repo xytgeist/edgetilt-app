@@ -1,4 +1,5 @@
 import {
+  DEFAULT_BANKROLL_START,
   DEFAULT_UNIT_SIZE_DOLLARS,
   readBankrollStart,
   readUnitSizeDollars,
@@ -25,13 +26,17 @@ export async function loadSportsBetSettings(supabaseClient) {
   if (error) return { settings: local, error: error.message }
   if (!data) return { settings: local, error: null }
   const unit = Number(data.unit_size_dollars)
-  const start = Number(data.bankroll_start)
+  // Avoid Number(null) → 0 … treat missing start as the product default.
+  const startRaw = data.bankroll_start
+  const start = startRaw == null || startRaw === '' ? NaN : Number(startRaw)
+  // Legacy column default was 0 … promote to product default until they edit.
+  const bankroll = Number.isFinite(start) && start !== 0 ? start : DEFAULT_BANKROLL_START
   if (Number.isFinite(unit) && unit > 0) writeUnitSizeDollars(unit)
-  if (Number.isFinite(start)) writeBankrollStart(start)
+  writeBankrollStart(bankroll)
   return {
     settings: {
       unit_size_dollars: Number.isFinite(unit) && unit > 0 ? unit : DEFAULT_UNIT_SIZE_DOLLARS,
-      bankroll_start: Number.isFinite(start) ? start : 0,
+      bankroll_start: bankroll,
     },
     error: null,
   }

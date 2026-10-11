@@ -7,10 +7,12 @@ import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import {
   confirmSportsBet,
   deleteSportsBet,
+  gradeOpenSportsBets,
   insertSportsBet,
   listSportsBets,
   refreshSportsBetClv,
   settleSportsBet,
+  sportsBetIsAutoGradeable,
   updateSportsBet,
 } from './sportsBetApi.js'
 import {
@@ -30,8 +32,10 @@ import SportsBetToolsSheet from './SportsBetToolsSheet.jsx'
 import { parseSportsBetCsv, parseSportsBetIntake } from './sportsBetParse.js'
 import { ocrSportsBetSlipImage } from './sportsBetOcr.js'
 import {
+  DEFAULT_BANKROLL_START,
   DEFAULT_STAKE_UNITS,
   formatUsd,
+  readBankrollStart,
   readUnitSizeDollars,
   writeUnitSizeDollars,
   stakeDollarsFromUnits,
@@ -168,7 +172,7 @@ export default function SportsBetTracker({
   const [pasteText, setPasteText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [unitSize, setUnitSize] = useState(readUnitSizeDollars)
-  const [bankrollStart, setBankrollStart] = useState(null)
+  const [bankrollStart, setBankrollStart] = useState(readBankrollStart)
   const [settingsDraft, setSettingsDraft] = useState({ unit: '', bankroll: '' })
   const [toolsOpen, setToolsOpen] = useState(false)
   const [toolsTool, setToolsTool] = useState('')
@@ -197,6 +201,8 @@ export default function SportsBetTracker({
   const load = async () => {
     setLoading(true)
     setError('')
+    // Auto-settle finished spread / ML / total bets before listing.
+    await gradeOpenSportsBets(supabaseClient)
     const { bets: rows, error: listErr } = await listSportsBets(supabaseClient)
     if (listErr) {
       setError(listErr)
@@ -225,7 +231,9 @@ export default function SportsBetTracker({
       if (cancelled || !settings) return
       setUnitSize(settings.unit_size_dollars)
       setBankrollStart(
-        settings.bankroll_start == null ? null : Number(settings.bankroll_start),
+        settings.bankroll_start == null
+          ? DEFAULT_BANKROLL_START
+          : Number(settings.bankroll_start),
       )
     })
     return () => {
@@ -756,16 +764,22 @@ export default function SportsBetTracker({
                         Confirm
                       </button>
                     ) : null}
-                    {['won', 'lost', 'push', 'void'].map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => void onSettle(bet.id, s)}
-                        className="rounded-lg border border-zinc-700 px-2.5 py-1 text-[11px] font-bold uppercase text-zinc-300 active:bg-zinc-800"
-                      >
-                        {s}
-                      </button>
-                    ))}
+                    {sportsBetIsAutoGradeable(bet) ? (
+                      <span className="inline-flex items-center rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-[11px] font-semibold text-zinc-500">
+                        Auto-grades when final
+                      </span>
+                    ) : (
+                      ['won', 'lost', 'push', 'void'].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => void onSettle(bet.id, s)}
+                          className="rounded-lg border border-zinc-700 px-2.5 py-1 text-[11px] font-bold uppercase text-zinc-300 active:bg-zinc-800"
+                        >
+                          {s}
+                        </button>
+                      ))
+                    )}
                     <button
                       type="button"
                       onClick={() => openTools('hedge', bet)}
@@ -782,6 +796,23 @@ export default function SportsBetTracker({
                       <Pencil className="h-3 w-3" />
                       Edit
                     </button>
+                    {sportsBetIsAutoGradeable(bet) ? (
+                      <details className="contents">
+                        <summary className="list-none rounded-lg border border-zinc-800 px-2.5 py-1 text-[11px] font-bold uppercase text-zinc-500 active:bg-zinc-800 [&::-webkit-details-marker]:hidden">
+                          Manual
+                        </summary>
+                        {['won', 'lost', 'push', 'void'].map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => void onSettle(bet.id, s)}
+                            className="rounded-lg border border-zinc-700 px-2.5 py-1 text-[11px] font-bold uppercase text-zinc-400 active:bg-zinc-800"
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </details>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => void onDelete(bet.id)}

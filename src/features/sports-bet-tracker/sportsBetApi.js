@@ -163,3 +163,17 @@ export async function refreshSportsBetClv(supabaseClient) {
   if (error) return { graded: 0, error: error.message }
   return { graded: Number(data) || 0, error: null }
 }
+
+/** Auto-settle open spread / ML / total bets vs ESPN finals (Edge `sports-bets-grade`). */
+export async function gradeOpenSportsBets(supabaseClient) {
+  if (!supabaseClient) return { resolved: 0, error: 'No client' }
+  const { data, error } = await supabaseClient.functions.invoke('sports-bets-grade', { body: {} })
+  if (error) return { resolved: 0, error: error.message || 'Grade failed' }
+  if (data?.error) return { resolved: 0, error: String(data.error) }
+  return { resolved: Number(data?.resolved) || 0, error: null }
+}
+
+export function sportsBetIsAutoGradeable(bet) {
+  const m = String(bet?.market || '')
+  return m === 'spread' || m === 'h2h' || m === 'total'
+}

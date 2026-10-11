@@ -1198,6 +1198,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-11:** **Promoted `1.4.1115`** (Fantasy entry NFL Hub Coming soon). Frontend **`test` → `main`** (`e0dcca0f`). No SQL / Edge.
 - **2026-10-11:** **Fantasy entry → NFL Hub Coming soon (`1.4.1115`).** Removed Sports Hub home Fantasy tile. NFL Hub shows Fantasy card with Coming soon veil (`data-sports-hub-fantasy="nfl-soon"`). AppShell `?tab=fantasy` / hamburger still wired for internal. Spec **`docs/fantasy-connect.md`**.
 - **2026-10-11:** **Gameday-style Yahoo OAuth ASWebAuth (`1.4.1114`).** EdgeiOS `EdgeNative.startWebAuthSession` (`ASWebAuthenticationSession`) … in-app auth sheet, callback `edgetilt://yahoo-oauth?tab=fantasy&yahoo=`. Start body `returnMode: native|web` (state prefix `n.`/`w.`). Edge yahoo trio redeployed **test + prod**. Old IPA / web keep HTML handoff. Yahoo API **403** until App ID **`i4wW6xoc`** approved (unchanged). New IPA required.
 - **2026-10-11:** **Yahoo Fantasy 403 + Fantasy tab handoff (`1.4.1113`).** OAuth succeeds but Yahoo returns **403** until Fantasy API access is approved for App ID **`i4wW6xoc`** at sports.yahoo.com/developer. Clearer error + `scope=fspt-r`. Handoff no longer auto-falls into Safari SPA; AppShell `sessionStorage` opens Fantasy tab after return (was landing on Sports Hub).

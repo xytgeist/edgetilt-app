@@ -228,13 +228,36 @@ function softNormForCommit(value) {
     .replace(/^\s+/, '')
 }
 
+/** True when side name/mascot is compatible with a catalog row (blocks Hawks→HAW→Hawaii). */
+function cfbSideAgreesWithRow(side, row) {
+  if (!row) return false
+  const hay = softNormForCommit(`${side?.name || ''} ${side?.mascot || ''}`).trim()
+  if (!hay) return true
+  const padded = ` ${hay} `
+  const candidates = [row.school, ...(row.names || [])]
+    .map((n) => softNormForCommit(n).trim())
+    .filter((n) => n.length >= 3)
+  for (const token of candidates) {
+    // Bare mascot-only tokens ("hawks", "eagles") are too collision-prone for abbrev trust.
+    const schoolN = softNormForCommit(row.school).trim()
+    const mascotN = softNormForCommit(row.mascot).trim()
+    if (mascotN && token === mascotN && token !== schoolN) continue
+    if (padded.includes(` ${token} `) || hay === token) return true
+  }
+  return false
+}
+
 function catalogRowForSide(side, sportKey) {
   const hay = ` ${norm(`${side?.name || ''} ${side?.mascot || ''}`)} `
   if (isCfbSportKey(sportKey)) {
     const espnId = String(side?.team_id ?? side?.espn_id ?? '').trim()
     if (espnId && CFB_BY_ESPN_ID.has(espnId)) return CFB_BY_ESPN_ID.get(espnId)
     const abbrev = resolveCfbCatalogAbbrev(side?.abbrev)
-    if (abbrev.length >= 2 && CFB_BY_ABBREV.has(abbrev)) return CFB_BY_ABBREV.get(abbrev)
+    if (abbrev.length >= 2 && CFB_BY_ABBREV.has(abbrev)) {
+      const row = CFB_BY_ABBREV.get(abbrev)
+      // Abbrev alone is not enough … Rundown "Hawks" → HAW was painting Hawaii logos.
+      if (cfbSideAgreesWithRow(side, row)) return row
+    }
     return cfbRowByLongestName(hay)
   }
   const major = majorLeagueCatalog(sportKey)

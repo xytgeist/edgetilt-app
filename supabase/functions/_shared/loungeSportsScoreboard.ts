@@ -115,7 +115,31 @@ function cfbAbbrevFromOddsName(name: string): string {
     }
   }
   if (best) return best
-  return resolveCfbCatalogAbbrev((n.split(/\s+/).pop() || n).slice(0, 3).toUpperCase())
+  // Do NOT mash the last word to 3 letters into an FBS abbrev … "Hawks" → HAW → Hawaii.
+  // Unknown / FCS keep a display stub that is not a catalog hit.
+  const guess = resolveCfbCatalogAbbrev((n.split(/\s+/).pop() || n).slice(0, 3).toUpperCase())
+  if (guess && CFB_ESPN_BY_ABBREV[guess]) return ''
+  return guess
+}
+
+/** Abbrev is trusted only when the side name agrees (or name is empty). */
+function cfbAbbrevTrustedForSide(abbrevRaw: string, name: string, mascot: string): string {
+  const abb = resolveCfbCatalogAbbrev(abbrevRaw)
+  if (!abb || !CFB_ESPN_BY_ABBREV[abb]) return ''
+  const hay = foldCfbName(`${name || ''} ${mascot || ''}`)
+  if (!hay) return abb
+  const padded = ` ${hay} `
+  // Resolve school/mascot labels from name map keys that point at this abbrev.
+  for (const [key, mapped] of Object.entries(CFB_NAME_ABBREV)) {
+    if (mapped !== abb || key.length < 3) continue
+    // Skip bare single-token mascots under 6 chars when they aren't the full key alone.
+    if (padded.includes(` ${key} `) || hay === key) return abb
+  }
+  for (const [key, meta] of Object.entries(CFB_ODDS_ALIASES)) {
+    if (meta.abbrev !== abb || key.length < 3) continue
+    if (padded.includes(` ${key} `) || hay === key) return abb
+  }
+  return ''
 }
 
 export const LOUNGE_SPORTS_SCOREBOARD_SPORTS = [
@@ -424,10 +448,11 @@ function espnLogoSlug(league: string, abbrev: string): string {
 function attachCfbEspnTeamIds(game: LoungeSportsGame): LoungeSportsGame {
   if (!isCfbSportKey(game.sport_key)) return game
   const patch = (side: LoungeSportsGameSide): LoungeSportsGameSide => {
-    const fromAbbrev = resolveCfbCatalogAbbrev(side?.abbrev || '')
     const fromName = cfbAbbrevFromOddsName(`${side?.name || ''} ${side?.mascot || ''}`)
-    const abb = (fromAbbrev && CFB_ESPN_BY_ABBREV[fromAbbrev] ? fromAbbrev : '') ||
-      (fromName && CFB_ESPN_BY_ABBREV[fromName] ? fromName : fromAbbrev)
+    const fromAbbrev = cfbAbbrevTrustedForSide(side?.abbrev || '', side?.name || '', side?.mascot || '')
+    // Prefer name hits over raw abbrev … stops Shorter Hawks (HAW) stealing Hawaii's ESPN id.
+    const abb = (fromName && CFB_ESPN_BY_ABBREV[fromName] ? fromName : '') ||
+      (fromAbbrev && CFB_ESPN_BY_ABBREV[fromAbbrev] ? fromAbbrev : '')
     const espnId = Number(CFB_ESPN_BY_ABBREV[abb] || 0)
     if (!Number.isFinite(espnId) || espnId <= 0) return side
     const logo = espnLogo('ncaa', abb) || side.logo
@@ -490,15 +515,18 @@ function sideFromRundown(
   const mascot = String(team?.mascot || '').trim()
   const abbrevRaw = String(team?.abbreviation || '').trim().toUpperCase()
   const abbrev = logoLeague === 'ncaa'
-    ? (resolveCfbCatalogAbbrev(abbrevRaw) || cfbAbbrevFromOddsName([name, mascot].filter(Boolean).join(' ')))
+    ? (cfbAbbrevTrustedForSide(abbrevRaw, name, mascot) ||
+      cfbAbbrevFromOddsName([name, mascot].filter(Boolean).join(' ')) ||
+      abbrevRaw)
     : abbrevRaw === 'WSH' ? 'WAS' : abbrevRaw === 'JAC' ? 'JAX' : abbrevRaw
   const display = [name, mascot].filter(Boolean).join(' ').trim() || abbrev || 'Team'
   const teamId = Number(team?.team_id ?? team?.id)
+  const logoAbbrev = logoLeague === 'ncaa' && abbrev && CFB_ESPN_BY_ABBREV[abbrev] ? abbrev : ''
   return {
     name: display,
     mascot,
     abbrev: abbrev || display.slice(0, 3).toUpperCase(),
-    logo: espnLogo(logoLeague, abbrev || name),
+    logo: espnLogo(logoLeague, logoAbbrev || (logoLeague === 'ncaa' ? '' : abbrev || name)),
     score,
     linescores: lines,
     spread: null,

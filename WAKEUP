@@ -122,8 +122,11 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Fantasy hamburger removed (`1.4.1116`)
+**On `test`.** ☰ menu no longer has Fantasy. NFL Hub Coming soon tile stays. `?tab=fantasy` + Yahoo handoff still work. Marketing still **1.4.96**.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Fantasy entry NFL Hub Coming soon (`1.4.1115`)
-**Promoted.** Sports Hub Fantasy tile removed; NFL Hub shows Fantasy **Coming soon** veil. Web **`1.4.1115`** on **`main`** (`e0dcca0f`). Yahoo API apply submitted for App ID **`i4wW6xoc`** (watch investigence@gmail.com). Hamburger / `?tab=fantasy` still open for internal. Marketing still **1.4.96**.
+**Promoted.** Sports Hub Fantasy tile removed; NFL Hub shows Fantasy **Coming soon** veil. Web **`1.4.1115`** on **`main`** (`e0dcca0f`). Yahoo API apply submitted for App ID **`i4wW6xoc`** (watch investigence@gmail.com). Marketing still **1.4.96**.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Fantasy Connect Yahoo OAuth (`1.4.1114`)
 **Promoted.** Gameday-style ASWebAuth + Yahoo API approval gate. Web **`1.4.1114`** on **`main`** (`d479c86c`). Edge yahoo trio already on test+prod. Local Prod archive **`1.4.96 (20261011184042)`** … Organizer → TestFlight (CLI missing Distribution cert). Fantasy API still **403** until Yahoo approves App ID **`i4wW6xoc`**. ESPN/CBS still Soon. Marketing still **1.4.96**.

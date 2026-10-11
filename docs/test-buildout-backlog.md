@@ -1198,6 +1198,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-11:** **Promoted `1.4.1116`** (Fantasy hamburger removed). Frontend **`test` → `main`** (`e9e768d6`). No SQL / Edge.
 - **2026-10-11:** **Fantasy hamburger entry removed (`1.4.1116`).** Title-bar ☰ no longer lists Fantasy. `?tab=fantasy` + Yahoo handoff still open Fantasy home. NFL Hub Coming soon tile unchanged.
 - **2026-10-11:** **Promoted `1.4.1115`** (Fantasy entry NFL Hub Coming soon). Frontend **`test` → `main`** (`e0dcca0f`). No SQL / Edge.
 - **2026-10-11:** **Fantasy entry → NFL Hub Coming soon (`1.4.1115`).** Removed Sports Hub home Fantasy tile. NFL Hub shows Fantasy card with Coming soon veil (`data-sports-hub-fantasy="nfl-soon"`). AppShell `?tab=fantasy` / hamburger still wired for internal. Spec **`docs/fantasy-connect.md`**.

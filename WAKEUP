@@ -123,7 +123,7 @@ The agent should treat the following as **standing instructions for this session
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Sports Hub double pills (`1.4.1104`)
-**Done on test.** ESPN + Odds twins (Raiders@Pats, Bills@Raiders) painted twice because dedupe keyed numeric `team_id` vs abbrev. Catalog-abbrev keys when both sides resolve. Web **`1.4.1104`**. Promote when Ryan asks.
+**Done + promoted.** ESPN + Odds twins (Raiders@Pats, Bills@Raiders) painted twice because dedupe keyed numeric `team_id` vs abbrev. Catalog-abbrev keys when both sides resolve. Web **`1.4.1104`** on **`main`** (`bc294651`).
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-11 ... Bet Tracker auto-grade + $10k bankroll (`1.4.1103`)
 **Done + promoted.** Spread / ML / total bets auto-grade via ESPN (`sports-bets-grade` on tracker refresh + `grade_picks` cron). Props stay manual. Default bankroll **$10,000**, unit **$100**. Web **`1.4.1103`** on **`main`** (`8019c6c8`). SQL **`20261011050000`** on test + prod. Edge **`sports-bets-grade`** + **`lounge-odds-poll`** on test + prod.

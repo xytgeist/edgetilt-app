@@ -1198,6 +1198,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-11:** **Promoted `1.4.1110`** (Yahoo Connect EdgeiOS crash fix). Frontend **`test` → `main`**. No SQL / Edge.
 - **2026-10-11:** **Fantasy Connect Yahoo EdgeiOS crash fix (`1.4.1110`).** Connect Yahoo used `location.assign` into the WKWebView and hard-crashed the IPA. Now **`openExternalUrl(..., { system: true })`** on EdgeiOS; web keeps same-tab assign. AASA claims `?yahoo=`; Fantasy refreshes on return / `yahoo=linked`.
 - **2026-10-11:** **Promoted `1.4.1109`** (Fantasy Connect Yahoo OAuth). Frontend **`test` → `main`**. SQL **`20261011190000`** on **prod**. Deployed **`fantasy-yahoo-oauth-start`** / **`fantasy-yahoo-oauth-callback`** / **`fantasy-yahoo-sync`** on **`jtjgtucumuoswnbauxry`**. Edge secrets **`YAHOO_FANTASY_CLIENT_ID`** / **`YAHOO_FANTASY_CLIENT_SECRET`** set on test + prod (Yahoo app EdgeTilt Fantasy).
 - **2026-10-11:** **Fantasy Connect Yahoo OAuth (`1.4.1109`).** SQL **`20261011190000`** on **test** (`fantasy_oauth_states` + `fantasy_provider_tokens` service-role only + `yahoo_player_key`). Edge **`fantasy-yahoo-oauth-start`** / **`fantasy-yahoo-oauth-callback`** / **`fantasy-yahoo-sync`** on test. Hub pins read primary league across providers. Spec **`docs/fantasy-connect.md`**.

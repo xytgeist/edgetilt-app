@@ -64,8 +64,18 @@ function normAbbrev(value) {
   return x
 }
 
+function sideMatchToken(side) {
+  const id = String(side?.team_id ?? side?.espn_id ?? '').trim()
+  if (/^\d+$/.test(id)) return `id:${id}`
+  return normAbbrev(side?.abbrev)
+}
+
 function matchupKey(game) {
-  return `${String(game?.sport_key || '')}:${normAbbrev(game?.away?.abbrev)}@${normAbbrev(game?.home?.abbrev)}:${ptDateFromIsoLocal(game?.commence_time)}`
+  const away = sideMatchToken(game?.away)
+  const home = sideMatchToken(game?.home)
+  // Incomplete sides must not share a key (was `@ASU:day` for every thin away → score collisions).
+  if (!away || !home) return `id:${String(game?.id || '')}`
+  return `${String(game?.sport_key || '')}:${away}@${home}:${ptDateFromIsoLocal(game?.commence_time)}`
 }
 
 function sideNum(side, key) {
@@ -87,9 +97,10 @@ function preferSpread(nextSide, prevSide) {
 
 /**
  * Full boards can be thin (Rundown-only TNF) after a fat Odds week. Keep current-window
- * games the new payload missed. Active ticks only patch live/soon rows.
+ * games the new payload missed. Active ticks only patch live/soon rows onto that window …
+ * never `active || keep-all` (that retained every prior game and ballooned CFB Hub to 200+).
  */
-function unionScoreboardGames(incoming, prev, { active = false } = {}) {
+function unionScoreboardGames(incoming, prev, { active: _active = false } = {}) {
   if (!Array.isArray(incoming) || !incoming.length) return prev || []
   if (!Array.isArray(prev) || !prev.length) return incoming
   const incomingById = new Map(incoming.map((game) => [String(game.id), game]))
@@ -99,7 +110,9 @@ function unionScoreboardGames(incoming, prev, { active = false } = {}) {
   const out = []
   const mark = (game) => {
     seenId.add(String(game?.id || ''))
-    if (!normAbbrev(game?.away?.abbrev) || !normAbbrev(game?.home?.abbrev)) return
+    const away = sideMatchToken(game?.away)
+    const home = sideMatchToken(game?.home)
+    if (!away || !home) return
     seenMatch.add(matchupKey(game))
   }
   for (const old of prev) {
@@ -110,7 +123,8 @@ function unionScoreboardGames(incoming, prev, { active = false } = {}) {
       mark(old)
       continue
     }
-    if (active || isLoungeSportsCurrentSlateGame(old)) {
+    // Keep only current-window misses (TNF thin full board). Never keep-all on active ticks.
+    if (isLoungeSportsCurrentSlateGame(old)) {
       out.push(old)
       mark(old)
     }

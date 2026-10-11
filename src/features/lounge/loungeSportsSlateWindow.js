@@ -1,6 +1,29 @@
 /** Keep in sync with `supabase/functions/_shared/loungeSportsScoreboard.ts` slate window. */
 
 const PT = 'America/Los_Angeles'
+
+/** Lower = more prominent. Uses `side.conference` from enrich (no import cycle with loungeSportsMatch). */
+const CFB_CONF_TIER = {
+  SEC: 1,
+  'Big Ten': 1,
+  ACC: 1,
+  'Big 12': 1,
+  'FBS Independents': 1,
+  'American Athletic': 2,
+  'Mountain West': 2,
+  'Sun Belt': 2,
+  'Conference USA': 2,
+  'Mid-American': 2,
+  'Pac-12': 2,
+}
+
+function cfbMatchupConferenceTier(game) {
+  const tier = (side) => {
+    const conf = String(side?.conference || '').trim()
+    return CFB_CONF_TIER[conf] || 3
+  }
+  return Math.min(tier(game?.away), tier(game?.home))
+}
 const WEEKDAY = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
 
 function ptYmd(ms) {
@@ -137,12 +160,20 @@ function top25First(byKickoff) {
   const other = (g) => Math.max(sideRank(g?.away), sideRank(g?.home))
   const ranked = byKickoff.filter((g) => best(g) !== Infinity)
   ranked.sort((a, b) => best(a) - best(b) || (other(a) === other(b) ? 0 : other(a) < other(b) ? -1 : 1))
-  return [...ranked, ...byKickoff.filter((g) => best(g) === Infinity)]
+  const unranked = byKickoff.filter((g) => best(g) === Infinity)
+  // Unranked: P4 → G5 → FCS, then kickoff (finals already last from byKickoff).
+  unranked.sort((a, b) => {
+    const ta = cfbMatchupConferenceTier(a)
+    const tb = cfbMatchupConferenceTier(b)
+    if (ta !== tb) return ta - tb
+    return commenceMs(a) - commenceMs(b)
+  })
+  return [...ranked, ...unranked]
 }
 
 /**
  * CFB lists: live games first, then Top 25 matchups in rank order (best side, then the other side),
- * then the rest in kickoff order. Live games are ranked-first too.
+ * then unranked by conference tier (P4 → G5 → FCS) and kickoff. Live games are ranked-first too.
  */
 export function sortCfbGamesTop25First(games) {
   const byKickoff = sortLoungeSportsGamesByKickoffRank(games)
@@ -300,7 +331,8 @@ export function isLoungeSportsCurrentSlateGame(game, now = Date.now()) {
     return game.status === 'pre'
   }
   const day = gameDay(game)
-  if (!day) return true
+  // Undated rows must not stick in the client union forever (was `return true`).
+  if (!day) return false
   if (isNflGame(game)) return nflFetchDates(now).includes(day)
   if (isCfbGame(game)) return cfbFetchDates(now).includes(day)
   return otherSportSlateDates(now).includes(day)

@@ -612,11 +612,44 @@ export function probeLogoWashConflict(src, washHex) {
   return Promise.resolve(job).then((t) => t === 'light')
 }
 
+/** Lower = more prominent on CFB Hub. P4 (incl. Notre Dame) → G5 → FCS/other. */
+const CFB_CONF_TIER = {
+  SEC: 1,
+  'Big Ten': 1,
+  ACC: 1,
+  'Big 12': 1,
+  'FBS Independents': 1, // Notre Dame (+ UConn/UMass stay near P4; rare)
+  'American Athletic': 2,
+  'Mountain West': 2,
+  'Sun Belt': 2,
+  'Conference USA': 2,
+  'Mid-American': 2,
+  'Pac-12': 2,
+}
+
+export function cfbSideConferenceTier(side) {
+  const row = catalogRowForSide(side, 'americanfootball_ncaaf')
+  if (!row) return 3
+  return CFB_CONF_TIER[row.conference] || 3
+}
+
+/** Best (lowest) conference tier in the matchup. */
+export function cfbMatchupConferenceTier(game) {
+  return Math.min(cfbSideConferenceTier(game?.away), cfbSideConferenceTier(game?.home))
+}
+
 export function loungeSportsMatchupDedupeKey(game) {
   const sport = String(game?.sport_key || '')
+  const day = ptDateFromIsoLocal(game?.commence_time)
+  const awayId = String(game?.away?.team_id ?? game?.away?.espn_id ?? '').trim()
+  const homeId = String(game?.home?.team_id ?? game?.home?.espn_id ?? '').trim()
+  // Prefer ESPN ids so ASU abbrev collisions cannot merge Hawaii@ASU into another home.
+  if (/^\d+$/.test(awayId) && /^\d+$/.test(homeId)) {
+    return `${sport}:id:${awayId}@id:${homeId}:${day}`
+  }
   const away = catalogRowForSide(game?.away, sport)?.abbrev || sideAbbrev(game?.away)
   const home = catalogRowForSide(game?.home, sport)?.abbrev || sideAbbrev(game?.home)
-  return `${sport}:${String(away || '').toUpperCase()}@${String(home || '').toUpperCase()}:${ptDateFromIsoLocal(game?.commence_time)}`
+  return `${sport}:${String(away || '').toUpperCase()}@${String(home || '').toUpperCase()}:${day}`
 }
 
 function richerLoungeSportsGame(a, b) {
@@ -688,14 +721,19 @@ export function enrichLoungeSportsGame(game) {
       }
     }
     const espnId = String(row.espn || '').trim()
+    const hasEspn = /^\d+$/.test(espnId)
+    const useCfbEspn = isCfbSportKey(sportKey) && hasEspn
     return {
       ...side,
       abbrev: row.abbrev,
-      team_id: /^\d+$/.test(espnId) ? Number(espnId) : side?.team_id ?? null,
+      team_id: hasEspn ? Number(espnId) : side?.team_id ?? null,
       mascot: side?.mascot || row.mascot || side?.mascot,
-      // Local pack when present; ESPN id CDN is the correctness guarantee.
-      logo: `${logoBase}/${row.abbrev}.png`,
-      logoLight: `${logoBase}/${row.abbrev}-light.png`,
+      conference: row.conference || side?.conference || '',
+      // CFB: ESPN CDN first (local pack 404s painted as X / letter). NFL+ still use local pack.
+      logo: useCfbEspn ? cfbEspnLogoUrl(espnId) : `${logoBase}/${row.abbrev}.png`,
+      logoLight: useCfbEspn
+        ? cfbEspnLogoUrl(espnId, { dark: true })
+        : `${logoBase}/${row.abbrev}-light.png`,
       color: row.color,
       color2: row.color2,
     }

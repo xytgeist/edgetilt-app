@@ -1,7 +1,6 @@
 package com.edgetilt.app
 
 import android.telecom.Connection
-import android.telecom.DisconnectCause
 import android.telecom.PhoneAccount
 import android.telecom.TelecomManager
 
@@ -39,12 +38,13 @@ class EdgeCallConnection(
   }
 
   override fun onDisconnect() {
-    setDisconnected(DisconnectCause(DisconnectCause.LOCAL))
-    destroy()
+    // System call UI End (or Telecom teardown). Must tell the WebView so leave_call runs …
+    // otherwise Android goes idle while the remote (e.g. iPhone CallKit) keeps the call.
+    // Do not setDisconnected/destroy here: EdgeCallRing owns that and guards re-entrancy.
+    EdgeCallRing.onTelecomDisconnect(appContext, invite.callId)
   }
 
   override fun onAbort() {
-    setDisconnected(DisconnectCause(DisconnectCause.CANCELED))
-    destroy()
+    EdgeCallRing.onTelecomDisconnect(appContext, invite.callId)
   }
 }

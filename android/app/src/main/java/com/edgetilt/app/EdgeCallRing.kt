@@ -62,6 +62,8 @@ object EdgeCallRing {
   @Volatile private var connection: EdgeCallConnection? = null
   @Volatile private var webReady = false
   @Volatile private var host: MainActivity? = null
+  /** Guards destroy → onDisconnect → endInternal re-entry (web hangup and system End). */
+  @Volatile private var endingCallId: String? = null
   private val pendingEvents = ArrayDeque<PendingEvent>()
   /** callId → handled-at epoch ms (Answer / Decline / missed). */
   private val recentlyHandled = mutableMapOf<String, Long>()
@@ -190,7 +192,7 @@ object EdgeCallRing {
       return JSONObject().put("ok", true).put("deduped", true)
     }
     if (current != null && current.callId != invite.callId) {
-      endInternal(ctx, current.callId, remote = true, emitEvent = false)
+      endInternal(ctx, current.callId, remote = true, emitEvent = false, fromTelecom = false)
     }
     active = invite
     ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -326,7 +328,7 @@ object EdgeCallRing {
     val invite = active?.takeIf { it.callId == callId } ?: restoreInvite(ctx)?.takeIf { it.callId == callId }
     markHandled(callId)
     dismissIncomingUi(ctx, callId)
-    endInternal(ctx, callId, remote = false, emitEvent = false)
+    endInternal(ctx, callId, remote = false, emitEvent = false, fromTelecom = false)
     if (invite != null) {
       emit(
         "edge-callkit-decline",
@@ -355,10 +357,46 @@ object EdgeCallRing {
   }
 
   fun end(ctx: Context, callId: String?, remote: Boolean = false): JSONObject {
-    val id = callId?.trim().orEmpty().ifEmpty { active?.callId.orEmpty() }
+    val id = callId?.trim().orEmpty().ifEmpty {
+      inCall?.callId.orEmpty().ifEmpty { active?.callId.orEmpty() }
+    }
     if (id.isEmpty()) return JSONObject().put("ok", true)
-    endInternal(ctx, id, remote = remote, emitEvent = true)
+    endInternal(ctx, id, remote = remote, emitEvent = true, fromTelecom = false)
     return JSONObject().put("ok", true)
+  }
+
+  /**
+   * Telecom [Connection.onDisconnect] / [Connection.onAbort].
+   * Answered → `edge-callkit-end` (web `leave_call`). Still ringing → decline.
+   * Mirrors iOS `CXEndCallAction` → web event.
+   */
+  fun onTelecomDisconnect(ctx: Context, callId: String) {
+    val id = callId.trim()
+    if (id.isEmpty()) return
+    if (endingCallId == id) return
+    if (inCall?.callId == id) {
+      endInternal(ctx, id, remote = false, emitEvent = true, fromTelecom = true)
+      return
+    }
+    val ringing =
+      active?.takeIf { it.callId == id }
+        ?: restoreInvite(ctx)?.takeIf { it.callId == id }
+    if (ringing != null) {
+      // Same as Decline from the pill: web must decline_call, not leave an active room.
+      markHandled(id)
+      dismissIncomingUi(ctx, id)
+      endInternal(ctx, id, remote = false, emitEvent = false, fromTelecom = true)
+      emit(
+        "edge-callkit-decline",
+        JSONObject()
+          .put("callId", ringing.callId)
+          .put("roomId", ringing.roomId),
+      )
+      bringShellToFront(ctx)
+      return
+    }
+    // Already cleared (e.g. web hangup destroyed the connection).
+    connection = null
   }
 
   /** Missed-call push replaces the ringing notification. */
@@ -366,43 +404,57 @@ object EdgeCallRing {
     val id = callId?.trim().orEmpty()
     if (id.isEmpty()) return
     if (active?.callId == id || restoreInvite(ctx)?.callId == id) {
-      endInternal(ctx, id, remote = true, emitEvent = true)
+      endInternal(ctx, id, remote = true, emitEvent = true, fromTelecom = false)
     }
   }
 
-  private fun endInternal(ctx: Context, callId: String, remote: Boolean, emitEvent: Boolean) {
-    markHandled(callId)
-    dismissIncomingUi(ctx, callId)
-    val invite =
-      active?.takeIf { it.callId == callId }
-        ?: inCall?.takeIf { it.callId == callId }
-        ?: restoreInvite(ctx)?.takeIf { it.callId == callId }
-    connection?.let {
-      val cause = if (remote) {
-        android.telecom.DisconnectCause(android.telecom.DisconnectCause.REMOTE)
-      } else {
-        android.telecom.DisconnectCause(android.telecom.DisconnectCause.LOCAL)
+  private fun endInternal(
+    ctx: Context,
+    callId: String,
+    remote: Boolean,
+    emitEvent: Boolean,
+    fromTelecom: Boolean,
+  ) {
+    if (endingCallId == callId) return
+    endingCallId = callId
+    try {
+      markHandled(callId)
+      dismissIncomingUi(ctx, callId)
+      val invite =
+        active?.takeIf { it.callId == callId }
+          ?: inCall?.takeIf { it.callId == callId }
+          ?: restoreInvite(ctx)?.takeIf { it.callId == callId }
+      if (!fromTelecom) {
+        connection?.let {
+          val cause = if (remote) {
+            android.telecom.DisconnectCause(android.telecom.DisconnectCause.REMOTE)
+          } else {
+            android.telecom.DisconnectCause(android.telecom.DisconnectCause.LOCAL)
+          }
+          try {
+            it.setDisconnected(cause)
+            it.destroy()
+          } catch (_: Exception) {
+          }
+        }
       }
-      try {
-        it.setDisconnected(cause)
-        it.destroy()
-      } catch (_: Exception) {
+      connection = null
+      cancelNotification(ctx, callId)
+      if (active?.callId == callId) active = null
+      if (inCall?.callId == callId) inCall = null
+      clearPrefs(ctx)
+      exitVoipAudio(ctx)
+      if (emitEvent && invite != null) {
+        emit(
+          "edge-callkit-end",
+          JSONObject()
+            .put("callId", invite.callId)
+            .put("roomId", invite.roomId)
+            .put("reason", if (remote) "remote" else "local"),
+        )
       }
-    }
-    connection = null
-    cancelNotification(ctx, callId)
-    if (active?.callId == callId) active = null
-    if (inCall?.callId == callId) inCall = null
-    clearPrefs(ctx)
-    exitVoipAudio(ctx)
-    if (emitEvent && invite != null) {
-      emit(
-        "edge-callkit-end",
-        JSONObject()
-          .put("callId", invite.callId)
-          .put("roomId", invite.roomId)
-          .put("reason", if (remote) "remote" else "local"),
-      )
+    } finally {
+      if (endingCallId == callId) endingCallId = null
     }
   }
 

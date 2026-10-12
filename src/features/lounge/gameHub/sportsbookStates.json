@@ -1,7 +1,16 @@
 {
-  "updated_at": "2026-10-05",
+  "updated_at": "2026-10-12",
   "note": "States where each odds-feed book runs a licensed online/mobile sportsbook. Refreshed weekly per docs/sportsbook-states-refresh.md. Offshore books, Pinnacle, and sweepstakes apps are licensed nowhere and stay out of this file.",
   "changelog": [
+    {
+      "date": "2026-10-12",
+      "changes": [
+        "Bally Bet +MA (https://massgaming.com/about/sports-wagering-in-massachusetts/sports-wagering-licensees/bally-bet/)",
+        "Bally Bet +NJ (https://www.nj.gov/oag/ge/docs/Financials/SWRTaxReturns/2026/July2026.pdf)",
+        "Bally Bet +TN (https://www.tn.gov/swac/licensees-registrants.html)",
+        "Bally Bet MA NJ TN cleared from uncertain"
+      ]
+    },
     {
       "date": "2026-10-05",
       "changes": [
@@ -114,15 +123,15 @@
     },
     "ballybet": {
       "name": "Bally Bet",
-      "states": ["AZ", "CO", "IN", "IA", "MD", "NY", "OH", "VA"],
-      "verified_at": "2026-10-05",
+      "states": ["AZ", "CO", "IN", "IA", "MD", "MA", "NJ", "NY", "OH", "TN", "VA"],
+      "verified_at": "2026-10-12",
       "sources": [
-        "https://www.ballybet.com/states-where-sports-betting-is-legal",
-        "https://www.ballybet.com/co",
-        "https://www.ballybet.com/md",
-        "https://www.legalsportsreport.com/sports-betting/"
+        "https://massgaming.com/about/sports-wagering-in-massachusetts/sports-wagering-licensees/bally-bet/",
+        "https://www.nj.gov/oag/ge/docs/Financials/SWRTaxReturns/2026/July2026.pdf",
+        "https://www.tn.gov/swac/licensees-registrants.html",
+        "https://www.ballybet.com/states-where-sports-betting-is-legal"
       ],
-      "uncertain": ["MA", "NJ", "TN"]
+      "uncertain": []
     },
     "circasports": {
       "name": "Circa Sports",

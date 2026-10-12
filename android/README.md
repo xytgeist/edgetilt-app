@@ -46,9 +46,14 @@ cd android
 ./gradlew bundleProdRelease   # app/build/outputs/bundle/prodRelease/app-prod-release.aab
 ```
 
-Bump `versionCode` every upload. First Console step: create a Play **organization** account (Ryan has D-U-N-S; org accounts skip the 12-tester closed test), enroll Play App Signing, upload the AAB to an **internal** testing track.
+Bump `versionCode` every upload. Org account + Play App Signing + internal track are live (see fingerprints below).
 
-**Fingerprints (SHA-256):** upload `33:56:43:97:85:D1:4C:AD:1B:CF:E8:89:34:31:8E:04:98:2B:AB:85:1C:D6:20:1B:0D:51:EE:41:B4:8D:7D:36`, debug `26:4E:6A:82:56:0F:D2:1D:8F:1A:67:13:F5:33:8E:04:97:16:A3:52:1B:C8:9C:07:14:12:33:95:0F:87:92:E3`. After Play App Signing enrolls, add the **app signing** certificate SHA-256 from Console → Setup → App signing into `public/.well-known/assetlinks.json` (devices verify that cert, not only the upload key).
+**Fingerprints (SHA-256):**
+- **Play app signing** (devices from Play): `45:CC:6E:17:6B:E9:19:B2:D3:7E:09:F0:17:2E:6B:8E:9D:F4:AB:BE:50:F2:AF:8C:44:7D:1B:AB:E8:00:9E:92`
+- **Upload key:** `33:56:43:97:85:D1:4C:AD:1B:CF:E8:89:34:31:8E:04:98:2B:AB:85:1C:D6:20:1B:0D:51:EE:41:B4:8D:7D:36`
+- **Debug:** `26:4E:6A:82:56:0F:D2:1D:8F:1A:67:13:F5:33:8E:04:97:16:A3:52:1B:C8:9C:07:14:12:33:95:0F:87:92:E3`
+
+All three for `com.edgetilt.app` live in `public/.well-known/assetlinks.json`. Play Console org: **DIGIVERSE VENTURES LLC** / `play@digiverse.ventures` (developer `8014913311107911454`). App **Edge Tilt** internal testing: **10 (1.3.6)** published 2026-10-12.
 
 ## App Links
 
@@ -104,4 +109,4 @@ Ryan (2026-09-29): bring the IPA's native wins to Android. Priority order and ch
 
 - **Google sign-in:** Google refuses OAuth in embedded WebViews. `EdgeWebViews.presentAsChrome` (both activities) drops the `; wv` UA marker and rewrites the Sec-CH-UA brand from "Android WebView" to "Google Chrome". `X-Requested-With: <package>` is still sent: current WebView ignores `setRequestedWithHeaderOriginAllowList` (verified on WebView 133). Polymarket Google login from the **home page** is a full-page Auth0 redirect; from a **market page** ("Log in to trade") it is an Auth0 **popup** that hands the code back via `window.opener.postMessage`. `BetSheetActivity` therefore supports multiple windows: `onCreateWindow` stacks a child WebView over the sheet, `onCloseWindow` / back removes it. Before that (Sep 28), the popup loaded in place with no opener and sat blank on `auth0.polymarket.us/authorize/resume`. Verified on Ryan's Galaxy A15 (WebView 151) with the Google test account (`GOOGLE_TEST_*` in `.env.local`): market page → Google popup → popup closes → signed in (Polymarket onboarding). polymarket.us can take ~15 s to send its first byte, so a white sheet right after open is often just that wait.
 - **Billing:** Play policy on web subscriptions from the app is not settled (see backlog Android section).
-- **App Links:** code + `assetlinks.json` landed (APK **1.3.6**). Needs site deploy (`test` → lvslotpro; `main` → edgetilt) and, after first Play upload, the Play **app signing** SHA-256 added to assetlinks. Until verification succeeds, Chrome still owns the taps.
+- **App Links:** code + `assetlinks.json` (incl. Play app-signing SHA) landed (APK **1.3.6**). Needs site deploy (`test` → lvslotpro; `main` → edgetilt) before `autoVerify` sticks. Until verification succeeds, Chrome still owns the taps.

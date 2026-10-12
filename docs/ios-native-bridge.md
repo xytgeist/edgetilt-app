@@ -12,13 +12,13 @@
 
 ## After the next App Store build goes live (do these, then delete the line)
 
-**Status 2026-10-08:** first store version **1.4.95 Ready for Distribution** (build `20260928212300`). Update **1.4.96** (`20261008181941`) is **Waiting for Review** (auto-release). Do not swap that binary.
+**Status 2026-10-12:** store version **1.4.96 Ready for Distribution** (build `20261008181941`; App Review accepted Oct 11). Prior **1.4.95** (`20260928212300`) superseded.
 
 - [x] **Ship the bet sheet update.** Rides **1.4.96**. Prod web already serves `/native/bet-sheet-polymarket.js`.
 
 Any agent (Mac or Windows) handling an App Store release or seeing a new build go **Ready for Distribution** must work this list. Web-only follow-ups that would break the *previous* IPA if shipped early.
 
-- [ ] **Claim game share links in AASA (Windows).** Live 1.4.95 (`20260928212300`) already has the Swift `/lounge/g/` allow + rewrite (landed 2026-09-27). Add `{ "/": "/lounge/g/*", "comment": "Game hub share link (live scoreboard OG)" }` next to `/lounge/p/*` in **`public/.well-known/apple-app-site-association.json`**, plus `{ "/": "/", "?": { "game": "?*" }, "comment": "SPA game deep link" }`. Commit, push `test`, promote. Safe now ... the live IPA will not open a game UL to a blank page.
+- [ ] **Claim game share links in AASA (Windows).** Live **1.4.96** already has the Swift `/lounge/g/` allow + rewrite (landed 2026-09-27 in 1.4.95 train). Add `{ "/": "/lounge/g/*", "comment": "Game hub share link (live scoreboard OG)" }` next to `/lounge/p/*` in **`public/.well-known/apple-app-site-association.json`**, plus `{ "/": "/", "?": { "game": "?*" }, "comment": "SPA game deep link" }`. Commit, push `test`, promote. Safe now ... the live IPA will not open a game UL to a blank page.
 
 ---
 

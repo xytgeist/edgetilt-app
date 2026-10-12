@@ -32,7 +32,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**App Store (2026-10-08):** **1.4.95 Ready for Distribution** (build `20260928212300`). **1.4.96 Waiting for Review** (build `20261008181941`, auto-release). Do not swap that binary or bump marketing off **1.4.96** until it lands. When 1.4.96 is Ready for Distribution: work **`docs/ios-native-bridge.md`** → *After the next App Store build goes live* (leftover: Windows AASA `/lounge/g/*` + `?game=` ... Swift allowlist is already in the live 1.4.95 IPA).
+**App Store (2026-10-11):** **1.4.96 Ready for Distribution** (build `20261008181941`, auto-release; App Review email Oct 11 accepted App Version 1.4.96). Prior live **1.4.95** (`20260928212300`) superseded. Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*.
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
@@ -45,7 +45,7 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal (Mac):** _iPad / phone landscape shell chrome (Lounge / Slots / Poker / Chat / rail) + iOS WKWebView when needed. Smoke landscape↔portrait on device. Do not bump **`MARKETING_VERSION`** off **1.4.96** while it is in review._
+**Goal (Mac):** _iPad / phone landscape shell chrome (Lounge / Slots / Poker / Chat / rail) + iOS WKWebView when needed. Smoke landscape↔portrait on device. Marketing **1.4.96** is live … next store train can bump when Ryan names a ship._
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + sports pill / live-data track + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
@@ -171,11 +171,11 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 **Notes only.** Ryan asked to park follow-ups from the Limestone “10 legal traps” post. Canonical checklist: **`docs/test-buildout-backlog.md` → Planned (Legal / compliance — Limestone audit)**. Priority open item: **DMCA designated agent** + public page. Also: keep marketing email dark until CAN-SPAM footer; AI disclosure only if conversational AI ships; soft a11y; optional age gate. Already good: RLS, counsel privacy/terms, 18+, no session replay / health pixels, Manage membership cancel. No code this note.
 
 ### Mac Theo ACTIVE TRACK 2026-10-07 ... promote 1.4.1098
-### Mac Theo ACTIVE TRACK 2026-10-08 … App Store accepted + 1.4.96 in review
+### Mac Theo ACTIVE TRACK 2026-10-12 … App Store 1.4.96 live
 
-**I am Mac Theo.** EdgeTilt is on the App Store. **1.4.95 Ready for Distribution** (live binary `20260928212300`). Ryan asked for the latest IPA; that could not ride 1.4.95, so **1.4.96** (`20261008181941`) is **Waiting for Review** (auto-release). Do not remove that submission, swap the build, or bump marketing off **1.4.96**. Web stays **1.4.1098** on `main`. Leftover when 1.4.96 is live: Windows AASA `/lounge/g/*` + `?game=` (Swift allowlist is already in the live 1.4.95 IPA).
+**I am Mac Theo.** EdgeTilt **1.4.96** (`20261008181941`) is **Ready for Distribution** (App Store Connect email Oct 11: review complete, App Version 1.4.96 accepted; auto-release). Prior **1.4.95** (`20260928212300`) superseded. Web tip still **1.4.1098**+ on `main` as noted in newer tracks. Leftover: Windows AASA `/lounge/g/*` + `?game=` (Swift allowlist already shipped in 1.4.95/1.4.96).
 
-**iOS `1.4.96` Waiting for Review.** Build **`20261008181941`**. Auto-release after approval. 1.4.95 (`20260928212300`) stays Ready for Distribution until 1.4.96 lands. Web stays **1.4.1098**.
+**iOS `1.4.96` Ready for Distribution.** Build **`20261008181941`**. Marketing **1.4.96** can bump on the next store train when Ryan asks.
 
 **Web `1.4.1098`.** Promoted **`test` → `main`** (`80550189`) 2026-10-07. iPad landscape gamecast is the iPhone field + rails, scaled. No Edge. Marketing **1.4.96**.
 

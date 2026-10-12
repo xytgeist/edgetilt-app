@@ -25,11 +25,25 @@ export async function linkAppleIdentity(supabase) {
   return { cancelled: false }
 }
 
-/** Redirects away to Google; the page reloads signed in with Google attached. */
+/**
+ * Link Google. EdgeAndroid Custom Tabs completes in-process (`linked: true`).
+ * Browser / other shells redirect away (`linked: false` … caller must not toast yet).
+ */
 export async function linkGoogleIdentity(supabase) {
+  const { canNativeGoogleOAuth, nativeGoogleOAuthRedirectTo, runNativeGoogleOAuth } =
+    await import('./nativeGoogleOAuth.js')
+  if (canNativeGoogleOAuth()) {
+    const result = await runNativeGoogleOAuth(supabase, {
+      redirectTo: nativeGoogleOAuthRedirectTo(`${window.location.origin}/`),
+      mode: 'link',
+    })
+    if (result?.cancelled) return { cancelled: true, linked: false }
+    return { cancelled: false, linked: true }
+  }
   const { error } = await supabase.auth.linkIdentity({
     provider: 'google',
     options: { redirectTo: `${window.location.origin}/` },
   })
   if (error) throw error
+  return { cancelled: false, linked: false }
 }

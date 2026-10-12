@@ -126,6 +126,11 @@ import {
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
 import { createAppleIdTokenNonce } from './features/auth/appleIdTokenNonce.js'
 import { reloadAfterAuthSession } from './features/auth/authPostLoginReload.js'
+import {
+  canNativeGoogleOAuth,
+  nativeGoogleOAuthRedirectTo,
+  runNativeGoogleOAuth,
+} from './features/auth/nativeGoogleOAuth.js'
 import { edgeNativeInvoke, isEdgeiOSShell } from './utils/edgeNative.js'
 import { syncEdgeNativeAuthSession } from './utils/edgeNativeAuthSession.js'
 import * as Sentry from '@sentry/react'
@@ -1274,6 +1279,27 @@ function App() {
     }
 
     try {
+      // EdgeAndroid: Google OAuth must leave the WebView (Custom Tabs) or Google returns 400.
+      if (provider === 'google' && canNativeGoogleOAuth()) {
+        const redirectTo = nativeGoogleOAuthRedirectTo(authRedirectBaseForCurrentLocation())
+        const result = await runNativeGoogleOAuth(supabase, { redirectTo, mode: 'signIn' })
+        if (result?.cancelled) {
+          oauthInFlightRef.current = false
+          setIsOAuthLoading(false)
+          return
+        }
+        const user = result?.data?.user || result?.data?.session?.user
+        if (isLikelyNewAuthUser(user)) markFirstRunChromeTourPending()
+        setAccessNotice('')
+        setVerificationSuccess(false)
+        await reloadAfterAuthSession(
+          (signedInUser) => ensureDefaultProfileRow(supabase, signedInUser),
+          user,
+        )
+        oauthInFlightRef.current = false
+        setIsOAuthLoading(false)
+        return
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {

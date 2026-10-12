@@ -74,6 +74,18 @@ async function signInToRemembered(supabase, account) {
   const method = preferredTargetMethod(account)
   try {
     if (method === 'google') {
+      const { canNativeGoogleOAuth, nativeGoogleOAuthRedirectTo, runNativeGoogleOAuth } =
+        await import('./nativeGoogleOAuth.js')
+      if (canNativeGoogleOAuth()) {
+        const result = await runNativeGoogleOAuth(supabase, {
+          redirectTo: nativeGoogleOAuthRedirectTo(`${window.location.origin}/`),
+          mode: 'signIn',
+        })
+        if (result?.cancelled) return false
+        handoffInFlight = true
+        await reloadAfterAuthSession((u) => ensureDefaultProfileRow(supabase, u), result?.data?.user)
+        return true
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: `${window.location.origin}/` },
@@ -439,7 +451,9 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
         if (cancelled) return
         await done(`${label} is now connected to @${finish.targetHandle}.`)
       } else if (finish.freshMethod === 'google') {
-        await linkGoogleIdentity(supabase)
+        const { cancelled, linked } = await linkGoogleIdentity(supabase)
+        if (cancelled || !linked) return
+        await done(`${label} is now connected to @${finish.targetHandle}.`)
       } else if (finish.freshMethod === 'phone') {
         const phone = `+${String(finish.freshPhone || '').replace(/\D/g, '')}`
         if (!phoneCodeSent) {

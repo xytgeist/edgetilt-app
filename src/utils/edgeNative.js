@@ -9,7 +9,10 @@
 import {
   canEdgeAndroidHaptic,
   canShareEdgeAndroid,
+  canStartEdgeAndroidWebAuthSession,
+  isEdgeAndroidShell,
   shareEdgeAndroid,
+  startEdgeAndroidWebAuthSession,
   triggerEdgeAndroidHaptic,
 } from './edgeAndroid.js'
 import { isHardRockBook, isHardRockUrl } from '../features/lounge/gameHub/sportsbookLinks.js'
@@ -298,11 +301,14 @@ export async function openExternalUrl(url, opts = {}) {
 }
 
 /**
- * True when the IPA can present `ASWebAuthenticationSession` (Gameday-style OAuth sheet).
+ * True when the IPA can present `ASWebAuthenticationSession` or the EdgeAndroid APK
+ * Chrome Custom Tabs OAuth (`startWebAuthSession`).
  * @returns {boolean}
  */
 export function canStartEdgeWebAuthSession() {
-  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  if (typeof window === 'undefined') return false
+  if (isEdgeAndroidShell() && canStartEdgeAndroidWebAuthSession()) return true
+  if (!isEdgeiOSShell()) return false
   return typeof window.EdgeNative?.startWebAuthSession === 'function'
 }
 
@@ -317,6 +323,9 @@ export function canStartEdgeWebAuthSession() {
 export async function startEdgeWebAuthSession(url, opts = {}) {
   const href = String(url || '').trim()
   if (!href) return { ok: false, via: 'noop', error: 'url required' }
+  if (isEdgeAndroidShell() && canStartEdgeAndroidWebAuthSession()) {
+    return startEdgeAndroidWebAuthSession(href, opts)
+  }
   if (!canStartEdgeWebAuthSession()) return { ok: false, via: 'noop' }
   try {
     const result = await edgeNativeInvoke('startWebAuthSession', {

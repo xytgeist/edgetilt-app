@@ -322,7 +322,8 @@ export default function FantasyHomeScreen({
       // Never load Yahoo login inside the EdgeiOS WKWebView … it has hard-crashed the IPA.
       // Prefer ASWebAuthenticationSession (Gameday-style). Old IPA → system Safari + HTML handoff.
       // Web / PWA stay same-tab assign.
-      if (isEdgeiOSShell() && canStartEdgeWebAuthSession()) {
+      // EdgeiOS ASWebAuth or EdgeAndroid Custom Tabs (same bridge helper).
+      if (canStartEdgeWebAuthSession()) {
         const url = await startYahooOAuth(supabaseClient, { returnMode: 'native' })
         yahooOAuthPendingRef.current = true
         setInfo('Connecting Yahoo…')

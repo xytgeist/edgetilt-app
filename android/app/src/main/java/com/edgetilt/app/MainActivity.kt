@@ -72,6 +72,13 @@ class MainActivity : Activity() {
     EdgeCallRing.bindHost(this)
 
     registerBack()
+    // Custom Tabs OAuth return (edgetilt://…) must not load as the WebView start URL.
+    if (EdgeWebAuth.handleCallback(this, intent?.data)) {
+      if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
+        webView.loadUrl(BuildConfig.BASE_URL)
+      }
+      return
+    }
     // App Links / VIEW: only allowed HTTPS paths (then rewrite share permalinks like the IPA).
     // Push / call intents may still pass other in-app URIs via staysInApp.
     val start =
@@ -86,9 +93,11 @@ class MainActivity : Activity() {
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
+    if (EdgeWebAuth.handleCallback(this, intent.data)) return
     val uri =
       EdgeLinks.appLinkLoadUri(intent.data)
         ?: intent.data?.takeIf { EdgeLinks.staysInApp(it) }
+        ?: intent.data?.takeIf { EdgeLinks.isEdgeCustomScheme(it) }?.let { EdgeLinks.httpsFromCustomScheme(it) }
         ?: return
     // Prefer in-page routing when the SPA is already up. A full loadUrl wipes LiveKit /
     // ChatCallProvider mid answer (Answer used to open ?tab=chat&room= this way).
@@ -104,6 +113,15 @@ class MainActivity : Activity() {
     }
   }
 
+  /** Deliver Custom Tabs OAuth result to JS (`edge-android-webauth`). */
+  fun dispatchWebAuthResult(detailJson: String) {
+    val quoted = JSONObject.quote(detailJson)
+    webView.evaluateJavascript(
+      "(function(){try{var d=JSON.parse($quoted);window.dispatchEvent(new CustomEvent('${EdgeWebAuth.EVENT}',{detail:d}));}catch(e){}})()",
+      null,
+    )
+  }
+
   override fun onDestroy() {
     EdgeCallRing.bindHost(null)
     super.onDestroy()
@@ -117,6 +135,7 @@ class MainActivity : Activity() {
   override fun onResume() {
     super.onResume()
     EdgeCallRing.bindHost(this)
+    EdgeWebAuth.onHostResume(this)
     webView.onResume()
   }
 
@@ -294,6 +313,30 @@ class MainActivity : Activity() {
         EdgeCallRing.setSpeakerphone(this@MainActivity, speaker).toString()
       } catch (_: Exception) {
         JSONObject().put("ok", false).toString()
+      }
+    }
+
+    /**
+     * Chrome Custom Tabs OAuth (Google / Yahoo). JSON `{ url, callbackScheme? }`.
+     * Completes with window event `edge-android-webauth` `{ ok, url?, cancelled?, error? }`.
+     */
+    @JavascriptInterface
+    fun startWebAuthSession(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
+      return try {
+        val o = JSONObject(json.ifBlank { "{}" })
+        val url = o.optString("url").trim()
+        val scheme = o.optString("callbackScheme").trim().ifEmpty { "edgetilt" }
+        val latch = java.util.concurrent.CountDownLatch(1)
+        var result = JSONObject().put("ok", false)
+        runOnUiThread {
+          result = EdgeWebAuth.start(this@MainActivity, url, scheme)
+          latch.countDown()
+        }
+        latch.await(8, java.util.concurrent.TimeUnit.SECONDS)
+        result.toString()
+      } catch (e: Exception) {
+        JSONObject().put("ok", false).put("error", e.message ?: "failed").toString()
       }
     }
   }

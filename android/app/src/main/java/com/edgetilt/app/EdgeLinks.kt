@@ -29,6 +29,48 @@ object EdgeLinks {
 
   fun staysInApp(uri: Uri): Boolean = isHttp(uri) && (hostMatches(uri, appHosts) || hostMatches(uri, authHosts))
 
+  fun isEdgeCustomScheme(uri: Uri): Boolean =
+    uri.scheme.equals("edgetilt", ignoreCase = true)
+
+  /**
+   * Map `edgetilt://…` handoffs (Yahoo / open / live-session) to an https SPA URL for the WebView.
+   * OAuth auth-callback is handled by [EdgeWebAuth] and must not go through here.
+   */
+  fun httpsFromCustomScheme(uri: Uri): Uri? {
+    if (!isEdgeCustomScheme(uri)) return null
+    val host = uri.host?.lowercase() ?: return null
+    if (host == "auth-callback") return null
+    val base = Uri.parse(BuildConfig.BASE_URL)
+    val b = base.buildUpon().path("/").clearQuery()
+    when (host) {
+      "yahoo-oauth", "open", "live-session" -> {
+        // Preserve query (tab / yahoo / …)
+        uri.queryParameterNames.forEach { name ->
+          uri.getQueryParameter(name)?.let { b.appendQueryParameter(name, it) }
+        }
+        if (uri.getQueryParameter("tab").isNullOrBlank()) {
+          b.appendQueryParameter("tab", if (host == "yahoo-oauth") "fantasy" else "home")
+        }
+        return b.build()
+      }
+      "live-game" -> {
+        val id = uri.getQueryParameter("id")?.trim().orEmpty()
+        b.appendQueryParameter("tab", "home")
+        if (id.isNotEmpty()) b.appendQueryParameter("game", id)
+        return b.build()
+      }
+      "auth" -> {
+        // edgetilt://auth/confirm?… → https://…/auth/confirm?…
+        val path = uri.path?.lowercase() ?: ""
+        if (path == "/confirm" || path.startsWith("/confirm/")) {
+          return base.buildUpon().path("/auth/confirm").encodedQuery(uri.encodedQuery).build()
+        }
+        return null
+      }
+      else -> return null
+    }
+  }
+
   /**
    * HTTPS App Link we are willing to open (mirrors IPA `isAllowedUniversalLink`).
    * Manifest claims these paths; this is the in-app gate for root `/?…` noise.

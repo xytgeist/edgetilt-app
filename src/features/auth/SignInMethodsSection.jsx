@@ -75,7 +75,10 @@ export default function SignInMethodsSection({
       setMessage('')
       try {
         if (method === 'google') {
-          await linkGoogleIdentity(supabaseClient)
+          const { cancelled, linked } = await linkGoogleIdentity(supabaseClient)
+          if (cancelled || !linked) return
+          await refreshUser()
+          setMessage('Google is now connected. You can sign in with it next time.')
           return
         }
         const { cancelled } = await linkAppleIdentity(supabaseClient)

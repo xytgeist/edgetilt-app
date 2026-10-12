@@ -55,6 +55,18 @@
         <data android:scheme="https" android:host="${appLinkHostWww}" android:pathPrefix="/u/" />
         <data android:scheme="https" android:host="${appLinkHostWww}" android:path="/" />
       </intent-filter>
+      <!-- Custom scheme for Custom Tabs / OAuth return (Google + Yahoo native). -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="edgetilt" android:host="auth-callback" />
+        <data android:scheme="edgetilt" android:host="yahoo-oauth" />
+        <data android:scheme="edgetilt" android:host="auth" />
+        <data android:scheme="edgetilt" android:host="open" />
+        <data android:scheme="edgetilt" android:host="live-session" />
+        <data android:scheme="edgetilt" android:host="live-game" />
+      </intent-filter>
     </activity>
 
     <!-- The books' mobile web is portrait-only. -->

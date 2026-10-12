@@ -263,6 +263,61 @@ export function canEdgeAndroidSetAudioRoute() {
   return Boolean(bridgeWith('setAudioRoute'))
 }
 
+/** True when this APK can open Chrome Custom Tabs OAuth (`startWebAuthSession`). */
+export function canStartEdgeAndroidWebAuthSession() {
+  return Boolean(bridgeWith('startWebAuthSession'))
+}
+
+/**
+ * Chrome Custom Tabs OAuth. Completes via `edge-android-webauth` window event.
+ *
+ * @param {string} url
+ * @param {{ callbackScheme?: string }} [opts]
+ * @returns {Promise<{ ok: boolean, url?: string, cancelled?: boolean, error?: string, via: string }>}
+ */
+export function startEdgeAndroidWebAuthSession(url, opts = {}) {
+  const b = bridgeWith('startWebAuthSession')
+  const href = String(url || '').trim()
+  if (!b || !href) return Promise.resolve({ ok: false, via: 'noop' })
+  return new Promise((resolve) => {
+    let done = false
+    const finish = (detail, via) => {
+      if (done) return
+      done = true
+      window.removeEventListener('edge-android-webauth', onResult)
+      window.clearTimeout(timer)
+      resolve({
+        ok: detail?.ok === true,
+        url: typeof detail?.url === 'string' ? detail.url : undefined,
+        cancelled: detail?.cancelled === true,
+        error: typeof detail?.error === 'string' ? detail.error : undefined,
+        via,
+      })
+    }
+    const onResult = (event) => finish(event?.detail || {}, 'bridge')
+    // Custom Tabs can sit a long time on Google 2FA.
+    const timer = window.setTimeout(() => finish({ ok: false, error: 'timeout' }, 'timeout'), 10 * 60_000)
+    window.addEventListener('edge-android-webauth', onResult)
+    try {
+      const raw = b.startWebAuthSession(
+        JSON.stringify({
+          url: href,
+          callbackScheme: String(opts.callbackScheme || 'edgetilt').trim() || 'edgetilt',
+        }),
+      )
+      const started = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+      if (started?.ok === false) {
+        finish(
+          { ok: false, error: typeof started?.error === 'string' ? started.error : 'Could not open sign-in' },
+          'bridge',
+        )
+      }
+    } catch {
+      finish({ ok: false, error: 'Could not open sign-in' }, 'error')
+    }
+  })
+}
+
 /**
  * @param {{ route: 'speaker' | 'earpiece' | 'speakerphone' }} args
  */

@@ -10,6 +10,9 @@ import { authRedirectUrlWithPromoStamps } from '../billing/militaryPromoStamp.js
 /** Supabase redirect allowlisted on test + prod (custom scheme → app). */
 export const EDGE_NATIVE_GOOGLE_OAUTH_REDIRECT = 'edgetilt://auth-callback'
 
+/** Always show the Google account list (Custom Tabs / Chrome otherwise SSO the last account). */
+export const GOOGLE_OAUTH_QUERY_PARAMS = { prompt: 'select_account' }
+
 export function canNativeGoogleOAuth() {
   return isEdgeAndroidShell() && canStartEdgeWebAuthSession()
 }
@@ -42,7 +45,11 @@ export async function runNativeGoogleOAuth(supabase, { redirectTo, mode = 'signI
   if (!canNativeGoogleOAuth()) {
     throw new Error('Native Google OAuth is not available in this app build.')
   }
-  const options = { redirectTo, skipBrowserRedirect: true }
+  const options = {
+    redirectTo,
+    skipBrowserRedirect: true,
+    queryParams: GOOGLE_OAUTH_QUERY_PARAMS,
+  }
   const started =
     mode === 'link'
       ? await supabase.auth.linkIdentity({ provider: 'google', options })

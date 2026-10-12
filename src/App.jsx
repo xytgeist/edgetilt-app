@@ -128,6 +128,7 @@ import { createAppleIdTokenNonce } from './features/auth/appleIdTokenNonce.js'
 import { reloadAfterAuthSession } from './features/auth/authPostLoginReload.js'
 import {
   canNativeGoogleOAuth,
+  GOOGLE_OAUTH_QUERY_PARAMS,
   nativeGoogleOAuthRedirectTo,
   runNativeGoogleOAuth,
 } from './features/auth/nativeGoogleOAuth.js'
@@ -1304,6 +1305,7 @@ function App() {
         provider,
         options: {
           redirectTo: authRedirectUrlWithPromoStamps(authRedirectBaseForCurrentLocation()),
+          ...(provider === 'google' ? { queryParams: GOOGLE_OAUTH_QUERY_PARAMS } : {}),
         },
       })
       if (error) throw error

@@ -40,9 +40,13 @@ export async function linkGoogleIdentity(supabase) {
     if (result?.cancelled) return { cancelled: true, linked: false }
     return { cancelled: false, linked: true }
   }
+  const { GOOGLE_OAUTH_QUERY_PARAMS } = await import('./nativeGoogleOAuth.js')
   const { error } = await supabase.auth.linkIdentity({
     provider: 'google',
-    options: { redirectTo: `${window.location.origin}/` },
+    options: {
+      redirectTo: `${window.location.origin}/`,
+      queryParams: GOOGLE_OAUTH_QUERY_PARAMS,
+    },
   })
   if (error) throw error
   return { cancelled: false, linked: false }

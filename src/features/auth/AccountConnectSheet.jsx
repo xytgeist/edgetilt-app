@@ -86,9 +86,13 @@ async function signInToRemembered(supabase, account) {
         await reloadAfterAuthSession((u) => ensureDefaultProfileRow(supabase, u), result?.data?.user)
         return true
       }
+      const { GOOGLE_OAUTH_QUERY_PARAMS } = await import('./nativeGoogleOAuth.js')
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: `${window.location.origin}/` },
+        options: {
+          redirectTo: `${window.location.origin}/`,
+          queryParams: GOOGLE_OAUTH_QUERY_PARAMS,
+        },
       })
       return !error
     }

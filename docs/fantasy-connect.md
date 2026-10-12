@@ -2,6 +2,8 @@
 
 Signed-in users link a fantasy account, sync leagues/rosters/matchups, and auto-highlight **mine** + **enemy** players on NFL game hubs.
 
+**Suite roadmap (Layers A–E, Trade Analyzer, DFS, emotional hedges, phases):** **`docs/fantasy-suite.md`**. This file is the Connect implementation contract only.
+
 ## Product
 
 | Item | Spec |

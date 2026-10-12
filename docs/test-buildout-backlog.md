@@ -63,6 +63,20 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ---
 
+## Planned (Fantasy suite)
+
+**Canonical roadmap:** **`docs/fantasy-suite.md`** (Layers A–E + phases). Connect contract: **`docs/fantasy-connect.md`**.
+
+- [ ] **Phase 0 … Connect soft-launch.** Yahoo API approval (`i4wW6xoc`); sport/kind fields; multi-league UX; Fantasy IA shell (Leagues / Live / Tools / DFS). Lift NFL Hub Coming soon when ready.
+- [ ] **Phase 1 … Live Fantasy HQ (NFL).** Week command center + hub deep links (`docs/fantasy-suite.md` Layer C).
+- [ ] **Phase 2 … Start/Sit + Waiver.** Shared value/need engine (Layer B1–B2).
+- [ ] **Phase 2.5 … Emotional hedge v1.** Bet/prop insurance on season-long NFL teams; `hedge_of` in bet tracker (Layer E1).
+- [ ] **Phase 3 … Trade Analyzer.** Finder + Offer Review (Layer B3).
+- [ ] **Phase 4 … DFS v1.** DK/FD CSV + simple optimizer + slate monitor (Layer D).
+- [ ] **Phase 5 … Second sport + research pack.** NBA or MLB season-long + SOS/pts-allowed tools.
+
+---
+
 ## Planned (Native shells / app stores)
 
 **When:** Ryan back in Vegas (target **2026-08-19** or **2026-08-20**). Next **major** push after current web work.
@@ -1233,6 +1247,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - **2026-10-11:** **CFB logos by ESPN team_id (`1.4.1101`).** Abbrev-first painting caused hundreds of collisions (UT Permian Basin→Texas, West Texas A&M→Aggies, Shorter Hawks→Hawaii). Identity order is now **ESPN `team_id` (name-validated) → anchored name → abbrev last**; logos from numeric ESPN CDN / local pack only after a real catalog hit. Edge `sideFromRundown` / `gameFromOdds` / `attachCfbEspnTeamIds` match. Redeploy **`lounge-sports-scoreboard`** test + prod.
 - **2026-10-11:** **Prod Disk IO Budget (Micro → Small).** Alert on `jtjgtucumuoswnbauxry`: `net._http_response` was ~408 MB of unreclaimed dead space (~1.2k tiny live rows) … `TRUNCATE` → **48 kB** + daily `VACUUM (ANALYZE)` cron `vacuum_net_http_response_daily`. `lounge_odds_snapshots` had grown to ~767 MB / ~534k rows since July with no retention … migration **`20261011043000`** on **test + prod** (`cron_prune_lounge_odds_snapshots` keep 3 days, hooked into `cron_prune_job_run_details_daily`). After Ryan upgraded compute **Micro → Small**: chunked prune + `VACUUM FULL` → **~4.9k rows / 17 MB**, `older_3d=0`. Same class as Aug 9 cron-history outage.
 - **2026-10-09:** **Legal / compliance todos (Limestone audit).** Scored EdgeTilt against Limestone’s 10 vibe-code traps. Mostly good (RLS, privacy, 18+, no session replay / health pixels, cancel paths). Parked open items under **Planned (Legal / compliance — Limestone audit)**: DMCA agent (priority), marketing-email CAN-SPAM gate, AI disclosure if/when, soft a11y, optional age gate. No code.
+- **2026-10-12:** **Fantasy suite roadmap.** Layers A–E (Connect, season-long tools incl. Trade Analyzer, Live HQ, DFS, emotional hedges) + phased ship order in **`docs/fantasy-suite.md`**. Connect remains **`docs/fantasy-connect.md`**. Backlog **Planned (Fantasy suite)**.
 - **2026-10-12:** **App Store 1.4.96 Ready for Distribution.** App Review email Oct 11: submission complete, App Version **1.4.96** accepted (build `20261008181941`, auto-release). Prior **1.4.95** (`20260928212300`) superseded. Leftover: Windows AASA `/lounge/g/*` + `?game=` (`docs/ios-native-bridge.md`).
 - **2026-10-08:** **App Store accepted.** **1.4.95 Ready for Distribution** (build `20260928212300`). Latest IPA submitted as **1.4.96** (`20261008181941`) ... later approved Oct 11 (see 2026-10-12). Marketing **1.4.96** on `test` (`dbe1e9ac`). Web stays **1.4.1098**. Leftover: Windows AASA `/lounge/g/*` + `?game=` (Swift allowlist already in the live IPA).
 - **2026-10-07:** **Promoted `1.4.1098`** (iPad landscape gamecast scale). Frontend **`test` → `main`** (`80550189`). No Edge. Marketing still **1.4.95**.

@@ -206,6 +206,7 @@ Future sessions have **no memory** of this chat. Treat the repo as the **source 
 | 6b | `docs/seo-edgetilt-slots.md` | Brand SEO for **edge tilt / advantage play slots** … `/advantage-play-slots`, `/slots` (+ tools), `/guides`, `/poker`, sitemap, Search Console |
 | 6c | `docs/ios-native-bridge.md` | **iOS WKWebView shell:** JS↔Swift bridge contract stub + **dual-machine agent rules** (Mac vs Windows) |
 | 6d | `docs/theo-channel.md` | **Windows ↔ Mac Theo mailbox** on **https://lvslotpro.com/theo** (read without git pull) |
+| 6e | `docs/fantasy-suite.md` | **Fantasy Ops roadmap:** Layers A–E (Connect, season-long tools, Live HQ, DFS, emotional hedges), connectors, phases. Connect impl: **`docs/fantasy-connect.md`** |
 | 6 | `docs/access-tiers.md` | **Freemium spec (shipped):** no account vs free vs **Slots Edge** / staff — per-surface read/write matrix |
 | 7 | `docs/entitlements-matrix.md` | **Multi-product paywalls (planned + partial):** Edge Pro, creator fan subs, add-ons, stacking, **`get_my_entitlements()`** target, rollout phases |
 | 8 | `docs/affiliates.md` | **Creator affiliates:** in-house v1 (packages, `?ref=` + promo, ledger, admin/creator portals, Connect) |
@@ -229,6 +230,7 @@ Do this **in the same change or PR** as the code (or immediately after), not “
 | **DB capability** (e.g. moderator `UPDATE` including `pinned`) **without** matching UI | `docs/test-buildout-backlog.md`: open checkbox + how to test (seed SQL, SQL editor, future UI). Do not assume the next agent reads chat exports. |
 | Edge Function added/removed/renamed on test | `docs/test-buildout-backlog.md` Edge Functions section + prod checklist §4 if needed |
 | Stakeholder **decision** that affects implementation | Distill into the single best canonical file above; **one sentence in Update log** if it closes or opens a tracked item |
+| **Fantasy suite** (Connect, tools, Live HQ, DFS, hedges, phases) | **`docs/fantasy-suite.md`** + Connect contract **`docs/fantasy-connect.md`** + backlog **Planned (Fantasy suite)** |
 | **Freemium / subscriptions / entitlements** (tiers, paywalls, Stripe) | **`docs/access-tiers.md`** (shipped tiers) + **`docs/entitlements-matrix.md`** (multi-product catalog + capability matrix) + `docs/social-feed-roadmap.md` (Freemium section) + backlog + `docs/frontend-architecture.md` when client gating changes |
 | **Creator affiliates** (in-house ledger, packages, ref/promo) | **`docs/affiliates.md`** |
 | Only internal refactor, **zero** API/UX/contract change | Docs optional unless you moved paths (then `frontend-architecture.md`) |

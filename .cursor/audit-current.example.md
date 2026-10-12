@@ -17,6 +17,10 @@
 ## Blast radius
 -
 
+## Why existing code is this way
+<!-- required when changing prior behavior: job each hold/guard/branch still does; blame/log-S/docs. Skip only for pure greenfield. -->
+-
+
 ## Verify
 - [ ]
 

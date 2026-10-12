@@ -1,32 +1,39 @@
 ---
-description: Do not gut intentional behavior when fixing a nearby bug — learn why it existed first
+description: Never blindly “fix” code — learn why it exists first; fixes must not undo prior fixes
 alwaysApply: true
 ---
 
 # Preserve intentional behavior when fixing
 
-When something looks like “the bug” (a delay, debounce, skip, duplicate path, weird guard), **do not delete or weaken it until you know why it was added.**
+A “fix” that only chases the symptom in front of you often **undoes a prior fix**. Weird delays, guards, duplicate paths, CSS quirks, platform gates, and “pointless” branches usually exist because something else broke.
 
-Ryan (2026-09-30): agents were fixing one symptom and casually stripping a hold/debounce/guard that still did a different real job.
+**Before changing or deleting existing behavior**, know what you are affecting … not only the file Ryan named.
 
-## Required before changing an existing hold / guard / race fix
+## Required before any “fix” to existing code
 
-1. **Find why it exists** … `git log -S` / blame / commit message / nearby comments / backlog / `docs/ios-native-bridge.md`.
-2. **Name the job it still does** (rate limit, Apple VoIP rule, scroll spam, dedupe, China gate, etc.).
-3. **Fix only the broken path** … keep the intentional job on the paths that still need it.
-4. **Say so to Ryan** in the blast-radius note if you almost removed it.
+1. **Trace impact** … callers, shared components/CSS, dual-purpose timers/events, light/dark, iOS vs web, contracts. Grep the symbol/class.
+2. **Find why it exists** … `git log -S` / blame / commit message / nearby comments / backlog / `docs/ios-native-bridge.md` / prior WAKEUP notes.
+3. **Name the job it still does** (rate limit, Apple VoIP, scroll spam, dedupe, China gate, Island inset, race hold, etc.).
+4. **Fix only the broken path** … keep the intentional job on the paths that still need it. Prefer a narrower gate over deleting the old fix.
+5. **Say so to Ryan** in the blast-radius / audit note if you almost removed or weakened it.
+
+If you cannot explain why the old code is there, **stop and ask** (or dig further) before “cleaning it up.”
 
 ## Bad
 
 - “2s debounce caused unread to stick … remove the debounce.”
 - “Dedupe skip caused a crash … flatten every PushKit path the same way.”
+- “This CSS looks redundant … delete it” (it was a light-mode or Island fix).
+- “Simplify this branch” without checking which platform/race it was for.
 
 ## Good
 
 - “2s debounce is for live in-thread Edge spam … keep it for later marks; first open marks immediately.”
 - “PushKit must always `reportNewIncomingCall` … re-report the same UUID; do not `.failed` mid-accept.”
+- “Island inset was intentional … fix the new overlap without removing sat padding.”
 
 ## Related
 
-- Cross-impact / blast radius: **`AGENTS.md`** (`AGENT_RULE_CROSS_IMPACT_CHECK`, `AGENT_RULE_BLAST_RADIUS`).
-- This rule’s token: **`AGENT_RULE_PRESERVE_INTENTIONAL_BEHAVIOR`**.
+- Blast radius / cross-impact: **`AGENTS.md`** (`AGENT_RULE_CROSS_IMPACT_CHECK`, `AGENT_RULE_BLAST_RADIUS`).
+- Audit gate: **`.cursor/rules/audit-before-impl.mdc`** (why-existing section when changing prior behavior).
+- Token: **`AGENT_RULE_PRESERVE_INTENTIONAL_BEHAVIOR`**.

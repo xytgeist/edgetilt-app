@@ -124,15 +124,19 @@ That means tracing **callers, imports, shared components, dual-purpose timers/ev
 
 ### Do not blindly “fix” by gutting intentional behavior
 
-> When a delay, debounce, skip, duplicate path, or weird guard looks like the bug, **do not delete or weaken it until you know why it was added.** Find the commit / comment / docs job it still does, then fix **only** the broken path and **keep** the intentional job on the paths that still need it. Example (2026-09-30): chat unread stuck because first-open shared a 2s mark-read debounce … keep the 2s coalesce for live in-thread spam; mark immediately on first open.
+> A “fix” that only chases the symptom in front of you often **undoes a prior fix**. Delays, debounces, skips, duplicate paths, weird guards, CSS quirks, and platform gates usually exist because something else broke.
+>
+> **Before changing existing behavior:** (1) trace what else it affects (callers, shared CSS/components, light/dark, iOS vs web), (2) find why it was written that way (`git log -S` / blame / commit / comments / docs), (3) name the job it still does, (4) fix **only** the broken path and **keep** the intentional job elsewhere. If you cannot explain the old code, stop and dig (or ask) … do not “clean it up.”
+>
+> Example (2026-09-30): chat unread stuck because first-open shared a 2s mark-read debounce … keep the 2s coalesce for live in-thread spam; mark immediately on first open.
 
-Cursor: **`.cursor/rules/preserve-intentional-behavior.mdc`**.
+Cursor: **`.cursor/rules/preserve-intentional-behavior.mdc`**. Audit gate requires a **Why existing code** section when touching prior behavior: **`.cursor/rules/audit-before-impl.mdc`**.
 
 `AGENT_RULE_PRESERVE_INTENTIONAL_BEHAVIOR` — searchability token.
 
 ### Report blast radius before landing changes
 
-> Before implementing (or when summarizing a diff), tell **Ryan** every **other surface** the change will affect — shared CSS classes, reused components, cross-feature imports, light/dark leakage — not only the file or feature he named. Grep the symbol/class first.
+> Before implementing (or when summarizing a diff), tell **Ryan** every **other surface** the change will affect — shared CSS classes, reused components, cross-feature imports, light/dark leakage — not only the file or feature he named. Grep the symbol/class first. Blast radius and “why existing code” go together: impact without history is how prior fixes get undone.
 
 `AGENT_RULE_BLAST_RADIUS` — searchability token.
 

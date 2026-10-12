@@ -108,7 +108,7 @@ Ryan (2026-09-29): bring the IPA's native wins to Android. Priority order and ch
 
 ## Known gaps (MVP)
 
-- **EdgeTilt Google sign-in (APK 1.3.7+):** Google blocks OAuth inside the shell WebView (Error 400: disallowed_useragent). Real fix = Chrome Custom Tabs via `EdgeAndroid.startWebAuthSession` → Supabase redirect `edgetilt://auth-callback` → `exchangeCodeForSession` in the WebView (PKCE stays in WebView storage). Web **`1.4.1118`**. iOS / browser Google paths unchanged. Fantasy Yahoo on Android uses the same Custom Tabs bridge.
+- **EdgeTilt Google sign-in (APK 1.3.7+):** Google blocks OAuth inside the shell WebView (Error 400: disallowed_useragent). Real fix = Chrome Custom Tabs via `EdgeAndroid.startWebAuthSession` → Supabase redirect `edgetilt://auth-callback` → `exchangeCodeForSession` in the WebView (PKCE stays in WebView storage). Web **`1.4.1119`** (`prompt=select_account`). **Ryan smoke PASSED 2026-10-12.** Fantasy Yahoo on Android uses the same Custom Tabs bridge.
 - **Polymarket / Kalshi Google (bet sheet):** still in-sheet via `EdgeWebViews.presentAsChrome` (UA + Sec-CH-UA Chrome disguise). Not Custom Tabs. Polymarket Google from a **market page** is an Auth0 **popup** (`window.opener.postMessage`); `BetSheetActivity` stacks a child WebView. Verified on Ryan's Galaxy A15 with `GOOGLE_TEST_*`. Do not route book logins through `startWebAuthSession`.
 - **Billing:** Play policy on web subscriptions from the app is not settled (see backlog Android section).
 - **App Links:** code + `assetlinks.json` (incl. Play app-signing SHA) landed (APK **1.3.6**). Needs site deploy (`test` → lvslotpro; `main` → edgetilt) before `autoVerify` sticks. Until verification succeeds, Chrome still owns the taps.

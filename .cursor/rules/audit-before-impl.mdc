@@ -1,0 +1,31 @@
+---
+description: Evidence-gated plan audit before non-trivial code — no performative self-confidence
+alwaysApply: true
+---
+
+# Audit before implementation
+
+For **non-trivial** implementation (behavior change, shared UI/CSS, bridge, SQL, Edge, multi-file), maintain **`.cursor/audit-current.md`** (gitignored). Copy from **`.cursor/audit-current.example.md`** if missing.
+
+Question-only turns, one-line typos, and pure doc/WAKEUP notes **skip** this.
+
+## Gate
+
+1. **Before writing production code:** fill Goal, Evidence, Minimal change, Gaps & risks, Blast radius, Verify. Set `Status: PLAN`. Do not affirm. Do not implement yet if material gaps are unaddressed.
+2. **Evidence must be real:** list paths/symbols you actually `Read` / `Grep` / opened this turn (or say none yet and open them first). “I audited auth” with no paths = fail.
+3. **Minimal change:** smallest diff that meets Ryan’s ask. Explicitly list what you are **not** doing (extra abstractions, speculative future-proofing, drive-bys).
+4. **Gaps:** each failure mode → fix in plan now, or `ACCEPT:` with a reason.
+5. **Blast radius:** other surfaces that could break. Grep shared symbols/classes. Aligns with **`AGENTS.md`** (`AGENT_RULE_BLAST_RADIUS`, `AGENT_RULE_PRESERVE_INTENTIONAL_BEHAVIOR`).
+6. **Implement:** set `Status: IMPLEMENTING`, then edit.
+7. **After code:** run Verify (real commands/checks), append results, set `Status: VERIFIED` or list blockers. Never claim VERIFIED without running checks.
+
+## Do not
+
+- Closed confidence quizzes (“highest confidence?”, “audited a few times?”).
+- Simulated re-checking without tools.
+- Commit `.cursor/audit-current.md` unless Ryan asks (dual-machine git noise).
+- Let this replace sync-before-edit, questions-only, or dual-machine ownership.
+
+Durable decisions still go in **`WAKEUP`** / backlog / canonical docs … not only the audit scratch file.
+
+`AGENT_RULE_AUDIT_BEFORE_IMPL` — searchability token.

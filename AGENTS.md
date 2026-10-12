@@ -144,6 +144,12 @@ Clarify or analyze in prose; **do not make edits, refactors, or unsolicited patc
 
 `AGENT_RULE_QUESTIONS_ANSWER_ONLY` — searchability token for this rule.
 
+### Audit before non-trivial implementation
+
+> For behavior / shared-surface work, agents maintain gitignored **`.cursor/audit-current.md`** (copy from **`.cursor/audit-current.example.md`**) with evidence of files actually opened, minimal change, gaps, blast radius, and real verification … **before** writing production code. No closed “highest confidence?” self-grades. Cursor: **`.cursor/rules/audit-before-impl.mdc`**.
+
+`AGENT_RULE_AUDIT_BEFORE_IMPL` — searchability token.
+
 ## CRITICAL — LIGHT MODE vs DARK MODE (mode-specific UI)
 
 > When **Ryan** says a change is for **light mode only** or **dark mode only**, that change **MUST apply only to that mode** and **MUST NOT** affect the other mode.

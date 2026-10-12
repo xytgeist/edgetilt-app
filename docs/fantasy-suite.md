@@ -3,7 +3,7 @@
 Product plan for EdgeTilt Fantasy … **tools for edge hunters**, not a league viewer and not a FantasyPros expert-content clone.
 
 **Connect implementation (shipped / in flight):** **`docs/fantasy-connect.md`**.  
-**Positioning:** Connect is the door. The suite is decision tools + live command center + DFS toolkit + cross-edge hedges, fed by synced leagues/lineups.
+**Positioning:** Connect is the door. The suite is decision tools + live command center + DFS toolkit + cross-edge hedges, fed by synced leagues/lineups. **Notifications are a first-class retention fabric** across all layers … not an afterthought.
 
 ---
 
@@ -15,6 +15,7 @@ Product plan for EdgeTilt Fantasy … **tools for edge hunters**, not a league v
 | League-aware tools (scoring, roster, FA pool, byes) | Generic “expert consensus” content farm |
 | Multi-sport (NFL beachhead, then expand) | NFL-only forever in the IA |
 | Cross-edge with bets, hubs, Lounge, Island | A siloed fantasy mini-app |
+| Timely **notifications** that pull users back to act | Spammy score spam with no next action |
 
 **Modes (first-class):**
 
@@ -34,6 +35,7 @@ Same player identity graph. Different workflows. Fantasy home IA: **Leagues** | 
 - **Edge-native:** jumps hub ↔ fantasy ↔ bet on the same game without leaving Edge.
 - **Trade Analyzer:** user copies/sends at least one generated or reviewed offer per month in-season.
 - **Emotional hedge:** optional; tracked as `hedge_of` in bet tracker when used.
+- **Notifications:** tap-through rate from fantasy pushes into Live / Tools / hedge / trade surfaces (retention signal).
 
 ---
 
@@ -45,14 +47,15 @@ Same player identity graph. Different workflows. Fantasy home IA: **Leagues** | 
 | **B** | Season-long tools | Start/Sit, Waiver, Trade Analyzer, research |
 | **C** | Live Fantasy HQ | Gameday-shaped week command center (Edge-native) |
 | **D** | DFS tools | Slate / optimize / live slate monitor |
-| **E** | Cross-edge | Emotional hedges, bet+fantasy same game, Lounge alerts |
+| **E** | Cross-edge | Emotional hedges, bet+fantasy same game |
+| **F** | Notifications | Outcomes, considerations, injuries, alerts … bring users back to act |
 
 Shared engines (build once, reuse):
 
 - **Player values** … ROS / weekly projections + VORP in *league scoring* (Std / Half / PPR / custom later)
 - **Roster need / surplus** … starters + bench depth + byes + injuries
 - **Fairness band** … Aggressive ↔ Fair slider for trades
-- **Exposure map** … my starters / enemy starters / DFS ownership → hedges + Live HQ filters
+- **Exposure map** … my starters / enemy starters / DFS ownership → hedges + Live HQ filters + notification targeting
 
 ---
 
@@ -229,7 +232,7 @@ NFL first (hub + scoreboard + fantasy points already exist). Extend when other s
 - [ ] Multi-matchup cards + win % 
 - [ ] “My players only” play filter (reuse hub PBP where possible)
 - [ ] One-tap open hub with pins
-- [ ] Push / Island hooks for injury-to-starter (shared with E)
+- [ ] Deep links from Layer F notifications into HQ / hub
 
 **Depends on:** Layer A primary/multi league; existing `lounge-sports-scoreboard` / game hub fantasy.
 
@@ -296,19 +299,61 @@ Show alongside season-long **and** DFS teams: suggested sports bets / player pro
 
 Fantasy points + odds / public split + bet card on one game (hub already partial).
 
-### E3 … Alerts
-
-Injury / inactive / late scratch on **my** starters → Lounge push / Island; optional hedge refresh.
-
 ### Layer E deliverables / specifics
 
 - [ ] Emotional hedge v1 on fantasy team + player rows (NFL props from live odds)
 - [ ] Bet tracker `hedge_of` metadata
 - [ ] Live HQ exposure + hedge strip
-- [ ] Starter injury alerts
 - [ ] DFS-specific hedge templates (chalk / min-cash protect)
+- [ ] Hedge refresh hooks when Layer F fires injury / inactive (optional)
 
-**Depends on:** Layer A exposure map; sports odds/props pipeline; bet tracker.
+**Depends on:** Layer A exposure map; sports odds/props pipeline; bet tracker; Layer F for alert delivery.
+
+---
+
+## Layer F … Notifications (retention fabric)
+
+### Goal
+
+Bring users **back into Edge** at moments that matter … with a clear next action. Every fantasy notification should answer: *what happened, why I care, what to do in-app.*
+
+Reuse existing Edge channels where possible: **APNs / FCM**, Lounge **activity / in-app alerts**, optional **Dynamic Island / Live Activity** for live weeks, email only if we already have a transactional path.
+
+### Categories
+
+| Category | Examples | Deep link target |
+| --- | --- | --- |
+| **Outcomes** | Matchup won/lost; final score vs projection; DFS cash / bust; playoff clinch/elim | Live HQ matchup / DFS slate result |
+| **Lineup urgency** | Empty starter slot; locked player still in; opponent set lineup and you haven’t | Tools → Start/Sit or Leagues roster |
+| **Injuries / status** | Questionable → Out on *my* starter; late inactive; IR move | Player / Start/Sit / Live HQ (+ optional hedge) |
+| **Considerations** | “Start/Sit flipped for your flex”; waiver target spiked; bye-week RB hole this week | Tools (Start/Sit, Waiver) |
+| **Trades** | Inbound offer received; your outbound accepted/declined; “new Finder suggestion ready” | Tools → Trade Analyzer (Offer Review / Finder) |
+| **Live week** | Big fantasy play for your starter; enemy boom; win% swing | Live HQ / game hub |
+| **Hedges (opt-in)** | “Insurance prop still open for your RB1”; hedge settled | Team card hedges / bet tracker |
+| **Connect / sync** | Provider re-auth needed; sync failed; new league detected | Leagues → Connect |
+
+### Product rules
+
+1. **Actionable by default** … tap opens the surface that can act (not a dead score toast).
+2. **Exposure-scoped** … only players/leagues on *my* synced teams (and enemy when relevant). No league-wide spam.
+3. **Preference matrix** … per category on/off + quiet hours; Live week can be denser on Sundays if user opts in.
+4. **Digest vs instant** … injuries / lineup locks = instant; “considerations” may batch (morning of game day, waiver day).
+5. **Deduped** … one push per player status transition, not every rumor ping.
+6. **Channels** … IPA APNs + Android FCM primary; in-app Lounge/activity bell always; Island for *live watched game* not every fantasy ping.
+7. **Copy** … short, Edge voice, no em-dash spam; include league/team name when multi-league.
+
+### Layer F deliverables / specifics
+
+- [ ] Fantasy notification preference matrix (Settings + first-run soft prompt after Connect)
+- [ ] Event bus / Edge jobs: status, lineup lock, matchup final, inbound trade, tool suggestion ready
+- [ ] Deep link scheme: `?tab=fantasy&fantasyView=…&league=&player=` (and hub `game=` when live)
+- [ ] Phase 1 minimum: injury/inactive on my starters + lineup-lock reminder
+- [ ] Phase 2+: Start/Sit flip, waiver digest, matchup outcome
+- [ ] Phase 3+: trade offer + Finder ready
+- [ ] Phase 2.5/E: optional hedge prompts (strict opt-in)
+- [ ] Analytics: send → open → act (retention loop)
+
+**Depends on:** Layer A exposure map; existing push infra (`apns_device_tokens` / FCM / activity_events). Mac for IPA push presentation; Windows for web preference UI + Edge emitters.
 
 ---
 
@@ -316,14 +361,14 @@ Injury / inactive / late scratch on **my** starters → Lounge push / Island; op
 
 | Phase | Layers | Ship | Exit criteria |
 | --- | --- | --- | --- |
-| **0** | A | Soft-launch Connect (Yahoo approval, multi-league UX, sport/kind fields). Fantasy IA shell: Leagues / Live / Tools / DFS. | Users sync ≥1 league; Coming soon can lift on NFL Hub |
-| **1** | C (+ A) | Live Fantasy HQ (NFL) + hub deep links | Pre-kickoff HQ used on a real slate |
-| **2** | B1–B2 | Value engine + Start/Sit + Waiver | League-aware lineup/waiver advice trusted in smoke |
-| **2.5** | E1 | Emotional hedge v1 on season-long NFL teams | Hedges open bet composer with `hedge_of` |
-| **3** | B3 | Trade Analyzer (Finder + manual Offer Review) | Generated offers + inbound grade in smoke |
-| **4** | D | DFS CSV + simple optimizer + slate monitor | One full DFS week path |
-| **5** | A + B/C | Next sport season-long (NBA or MLB) + research pack B4 | Second sport in Connect + Tools |
-| **Later** | B3v2, D APIs, E2–E3, draft suite, autopilot set-lineup | — | Only with APIs + trust |
+| **0** | A | Soft-launch Connect (Yahoo approval, multi-league UX, sport/kind fields). Fantasy IA shell: Leagues / Live / Tools / DFS. Notification prefs shell (all off until events exist). | Users sync ≥1 league; Coming soon can lift on NFL Hub |
+| **1** | C + F | Live Fantasy HQ (NFL) + hub deep links + **injury/inactive + lineup-lock pushes** | Pre-kickoff HQ used; starter Out push opens Start/Sit or HQ |
+| **2** | B1–B2 + F | Value engine + Start/Sit + Waiver + **consideration / waiver digest pushes** | League-aware advice + tap-through from digest |
+| **2.5** | E1 + F | Emotional hedge v1 + **opt-in hedge prompts** | Hedges open bet composer with `hedge_of` |
+| **3** | B3 + F | Trade Analyzer + **inbound offer / Finder-ready pushes** | Generated offers + inbound grade; offer push opens Review |
+| **4** | D + F | DFS CSV + optimizer + slate monitor + **slate lock / live exposure pushes** | One full DFS week path |
+| **5** | A + B/C + F | Next sport season-long (NBA or MLB) + research pack B4 + sport-scoped notification filters | Second sport in Connect + Tools |
+| **Later** | B3v2, D APIs, E2, draft suite, autopilot set-lineup, richer Live week firehose (user-gated) | — | Only with APIs + trust |
 
 ### Explicit non-goals (near term)
 
@@ -332,6 +377,7 @@ Injury / inactive / late scratch on **my** starters → Lounge push / Island; op
 - Mixing DFS salary into season-long screens
 - ToS-hostile scraping as the primary connector strategy
 - Full native rewrite of fantasy (stays web feature under IPA shell)
+- Pushing every fantasy point / event like a second scoreboard app (opt-in Live firehose only)
 
 ---
 
@@ -345,16 +391,17 @@ Fantasy
 └── DFS         … Slates, lineups, optimizer, live slate (D)
 ```
 
-Emotional hedges appear as strips on Leagues + DFS team/lineup cards (E), and on Live exposure.
+Emotional hedges appear as strips on Leagues + DFS team/lineup cards (E), and on Live exposure.  
+Notifications (F) deep-link into the relevant tab; prefs live under Settings (and a post-Connect soft prompt).
 
 ---
 
 ## Data / eng notes (cross-cutting)
 
 - Keep **`docs/fantasy-connect.md`** as the Connect implementation contract; this file is the suite roadmap.
-- New tables likely: DFS connections/lineups/slates; trade offer drafts; projection cache; `hedge_of` on bets … design per phase, don’t boil the ocean in Phase 0.
+- New tables likely: DFS connections/lineups/slates; trade offer drafts; projection cache; `hedge_of` on bets; fantasy notification prefs + delivery log … design per phase, don’t boil the ocean in Phase 0.
 - Light mode: feature `data-*` roots (`data-fantasy-home`, plus new roots per surface).
-- Dual-machine: Fantasy UI/Edge in **Windows `src/**` + Edge lane**; iOS only when bridge/auth (Yahoo ASWebAuth already Mac).
+- Dual-machine: Fantasy UI/Edge in **Windows `src/**` + Edge lane**; iOS only when bridge/auth/push presentation (Yahoo ASWebAuth already Mac; APNs fantasy payloads reuse existing push pipeline).
 
 ---
 
@@ -367,3 +414,5 @@ Record answers here when locked:
 3. DFS v1 sites? (plan: DK + FD via CSV)
 4. Emotional hedge: show estimated cost in units by default?
 5. Freemium: which tools free vs Slots Edge / future Fantasy add-on? (TBD … see `docs/entitlements-matrix.md`)
+6. Notification defaults after Connect? (plan: injuries + lineup lock **on**; Live firehose + hedge prompts **off** until opt-in)
+7. Quiet hours default? (plan: 11pm–8am local, except lineup-lock morning of games)

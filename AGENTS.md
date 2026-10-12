@@ -206,7 +206,7 @@ Future sessions have **no memory** of this chat. Treat the repo as the **source 
 | 6b | `docs/seo-edgetilt-slots.md` | Brand SEO for **edge tilt / advantage play slots** … `/advantage-play-slots`, `/slots` (+ tools), `/guides`, `/poker`, sitemap, Search Console |
 | 6c | `docs/ios-native-bridge.md` | **iOS WKWebView shell:** JS↔Swift bridge contract stub + **dual-machine agent rules** (Mac vs Windows) |
 | 6d | `docs/theo-channel.md` | **Windows ↔ Mac Theo mailbox** on **https://lvslotpro.com/theo** (read without git pull) |
-| 6e | `docs/fantasy-suite.md` | **Fantasy Ops roadmap:** Layers A–E (Connect, season-long tools, Live HQ, DFS, emotional hedges), connectors, phases. Connect impl: **`docs/fantasy-connect.md`** |
+| 6e | `docs/fantasy-suite.md` | **Fantasy Ops roadmap:** Layers A–F (Connect, season-long tools, Live HQ, DFS, emotional hedges, **notifications**), connectors, phases. Connect impl: **`docs/fantasy-connect.md`** |
 | 6 | `docs/access-tiers.md` | **Freemium spec (shipped):** no account vs free vs **Slots Edge** / staff — per-surface read/write matrix |
 | 7 | `docs/entitlements-matrix.md` | **Multi-product paywalls (planned + partial):** Edge Pro, creator fan subs, add-ons, stacking, **`get_my_entitlements()`** target, rollout phases |
 | 8 | `docs/affiliates.md` | **Creator affiliates:** in-house v1 (packages, `?ref=` + promo, ledger, admin/creator portals, Connect) |

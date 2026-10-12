@@ -3829,6 +3829,7 @@ export default function LoungeProfileFullScreen({
                       className="hidden"
                       onChange={(ev) => onPickAvatar(ev)}
                     />
+                    {/* Above avatar z-[25] (banner peek). Edit mode turns collapse off, so this stays tappable. */}
                     <button
                       type="button"
                       disabled={avatarBusy}
@@ -3842,7 +3843,7 @@ export default function LoungeProfileFullScreen({
                         })()
                       }}
                       aria-label={avatarBusy ? 'Uploading avatar' : 'Change avatar'}
-                      className="absolute bottom-0 right-0 z-10 rounded-full border border-zinc-600/90 bg-zinc-950/95 px-2 py-0.5 text-[10px] font-semibold leading-tight text-zinc-200 shadow-md hover:bg-zinc-900 disabled:opacity-50 touch-manipulation sm:px-2.5 sm:py-1 sm:text-[11px]"
+                      className="absolute bottom-0 right-0 z-[30] rounded-full border border-zinc-600/90 bg-zinc-950/95 px-2 py-0.5 text-[10px] font-semibold leading-tight text-zinc-200 shadow-md hover:bg-zinc-900 disabled:opacity-50 touch-manipulation sm:px-2.5 sm:py-1 sm:text-[11px]"
                     >
                       {avatarBusy ? '…' : 'Avatar'}
                     </button>

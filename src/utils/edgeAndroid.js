@@ -263,6 +263,54 @@ export function canEdgeAndroidSetAudioRoute() {
   return Boolean(bridgeWith('setAudioRoute'))
 }
 
+/** True when this APK can post the live-session ongoing / Live Update notification. */
+export function canSyncEdgeAndroidLiveBankrollActivity() {
+  return Boolean(bridgeWith('syncLiveBankrollActivity'))
+}
+
+/**
+ * Mirror live slots / poker sessions onto an ongoing notification (Android 16+ Live Update).
+ *
+ * @param {{
+ *   slots?: { id?: string, label?: string, startAt?: string | null, elapsedSeconds?: number } | null,
+ *   poker?: {
+ *     id?: string,
+ *     label?: string,
+ *     paused?: boolean,
+ *     startAt?: string | null,
+ *     elapsedSeconds?: number,
+ *     pausedAt?: string | null,
+ *     pauseElapsedSeconds?: number,
+ *   } | null,
+ * }} [payload]
+ */
+export function syncEdgeAndroidLiveBankrollActivity(payload = {}) {
+  const b = bridgeWith('syncLiveBankrollActivity')
+  if (!b) return { ok: false, via: 'noop' }
+  try {
+    const raw = b.syncLiveBankrollActivity(
+      JSON.stringify({
+        slots: payload?.slots || null,
+        poker: payload?.poker || null,
+      }),
+    )
+    const result = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+    return {
+      ok: result?.ok !== false,
+      supported: result?.supported !== false,
+      started: Boolean(result?.started),
+      updated: Boolean(result?.updated),
+      ended: result?.ended,
+      promoted: Boolean(result?.promoted),
+      disabled: Boolean(result?.disabled),
+      error: typeof result?.error === 'string' ? result.error : undefined,
+      via: 'bridge',
+    }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 /** True when this APK can open Chrome Custom Tabs OAuth (`startWebAuthSession`). */
 export function canStartEdgeAndroidWebAuthSession() {
   return Boolean(bridgeWith('startWebAuthSession'))

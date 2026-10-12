@@ -302,6 +302,20 @@ class MainActivity : Activity() {
       return EdgeCallRing.markWebReady(this@MainActivity).toString()
     }
 
+    /**
+     * Live slots / poker session ongoing notification (iOS ActivityKit twin).
+     * JSON `{ slots?, poker? }` … empty / null ids clears. Tap → `edgetilt://live-session`.
+     */
+    @JavascriptInterface
+    fun syncLiveBankrollActivity(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
+      return try {
+        EdgeLiveBankroll.sync(this@MainActivity, json.ifBlank { "{}" }).toString()
+      } catch (e: Exception) {
+        JSONObject().put("ok", false).put("error", e.message ?: "failed").toString()
+      }
+    }
+
     /** In-call earpiece ↔ speakerphone (`AudioManager`). JSON `{ route: 'speaker' | 'earpiece' }`. */
     @JavascriptInterface
     fun setAudioRoute(json: String): String {

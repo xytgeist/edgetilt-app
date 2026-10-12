@@ -10,9 +10,11 @@ import {
   canEdgeAndroidHaptic,
   canShareEdgeAndroid,
   canStartEdgeAndroidWebAuthSession,
+  canSyncEdgeAndroidLiveBankrollActivity,
   isEdgeAndroidShell,
   shareEdgeAndroid,
   startEdgeAndroidWebAuthSession,
+  syncEdgeAndroidLiveBankrollActivity,
   triggerEdgeAndroidHaptic,
 } from './edgeAndroid.js'
 import { isHardRockBook, isHardRockUrl } from '../features/lounge/gameHub/sportsbookLinks.js'
@@ -768,8 +770,9 @@ export async function tryAssignEdgeScannedDocuments(input, opts = {}) {
 }
 
 /**
- * Mirror live slots / poker sessions onto the iPhone Dynamic Island / Lock Screen.
- * Old IPA / PWA / Live Activities disabled → `{ ok: false }` so the title chip stays.
+ * Mirror live slots / poker sessions onto the iPhone Dynamic Island / Lock Screen
+ * or the EdgeAndroid ongoing notification (Android 16+ Live Update when promoted).
+ * Old IPA / PWA / missing bridge → `{ ok: false }` so the title chip stays.
  *
  * @param {{
  *   slots?: { id?: string, label?: string, startAt?: string | null, elapsedSeconds?: number } | null,
@@ -786,9 +789,11 @@ export async function tryAssignEdgeScannedDocuments(input, opts = {}) {
  * @returns {Promise<Record<string, unknown>>}
  */
 export async function syncEdgeLiveBankrollActivity(payload = {}) {
-  if (typeof window === 'undefined' || !isEdgeiOSShell()) {
-    return { ok: false, via: 'web' }
+  if (typeof window === 'undefined') return { ok: false, via: 'web' }
+  if (isEdgeAndroidShell() && canSyncEdgeAndroidLiveBankrollActivity()) {
+    return syncEdgeAndroidLiveBankrollActivity(payload)
   }
+  if (!isEdgeiOSShell()) return { ok: false, via: 'web' }
   if (typeof window.EdgeNative?.syncLiveBankrollActivity !== 'function') {
     return { ok: false, via: 'missing' }
   }

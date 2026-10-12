@@ -1198,6 +1198,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-12:** **Promoted `1.4.1117`** (profile Avatar edit under avatar). Frontend **`test` → `main`** (`6d5b6553`). No SQL / Edge.
 - **2026-10-12:** **Profile Avatar edit under avatar (`1.4.1117`).** Own-profile Edit → Avatar control used `z-10` while the avatar motion node is `z-[25]` for banner peek, so the pill painted under the circle. Raised the button to `z-[30]`. Collapse / banner stacking left alone (edit mode still disables collapse).
 - **2026-10-11:** **Promoted `1.4.1116`** (Fantasy hamburger removed). Frontend **`test` → `main`** (`e9e768d6`). No SQL / Edge.
 - **2026-10-11:** **Fantasy hamburger entry removed (`1.4.1116`).** Title-bar ☰ no longer lists Fantasy. `?tab=fantasy` + Yahoo handoff still open Fantasy home. NFL Hub Coming soon tile unchanged.

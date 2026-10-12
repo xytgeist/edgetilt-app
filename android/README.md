@@ -39,7 +39,22 @@ adb install -r app/build/outputs/apk/staging/debug/app-staging-debug.apk
 
 ## Release (Play)
 
-Upload key goes in `android/keystore.properties` (gitignored) with `storeFile`, `storePassword`, `keyAlias`, `keyPassword`; `./gradlew bundleProdRelease` then signs with it. Bump `versionCode` every upload.
+Upload key lives in `android/upload-keystore.jks` + `android/keystore.properties` (both gitignored; see `keystore.properties.example`). Alias **`edgetilt-upload`** (CN=EdgeTilt / Digiverse Ventures LLC, created 2026-10-08).
+
+```bash
+cd android
+./gradlew bundleProdRelease   # app/build/outputs/bundle/prodRelease/app-prod-release.aab
+```
+
+Bump `versionCode` every upload. First Console step: create a Play **organization** account (Ryan has D-U-N-S; org accounts skip the 12-tester closed test), enroll Play App Signing, upload the AAB to an **internal** testing track.
+
+**Fingerprints (SHA-256):** upload `33:56:43:97:85:D1:4C:AD:1B:CF:E8:89:34:31:8E:04:98:2B:AB:85:1C:D6:20:1B:0D:51:EE:41:B4:8D:7D:36`, debug `26:4E:6A:82:56:0F:D2:1D:8F:1A:67:13:F5:33:8E:04:97:16:A3:52:1B:C8:9C:07:14:12:33:95:0F:87:92:E3`. After Play App Signing enrolls, add the **app signing** certificate SHA-256 from Console → Setup → App signing into `public/.well-known/assetlinks.json` (devices verify that cert, not only the upload key).
+
+## App Links
+
+`MainActivity` declares `autoVerify` https VIEW filters for the flavor host (`edgetilt.com` / `lvslotpro.com` + www) on `/auth/confirm`, `/lounge/p/`, `/lounge/g/`, `/u/`, and `/` (SPA query deep links). `EdgeLinks.isAllowedAppLink` + `canonicalWebUri` mirror the IPA Universal Link allowlist and rewrite share permalinks to `/?tab=home&post=` / `&game=` / `&u=` so the WebView skips OG HTML.
+
+Site half: `public/.well-known/assetlinks.json` (served with `Content-Type: application/json` via `vercel.json`). Live on **lvslotpro.com** after `test` deploy; **edgetilt.com** after Ryan promotes `main`. Verify: `adb shell pm get-app-links com.edgetilt.app` (or `.test`) after install + a few minutes for Google to fetch assetlinks.
 
 ## JS bridge (`window.EdgeAndroid`)
 
@@ -81,7 +96,7 @@ Web: `src/utils/edgeNativePush.js` routes Lounge Settings / Offers reminders to 
 
 ## Native parity roadmap
 
-Ryan (2026-09-29): bring the IPA's native wins to Android. Priority order and checkboxes live in `docs/test-buildout-backlog.md` → **Android** → *Native parity roadmap*: ringing calls (`ConnectionService`), live sessions as Android 16 Live Updates, background Lounge video (Media3 + WorkManager), App Links, then quick hooks (share, ML Kit scan / OCR, photo picker, haptics, orientation lock, audio route) and Android-only shortcuts + widget. Add each new `window.EdgeAndroid` method to the bridge table above before the web side calls it.
+Ryan (2026-09-29): bring the IPA's native wins to Android. Priority order and checkboxes live in `docs/test-buildout-backlog.md` → **Android** → *Native parity roadmap*. **Shipped:** call ring, MOV prep, share, photo picker, haptics / orientation, audio route, App Links plumbing (1.3.6). **Next native:** Live Updates (live session status), background Lounge video upload, ML Kit scan / OCR, shortcuts + widget. Add each new `window.EdgeAndroid` method to the bridge table above before the web side calls it.
 
 **Device debugging:** phone on USB with USB debugging on, `adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof com.edgetilt.app)`, then any CDP client on `localhost:9222` (both the main WebView and bet sheet / popup WebViews show up as targets).
 
@@ -89,4 +104,4 @@ Ryan (2026-09-29): bring the IPA's native wins to Android. Priority order and ch
 
 - **Google sign-in:** Google refuses OAuth in embedded WebViews. `EdgeWebViews.presentAsChrome` (both activities) drops the `; wv` UA marker and rewrites the Sec-CH-UA brand from "Android WebView" to "Google Chrome". `X-Requested-With: <package>` is still sent: current WebView ignores `setRequestedWithHeaderOriginAllowList` (verified on WebView 133). Polymarket Google login from the **home page** is a full-page Auth0 redirect; from a **market page** ("Log in to trade") it is an Auth0 **popup** that hands the code back via `window.opener.postMessage`. `BetSheetActivity` therefore supports multiple windows: `onCreateWindow` stacks a child WebView over the sheet, `onCloseWindow` / back removes it. Before that (Sep 28), the popup loaded in place with no opener and sat blank on `auth0.polymarket.us/authorize/resume`. Verified on Ryan's Galaxy A15 (WebView 151) with the Google test account (`GOOGLE_TEST_*` in `.env.local`): market page → Google popup → popup closes → signed in (Polymarket onboarding). polymarket.us can take ~15 s to send its first byte, so a white sheet right after open is often just that wait.
 - **Billing:** Play policy on web subscriptions from the app is not settled (see backlog Android section).
-- **App Links:** no `assetlinks.json` yet, so edgetilt.com links open in Chrome, not the app.
+- **App Links:** code + `assetlinks.json` landed (APK **1.3.6**). Needs site deploy (`test` → lvslotpro; `main` → edgetilt) and, after first Play upload, the Play **app signing** SHA-256 added to assetlinks. Until verification succeeds, Chrome still owns the taps.

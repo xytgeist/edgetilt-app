@@ -72,7 +72,12 @@ class MainActivity : Activity() {
     EdgeCallRing.bindHost(this)
 
     registerBack()
-    val start = intent?.data?.takeIf { EdgeLinks.staysInApp(it) }?.toString() ?: BuildConfig.BASE_URL
+    // App Links / VIEW: only allowed HTTPS paths (then rewrite share permalinks like the IPA).
+    // Push / call intents may still pass other in-app URIs via staysInApp.
+    val start =
+      EdgeLinks.appLinkLoadUri(intent?.data)?.toString()
+        ?: intent?.data?.takeIf { EdgeLinks.staysInApp(it) }?.toString()
+        ?: BuildConfig.BASE_URL
     if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
       webView.loadUrl(start)
     }
@@ -81,7 +86,10 @@ class MainActivity : Activity() {
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
-    val uri = intent.data?.takeIf { EdgeLinks.staysInApp(it) } ?: return
+    val uri =
+      EdgeLinks.appLinkLoadUri(intent.data)
+        ?: intent.data?.takeIf { EdgeLinks.staysInApp(it) }
+        ?: return
     // Prefer in-page routing when the SPA is already up. A full loadUrl wipes LiveKit /
     // ChatCallProvider mid answer (Answer used to open ?tab=chat&room= this way).
     if (onAppPage && !webView.url.isNullOrBlank()) {

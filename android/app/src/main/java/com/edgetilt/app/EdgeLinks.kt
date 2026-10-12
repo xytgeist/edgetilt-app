@@ -29,6 +29,65 @@ object EdgeLinks {
 
   fun staysInApp(uri: Uri): Boolean = isHttp(uri) && (hostMatches(uri, appHosts) || hostMatches(uri, authHosts))
 
+  /**
+   * HTTPS App Link we are willing to open (mirrors IPA `isAllowedUniversalLink`).
+   * Manifest claims these paths; this is the in-app gate for root `/?…` noise.
+   */
+  fun isAllowedAppLink(uri: Uri): Boolean {
+    if (!isAppHost(uri)) return false
+    val path = uri.path?.lowercase() ?: ""
+    if (path == "/auth/confirm" || path.startsWith("/auth/confirm/")) return true
+    if (path.startsWith("/lounge/p/")) return true
+    if (path.startsWith("/lounge/g/")) return true
+    if (path.startsWith("/u/")) return true
+    if (path == "/" || path.isEmpty()) {
+      for (name in listOf("post", "u", "profile", "game", "yahoo")) {
+        val value = uri.getQueryParameter(name)?.trim().orEmpty()
+        if (value.isNotEmpty()) return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Map share permalinks to the SPA query the web already opens (`/?tab=home&post=` / `&game=` / `&u=`).
+   * Same job as IPA `canonicalWebURL(fromUniversalLink:)` … avoids loading OG HTML in the WebView.
+   */
+  fun canonicalWebUri(uri: Uri): Uri {
+    if (!isAppHost(uri)) return uri
+    val path = uri.path ?: return uri
+    val pathLower = path.lowercase()
+
+    fun spaHome(queryKey: String, value: String): Uri =
+      uri.buildUpon()
+        .path("/")
+        .clearQuery()
+        .appendQueryParameter("tab", "home")
+        .appendQueryParameter(queryKey, value)
+        .build()
+
+    if (pathLower.startsWith("/lounge/p/")) {
+      val id = pathLower.removePrefix("/lounge/p/").trim('/').substringBefore('/')
+      if (id.isNotEmpty()) return spaHome("post", id)
+    }
+    if (pathLower.startsWith("/lounge/g/")) {
+      val id = pathLower.removePrefix("/lounge/g/").trim('/').substringBefore('/')
+      if (id.isNotEmpty()) return spaHome("game", id)
+    }
+    if (pathLower.startsWith("/u/")) {
+      val handle = pathLower.removePrefix("/u/").trim('/').substringBefore('/')
+      if (handle.isNotEmpty()) return spaHome("u", handle)
+    }
+    return uri
+  }
+
+  /** App Link / cold-start VIEW intent → URI to load (or null to fall back to BASE_URL). */
+  fun appLinkLoadUri(uri: Uri?): Uri? {
+    val raw = uri ?: return null
+    if (!isAllowedAppLink(raw)) return null
+    return canonicalWebUri(raw)
+  }
+
   fun openBetSheet(activity: Activity, uri: Uri) {
     activity.startActivity(
       Intent(activity, BetSheetActivity::class.java).putExtra(BetSheetActivity.EXTRA_URL, uri.toString()),

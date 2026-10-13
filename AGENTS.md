@@ -304,6 +304,10 @@ npm run db:query:production -f supabase/migrations/foo.sql
 
 `AGENT_RULE_SUPABASE_DB_QUERY` — searchability token.
 
+**Prod offsite DB dumps (private R2):** `npm run db:dump:r2:production` (`scripts/db-dump-to-r2.mjs`) … `pg_dump` → private bucket (`DB_BACKUP_R2_*`), 14-day prune. Test stays on Supabase included daily backups. Before scary prod SQL: `--tag=pre-migrate`. Spec: **`docs/db-r2-backups.md`**.
+
+`AGENT_RULE_DB_R2_BACKUPS` — searchability token.
+
 **Local secrets:** one gitignored **`.env.master`** (copy between machines) + **`npm run env:sync`**. Template: **`.env.master.example`**. That writes `.env.local` + `.env.supabase.{test,production}` (+ optional Cloudflare / FCM files) so existing scripts keep working. Sync backs up prior generated files under **`.env-backups/`** and warns if a key would drop.
 
 **Secrets hygiene (`AGENT_RULE_SECRETS_HYGIENE`):**

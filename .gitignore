@@ -69,6 +69,10 @@ DerivedData/
 # Per-task agent audit scratch (template: .cursor/audit-current.example.md)
 .cursor/audit-current.md
 
+# Local DB dump artifacts / Windows dump task log (scripts/db-dump-to-r2.mjs)
+scripts/.db-dumps/
+scripts/.db-dump-r2-sync.log
+
 # ESPN trench live puller lastModified skip (per home-PC machine)
 data/syndicate/.espn-trench-live-state.json
 data/syndicate/.action-splits-paused

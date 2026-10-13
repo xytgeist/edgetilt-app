@@ -221,6 +221,17 @@ function resolveDbUrl(target) {
   return poolerUrlWithPassword(poolerUrl, password);
 }
 
+/**
+ * Session-pooler (or explicit SUPABASE_DB_URL) connection string for the target.
+ * Call `loadSupabaseEnv(target)` first. Used by db-query and db-dump-to-r2.
+ *
+ * @param {"test" | "production"} target
+ * @returns {string | null}
+ */
+export function resolveSupabaseDbUrl(target) {
+  return resolveDbUrl(target);
+}
+
 function isAuthFailure(err) {
   const text = `${err?.message ?? ""}\n${err?.stdout ?? ""}\n${err?.stderr ?? ""}`;
   return AUTH_FAILURE_RE.test(text);

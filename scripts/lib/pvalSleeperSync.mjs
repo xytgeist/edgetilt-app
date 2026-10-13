@@ -226,6 +226,60 @@ export function fantasySeatScore(row) {
   return null
 }
 
+/** Prefer the real roster seat when Sleeper emits two players with the same normalized_name. */
+export function preferSleeperPvalRow(a, b) {
+  if (!a) return b
+  if (!b) return a
+  // Jr/II twins collapse after normalize … pick the more fantasy-relevant human
+  // (lower search_rank) before blended seat score, which can inflate a low-pts DL.
+  const rankA =
+    a.search_rank != null && a.search_rank < FANTASY_SEAT_RANK_MAX ? Number(a.search_rank) : null
+  const rankB =
+    b.search_rank != null && b.search_rank < FANTASY_SEAT_RANK_MAX ? Number(b.search_rank) : null
+  if (rankA != null && rankB != null && rankA !== rankB) return rankA < rankB ? a : b
+  if ((rankA != null) !== (rankB != null)) return rankA != null ? a : b
+  const scoreA = fantasySeatScore(a)
+  const scoreB = fantasySeatScore(b)
+  const hasA = scoreA != null && Number.isFinite(scoreA)
+  const hasB = scoreB != null && Number.isFinite(scoreB)
+  if (hasA && hasB && scoreA !== scoreB) return scoreA > scoreB ? a : b
+  if (hasA !== hasB) return hasA ? a : b
+  const ptsA = a.pts_avg != null ? Number(a.pts_avg) : -1
+  const ptsB = b.pts_avg != null ? Number(b.pts_avg) : -1
+  if (ptsA !== ptsB) return ptsA > ptsB ? a : b
+  const depthA = a.depth_order != null ? Number(a.depth_order) : 99
+  const depthB = b.depth_order != null ? Number(b.depth_order) : 99
+  if (depthA !== depthB) return depthA < depthB ? a : b
+  const pvalA = a.pval != null ? Number(a.pval) : -1
+  const pvalB = b.pval != null ? Number(b.pval) : -1
+  if (pvalA !== pvalB) return pvalA > pvalB ? a : b
+  return String(a.player_name || '').localeCompare(String(b.player_name || '')) <= 0 ? a : b
+}
+
+/**
+ * One row per normalized_name. Postgres upsert onConflict fails if a chunk
+ * proposes the same constrained value twice ("cannot affect row a second time").
+ * @returns {{ rows: object[], dropped: { kept: object, dropped: object }[] }}
+ */
+export function dedupeSleeperPvalRows(rows) {
+  const byNorm = new Map()
+  const dropped = []
+  for (const row of rows || []) {
+    const key = row?.normalized_name
+    if (!key) continue
+    const prev = byNorm.get(key)
+    if (!prev) {
+      byNorm.set(key, row)
+      continue
+    }
+    const keep = preferSleeperPvalRow(prev, row)
+    const lose = keep === prev ? row : prev
+    byNorm.set(key, keep)
+    dropped.push({ kept: keep, dropped: lose })
+  }
+  return { rows: [...byNorm.values()], dropped }
+}
+
 /**
  * Build proposed PVAL rows from Sleeper players + multi-week projections.
  */
@@ -376,7 +430,8 @@ export async function buildSleeperPvalRows(opts = {}) {
     }
   }
 
-  rows.sort((a, b) => b.pval - a.pval || a.player_name.localeCompare(b.player_name))
+  const { rows: uniqueRows, dropped: nameCollisions } = dedupeSleeperPvalRows(rows)
+  uniqueRows.sort((a, b) => b.pval - a.pval || a.player_name.localeCompare(b.player_name))
 
   return {
     season,
@@ -384,10 +439,11 @@ export async function buildSleeperPvalRows(opts = {}) {
     lookbackWeeks: lookback,
     weeksUsed: weekList,
     playerCount: Object.keys(players || {}).length,
-    rowCount: rows.length,
+    rowCount: uniqueRows.length,
+    nameCollisions,
     bandCounts: Object.fromEntries(
       [...byBand.entries()].map(([k, v]) => [k, v.length]).sort((a, b) => b[1] - a[1]),
     ),
-    rows,
+    rows: uniqueRows,
   }
 }

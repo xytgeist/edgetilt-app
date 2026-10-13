@@ -15,7 +15,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { createClient } from '@supabase/supabase-js'
-import { buildSleeperPvalRows } from './lib/pvalSleeperSync.mjs'
+import { buildSleeperPvalRows, dedupeSleeperPvalRows } from './lib/pvalSleeperSync.mjs'
 import {
   loadSupabaseEnv,
   createSupabaseServiceClient,
@@ -76,6 +76,15 @@ function parseArgs(argv) {
 function printSummary(built) {
   console.log(`Sleeper season=${built.season} week=${built.week} lookback=${built.lookbackWeeks} weeks=${(built.weeksUsed || []).join(',')}`)
   console.log(`Players file ~${built.playerCount} · proposed PVAL rows ${built.rowCount}`)
+  const collisions = built.nameCollisions || []
+  if (collisions.length) {
+    console.log(`Same-name collisions dropped: ${collisions.length}`)
+    for (const c of collisions.slice(0, 12)) {
+      console.log(
+        `  keep ${c.kept.player_name} (${c.kept.team_abbr || c.kept.team_name}) · drop ${c.dropped.player_name} (${c.dropped.team_abbr || c.dropped.team_name})`,
+      )
+    }
+  }
   console.log('Band counts:', built.bandCounts)
   console.log('\nTop 15 by PVAL:')
   for (const r of built.rows.slice(0, 15)) {
@@ -119,7 +128,7 @@ function roundPval(n) {
 }
 
 function buildPvalCompare(dbRows, proposed, { refresh = false } = {}) {
-  const byNorm = new Map(proposed.map((r) => [r.normalized_name, r]))
+  const { rows: uniqueProposed } = dedupeSleeperPvalRows(proposed)
   const existing = new Map(dbRows.map((d) => [d.normalized_name, d]))
   const movers = []
   const overrideBlocked = []
@@ -129,7 +138,7 @@ function buildPvalCompare(dbRows, proposed, { refresh = false } = {}) {
   let updated = 0
   let skippedOverrides = 0
 
-  for (const r of proposed) {
+  for (const r of uniqueProposed) {
     const d = existing.get(r.normalized_name)
     if (!d) {
       inserted++
@@ -261,9 +270,12 @@ async function applyRows(target, rows, { refresh = false, protectExisting = fals
   )
   const existingSet = new Set(existing.map((r) => r.normalized_name))
 
+  // Belt-and-suspenders: upsert chunks must not repeat onConflict keys.
+  const { rows: uniqueRows } = dedupeSleeperPvalRows(rows)
+
   const toWrite = []
   let skipped = 0
-  for (const r of rows) {
+  for (const r of uniqueRows) {
     if (overrideSet.has(r.normalized_name)) {
       skipped++
       continue

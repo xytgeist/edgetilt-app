@@ -150,6 +150,19 @@ function sideSelectOptions(draft) {
       { value: 'under', label: 'Under' },
     ]
   }
+  // Distance / method-style tickets … no fighter or home/away side
+  if (draft.market === 'other' || draft.market === 'parlay') {
+    const rest = isParticipantSport(draft.sport_key, draft.sport_label)
+      ? participantSideOptions(draft)
+      : [
+        { value: 'home', label: 'Home' },
+        { value: 'away', label: 'Away' },
+        { value: 'over', label: 'Over' },
+        { value: 'under', label: 'Under' },
+        { value: 'draw', label: 'Draw' },
+      ]
+    return [{ value: '', label: 'N/A' }, ...rest]
+  }
   if (isParticipantSport(draft.sport_key, draft.sport_label)) {
     const opts = participantSideOptions(draft)
     if (opts.length) return opts
@@ -189,7 +202,11 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     ...emptyDraft(unitSize),
     book: prefill.book != null ? String(prefill.book) : '',
     market: prefill.market || 'spread',
-    side: prefill.side || (prefill.market === 'prop' || prefill.market === 'total' ? 'over' : 'home'),
+    side: Object.prototype.hasOwnProperty.call(prefill, 'side')
+      ? String(prefill.side || '')
+      : (prefill.market === 'prop' || prefill.market === 'total'
+        ? 'over'
+        : (prefill.market === 'other' || prefill.market === 'parlay' ? '' : 'home')),
     line: prefill.line != null && prefill.line !== '' ? String(prefill.line) : '',
     odds: prefill.odds != null && prefill.odds !== ''
       ? (americanOddsInputString(prefill.odds) || String(prefill.odds))
@@ -1335,6 +1352,8 @@ export default function SportsBetTracker({
                       let side = d.side
                       if (market === 'prop' || market === 'total') {
                         side = side === 'under' ? 'under' : 'over'
+                      } else if (market === 'other') {
+                        side = ''
                       } else if (!side || side === 'over' || side === 'under') {
                         side = 'home'
                       }

@@ -194,6 +194,8 @@ Ticket 568089239281249199
       event_includes: 'Alvarez',
       sport_label: 'Boxing',
       sport_key: 'boxing_boxing',
+      // Yes/No distance … not a fighter side (UI shows N/A)
+      side: '',
     },
   },
   {
@@ -376,8 +378,8 @@ for (const fx of fixtures) {
     if (e.home_team != null) {
       assert(d.home_team === e.home_team, `${fx.name}: home_team want ${e.home_team} got ${d.home_team}`)
     }
-    if (e.side != null) {
-      assert(d.side === e.side, `${fx.name}: side want ${e.side} got ${d.side}`)
+    if (e.side !== undefined) {
+      assert(d.side === e.side, `${fx.name}: side want ${JSON.stringify(e.side)} got ${JSON.stringify(d.side)}`)
     }
     if (e.legs != null) {
       const n = Array.isArray(d.legs) ? d.legs.length : 0

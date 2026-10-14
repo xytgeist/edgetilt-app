@@ -619,17 +619,17 @@ function extractMarketDetails(text, oddsLine) {
     }
   }
 
-  // Fight prop Yes/No
+  // Fight prop Yes/No … not a fighter/home side
   if (/fight\s+to\s+go\s+the\s+distance/i.test(raw)) {
     const yn = /\b(yes|no)\b/i.exec(raw)
     const sideWord = yn ? yn[1] : 'Yes'
     return {
       market: 'other',
-      side: 'home',
+      side: '',
       line: null,
       player_name: '',
       prop_stat: '',
-      selection_label: `${sideWord} Fight To Go The Distance`,
+      selection_label: `${sideWord.charAt(0).toUpperCase()}${sideWord.slice(1).toLowerCase()} Fight To Go The Distance`,
     }
   }
 
@@ -786,10 +786,12 @@ function draftFromBits({
   const units = stakeUnits != null && Number(stakeUnits) > 0 ? Number(stakeUnits) : null
 
   const marketFinal = mkt || 'other'
+  // h2h/spread default home; other/parlay may be side-less (distance props, etc.)
+  const sideDefault = (marketFinal === 'h2h' || marketFinal === 'spread') ? 'home' : ''
   return {
     book: book || '',
     market: marketFinal,
-    side: marketFinal === 'parlay' ? '' : (sd || 'home'),
+    side: marketFinal === 'parlay' ? '' : (sd != null && sd !== '' ? sd : sideDefault),
     line: ln != null && ln !== '' ? String(ln) : '',
     odds: americanOddsInputString(american),
     stake_units: units != null ? String(units) : '',
@@ -998,7 +1000,14 @@ export function parseSportsBetSlipText(text) {
 
   const pickSeed = pickSeedFromLabel(draft.selection_label)
   // Map pick onto home/away for Side (fighters or team ML).
-  if (draft.market !== 'prop' && draft.market !== 'total' && pickSeed) {
+  // Skip side-less markets (distance / other props) … UI shows N/A.
+  if (
+    draft.market !== 'prop'
+    && draft.market !== 'total'
+    && draft.market !== 'other'
+    && draft.market !== 'parlay'
+    && pickSeed
+  ) {
     const mapped = sideForParticipantSelection(
       pickSeed,
       draft.away_team,
@@ -1009,6 +1018,8 @@ export function parseSportsBetSlipText(text) {
     isParticipantSport(draft.sport_key, draft.sport_label)
     && draft.market !== 'prop'
     && draft.market !== 'total'
+    && draft.market !== 'other'
+    && draft.market !== 'parlay'
   ) {
     const mapped = sideForParticipantSelection(
       draft.selection_label,

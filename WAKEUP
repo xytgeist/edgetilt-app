@@ -162,7 +162,10 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 **Web `1.4.1144`.** After Verify/save / save-all / CSV import, await ESPN auto-grade then reload. Grader also fetches ESPN `?dates=` from commence_time so historical slips (e.g. Mirage 2/2/2020) can settle. Edge **`sports-bets-grade`** redeployed **test + prod**. **Promoted** `test` → `main` (`8db6deda`).
 
 ### Mac Theo 2026-10-14 ... Bet Tracker Mirage event OCR hardening
-**Web `1.4.1145`.** Event matchup parse accepts asymmetric `@` spaces (`49ers@ Chiefs` / `49ers @Chiefs`), fullwidth `＠`, trademark glue, split `Team` / `@ Home` lines, and NFL nickname pairs when OCR drops `@`. Fixtures expanded. No SQL / Edge.
+**Web `1.4.1145`.** Event matchup parse accepts asymmetric `@` spaces (`49ers@ Chiefs` / `49ers @Chiefs`), fullwidth `＠`, trademark glue, split `Team` / `@ Home` lines, and NFL nickname pairs when OCR drops `@`. Fixtures expanded. No SQL / Edge. **Promoted** `test` → `main` (`b070474f`).
+
+### Mac Theo 2026-10-14 ... Bet Tracker distance Side N/A
+**Web `1.4.1146`.** Fight To Go The Distance (and market=other) Side is empty / **N/A**, not home fighter (e.g. W. Scull). No SQL / Edge.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.

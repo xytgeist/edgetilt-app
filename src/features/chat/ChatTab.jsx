@@ -1486,17 +1486,23 @@ const ROOM_LONG_PRESS_MS = 380
 const ROOM_LONG_PRESS_MOVE_PX = 10
 /** Horizontal lock … slightly eager so archive/delete beats list scroll. */
 const ROOM_SWIPE_AXIS_LOCK_PX = 6
-/** Vertical lock … needs clearer intent; keep pan-y native momentum (4e1116de). */
+/** Vertical lock … needs clearer intent on Android pan-y; iOS uses manual scroll. */
 const ROOM_SWIPE_VERTICAL_LOCK_PX = 18
 /** Lock X when abs(dx) >= abs(dy) * this (favor swipe on mild diagonals). */
 const ROOM_SWIPE_H_OVER_V = 0.75
-/** Lock Y only when abs(dy) > abs(dx) * this. */
+/** Lock Y only when abs(dy) > abs(dx) * this (Android pan-y path). */
 const ROOM_SWIPE_V_OVER_H = 1.35
 const ROOM_SWIPE_COMMIT_RATIO = 0.38
 const ROOM_SWIPE_COMMIT_MIN_PX = 72
 const ROOM_SWIPE_SNAP_MS = 240
 const ROOM_SWIPE_ICON_FULL_PX = 52
 const ROOM_SWIPE_SNAP_TRANSITION = 'transform 240ms cubic-bezier(0.32, 0.72, 0, 1)'
+/**
+ * WebKit cancels / steals pan-y before horizontal swipe can lock (Android bias is enough).
+ * iOS uses touch-action none + scrollTop forwarding (same model as bankroll / b740d8fa).
+ */
+const CHAT_INBOX_SWIPE_MANUAL_SCROLL =
+  typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent || '')
 
 function getRoomSwipeCommitThreshold(width) {
   return Math.max(ROOM_SWIPE_COMMIT_MIN_PX, width * ROOM_SWIPE_COMMIT_RATIO)
@@ -1504,6 +1510,17 @@ function getRoomSwipeCommitThreshold(width) {
 
 function getSwipeIconRevealProgress(absOffset) {
   return Math.min(1, absOffset / ROOM_SWIPE_ICON_FULL_PX)
+}
+
+/** Nearest scrollable ancestor (inbox list). Used on iOS when touch-action is none. */
+function getChatRoomSwipeScrollParent(el) {
+  let node = el?.parentElement || null
+  while (node && node !== document.body) {
+    const { overflowY } = window.getComputedStyle(node)
+    if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') return node
+    node = node.parentElement
+  }
+  return null
 }
 
 function ChatSwipeTrashIcon({ className = 'h-6 w-6' }) {
@@ -1604,8 +1621,11 @@ function ChatRoomListRow({
   const gestureRef = useRef({
     startX: 0,
     startY: 0,
+    lastY: 0,
     axis: null,
     pointerId: null,
+    scrollParent: null,
+    touchClaimed: false,
   })
   const [offsetX, setOffsetX] = useState(0)
   const [swipeDragging, setSwipeDragging] = useState(false)
@@ -1678,11 +1698,21 @@ function ChatRoomListRow({
     gestureRef.current = {
       startX: e.clientX,
       startY: e.clientY,
+      lastY: e.clientY,
       axis: null,
       pointerId: e.pointerId,
+      scrollParent: null,
       touchClaimed: false,
     }
-    // Do not capture yet ... capture kills native list scrolling for this touch.
+    if (CHAT_INBOX_SWIPE_MANUAL_SCROLL) {
+      // iOS: capture immediately so WebKit cannot steal the gesture for list scroll.
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } catch {
+        /* ignore */
+      }
+    }
+    // Android: do not capture yet ... capture kills native pan-y scrolling for this touch.
     // Capture only after horizontal swipe locks (see onPointerMove).
     clearTimer()
     timerRef.current = setTimeout(() => {
@@ -1704,15 +1734,17 @@ function ChatRoomListRow({
       if (absDx > ROOM_LONG_PRESS_MOVE_PX || absDy > ROOM_LONG_PRESS_MOVE_PX) {
         clearTimer()
       }
-      // Early claim while dx leads … stop pan-y scroll from eating a mild diagonal swipe.
-      if (
-        !g.touchClaimed &&
-        absDx >= 4 &&
-        absDx >= absDy &&
-        foregroundRef.current
-      ) {
-        g.touchClaimed = true
-        foregroundRef.current.style.touchAction = 'none'
+      if (!CHAT_INBOX_SWIPE_MANUAL_SCROLL) {
+        // Android: early claim while dx leads … stop pan-y from eating a mild diagonal.
+        if (
+          !g.touchClaimed &&
+          absDx >= 4 &&
+          absDx >= absDy &&
+          foregroundRef.current
+        ) {
+          g.touchClaimed = true
+          foregroundRef.current.style.touchAction = 'none'
+        }
       }
       if (
         absDx > ROOM_SWIPE_AXIS_LOCK_PX &&
@@ -1727,17 +1759,26 @@ function ChatRoomListRow({
           foregroundRef.current.style.transition = 'none'
           foregroundRef.current.style.touchAction = 'none'
         }
-        try {
-          e.currentTarget.setPointerCapture(e.pointerId)
-        } catch {
-          /* ignore */
+        if (!CHAT_INBOX_SWIPE_MANUAL_SCROLL) {
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId)
+          } catch {
+            /* ignore */
+          }
+        }
+      } else if (CHAT_INBOX_SWIPE_MANUAL_SCROLL) {
+        if (absDy > ROOM_LONG_PRESS_MOVE_PX && absDy > absDx) {
+          g.axis = 'y'
+          g.scrollParent = getChatRoomSwipeScrollParent(rowRef.current)
+          clearTimer()
+        } else {
+          return
         }
       } else if (
         absDy > ROOM_SWIPE_VERTICAL_LOCK_PX &&
         absDy > absDx * ROOM_SWIPE_V_OVER_H
       ) {
-        // Hand vertical pans to native overflow scroll (momentum + rubber-band).
-        // Do not keep touch-action none / capture … that was undoing 4e1116de.
+        // Android: hand vertical pans to native overflow scroll (momentum + rubber-band).
         if (foregroundRef.current) {
           foregroundRef.current.style.touchAction = ''
         }
@@ -1749,7 +1790,16 @@ function ChatRoomListRow({
         return
       }
     }
-    if (g.axis === 'y') return
+    if (g.axis === 'y') {
+      if (CHAT_INBOX_SWIPE_MANUAL_SCROLL) {
+        e.preventDefault()
+        const scroller = g.scrollParent || getChatRoomSwipeScrollParent(rowRef.current)
+        g.scrollParent = scroller
+        if (scroller) scroller.scrollTop -= e.clientY - g.lastY
+        g.lastY = e.clientY
+      }
+      return
+    }
     if (g.axis !== 'x') return
     e.preventDefault()
     const width = rowWidthRef.current || window.innerWidth
@@ -1757,6 +1807,7 @@ function ChatRoomListRow({
     // Drive transform via DOM during the gesture so parent re-renders (openSwipeRoomId)
     // cannot flash a CSS transition snap mid-swipe.
     setOffset(clamped, { syncDom: true })
+    g.lastY = e.clientY
   }, [clearTimer, onSwipeOpen, room.id, setOffset])
 
   const finishGesture = useCallback(() => {
@@ -1815,6 +1866,7 @@ function ChatRoomListRow({
     }
     g.axis = null
     g.pointerId = null
+    g.scrollParent = null
   }, [
     animateOffsetTo,
     clearCommitTimer,
@@ -1935,9 +1987,12 @@ function ChatRoomListRow({
         style={{
           transform: `translate3d(${offsetX}px, 0, 0)`,
           transition: rowTransition,
-          // pan-y = native list scroll. Switch to none only after horizontal swipe locks
-          // so archive/delete is not cancelled mid-gesture on WebKit.
-          touchAction: swipeDragging ? 'none' : 'pan-y',
+          // iOS: always none (manual scrollTop). Android: pan-y until horizontal lock.
+          touchAction: CHAT_INBOX_SWIPE_MANUAL_SCROLL
+            ? 'none'
+            : swipeDragging
+              ? 'none'
+              : 'pan-y',
           WebkitUserSelect: 'none',
           WebkitTouchCallout: 'none',
           willChange: swipeDragging ? 'transform' : 'auto',

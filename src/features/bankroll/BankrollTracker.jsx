@@ -1189,55 +1189,63 @@ export default function BankrollTracker({
             {sheet === 'startSession' && (
               <>
                 <SheetHeader title="Start Session" onClose={closeSheet} />
-                <div className="space-y-3 mb-5">
-                  <div>
-                    <label className="block text-zinc-400 text-xs mb-1.5">Casino / Location</label>
-                    <CasinoAutocomplete
-                      value={startCasino}
-                      onChange={setStartCasino}
-                      supabaseClient={supabaseClient}
-                      nearbyCasinos={nearbyCasinos}
-                      gpsLoading={gpsLoading}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-zinc-400 text-xs mb-1.5">Game type</label>
-                    <GameTypeToggle value={startGameType} onChange={setStartGameType} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-zinc-400 text-xs mb-1.5">Date</label>
-                      <DateWheelPicker
-                        value={startDate}
-                        onChange={setStartDate}
-                        showYear
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-zinc-400 text-xs mb-1.5">Start time</label>
-                      <TimeWheelPicker
-                        value={startTime}
-                        onChange={setStartTime}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-zinc-400 text-xs mb-1.5">Session starting amount</label>
-                    <MoneyInput
-                      value={startAmount}
-                      onChange={setStartAmount}
-                      placeholder="How much are you taking today?"
-                    />
-                  </div>
-                </div>
-                {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-                <button
-                  onClick={startSession}
-                  disabled={saving}
-                  className="w-full min-h-12 rounded-2xl bg-cyan-600 text-white font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void startSession()
+                  }}
                 >
-                  {saving ? 'Starting…' : 'Start Session'}
-                </button>
+                  <div className="space-y-3 mb-5">
+                    <div>
+                      <label className="block text-zinc-400 text-xs mb-1.5">Casino / Location</label>
+                      <CasinoAutocomplete
+                        value={startCasino}
+                        onChange={setStartCasino}
+                        supabaseClient={supabaseClient}
+                        nearbyCasinos={nearbyCasinos}
+                        gpsLoading={gpsLoading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 text-xs mb-1.5">Game type</label>
+                      <GameTypeToggle value={startGameType} onChange={setStartGameType} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-zinc-400 text-xs mb-1.5">Date</label>
+                        <DateWheelPicker
+                          value={startDate}
+                          onChange={setStartDate}
+                          showYear
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-400 text-xs mb-1.5">Start time</label>
+                        <TimeWheelPicker
+                          value={startTime}
+                          onChange={setStartTime}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 text-xs mb-1.5">Session starting amount</label>
+                      <MoneyInput
+                        value={startAmount}
+                        onChange={setStartAmount}
+                        placeholder="How much are you taking today?"
+                        enterKeyHint="go"
+                      />
+                    </div>
+                  </div>
+                  {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full min-h-12 rounded-2xl bg-cyan-600 text-white font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
+                  >
+                    {saving ? 'Starting…' : 'Start Session'}
+                  </button>
+                </form>
               </>
             )}
 
@@ -1245,59 +1253,67 @@ export default function BankrollTracker({
             {sheet === 'endSession' && activeSession && (
               <>
                 <SheetHeader title="End Session" onClose={closeSheet} />
-                <div className="rounded-2xl bg-zinc-800/60 border border-zinc-700/40 p-4 mb-5">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="text-white font-semibold text-sm">
-                        {activeSession.casino_name || 'Session'}
-                      </div>
-                      <div className="text-zinc-400 text-xs mt-0.5">Started with {fmt$(activeSession.start_amount)}</div>
-                    </div>
-                    <div className="text-emerald-300 font-black text-lg tabular-nums">{fmtDuration(elapsed)}</div>
-                  </div>
-                </div>
-                <div className="space-y-3 mb-5">
-                  <div>
-                    <label className="block text-zinc-400 text-xs mb-1.5">Final session amount</label>
-                    <MoneyInput
-                      value={endAmount}
-                      onChange={setEndAmount}
-                      placeholder="How much are you walking away with?"
-                      autoFocus
-                    />
-                  </div>
-                  {endPreviewWL != null && (
-                    <div data-wl-preview={endPreviewWL >= 0 ? 'win' : 'loss'} className={`rounded-2xl px-4 py-3 flex items-center justify-between ${endPreviewWL >= 0 ? 'bg-emerald-950/70 border border-emerald-800/40' : 'bg-red-950/70 border border-red-900/40'}`}>
-                      <div>
-                        <div className={`text-sm font-bold ${endPreviewWL >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                          {endPreviewWL >= 0 ? '+' : ''}{fmt$(endPreviewWL)} this session
-                        </div>
-                        {overallBankroll != null && (
-                          <div className="text-zinc-400 text-xs mt-0.5">
-                            Bankroll → {fmt$(overallBankroll + endPreviewWL)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-zinc-400 text-xs mb-1.5">Notes (optional)</label>
-                    <textarea
-                      value={sessionNotes}
-                      onChange={e => setSessionNotes(e.target.value)}
-                      placeholder="Machine mix, promo used, notable hits…"
-                      className="w-full min-h-20 rounded-2xl bg-zinc-800 px-4 py-3 text-white text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
-                    />
-                  </div>
-                </div>
-                {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-                <button
-                  onClick={endSession}
-                  disabled={saving}
-                  className="w-full min-h-12 rounded-2xl bg-emerald-600 text-white font-bold touch-manipulation active:bg-emerald-700 disabled:opacity-50"
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void endSession()
+                  }}
                 >
-                  {saving ? 'Saving…' : 'End Session'}
-                </button>
+                  <div className="rounded-2xl bg-zinc-800/60 border border-zinc-700/40 p-4 mb-5">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="text-white font-semibold text-sm">
+                          {activeSession.casino_name || 'Session'}
+                        </div>
+                        <div className="text-zinc-400 text-xs mt-0.5">Started with {fmt$(activeSession.start_amount)}</div>
+                      </div>
+                      <div className="text-emerald-300 font-black text-lg tabular-nums">{fmtDuration(elapsed)}</div>
+                    </div>
+                  </div>
+                  <div className="space-y-3 mb-5">
+                    <div>
+                      <label className="block text-zinc-400 text-xs mb-1.5">Final session amount</label>
+                      <MoneyInput
+                        value={endAmount}
+                        onChange={setEndAmount}
+                        placeholder="How much are you walking away with?"
+                        autoFocus
+                        enterKeyHint="go"
+                      />
+                    </div>
+                    {endPreviewWL != null && (
+                      <div data-wl-preview={endPreviewWL >= 0 ? 'win' : 'loss'} className={`rounded-2xl px-4 py-3 flex items-center justify-between ${endPreviewWL >= 0 ? 'bg-emerald-950/70 border border-emerald-800/40' : 'bg-red-950/70 border border-red-900/40'}`}>
+                        <div>
+                          <div className={`text-sm font-bold ${endPreviewWL >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                            {endPreviewWL >= 0 ? '+' : ''}{fmt$(endPreviewWL)} this session
+                          </div>
+                          {overallBankroll != null && (
+                            <div className="text-zinc-400 text-xs mt-0.5">
+                              Bankroll → {fmt$(overallBankroll + endPreviewWL)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-zinc-400 text-xs mb-1.5">Notes (optional)</label>
+                      <textarea
+                        value={sessionNotes}
+                        onChange={e => setSessionNotes(e.target.value)}
+                        placeholder="Machine mix, promo used, notable hits…"
+                        className="w-full min-h-20 rounded-2xl bg-zinc-800 px-4 py-3 text-white text-sm outline-none focus:ring-2 focus:ring-cyan-500/40"
+                      />
+                    </div>
+                  </div>
+                  {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full min-h-12 rounded-2xl bg-emerald-600 text-white font-bold touch-manipulation active:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {saving ? 'Saving…' : 'End Session'}
+                  </button>
+                </form>
               </>
             )}
 
@@ -1660,6 +1676,7 @@ function MoneyInput({
   tight = false, inputClassName = '',
   allowNegative = false, colorize = false,
   autoFocus,
+  enterKeyHint,
 }) {
   const numVal = parseFloat(value)
   const hasValue = value !== '' && value !== '-'
@@ -1673,6 +1690,7 @@ function MoneyInput({
       <input
         type="text"
         inputMode={allowNegative ? 'text' : 'decimal'}
+        enterKeyHint={enterKeyHint}
         value={value}
         onChange={e => {
           const raw = e.target.value

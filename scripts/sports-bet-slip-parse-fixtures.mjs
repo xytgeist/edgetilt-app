@@ -199,6 +199,85 @@ Ticket 568089239281249199
     },
   },
   {
+    name: 'UFC under rounds by KO',
+    text: `
+Straight Bet
+Under 3.5 Rounds by Knockout
+D Poirier vs C McGregor
+UFC 303
++240
+Wager                              $100.00
+`,
+    expect: {
+      market: 'total',
+      side: 'under',
+      odds: 240,
+      stake_dollars: 100,
+      selection_includes: 'Rounds',
+      selection_includes_method: 'KO',
+      sport_label: 'UFC',
+      event_includes: 'Poirier',
+    },
+  },
+  {
+    name: 'Boxing method of victory KO/TKO',
+    text: `
+Straight Bet
+Method of Victory
+KO/TKO
+C. Alvarez vs W. Scull
++155
+Wager                              $200.00
+`,
+    expect: {
+      market: 'other',
+      side: '',
+      odds: 155,
+      selection_includes: 'KO',
+      event_includes: 'Alvarez',
+      sport_label: 'Boxing',
+    },
+  },
+  {
+    name: 'UFC rounds group 1-3',
+    text: `
+Straight Bet
+Rounds 1-3
+D Poirier vs C McGregor
+UFC 303
++400
+Risk $50.00
+`,
+    expect: {
+      market: 'other',
+      side: '',
+      odds: 400,
+      selection_includes: 'Rounds 1-3',
+      sport_label: 'UFC',
+    },
+  },
+  {
+    name: 'Fighter by decision keeps Side',
+    text: `
+Straight Bet
+D Poirier by Decision
+MAIN EVENT - POIRIER/MCGREGOR
+UFC 303
++180
+Risk $50.00
+`,
+    expect: {
+      market: 'h2h',
+      side: 'away',
+      odds: 180,
+      selection_includes: 'Poirier',
+      selection_includes_method: 'Decision',
+      sport_label: 'UFC',
+      away_team: 'POIRIER',
+      home_team: 'MCGREGOR',
+    },
+  },
+  {
     name: 'Barstool Bills spread',
     text: `
 BARSTOOL SPORTSBOOK
@@ -348,6 +427,12 @@ for (const fx of fixtures) {
       assert(
         String(d.selection_label).includes(e.selection_includes_stake),
         `${fx.name}: selection_label missing stake ${e.selection_includes_stake}: ${d.selection_label}`,
+      )
+    }
+    if (e.selection_includes_method) {
+      assert(
+        String(d.selection_label).toLowerCase().includes(e.selection_includes_method.toLowerCase()),
+        `${fx.name}: selection_label missing method ${e.selection_includes_method}: ${d.selection_label}`,
       )
     }
     if (e.player_name) {

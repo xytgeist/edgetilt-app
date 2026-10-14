@@ -43,6 +43,212 @@ const NFL_TEAM_HINT =
 const PAYOUT_LINE_RE =
   /\b(max\s*payout|to\s*win|to\s*collect|potential\s*payout|payout|win\s+\$)/i
 
+const FIGHT_METHOD_TOKEN_RE =
+  /ko\s*\/\s*tko|tko\s*\/\s*ko|knockout|technical\s*knockout|\btko\b|\bko\b|submission|unanimous\s*decision|split\s*decision|majority\s*decision|technical\s*decision|\bdecision\b|disqualification|\bdq\b/i
+
+function titleYesNo(word) {
+  const w = String(word || 'Yes').trim() || 'Yes'
+  return `${w.charAt(0).toUpperCase()}${w.slice(1).toLowerCase()}`
+}
+
+function normalizeMethodLabel(raw) {
+  const s = String(raw || '').trim().replace(/\s+/g, ' ')
+  if (!s) return ''
+  if (/^ko\s*\/\s*tko$/i.test(s) || /^tko\s*\/\s*ko$/i.test(s)) return 'KO/TKO'
+  if (/^ko$/i.test(s) || /^knockout$/i.test(s)) return 'KO'
+  if (/^tko$/i.test(s) || /^technical\s*knockout$/i.test(s)) return 'TKO'
+  if (/^dq$/i.test(s) || /^disqualification$/i.test(s)) return 'DQ'
+  return titleCaseWords(s)
+}
+
+/** "Alvarez by KO" … fighter-sided method bet (not N/A). */
+function fighterByMethodMatch(text) {
+  const s = String(text || '')
+  const m = new RegExp(
+    `([A-Za-z][A-Za-z.'\\-]+(?:\\s+[A-Za-z][A-Za-z.'\\-]+){0,3})\\s+by\\s+(${FIGHT_METHOD_TOKEN_RE.source})\\b`,
+    'i',
+  ).exec(s)
+  if (!m) return null
+  const name = m[1].trim()
+  if (!looksLikePersonName(name)) return null
+  if (/\b(win|wins|winner|fight|bout|method|round|rounds|over|under|yes|no)\b/i.test(name)) return null
+  return { name, method: normalizeMethodLabel(m[2]) }
+}
+
+/**
+ * True when the slip/selection is not a home/away (or fighter ML) pick.
+ * Fighter+method ("Name by KO") returns false … that still has a Side.
+ */
+export function looksLikeSideLessBet(text) {
+  const s = String(text || '')
+  if (!s.trim()) return false
+  if (fighterByMethodMatch(s)) return false
+  if (/go(?:es)?\s+the\s+distance/i.test(s)) return true
+  if (/method\s+of\s+victory/i.test(s)) return true
+  // Require a real O/U line … category headers like "FIGHT WINNER/TOTAL ROUNDS" are not side-less picks
+  if (/\btotal\s+rounds?\b/i.test(s) && /\b(over|under)\s+\d+(?:\.\d+)?\b/i.test(s)) return true
+  if (/\b(over|under)\s+\d+(?:\.\d+)?\s*rounds?\b/i.test(s)) return true
+  if (/\brounds?\s+\d+\s*[-–]\s*\d+\b/i.test(s)) return true
+  if (/\bround\s+betting\b/i.test(s)) return true
+  if (/\b(?:fight\s+)?(?:ends?\s+in\s+)?rounds?\s+\d+\b/i.test(s) && !/\b(over|under)\b/i.test(s)) {
+    return true
+  }
+  if (/\b(over|under)\s+\d+(?:\.\d+)?\s*knockdowns?\b/i.test(s)) return true
+  if (/\bwill\s+(?:the\s+)?(?:fight|bout)\b/i.test(s)) return true
+  if (/\bwin(?:s|ning)?\s+by\s+/i.test(s) && FIGHT_METHOD_TOKEN_RE.test(s)) return true
+  if (
+    /\b(yes|no)\b/i.test(s)
+    && /\b(fight|bout|distance|decision|knockdown|submission|round)\b/i.test(s)
+  ) {
+    return true
+  }
+  return false
+}
+
+/** Fight / side-less specials … before fighter ML heuristics. */
+function extractSideLessOrFightProp(raw, lines) {
+  const text = String(raw || '')
+
+  // Go the distance (Yes/No)
+  if (/go(?:es)?\s+the\s+distance/i.test(text)) {
+    const yn = /\b(yes|no)\b/i.exec(text)
+    return {
+      market: 'other',
+      side: '',
+      line: null,
+      player_name: '',
+      prop_stat: '',
+      selection_label: `${titleYesNo(yn?.[1])} Fight To Go The Distance`,
+    }
+  }
+
+  // Fighter + method ("C. Alvarez by KO") … sided h2h-style pick
+  const fbm = fighterByMethodMatch(text)
+  if (fbm) {
+    return {
+      market: 'h2h',
+      side: 'home',
+      line: null,
+      player_name: '',
+      prop_stat: '',
+      selection_label: `${titleCaseWords(fbm.name)} by ${fbm.method}`,
+    }
+  }
+
+  // Rounds O/U (± method): "Under 3.5 Rounds by Knockout"
+  const roundsOu = /\b(over|under)\s+([0-9]+(?:\.[0-9]+)?)\s*rounds?\b(?:\s+by\s+([A-Za-z][A-Za-z/]*(?:\s+[A-Za-z][A-Za-z/]*)?))?/i.exec(text)
+  if (roundsOu) {
+    const side = roundsOu[1].toLowerCase() === 'under' ? 'under' : 'over'
+    const method = roundsOu[3] ? ` by ${normalizeMethodLabel(roundsOu[3])}` : ''
+    return {
+      market: 'total',
+      side,
+      line: Number(roundsOu[2]),
+      player_name: '',
+      prop_stat: '',
+      selection_label: `${side === 'under' ? 'Under' : 'Over'} ${roundsOu[2]} Rounds${method}`,
+    }
+  }
+
+  // Knockdowns O/U
+  const kdOu = /\b(over|under)\s+([0-9]+(?:\.[0-9]+)?)\s*knockdowns?\b/i.exec(text)
+  if (kdOu) {
+    const side = kdOu[1].toLowerCase() === 'under' ? 'under' : 'over'
+    return {
+      market: 'total',
+      side,
+      line: Number(kdOu[2]),
+      player_name: '',
+      prop_stat: '',
+      selection_label: `${side === 'under' ? 'Under' : 'Over'} ${kdOu[2]} Knockdowns`,
+    }
+  }
+
+  // Total Rounds market header + O/U number
+  if (/\btotal\s+rounds?\b/i.test(text)) {
+    const ou = /\b(over|under)\s+([0-9]+(?:\.[0-9]+)?)\b/i.exec(text)
+    if (ou) {
+      const side = ou[1].toLowerCase() === 'under' ? 'under' : 'over'
+      return {
+        market: 'total',
+        side,
+        line: Number(ou[2]),
+        player_name: '',
+        prop_stat: '',
+        selection_label: `${side === 'under' ? 'Under' : 'Over'} ${ou[2]} Rounds`,
+      }
+    }
+  }
+
+  // Group rounds: "Rounds 1-3" / "Rounds 4–6"
+  const group = /\brounds?\s+(\d+)\s*[-–]\s*(\d+)\b/i.exec(text)
+  if (group) {
+    return {
+      market: 'other',
+      side: '',
+      line: null,
+      player_name: '',
+      prop_stat: '',
+      selection_label: `Rounds ${group[1]}-${group[2]}`,
+    }
+  }
+
+  // Exact round (no O/U): "Round 5" / "Fight ends in Round 3"
+  const exact = /\b(?:fight\s+)?(?:ends?\s+in\s+)?rounds?\s+(\d+)\b/i.exec(text)
+  if (exact && !/\b(over|under)\b/i.test(text)) {
+    return {
+      market: 'other',
+      side: '',
+      line: Number(exact[1]),
+      player_name: '',
+      prop_stat: '',
+      selection_label: `Round ${exact[1]}`,
+    }
+  }
+
+  // Method of victory / win by … without a fighter name
+  if (
+    /method\s+of\s+victory/i.test(text)
+    || (/\bwin(?:s|ning)?\s+by\s+/i.test(text) && FIGHT_METHOD_TOKEN_RE.test(text))
+  ) {
+    const methodHit = text.match(new RegExp(FIGHT_METHOD_TOKEN_RE.source, 'i'))
+    const method = methodHit ? normalizeMethodLabel(methodHit[0]) : ''
+    const label = method
+      ? (/method\s+of\s+victory/i.test(text) ? `Method of Victory: ${method}` : `Win by ${method}`)
+      : 'Method of Victory'
+    return {
+      market: 'other',
+      side: '',
+      line: null,
+      player_name: '',
+      prop_stat: '',
+      selection_label: label,
+    }
+  }
+
+  // Yes/No on its own line + fight-ish following label (distance already handled)
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^(yes|no)$/i.test(lines[i])) continue
+    const next = lines[i + 1] || ''
+    if (
+      next
+      && /fight|bout|distance|decision|knockdown|submission|round|method/i.test(next)
+      && !/(?:@|\bvs\.?\b)/i.test(next)
+    ) {
+      return {
+        market: 'other',
+        side: '',
+        line: null,
+        player_name: '',
+        prop_stat: '',
+        selection_label: `${titleYesNo(lines[i])} ${titleCaseWords(next)}`.trim(),
+      }
+    }
+  }
+
+  return null
+}
+
 function numOrNull(v) {
   if (v == null || v === '') return null
   const n = Number(String(v).replace(/[$,u]/gi, '').trim())
@@ -384,7 +590,10 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
   if (/\bufc\b/i.test(s) || /\bmma\b/i.test(s)) {
     return sportByKey(SPORTS_BET_SPORT_UFC) || { key: SPORTS_BET_SPORT_UFC, label: 'UFC' }
   }
-  if (/\bboxing\b|title\s*bout|lightweight\s*title|fight\s+to\s+go/i.test(s)) {
+  if (
+    /\bboxing\b|title\s*bout|lightweight\s*title|fight\s+to\s+go|method\s+of\s+victory/i.test(s)
+    || (/\b[A-Z]\.\s*[A-Za-z]+\s+vs\.?\s+[A-Z]\.\s*[A-Za-z]+\b/.test(s) && !/\bufc\b|\bmma\b/i.test(s))
+  ) {
     return sportByKey(SPORTS_BET_SPORT_BOXING) || { key: SPORTS_BET_SPORT_BOXING, label: 'Boxing' }
   }
   if (NFL_TEAM_HINT.test(s)) {
@@ -619,19 +828,9 @@ function extractMarketDetails(text, oddsLine) {
     }
   }
 
-  // Fight prop Yes/No … not a fighter/home side
-  if (/fight\s+to\s+go\s+the\s+distance/i.test(raw)) {
-    const yn = /\b(yes|no)\b/i.exec(raw)
-    const sideWord = yn ? yn[1] : 'Yes'
-    return {
-      market: 'other',
-      side: '',
-      line: null,
-      player_name: '',
-      prop_stat: '',
-      selection_label: `${sideWord.charAt(0).toUpperCase()}${sideWord.slice(1).toLowerCase()} Fight To Go The Distance`,
-    }
-  }
+  // Fight props / side-less specials (distance, rounds, method, …) before fighter ML
+  const sideLess = extractSideLessOrFightProp(raw, lines)
+  if (sideLess) return sideLess
 
   // Casino moneyline: "101 49ers MLB" + odds  (MLB = moneyline bet)
   const casinoMl = /(\d{2,5})\s+([A-Za-z0-9.]+(?:\s+[A-Za-z0-9.]+)?)\s+MLB\b/i.exec(raw)
@@ -648,46 +847,49 @@ function extractMarketDetails(text, oddsLine) {
     }
   }
 
-  // Circa-style "[24901] D POIRIER" or "2101 LOPEZ T"
-  const fighter = /\[\d+\]\s*([A-Z][A-Z0-9. ]+?)(?:\s+[+-]\d{3,5})?\s*$/m.exec(raw)
-    || /^\s*\d{3,5}\s+([A-Z][A-Z0-9. ]+?)\s*$/m.exec(oddsLine || '')
-    || /^\s*\d{3,5}\s+([A-Za-z][A-Za-z0-9. ]+?)\s*$/m.exec(
-      lines.find((l) => /^\d{3,5}\s+[A-Za-z]/.test(l) && !/\bMLB\b/i.test(l)) || '',
-    )
-  if (fighter && (/\bufc\b|fight|bout|title/i.test(raw) || fighter)) {
-    const name = fighter[1].trim().replace(/\s+/g, ' ')
-    if (name.length >= 2 && !/straight|ticket|bet/i.test(name)) {
-      return {
-        market: 'h2h',
-        side: 'home',
-        line: null,
-        player_name: '',
-        prop_stat: '',
-        selection_label: titleCaseWords(name),
-      }
-    }
-  }
-
-  // Barstool / app UFC: fighter on its own line above American odds ("D Poirier" / "-145")
-  if (/\bufc\b|\bmma\b|\bboxing\b|fight|bout|title/i.test(raw)) {
-    const oddsTrim = String(oddsLine || '').trim()
-    for (let i = 0; i < lines.length; i += 1) {
-      const line = lines[i]
-      const isOddsLine = /^[+-]\d{3,5}\s*$/.test(line)
-        || (oddsTrim && (line === oddsTrim || line.includes(oddsTrim)))
-      if (!isOddsLine) continue
-      const prev = lines[i - 1] || ''
-      if (
-        looksLikePersonName(prev)
-        && !/\b(sportsbook|event|ticket|straight|risk|payout|main|total|rounds)\b/i.test(prev)
-      ) {
+  // Fighter ML heuristics … skip when the ticket is clearly a side-less fight prop
+  if (!looksLikeSideLessBet(raw)) {
+    // Circa-style "[24901] D POIRIER" or "2101 LOPEZ T"
+    const fighter = /\[\d+\]\s*([A-Z][A-Z0-9. ]+?)(?:\s+[+-]\d{3,5})?\s*$/m.exec(raw)
+      || /^\s*\d{3,5}\s+([A-Z][A-Z0-9. ]+?)\s*$/m.exec(oddsLine || '')
+      || /^\s*\d{3,5}\s+([A-Za-z][A-Za-z0-9. ]+?)\s*$/m.exec(
+        lines.find((l) => /^\d{3,5}\s+[A-Za-z]/.test(l) && !/\bMLB\b/i.test(l)) || '',
+      )
+    if (fighter && (/\bufc\b|fight|bout|title/i.test(raw) || fighter)) {
+      const name = fighter[1].trim().replace(/\s+/g, ' ')
+      if (name.length >= 2 && !/straight|ticket|bet/i.test(name)) {
         return {
           market: 'h2h',
           side: 'home',
           line: null,
           player_name: '',
           prop_stat: '',
-          selection_label: titleCaseWords(prev),
+          selection_label: titleCaseWords(name),
+        }
+      }
+    }
+
+    // Barstool / app UFC: fighter on its own line above American odds ("D Poirier" / "-145")
+    if (/\bufc\b|\bmma\b|\bboxing\b|fight|bout|title/i.test(raw)) {
+      const oddsTrim = String(oddsLine || '').trim()
+      for (let i = 0; i < lines.length; i += 1) {
+        const line = lines[i]
+        const isOddsLine = /^[+-]\d{3,5}\s*$/.test(line)
+          || (oddsTrim && (line === oddsTrim || line.includes(oddsTrim)))
+        if (!isOddsLine) continue
+        const prev = lines[i - 1] || ''
+        if (
+          looksLikePersonName(prev)
+          && !/\b(sportsbook|event|ticket|straight|risk|payout|main|total|rounds)\b/i.test(prev)
+        ) {
+          return {
+            market: 'h2h',
+            side: 'home',
+            line: null,
+            player_name: '',
+            prop_stat: '',
+            selection_label: titleCaseWords(prev),
+          }
         }
       }
     }
@@ -697,17 +899,19 @@ function extractMarketDetails(text, oddsLine) {
   const total = /\b(over|under)\s+([0-9]+(?:\.[0-9]+)?)\b/i.exec(raw)
   if (total && !/[A-Za-z]{3,}\s+(over|under)\s+/i.test(raw)) {
     const side = total[1].toLowerCase() === 'under' ? 'under' : 'over'
+    const unit = /\brounds?\b/i.test(raw) ? ' Rounds' : (/\bknockdowns?\b/i.test(raw) ? ' Knockdowns' : '')
     return {
       market: 'total',
       side,
       line: Number(total[2]),
       player_name: '',
       prop_stat: '',
-      selection_label: `${side === 'under' ? 'Under' : 'Over'} ${total[2]}`,
+      selection_label: `${side === 'under' ? 'Under' : 'Over'} ${total[2]}${unit}`,
     }
   }
 
-  if (/\b(ml|moneyline|money\s*line|straight)\b/i.test(raw)) {
+  // "Straight Bet" alone is not a moneyline pick (often wraps props)
+  if (/\b(ml|moneyline|money\s*line)\b/i.test(raw)) {
     return {
       market: 'h2h',
       side: 'home',
@@ -720,7 +924,7 @@ function extractMarketDetails(text, oddsLine) {
 
   return {
     market: 'other',
-    side: 'home',
+    side: '',
     line: null,
     player_name: '',
     prop_stat: '',
@@ -999,10 +1203,25 @@ export function parseSportsBetSlipText(text) {
   if (!draft) return []
 
   const pickSeed = pickSeedFromLabel(draft.selection_label)
+  const sideLessTicket = looksLikeSideLessBet(raw) || looksLikeSideLessBet(pickSeed)
+  const fighterMethod = fighterByMethodMatch(raw) || fighterByMethodMatch(pickSeed)
+
+  // Safety net: side-less fight props must not keep a fighter/home Side
+  if (sideLessTicket && !fighterMethod) {
+    if (draft.side === 'over' || draft.side === 'under') {
+      // rounds / knockdowns O/U … keep Over/Under
+      if (draft.market === 'h2h' || draft.market === 'spread') draft.market = 'total'
+    } else {
+      draft.side = ''
+      if (draft.market === 'h2h' || draft.market === 'spread') draft.market = 'other'
+    }
+  }
+
   // Map pick onto home/away for Side (fighters or team ML).
-  // Skip side-less markets (distance / other props) … UI shows N/A.
+  // Skip side-less markets … UI shows N/A (or Over/Under for totals).
   if (
-    draft.market !== 'prop'
+    !sideLessTicket
+    && draft.market !== 'prop'
     && draft.market !== 'total'
     && draft.market !== 'other'
     && draft.market !== 'parlay'
@@ -1015,7 +1234,8 @@ export function parseSportsBetSlipText(text) {
     )
     if (mapped) draft.side = mapped
   } else if (
-    isParticipantSport(draft.sport_key, draft.sport_label)
+    !sideLessTicket
+    && isParticipantSport(draft.sport_key, draft.sport_label)
     && draft.market !== 'prop'
     && draft.market !== 'total'
     && draft.market !== 'other'
@@ -1023,6 +1243,13 @@ export function parseSportsBetSlipText(text) {
   ) {
     const mapped = sideForParticipantSelection(
       draft.selection_label,
+      draft.away_team,
+      draft.home_team,
+    )
+    if (mapped) draft.side = mapped
+  } else if (fighterMethod) {
+    const mapped = sideForParticipantSelection(
+      fighterMethod.name,
       draft.away_team,
       draft.home_team,
     )

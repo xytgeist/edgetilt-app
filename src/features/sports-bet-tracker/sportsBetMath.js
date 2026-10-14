@@ -211,8 +211,15 @@ function buildPickHead(draft) {
     return [player, ou, ln, stat].filter(Boolean).join(' ') || 'Player prop'
   }
   if (market === 'total') {
-    if (side === 'under') return `Under ${ln || ''}`.trim()
-    return `Over ${ln || ''}`.trim()
+    const ou = side === 'under' ? 'Under' : 'Over'
+    // Keep "Rounds" / "Knockdowns" / "by KO" from the parse seed when present
+    if (seed && /\b(over|under)\b/i.test(seed)) {
+      const rest = seed.replace(/^\s*(over|under)\s*/i, '').trim()
+      if (rest && !/^[+-]?\d+(?:\.\d+)?\s*$/.test(rest)) {
+        return `${ou} ${rest}`.replace(/\s{2,}/g, ' ').trim()
+      }
+    }
+    return `${ou} ${ln || ''}`.trim()
   }
   if (market === 'spread') {
     const team = side === 'home' ? (home || seed) : side === 'away' ? (away || seed) : (seed || away || home)

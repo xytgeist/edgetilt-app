@@ -1214,6 +1214,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-14:** **Bet Tracker side-less fight props (`1.4.1147`).** Distance was too narrow. Method / rounds O/U (± KO) / round groups / knockdowns / Yes-No → Side **N/A** or Over/Under; fighter+method keeps fighter. Fighter Side UI only for h2h/spread. Fixtures expanded. No SQL / Edge.
 - **2026-10-14:** **Bet Tracker distance Side N/A (`1.4.1146`).** Fight To Go The Distance / market=other Side is empty (UI **N/A**), not home fighter. No SQL / Edge.
 - **2026-10-14:** **Promoted `1.4.1145`** (Mirage event OCR hardening). Frontend **`test` → `main`** (`b070474f`). No SQL / Edge.
 - **2026-10-14:** **Bet Tracker Mirage event OCR hardening (`1.4.1145`).** Asymmetric `@` spaces, fullwidth `＠`, trademark glue, split Team/`@ Home` lines, NFL nickname+date when `@` drops. Fixtures expanded. No SQL / Edge.

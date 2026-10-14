@@ -31,7 +31,12 @@ import {
   sportsBetToolsFromSearch,
 } from './sportsBetNav.js'
 import SportsBetToolsSheet from './SportsBetToolsSheet.jsx'
-import { parseEventMatchup, parseSportsBetCsv, parseSportsBetIntake } from './sportsBetParse.js'
+import {
+  looksLikeSideLessBet,
+  parseEventMatchup,
+  parseSportsBetCsv,
+  parseSportsBetIntake,
+} from './sportsBetParse.js'
 import {
   combinedOddsFromLegs,
   isParlayDraft,
@@ -150,8 +155,18 @@ function sideSelectOptions(draft) {
       { value: 'under', label: 'Under' },
     ]
   }
-  // Distance / method-style tickets … no fighter or home/away side
-  if (draft.market === 'other' || draft.market === 'parlay') {
+  // Side-less tickets (distance / method / round groups / Yes-No props) … N/A
+  // Also when Label still looks side-less even if market was mis-tagged.
+  const sideLess = draft.market === 'other'
+    || draft.market === 'parlay'
+    || looksLikeSideLessBet(draft.selection_label)
+  if (sideLess) {
+    if (draft.side === 'over' || draft.side === 'under') {
+      return [
+        { value: 'over', label: 'Over' },
+        { value: 'under', label: 'Under' },
+      ]
+    }
     const rest = isParticipantSport(draft.sport_key, draft.sport_label)
       ? participantSideOptions(draft)
       : [
@@ -163,7 +178,11 @@ function sideSelectOptions(draft) {
       ]
     return [{ value: '', label: 'N/A' }, ...rest]
   }
-  if (isParticipantSport(draft.sport_key, draft.sport_label)) {
+  // Fighter names only for real ML / spread picks
+  if (
+    isParticipantSport(draft.sport_key, draft.sport_label)
+    && (draft.market === 'h2h' || draft.market === 'spread')
+  ) {
     const opts = participantSideOptions(draft)
     if (opts.length) return opts
     const pick = String(draft.selection_label || '').trim()

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Calculator, Camera, Check, ChevronLeft, ClipboardList, ClipboardPaste, FileSpreadsheet, ImagePlus, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { Calculator, Camera, Check, ChevronLeft, ClipboardList, ClipboardPaste, FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import AppModalOverlay from '../../components/AppModalOverlay.jsx'
@@ -177,10 +177,8 @@ export default function SportsBetTracker({
   const [toolsOpen, setToolsOpen] = useState(false)
   const [toolsTool, setToolsTool] = useState('')
   const [toolsSeed, setToolsSeed] = useState(null)
-  const [photoSourceOpen, setPhotoSourceOpen] = useState(false)
   const csvInputRef = useRef(null)
-  const cameraInputRef = useRef(null)
-  const libraryInputRef = useRef(null)
+  const photoInputRef = useRef(null)
 
   useEffect(() => {
     if (!supabaseClient) {
@@ -462,7 +460,6 @@ export default function SportsBetTracker({
   const onBetSlipPhotoPicked = (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
-    setPhotoSourceOpen(false)
     if (!file) return
     void (async () => {
       setError('')
@@ -626,10 +623,7 @@ export default function SportsBetTracker({
           </button>
           <button
             type="button"
-            onClick={() => {
-              setPhotoSourceOpen((open) => !open)
-              setError('')
-            }}
+            onClick={() => photoInputRef.current?.click()}
             className="inline-flex h-10 items-center gap-1.5 rounded-2xl border border-zinc-700 px-3 text-[12px] font-bold text-zinc-200 active:bg-zinc-800"
           >
             <Camera className="h-3.5 w-3.5" />
@@ -652,15 +646,7 @@ export default function SportsBetTracker({
             Tools
           </button>
           <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={onBetSlipPhotoPicked}
-          />
-          <input
-            ref={libraryInputRef}
+            ref={photoInputRef}
             type="file"
             accept="image/*"
             className="hidden"
@@ -679,43 +665,6 @@ export default function SportsBetTracker({
             }}
           />
         </div>
-
-        {photoSourceOpen ? (
-          <div
-            data-sports-bet-photo-source
-            className="mb-4 grid grid-cols-1 gap-2 rounded-2xl border border-zinc-700/80 bg-zinc-900/80 p-2"
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setPhotoSourceOpen(false)
-                cameraInputRef.current?.click()
-              }}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-cyan-700 px-3 text-sm font-semibold text-white touch-manipulation active:bg-cyan-600"
-            >
-              <Camera className="h-4 w-4" />
-              Take photo
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPhotoSourceOpen(false)
-                libraryInputRef.current?.click()
-              }}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-800 px-3 text-sm font-semibold text-zinc-100 touch-manipulation active:bg-zinc-700"
-            >
-              <ImagePlus className="h-4 w-4" />
-              Choose from library
-            </button>
-            <button
-              type="button"
-              onClick={() => setPhotoSourceOpen(false)}
-              className="inline-flex h-10 items-center justify-center text-sm font-semibold text-zinc-400 touch-manipulation"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : null}
 
         {error ? (
           <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">

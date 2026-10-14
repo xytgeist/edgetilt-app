@@ -11796,12 +11796,6 @@ html.light [data-sports-bet-tracker] .bg-zinc-900\/70,
 html.light [data-sports-bet-tracker] .bg-zinc-900\/80 {
   background-color: #f4f4f5 !important;
 }
-html.light [data-sports-bet-tracker] [data-sports-bet-photo-source] .bg-zinc-800 {
-  background-color: #e4e4e7 !important;
-}
-html.light [data-sports-bet-tracker] [data-sports-bet-photo-source] .text-zinc-100 {
-  color: #18181b !important;
-}
 html.light [data-sports-bet-tracker] .border-zinc-800,
 html.light [data-sports-bet-tracker] .border-zinc-700 {
   border-color: #d4d4d8 !important;

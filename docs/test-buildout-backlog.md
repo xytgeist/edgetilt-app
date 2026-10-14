@@ -1214,6 +1214,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-14:** **Promoted `1.4.1143`** (Bet Tracker smart Label + Mirage `@` OCR). Frontend **`test` → `main`** (`05af2c68`). Includes **`1.4.1142`**. No SQL / Edge.
 - **2026-10-14:** **Promoted `1.4.1141`** (Bet Tracker Verify + Event Date +odds). Frontend **`test` → `main`** (`0f844173`). No SQL / Edge.
 - **2026-10-14:** **Promoted `1.4.1140`** (Bet Tracker multi-slip + parlays). Frontend **`test` → `main`** (`dd809e5c`). SQL **`20261014160000`** on **prod**. Edge **`sports-bets-grade`** on **prod**.
 - **2026-10-14:** **Bet Tracker multi-slip + parlays (`1.4.1140`).** Photo `multiple` (cap 8) → review queue. Parlay parent + **`sports_bet_legs`** (SQL **`20261014160000`**). Parse / composer / list / leg rollup grade. Edge **`sports-bets-grade`**. Spec **`docs/sports-bet-tracker.md`**.

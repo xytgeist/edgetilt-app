@@ -131,6 +131,9 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 ### Mac Theo 2026-10-14 ... Bet Tracker Photo → library
 **Web `1.4.1134`.** Bet Tracker **Photo** opens the OS image picker (`accept=image/*`, no `capture`) so Take photo + library are one sheet. Dropped the in-app double chooser from `1.4.1133`.
 
+### Mac Theo 2026-10-14 ... Bet slip parse + composer fields
+**Web `1.4.1135`.** Slip OCR/paste: stake as **dollars** (comma money; ignore payouts), event / sport / book allowlist / commence / rich props. Composer **Event** + **Event date**. Fixtures `node scripts/sports-bet-slip-parse-fixtures.mjs`.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.
 

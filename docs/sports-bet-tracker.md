@@ -63,7 +63,7 @@ Why not DIY BookSync:
 ## Build order (next sessions)
 
 1. **Odds-cell Log (bones shipped `1.4.1058`, fill complete `1.4.1061`)** … **hold** (or right-click) the number on the hub board / odds table. Tap still opens the book. Composer fills book / market / side / line / odds / selection. Stake defaults to **1u**.
-2. **Slip capture (bones shipped)** … paste text, or photo on IPA (`EdgeNative.recognizeText`, purpose `sports-bet-slip`) → heuristic parse → confirm. PWA photo falls back to paste. Not a trained slip model yet.
+2. **Slip capture (heuristic v2 `1.4.1135`)** … paste text, or photo on IPA/APK (`recognizeText`, purpose `sports-bet-slip`) → heuristic parse → confirm. Stake lands as **dollars** (not units). Extracts event, sport, book (allowlist only … never invent), commence time, and rich prop labels when possible. Casino `TEAM MLB` = moneyline, not baseball. Fixtures: `node scripts/sports-bet-slip-parse-fixtures.mjs`. Not a trained slip model / LLM yet.
 3. **CSV / statement import (bones shipped)** … file with Odds / Selection columns; bulk insert when more than one row parses.
 4. **Real book connect** … only via licensed aggregator or official partner APIs, behind Sports Edge. **Never scrape logins.**
 
@@ -105,7 +105,7 @@ Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`*
 - Tab: **`?tab=sports-bets`** (Sports Hub **Bet Tracker** row; league hubs have a clipboard chip. Not in the hamburger.) Title bar **×** / header back returns to the Sports Hub / game hub that opened it.
 - Prefill: hub **… → Log a bet** / hold odds / `requestSportsBetLog(prefill)` … closes the sports surface and sets `tab=sports-bets`. Does **not** keep `?game=` (that reopened the league hub). Hollow `?logBet=1` URLs **must not** open the composer (that wiped book / line / odds after a hold). Prefill lives in memory + sessionStorage + the open event.
 - **Tap-through:** opening the book from a hub odds cell inserts an **unconfirmed** 1u bet (`odds_tap`). Confirm / Edit / Delete on the tracker row. Hold still opens the composer first. Same for Kalshi/Poly Yes/No and landscape player-prop rails (Yes = Over, No = Under; implied ¢ → American).
-- Composer **Sport** (NFL / CFB / NBA / MLB / NHL / PGA / MLS / Other) maps to Odds API `sport_key`. **Player prop** market adds Player + Stat.
+- Composer **Event**, **Event date** (`commence_time`), **Sport** (NFL / CFB / NBA / MLB / NHL / PGA / MLS / Other), **Book**, **Label**. Sport maps to Odds API `sport_key`. **Player prop** market adds Player + Stat.
 - Money: **1u** default stake, **$** field, default **$100** unit size, default bankroll start **$10,000**. **Bankroll** and **unit size** are set from the tracker chips / **Set bankroll & unit size** (and Unit size on Log a bet). Bankroll = start + settled $ P&L.
 - **Auto-grade:** open spread / h2h / total bets settle from ESPN finals via Edge **`sports-bets-grade`** (tracker load/refresh) and the existing **`lounge-odds-poll` `grade_picks`** cron. Props / other stay manual; Manual override still available on auto-gradeable rows.
 - **Tools sheet** (`SportsBetToolsSheet.jsx`, `?tab=sports-bets&betTools=`): Sports Hub **Tools** chip + tracker **Tools**. Featured **Parlay / Hedge / Kelly** prefill from open bets and bankroll. Utilities: payout, converter, implied, EV, no-vig, arb. Open-bet **Hedge** / settled **Payout**. Not nine hub tiles. Math: `sportsBetCalcMath.js`.

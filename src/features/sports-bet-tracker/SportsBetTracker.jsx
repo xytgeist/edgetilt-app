@@ -29,7 +29,7 @@ import {
   sportsBetToolsFromSearch,
 } from './sportsBetNav.js'
 import SportsBetToolsSheet from './SportsBetToolsSheet.jsx'
-import { parseSportsBetCsv, parseSportsBetIntake } from './sportsBetParse.js'
+import { parseEventMatchup, parseSportsBetCsv, parseSportsBetIntake } from './sportsBetParse.js'
 import { ocrSportsBetSlipImage } from './sportsBetOcr.js'
 import {
   DEFAULT_BANKROLL_START,
@@ -60,6 +60,7 @@ function emptyDraft(unitSize = readUnitSizeDollars()) {
     notes: '',
     home_team: '',
     away_team: '',
+    event_label: '',
     sport_label: '',
     event_id: '',
     sport_key: '',
@@ -70,16 +71,59 @@ function emptyDraft(unitSize = readUnitSizeDollars()) {
   }
 }
 
+function eventLabelFromDraft(d) {
+  if (!d) return ''
+  if (d.event_label) return String(d.event_label)
+  const away = String(d.away_team || '').trim()
+  const home = String(d.home_team || '').trim()
+  if (away && home) return `${away} @ ${home}`
+  return away || home || ''
+}
+
+/** ISO / Date → value for `<input type="datetime-local">` (local wall clock). */
+function commenceToDatetimeLocal(iso) {
+  if (!iso) return ''
+  const dt = new Date(iso)
+  if (Number.isNaN(dt.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+}
+
+function datetimeLocalToIso(local) {
+  const s = String(local || '').trim()
+  if (!s) return ''
+  const dt = new Date(s)
+  if (Number.isNaN(dt.getTime())) return ''
+  return dt.toISOString()
+}
+
+function applyEventLabelToDraft(d, label) {
+  const parsed = parseEventMatchup(label)
+  return {
+    ...d,
+    event_label: parsed.event || String(label || '').trim(),
+    away_team: parsed.away_team,
+    home_team: parsed.home_team,
+  }
+}
+
 function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
   if (!prefill || typeof prefill !== 'object') return emptyDraft(unitSize)
-  const units =
-    prefill.stake_units != null && String(prefill.stake_units) !== ''
+  const hasDollars = prefill.stake_dollars != null && String(prefill.stake_dollars) !== ''
+  const hasUnits = prefill.stake_units != null && String(prefill.stake_units) !== ''
+  let dollars = ''
+  let units = String(DEFAULT_STAKE_UNITS)
+  if (hasDollars) {
+    dollars = String(prefill.stake_dollars)
+    units = hasUnits
       ? String(prefill.stake_units)
-      : String(DEFAULT_STAKE_UNITS)
-  const dollars =
-    prefill.stake_dollars != null && String(prefill.stake_dollars) !== ''
-      ? String(prefill.stake_dollars)
-      : stakeDollarsFromUnits(units, unitSize)
+      : stakeUnitsFromDollars(dollars, unitSize) || String(DEFAULT_STAKE_UNITS)
+  } else if (hasUnits) {
+    units = String(prefill.stake_units)
+    dollars = stakeDollarsFromUnits(units, unitSize)
+  } else {
+    dollars = stakeDollarsFromUnits(units, unitSize)
+  }
   const next = {
     ...emptyDraft(unitSize),
     book: prefill.book != null ? String(prefill.book) : '',
@@ -94,6 +138,7 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     notes: prefill.notes ? String(prefill.notes) : '',
     home_team: prefill.home_team ? String(prefill.home_team) : '',
     away_team: prefill.away_team ? String(prefill.away_team) : '',
+    event_label: prefill.event_label ? String(prefill.event_label) : '',
     sport_label: prefill.sport_label ? String(prefill.sport_label) : '',
     event_id: prefill.event_id ? String(prefill.event_id) : '',
     sport_key: prefill.sport_key ? String(prefill.sport_key) : '',
@@ -102,6 +147,7 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     prop_stat: prefill.prop_stat ? String(prefill.prop_stat) : '',
     source: normalizeSportsBetSource(prefill.source, 'manual'),
   }
+  if (!next.event_label) next.event_label = eventLabelFromDraft(next)
   const sport = resolveSportsBetSport(next.sport_key, next.sport_label)
   next.sport_key = sport.key
   next.sport_label = sport.label
@@ -362,11 +408,10 @@ export default function SportsBetTracker({
     const inserted = []
     let lastErr = ''
     for (const row of list) {
+      const filled = draftFromPrefill(row, unitSize)
       const payload = {
-        ...row,
-        stake_units: row.stake_units || DEFAULT_STAKE_UNITS,
-        unit_size_dollars: row.unit_size_dollars || unitSize,
-        stake_dollars: row.stake_dollars || stakeDollarsFromUnits(row.stake_units || DEFAULT_STAKE_UNITS, unitSize),
+        ...filled,
+        unit_size_dollars: filled.unit_size_dollars || unitSize,
       }
       const { bet, error: saveErr } = await insertSportsBet(supabaseClient, userId, payload)
       if (saveErr) lastErr = saveErr
@@ -898,13 +943,28 @@ export default function SportsBetTracker({
                 {sportsBetSourceLabel(draft.source)}
               </p>
             ) : null}
-            {(draft.away_team || draft.home_team) && (
-              <p className="shrink-0 px-4 pb-2 text-sm text-zinc-400">
-                {[draft.away_team, draft.home_team].filter(Boolean).join(' @ ')}
-                {draft.sport_label ? ` · ${draft.sport_label}` : ''}
-              </p>
-            )}
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 pb-3">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Event
+                <input
+                  className={`${inputClass} mt-1`}
+                  value={eventLabelFromDraft(draft)}
+                  onChange={(e) => setDraft((d) => applyEventLabelToDraft(d, e.target.value))}
+                  placeholder="BUF Bills vs LV Raiders"
+                />
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Event date
+                <input
+                  type="datetime-local"
+                  className={`${inputClass} mt-1`}
+                  value={commenceToDatetimeLocal(draft.commence_time)}
+                  onChange={(e) => setDraft((d) => ({
+                    ...d,
+                    commence_time: datetimeLocalToIso(e.target.value),
+                  }))}
+                />
+              </label>
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Sport
                 <select
@@ -1090,7 +1150,7 @@ export default function SportsBetTracker({
                   className={`${inputClass} mt-1`}
                   value={draft.selection_label}
                   onChange={(e) => setDraft((d) => ({ ...d, selection_label: e.target.value }))}
-                  placeholder="Chiefs -3.5"
+                  placeholder="Kirk Cousins Over 4.5 Passing Touchdowns"
                 />
               </label>
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">

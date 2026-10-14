@@ -28,9 +28,19 @@ export function sportByKey(key) {
 export function resolveSportsBetSport(sportKey, sportLabel) {
   const keyRaw = String(sportKey || '').trim()
   const labelRaw = String(sportLabel || '').trim()
-  const byKey = sportByKey(keyRaw)
-  if (byKey) return byKey
   const lower = `${keyRaw} ${labelRaw}`.toLowerCase()
+  // Fight sports stay under Other with a specific label (UFC / Boxing / MMA).
+  if (/\bufc\b/.test(lower)) return { key: 'other', label: 'UFC' }
+  if (/\bmma\b/.test(lower)) return { key: 'other', label: 'MMA' }
+  if (/\bboxing\b/.test(lower)) return { key: 'other', label: 'Boxing' }
+  const byKey = sportByKey(keyRaw)
+  if (byKey) {
+    // Preserve slip labels like "UFC" when key is already `other`.
+    if (byKey.key === 'other' && labelRaw && labelRaw.toLowerCase() !== 'other') {
+      return { key: 'other', label: labelRaw }
+    }
+    return byKey
+  }
   if (lower.includes('ncaaf') || lower === 'cfb' || /\bcfb\b/.test(lower)) {
     return sportByKey(LOUNGE_SPORTS_HUB_FILTER_CFB)
   }

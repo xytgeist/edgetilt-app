@@ -227,8 +227,9 @@ function cropOverlayPercents(layout, cropPx) {
 /**
  * Trim and optionally crop a video to at most 60s: draggable window on the full timeline (cannot widen past 60s).
  *
- * @param {{ file: File, knownDurationSec?: number, intent?: 'composer' | 'detail', onCancel: () => void, onConfirm: (result: File | { type: 'composerTrimJob', sourceFile: File, startSec: number, endSec: number, cropPx: { x: number, y: number, w: number, h: number } | null, intrinsicWidth: number, intrinsicHeight: number, posterUrl: string }) => void }} props
+ * @param {{ file: File, knownDurationSec?: number, knownWidth?: number, knownHeight?: number, intent?: 'composer' | 'detail', onCancel: () => void, onConfirm: (result: File | { type: 'composerTrimJob', sourceFile: File, startSec: number, endSec: number, cropPx: { x: number, y: number, w: number, h: number } | null, intrinsicWidth: number, intrinsicHeight: number, posterUrl: string }) => void }} props
  * `intent` - `composer` returns a trim payload for background encode/upload; `detail` keeps synchronous encode and passes a `File`.
+ * `knownWidth` / `knownHeight` - native pick probe dims when `<video>` metadata never paints (Android).
  */
 export default function LoungeVideoCropModal({
   file,
@@ -236,6 +237,8 @@ export default function LoungeVideoCropModal({
   nativeAssetId = '',
   initialPosterUrl = '',
   knownDurationSec,
+  knownWidth,
+  knownHeight,
   intent = 'composer',
   shellClassName = 'z-[105]',
   maxClipSec = LOUNGE_VIDEO_MAX_SECONDS,
@@ -365,7 +368,13 @@ export default function LoungeVideoCropModal({
       posterObjectUrlRef.current = ''
     }
     setPhase('idle')
-    setIntrinsicSize({ w: 0, h: 0 })
+    const kw = Number(knownWidth)
+    const kh = Number(knownHeight)
+    setIntrinsicSize(
+      Number.isFinite(kw) && Number.isFinite(kh) && kw > 1 && kh > 1
+        ? { w: kw, h: kh }
+        : { w: 0, h: 0 },
+    )
     setCropAspectKey('original')
     setCropPx(null)
     const probed =
@@ -412,7 +421,7 @@ export default function LoungeVideoCropModal({
         posterObjectUrlRef.current = ''
       }
     }
-  }, [file, previewUrl, knownDurationSec, initialPosterUrl])
+  }, [file, previewUrl, knownDurationSec, knownWidth, knownHeight, initialPosterUrl])
 
   useEffect(() => {
     const vw = intrinsicSize.w
@@ -805,63 +814,73 @@ export default function LoungeVideoCropModal({
       if (!v || durationRef.current <= 0) {
         throw new Error('Video is not ready yet.')
       }
-      const iw = Number(v.videoWidth) || intrinsicSize.w
-      const ih = Number(v.videoHeight) || intrinsicSize.h
+      const knownW = Number(knownWidth)
+      const knownH = Number(knownHeight)
+      const iw =
+        Number(v.videoWidth) ||
+        intrinsicSize.w ||
+        (Number.isFinite(knownW) && knownW > 1 ? knownW : 0)
+      const ih =
+        Number(v.videoHeight) ||
+        intrinsicSize.h ||
+        (Number.isFinite(knownH) && knownH > 1 ? knownH : 0)
       if (!(iw > 1) || !(ih > 1)) {
         throw new Error('Could not read video dimensions.')
       }
-      await waitSeeked(v, start, 1400)
-      await waitPaintTick(v)
-      await primePosterFrameForCanvas(v)
 
       const rawCrop = cropAspectKey !== 'original' ? cropRef.current : null
       const cropSan =
         rawCrop && iw > 0 && ih > 0 ? sanitizeVideoCropPx(iw, ih, rawCrop) : null
 
-      let posterUrl = ''
-      try {
-      posterUrl = await new Promise((resolve, reject) => {
+      // Native picks already ship a poster file/data URL. Canvas grab of a black
+      // Android <video> can "succeed" with a blank JPEG … prefer the pick poster.
+      const nativeKeepPoster = nativeAssetId ? String(initialPosterUrl || '').trim() : ''
+      let posterUrl = nativeKeepPoster
+      if (!posterUrl) {
+        await waitSeeked(v, start, 1400)
+        await waitPaintTick(v)
+        await primePosterFrameForCanvas(v)
         try {
-          const cnv = document.createElement('canvas')
-          const ctx = cnv.getContext('2d')
-          if (!ctx) {
-            reject(new Error('Could not capture poster.'))
-            return
-          }
-          if (cropSan) {
-            const scale = cropSan.w > POSTER_MAX_WIDTH ? POSTER_MAX_WIDTH / cropSan.w : 1
-            cnv.width = Math.round(cropSan.w * scale)
-            cnv.height = Math.round(cropSan.h * scale)
-            ctx.drawImage(v, cropSan.x, cropSan.y, cropSan.w, cropSan.h, 0, 0, cnv.width, cnv.height)
-          } else {
-            const w0 = v.videoWidth
-            const h0 = v.videoHeight
-            const scale = w0 > POSTER_MAX_WIDTH ? POSTER_MAX_WIDTH / w0 : 1
-            cnv.width = Math.round(w0 * scale)
-            cnv.height = Math.round(h0 * scale)
-            ctx.drawImage(v, 0, 0, w0, h0, 0, 0, cnv.width, cnv.height)
-          }
-          cnv.toBlob(
-            (blob) => {
-              if (!blob) {
+          posterUrl = await new Promise((resolve, reject) => {
+            try {
+              const cnv = document.createElement('canvas')
+              const ctx = cnv.getContext('2d')
+              if (!ctx) {
                 reject(new Error('Could not capture poster.'))
                 return
               }
-              resolve(URL.createObjectURL(blob))
-            },
-            'image/jpeg',
-            0.82,
-          )
-        } catch (err) {
-          reject(err instanceof Error ? err : new Error(String(err)))
+              if (cropSan) {
+                const scale = cropSan.w > POSTER_MAX_WIDTH ? POSTER_MAX_WIDTH / cropSan.w : 1
+                cnv.width = Math.round(cropSan.w * scale)
+                cnv.height = Math.round(cropSan.h * scale)
+                ctx.drawImage(v, cropSan.x, cropSan.y, cropSan.w, cropSan.h, 0, 0, cnv.width, cnv.height)
+              } else {
+                const w0 = Number(v.videoWidth) || iw
+                const h0 = Number(v.videoHeight) || ih
+                const scale = w0 > POSTER_MAX_WIDTH ? POSTER_MAX_WIDTH / w0 : 1
+                cnv.width = Math.round(w0 * scale)
+                cnv.height = Math.round(h0 * scale)
+                ctx.drawImage(v, 0, 0, w0, h0, 0, 0, cnv.width, cnv.height)
+              }
+              cnv.toBlob(
+                (blob) => {
+                  if (!blob) {
+                    reject(new Error('Could not capture poster.'))
+                    return
+                  }
+                  resolve(URL.createObjectURL(blob))
+                },
+                'image/jpeg',
+                0.82,
+              )
+            } catch (err) {
+              reject(err instanceof Error ? err : new Error(String(err)))
+            }
+          })
+        } catch (posterErr) {
+          if (!nativeAssetId) throw posterErr
+          posterUrl = String(initialPosterUrl || '').trim()
         }
-      })
-      } catch (posterErr) {
-        if (!nativeAssetId) throw posterErr
-        posterUrl = String(initialPosterUrl || '').trim()
-      }
-      if (!posterUrl && nativeAssetId) {
-        posterUrl = String(initialPosterUrl || '').trim()
       }
 
       onConfirm({
@@ -880,7 +899,18 @@ export default function LoungeVideoCropModal({
       setTrimErr(err instanceof Error ? err.message : 'Could not prepare clip.')
       setPhase('idle')
     }
-  }, [file, nativeAssetId, initialPosterUrl, onConfirm, cropAspectKey, intrinsicSize.w, intrinsicSize.h, intent])
+  }, [
+    file,
+    nativeAssetId,
+    initialPosterUrl,
+    knownWidth,
+    knownHeight,
+    onConfirm,
+    cropAspectKey,
+    intrinsicSize.w,
+    intrinsicSize.h,
+    intent,
+  ])
 
   useEffect(
     () => () => {

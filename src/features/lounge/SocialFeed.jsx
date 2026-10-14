@@ -5878,6 +5878,8 @@ export default function SocialFeed({
           mode,
           partIdx: threadComposeActivePartIndexRef.current,
           knownDurationSec: known > 0 ? known : undefined,
+          knownWidth: Number(asset.width) > 1 ? Number(asset.width) : undefined,
+          knownHeight: Number(asset.height) > 1 ? Number(asset.height) : undefined,
         })
         return
       }
@@ -20865,6 +20867,8 @@ export default function SocialFeed({
           nativeAssetId={loungeVideoCrop.nativeAssetId}
           initialPosterUrl={loungeVideoCrop.initialPosterUrl}
           knownDurationSec={loungeVideoCrop.knownDurationSec}
+          knownWidth={loungeVideoCrop.knownWidth}
+          knownHeight={loungeVideoCrop.knownHeight}
           maxClipSec={currentLoungeVideoLimits().maxSeconds}
           intent="composer"
           shellClassName={

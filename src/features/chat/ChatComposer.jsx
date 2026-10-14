@@ -751,6 +751,8 @@ export default function ChatComposer({
                   nativeAssetId: String(picked.assetId),
                   initialPosterUrl: posterUrl || '',
                   knownDurationSec: Number.isFinite(dur) && dur > 0 ? dur : undefined,
+                  knownWidth: Number(picked.width) > 1 ? Number(picked.width) : undefined,
+                  knownHeight: Number(picked.height) > 1 ? Number(picked.height) : undefined,
                 })
               } catch {
                 videoInputRef.current?.click()
@@ -1077,6 +1079,8 @@ export default function ChatComposer({
           nativeAssetId={cropModalFile.nativeAssetId}
           initialPosterUrl={cropModalFile.initialPosterUrl}
           knownDurationSec={cropModalFile.knownDurationSec}
+          knownWidth={cropModalFile.knownWidth}
+          knownHeight={cropModalFile.knownHeight}
           intent="composer"
           maxClipSec={currentChatVideoLimits().maxSeconds}
           onCancel={handleCropCancel}

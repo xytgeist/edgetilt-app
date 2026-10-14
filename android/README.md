@@ -53,7 +53,7 @@ Bump `versionCode` every upload. Org account + Play App Signing + internal track
 - **Upload key:** `33:56:43:97:85:D1:4C:AD:1B:CF:E8:89:34:31:8E:04:98:2B:AB:85:1C:D6:20:1B:0D:51:EE:41:B4:8D:7D:36`
 - **Debug:** `26:4E:6A:82:56:0F:D2:1D:8F:1A:67:13:F5:33:8E:04:97:16:A3:52:1B:C8:9C:07:14:12:33:95:0F:87:92:E3`
 
-All three for `com.edgetilt.app` live in `public/.well-known/assetlinks.json`. Play Console org: **DIGIVERSE VENTURES LLC** / `play@digiverse.ventures` (developer `8014913311107911454`). App **Edge Tilt** internal testing: **22 (1.3.18)** poster file URL; next AAB **23 (1.3.19)** export trim-start poster + clip dims. Needs web **`1.4.1130`**+ on the host the APK loads.
+All three for `com.edgetilt.app` live in `public/.well-known/assetlinks.json`. Play Console org: **DIGIVERSE VENTURES LLC** / `play@digiverse.ventures` (developer `8014913311107911454`). App **Edge Tilt** internal testing: **23 (1.3.19)** video export poster; next AAB **24 (1.3.20)** ML Kit scan + OCR. Needs web **`1.4.1132`**+ on the host the APK loads.
 
 ## App Links
 
@@ -87,6 +87,8 @@ Web side: `src/utils/edgeAndroid.js` (`isEdgeAndroidShell()` = UA has `EdgeAndro
 | `uploadEdgeVideoTus(json)` | Lounge Stream tus (create Edge + PATCH). Completes via `edge-android-video-result`. Progress phase `upload`. APK **1.3.13+**. |
 | `uploadEdgeVideoPut(json)` | Chat R2 PUT to a presigned URL. Completes via `edge-android-video-result`. Progress phase `upload`. APK **1.3.13+**. |
 | `cancelEdgeVideo(json)` | `{ assetId? }` cancels in-flight encode/upload (and pending pick). Returns JSON `{ ok: true }`. APK **1.3.13+**. |
+| `scanDocument(json)` | IPA twin. ML Kit Document Scanner (Play services UI). `json` = `{ purpose?, maxPages?, requestId? }` (default 1 page, max 8). Returns `{ ok, started, requestId }` immediately; completes with window event `edge-android-scan-result` `{ requestId, ok, cancelled?, unsupported?, images?: [{ mimeType, base64, width, height }], error? }`. JPEG ≤2000px. APK **1.3.20+**. Web: `canScanEdgeDocument` / `scanEdgeDocument`. |
+| `recognizeText(json)` | IPA twin. Bundled ML Kit Latin OCR. `json` = `{ imageBase64, mimeType?, purpose? }`. Returns JSON `{ ok, text?, confidence?, lines?, error? }` (sync). JPEG/PNG ≤8MB decoded, downscaled to 2000px. APK **1.3.20+**. Web: `canRecognizeEdgeText` / `recognizeEdgeText`. |
 
 Web feature-detects each newer method (`typeof EdgeAndroid.share === 'function'`), so older sideloaded APKs keep the web fallbacks. **Native video:** `canPickEdgeVideo()` is true on EdgeAndroid only when pick+export+tus+**put**+cancel all exist (Lounge and Chat share that gate). File-chooser MOV prep (`EdgeVideoPrep`) stays as fallback. `shareViaBestAvailable`, `triggerEdgeNativeHaptic`, tap haptics and the composer portrait lock route to these automatically. Call ring: `src/utils/edgeCallKit.js` routes `reportEdgeIncomingCall` / listeners / `markEdgeCallKitWebReady` to Android when those methods exist; media stays web LiveKit (not a native LiveKit SDK).
 
@@ -108,7 +110,7 @@ Web: `src/utils/edgeNativePush.js` routes Lounge Settings / Offers reminders to 
 
 ## Native parity roadmap
 
-Ryan (2026-09-29): bring the IPA's native wins to Android. Priority order and checkboxes live in `docs/test-buildout-backlog.md` → **Android** → *Native parity roadmap*. **Shipped:** call ring, MOV prep, share, photo picker, haptics / orientation, audio route, App Links, Google Custom Tabs, live-session notification / Live Updates (1.3.9), **native Lounge/Chat video pick+export+tus/PUT under FG service (1.3.13)**. **Next native:** ML Kit scan / OCR, shortcuts + widget. Add each new `window.EdgeAndroid` method to the bridge table above before the web side calls it.
+Ryan (2026-09-29): bring the IPA's native wins to Android. Priority order and checkboxes live in `docs/test-buildout-backlog.md` → **Android** → *Native parity roadmap*. **Shipped:** call ring, MOV prep, share, photo picker, haptics / orientation, audio route, App Links, Google Custom Tabs, live-session notification / Live Updates (1.3.9), native Lounge/Chat video (1.3.19), **ML Kit document scan + OCR (1.3.20)**. **Next native:** shortcuts + widget. Add each new `window.EdgeAndroid` method to the bridge table above before the web side calls it.
 
 **Device debugging:** phone on USB with USB debugging on, `adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof com.edgetilt.app)`, then any CDP client on `localhost:9222` (both the main WebView and bet sheet / popup WebViews show up as targets).
 

@@ -387,6 +387,82 @@ export function setEdgeAndroidAudioRoute(args) {
 }
 
 const VIDEO_RESULT_EVENT = 'edge-android-video-result'
+const SCAN_RESULT_EVENT = 'edge-android-scan-result'
+
+/** True when this APK ships ML Kit document scan. */
+export function canScanEdgeAndroidDocument() {
+  const b = bridge()
+  return Boolean(b && typeof b.scanDocument === 'function')
+}
+
+/** True when this APK ships on-device OCR. */
+export function canRecognizeEdgeAndroidText() {
+  const b = bridge()
+  return Boolean(b && typeof b.recognizeText === 'function')
+}
+
+/**
+ * Async document scan. Completes via `edge-android-scan-result`.
+ * @param {Record<string, unknown>} [payload]
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export function invokeEdgeAndroidScanDocument(payload = {}) {
+  const b = bridgeWith('scanDocument')
+  if (!b) return Promise.resolve({ ok: false, error: 'noop' })
+  const requestId = newVideoRequestId()
+  return new Promise((resolve) => {
+    let done = false
+    const finish = (detail) => {
+      if (done) return
+      done = true
+      window.removeEventListener(SCAN_RESULT_EVENT, onResult)
+      window.clearTimeout(timer)
+      resolve(detail && typeof detail === 'object' ? detail : { ok: false })
+    }
+    const onResult = (event) => {
+      const detail = event?.detail || {}
+      if (String(detail.requestId || '') !== requestId) return
+      finish(detail)
+    }
+    const timer = window.setTimeout(
+      () => finish({ ok: false, error: 'timeout', requestId }),
+      10 * 60_000,
+    )
+    window.addEventListener(SCAN_RESULT_EVENT, onResult)
+    try {
+      const raw = b.scanDocument(JSON.stringify({ ...(payload || {}), requestId }))
+      const started = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+      if (started?.ok === false && started?.started !== true) {
+        finish({
+          ok: false,
+          cancelled: Boolean(started?.cancelled),
+          unsupported: Boolean(started?.unsupported),
+          error: typeof started?.error === 'string' ? started.error : 'Could not start',
+          requestId,
+        })
+      }
+    } catch {
+      finish({ ok: false, error: 'Could not start', requestId })
+    }
+  })
+}
+
+/**
+ * Sync OCR JSON from the shell.
+ * @param {Record<string, unknown>} payload
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export async function invokeEdgeAndroidRecognizeText(payload) {
+  const b = bridgeWith('recognizeText')
+  if (!b) return { ok: false, error: 'noop' }
+  try {
+    const raw = b.recognizeText(JSON.stringify(payload || {}))
+    const result = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+    return result && typeof result === 'object' ? result : { ok: false }
+  } catch {
+    return { ok: false, error: 'OCR failed.' }
+  }
+}
 
 /** True when this APK ships the full native video stack (Lounge + Chat share this gate). */
 export function canPickEdgeAndroidVideo() {

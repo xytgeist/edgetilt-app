@@ -23,8 +23,8 @@ android {
     applicationId = "com.edgetilt.app"
     minSdk = 28
     targetSdk = 36
-    versionCode = 23
-    versionName = "1.3.19"
+    versionCode = 24
+    versionName = "1.3.20"
   }
 
   buildFeatures {
@@ -85,4 +85,7 @@ dependencies {
   implementation("androidx.media3:media3-transformer:1.11.1")
   implementation("androidx.media3:media3-effect:1.11.1")
   implementation("androidx.media3:media3-common:1.11.1")
+  // Document scanner UI (Play services download) + bundled Latin OCR (W-2G / Offers / bet slip).
+  implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0")
+  implementation("com.google.mlkit:text-recognition:16.0.1")
 }

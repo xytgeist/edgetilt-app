@@ -38,6 +38,7 @@ class MainActivity : Activity() {
   private var fileCallback: ValueCallback<Array<Uri>>? = null
   private lateinit var videoPrep: EdgeVideoPrep
   private lateinit var edgeVideo: EdgeVideoNative
+  private lateinit var edgeDocumentScanner: EdgeDocumentScanner
   private var pendingMediaRequest: PermissionRequest? = null
   private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
   /** The JS bridge only answers while the main frame is on our own site (not Supabase / Google auth hops). */
@@ -58,6 +59,7 @@ class MainActivity : Activity() {
     setContentView(root)
     videoPrep = EdgeVideoPrep(this, root)
     edgeVideo = EdgeVideoNative(this) { event, detail -> deliverWindowEvent(event, detail) }
+    edgeDocumentScanner = EdgeDocumentScanner(this) { event, detail -> deliverWindowEvent(event, detail) }
     applySystemInsets(root)
 
     webView.settings.apply {
@@ -461,6 +463,20 @@ class MainActivity : Activity() {
       if (!onAppPage) return JSONObject().put("ok", false).toString()
       return edgeVideo.cancel(json.ifBlank { "{}" })
     }
+
+    /** ML Kit document scanner. Completes via `edge-android-scan-result`. */
+    @JavascriptInterface
+    fun scanDocument(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
+      return edgeDocumentScanner.scan(json.ifBlank { "{}" })
+    }
+
+    /** On-device Latin OCR (sync JSON). IPA twin `recognizeText`. */
+    @JavascriptInterface
+    fun recognizeText(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
+      return EdgeTextRecognizer.recognize(json.ifBlank { "{}" })
+    }
   }
 
   /** Styles match the IPA's `triggerHaptic`. */
@@ -578,6 +594,10 @@ class MainActivity : Activity() {
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
     if (requestCode == EdgeVideoNative.REQ_PICK) {
       edgeVideo.onPickResult(resultCode, data)
+      return
+    }
+    if (requestCode == EdgeDocumentScanner.REQ_SCAN) {
+      edgeDocumentScanner.onScanResult(resultCode, data)
       return
     }
     if (requestCode != REQ_FILES) {

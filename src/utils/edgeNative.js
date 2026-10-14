@@ -9,10 +9,14 @@
 import {
   canEdgeAndroidHaptic,
   canPickEdgeAndroidVideo,
+  canRecognizeEdgeAndroidText,
+  canScanEdgeAndroidDocument,
   canShareEdgeAndroid,
   canStartEdgeAndroidWebAuthSession,
   canSyncEdgeAndroidLiveBankrollActivity,
   cancelEdgeAndroidVideo,
+  invokeEdgeAndroidRecognizeText,
+  invokeEdgeAndroidScanDocument,
   invokeEdgeAndroidVideo,
   isEdgeAndroidShell,
   shareEdgeAndroid,
@@ -538,22 +542,25 @@ export async function setEdgeCallAudioRoute(route) {
 }
 
 /**
- * True when the IPA injected `scanDocument` (VisionKit). Old binaries and PWA are false.
+ * True when the IPA / APK injected `scanDocument` (VisionKit / ML Kit). Old binaries and PWA are false.
  * @returns {boolean}
  */
 export function canScanEdgeDocument() {
-  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  if (typeof window === 'undefined') return false
+  if (canScanEdgeAndroidDocument()) return true
+  if (!isEdgeiOSShell()) return false
   return typeof window.EdgeNative?.scanDocument === 'function'
 }
 
 /**
- * Present the iOS document camera. Feature-detect first (`canScanEdgeDocument`).
- * Cancel returns `{ ok: false, cancelled: true }`. Simulator often returns `unsupported`.
+ * Present the native document camera. Feature-detect first (`canScanEdgeDocument`).
+ * Cancel returns `{ ok: false, cancelled: true }`. Simulator / missing Play module may return `unsupported`.
  *
  * @param {{ purpose?: string, maxPages?: number }} [payload]
  * @returns {Promise<Record<string, unknown>>}
  */
 export async function scanEdgeDocument(payload = {}) {
+  if (canScanEdgeAndroidDocument()) return invokeEdgeAndroidScanDocument(payload)
   return edgeNativeInvoke('scanDocument', payload)
 }
 
@@ -583,21 +590,24 @@ export function filesFromNativeScanImages(result) {
 }
 
 /**
- * True when the IPA injected `recognizeText` (Vision OCR). Old binaries and PWA are false.
+ * True when the IPA / APK injected `recognizeText` (Vision / ML Kit OCR). Old binaries and PWA are false.
  * @returns {boolean}
  */
 export function canRecognizeEdgeText() {
-  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  if (typeof window === 'undefined') return false
+  if (canRecognizeEdgeAndroidText()) return true
+  if (!isEdgeiOSShell()) return false
   return typeof window.EdgeNative?.recognizeText === 'function'
 }
 
 /**
- * On-device Vision OCR. Feature-detect first (`canRecognizeEdgeText`).
+ * On-device OCR. Feature-detect first (`canRecognizeEdgeText`).
  *
  * @param {{ imageBase64: string, mimeType?: string, purpose?: string }} payload
  * @returns {Promise<Record<string, unknown>>}
  */
 export async function recognizeEdgeText(payload) {
+  if (canRecognizeEdgeAndroidText()) return invokeEdgeAndroidRecognizeText(payload)
   return edgeNativeInvoke('recognizeText', payload)
 }
 

@@ -95,6 +95,14 @@ object EdgeVideoStore {
   }
 
   fun probe(ctx: Context, file: File, assetId: String = ""): Probe {
+    return probeAt(ctx, file, assetId, timeSec = 0.0)
+  }
+
+  /**
+   * Probe display size + write a JPEG poster at [timeSec] (µs seek with CLOSEST_SYNC).
+   * Used for pick (t≈0) and export (trim start / exported clip t≈0).
+   */
+  fun probeAt(ctx: Context, file: File, assetId: String = "", timeSec: Double = 0.0): Probe {
     val r = MediaMetadataRetriever()
     return try {
       r.setDataSource(file.absolutePath)
@@ -104,10 +112,12 @@ object EdgeVideoStore {
       val rotation = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
       val displayW = if (rotation == 90 || rotation == 270) h else w
       val displayH = if (rotation == 90 || rotation == 270) w else h
+      val targetUs = (timeSec.coerceAtLeast(0.0) * 1_000_000.0).toLong()
       // t=0 is often empty on phone camera files; match IPA (~0.15s) as fallback.
       val frame = try {
-        r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-          ?: r.getFrameAtTime(150_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+        r.getFrameAtTime(targetUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+          ?: r.getFrameAtTime((targetUs + 150_000L).coerceAtLeast(150_000L), MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+          ?: r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
           ?: r.getFrameAtTime(1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
       } catch (_: Exception) {
         null
@@ -115,9 +125,11 @@ object EdgeVideoStore {
       val jpeg = frame?.let { bitmapToJpegBytes(it, 0.72f) }
       frame?.recycle()
       val id = assetId.trim()
+      var wrotePoster = false
       if (jpeg != null && jpeg.isNotEmpty() && id.isNotEmpty()) {
         try {
           File(root(ctx), "$id.jpg").writeBytes(jpeg)
+          wrotePoster = true
         } catch (e: Exception) {
           Log.w(TAG, "poster write failed", e)
         }
@@ -129,7 +141,7 @@ object EdgeVideoStore {
         } else {
           ""
         }
-      Probe(durationMs / 1000.0, displayW, displayH, posterB64, hasPosterFile = jpeg != null && id.isNotEmpty())
+      Probe(durationMs / 1000.0, displayW, displayH, posterB64, hasPosterFile = wrotePoster)
     } catch (e: Exception) {
       Log.w(TAG, "probe failed", e)
       Probe(0.0, 0, 0, "", hasPosterFile = false)

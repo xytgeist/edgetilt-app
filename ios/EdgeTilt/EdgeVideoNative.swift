@@ -480,6 +480,11 @@ private enum EdgeVideoProbe {
   }
 
   static func probe(url: URL) async -> Result {
+    await probeAt(url: url, timeSec: 0.15)
+  }
+
+  /// Still + display size at [timeSec] (trim start / exported clip head).
+  static func probeAt(url: URL, timeSec: Double) async -> Result {
     let asset = AVURLAsset(url: url)
     var duration = 0.0
     var width = 0
@@ -498,8 +503,11 @@ private enum EdgeVideoProbe {
     let generator = AVAssetImageGenerator(asset: asset)
     generator.appliesPreferredTrackTransform = true
     generator.maximumSize = CGSize(width: 960, height: 960)
-    let time = CMTime(seconds: min(0.15, max(0, duration)), preferredTimescale: 600)
-    if let cg = try? generator.copyCGImage(at: time, actualTime: nil),
+    let clamped = min(max(0, timeSec), max(0, duration))
+    let primary = CMTime(seconds: clamped > 0.02 ? clamped : min(0.15, max(0, duration)), preferredTimescale: 600)
+    let fallback = CMTime(seconds: min(0.15, max(0, duration)), preferredTimescale: 600)
+    if let cg = try? generator.copyCGImage(at: primary, actualTime: nil)
+      ?? (try? generator.copyCGImage(at: fallback, actualTime: nil)),
        let jpeg = UIImage(cgImage: cg).jpegData(compressionQuality: 0.82) {
       poster = jpeg.base64EncodedString()
     }
@@ -863,14 +871,16 @@ enum EdgeVideoExporter {
     ) {
       EdgeVideoBackgroundKeepAlive.rebind(from: assetId, to: assetId)
       handOff = true
-      return [
-        "ok": true,
-        "passthrough": true,
-        "assetId": assetId,
-        "sourceAssetId": assetId,
-        "byteSize": source.byteSize,
-        "previewUrl": "edge-video://local/\(assetId)",
-      ]
+      let atStart = await EdgeVideoProbe.probeAt(url: source.fileURL, timeSec: startSec)
+      return exportResultDict(
+        assetId: assetId,
+        sourceAssetId: assetId,
+        byteSize: source.byteSize,
+        passthrough: true,
+        width: atStart.width > 1 ? atStart.width : Int(display.width.rounded()),
+        height: atStart.height > 1 ? atStart.height : Int(display.height.rounded()),
+        posterJpegBase64: atStart.posterJpegBase64
+      )
     }
 
     let composition = AVMutableComposition()
@@ -956,13 +966,43 @@ enum EdgeVideoExporter {
     EdgeVideoEvents.post(phase: "encoding", progress: 1, assetId: assetId)
     EdgeVideoBackgroundKeepAlive.rebind(from: assetId, to: stored.id)
     handOff = true
-    return [
+    let outProbe = await EdgeVideoProbe.probeAt(url: stored.fileURL, timeSec: 0)
+    let outW = outProbe.width > 1 ? outProbe.width : Int(videoComposition.renderSize.width.rounded())
+    let outH = outProbe.height > 1 ? outProbe.height : Int(videoComposition.renderSize.height.rounded())
+    return exportResultDict(
+      assetId: stored.id,
+      sourceAssetId: assetId,
+      byteSize: size,
+      passthrough: false,
+      width: outW,
+      height: outH,
+      posterJpegBase64: outProbe.posterJpegBase64
+    )
+  }
+
+  private static func exportResultDict(
+    assetId: String,
+    sourceAssetId: String,
+    byteSize: Int64,
+    passthrough: Bool,
+    width: Int,
+    height: Int,
+    posterJpegBase64: String?
+  ) -> [String: Any] {
+    var dict: [String: Any] = [
       "ok": true,
-      "assetId": stored.id,
-      "sourceAssetId": assetId,
-      "byteSize": size,
-      "previewUrl": "edge-video://local/\(stored.id)",
+      "passthrough": passthrough,
+      "assetId": assetId,
+      "sourceAssetId": sourceAssetId,
+      "byteSize": byteSize,
+      "previewUrl": "edge-video://local/\(assetId)",
     ]
+    if width > 1 { dict["width"] = width }
+    if height > 1 { dict["height"] = height }
+    if let poster = posterJpegBase64, !poster.isEmpty {
+      dict["posterJpegBase64"] = poster
+    }
+    return dict
   }
 
   private static let screenRecordingSizes: Set<String> = [

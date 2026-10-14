@@ -34,6 +34,7 @@ import { prefetchFfmpegCore, trimVideoFileToMp4 } from '../../utils/loungeVideoF
 import {
   cancelEdgeVideo,
   exportEdgeVideo,
+  nativeExportClipMeta,
   uploadEdgeVideoTus,
 } from '../../utils/edgeNative.js'
 
@@ -526,23 +527,33 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
  */
 /**
  * After encode/upload, swap the composer slot to the finished clip.
- * A native upload has no `File` ... keep the poster still already on the slot.
+ * A native upload has no `File` ... prefer export trim-start poster when provided.
  *
  * @param {object | null | undefined} prev
  * @param {File | null | undefined} encodedFile
  * @param {string} streamVideoUid
  * @param {number} jobId
+ * @param {{ posterUrl?: string | null, width?: number | null, height?: number | null } | null} [exportMeta]
  */
-export function loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId) {
+export function loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId, exportMeta = null) {
   if (!prev || prev.prepJobId !== jobId) return prev
   const hasFile = encodedFile instanceof File && encodedFile.size > 0
   if (!hasFile) {
+    const poster =
+      String(exportMeta?.posterUrl || '').trim() ||
+      prev.posterUrl ||
+      prev.preview ||
+      null
+    const w = Number(exportMeta?.width)
+    const h = Number(exportMeta?.height)
     return {
       ...prev,
       file: null,
       streamVideoUid,
-      preview: prev.preview || prev.posterUrl || '',
-      posterUrl: prev.posterUrl || prev.preview || null,
+      preview: poster || '',
+      posterUrl: poster,
+      ...(Number.isFinite(w) && w > 1 ? { width: w } : {}),
+      ...(Number.isFinite(h) && h > 1 ? { height: h } : {}),
       prepStatus: 'ready',
       prepError: '',
     }
@@ -633,6 +644,10 @@ async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onPr
     }
     watchedIds.add(String(exported.assetId))
     cancelId = String(exported.assetId)
+    const clipMeta = nativeExportClipMeta(exported, {
+      width: spec.intrinsicWidth,
+      height: spec.intrinsicHeight,
+    })
     onEncodeFinished?.()
     maybeReportLoungeVideoUploadDebug('encode', 'native upload')
     report(0.42, 'Uploading…')
@@ -651,7 +666,13 @@ async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onPr
     }
     maybeReportLoungeVideoUploadDebug('encode', 'native ready')
     report(1, 'Upload ready')
-    return { encodedFile: null, streamVideoUid: uid }
+    return {
+      encodedFile: null,
+      streamVideoUid: uid,
+      posterUrl: clipMeta.posterUrl,
+      width: clipMeta.width,
+      height: clipMeta.height,
+    }
   } catch (err) {
     if (err?.name === 'AbortError' || /cancelled/i.test(String(err?.message || ''))) {
       throw new DOMException('Aborted', 'AbortError')

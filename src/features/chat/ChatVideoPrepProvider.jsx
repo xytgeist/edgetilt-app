@@ -19,7 +19,7 @@ import {
   probeVideoFileDurationSeconds,
 } from '../../utils/loungeVideoUpload.js'
 import { uploadChatPosterToR2, uploadChatVideoToR2, uploadNativeChatVideoToR2 } from '../../utils/chatVideoR2Upload.js'
-import { cancelEdgeVideo, exportEdgeVideo } from '../../utils/edgeNative.js'
+import { cancelEdgeVideo, exportEdgeVideo, nativeExportClipMeta } from '../../utils/edgeNative.js'
 
 const ChatVideoPrepContext = createContext(null)
 
@@ -224,8 +224,18 @@ export function ChatVideoPrepProvider({ children, supabaseClient }) {
           status: 'pending',
           progress: 0,
           posterUrl: isTrimJob || hasNativePoster ? (spec.posterUrl ?? null) : null,
-          width: isTrimJob || hasNativePoster ? (spec.intrinsicWidth ?? null) : null,
-          height: isTrimJob || hasNativePoster ? (spec.intrinsicHeight ?? null) : null,
+          width:
+            isTrimJob || hasNativePoster
+              ? Number(spec.intrinsicWidth) > 1
+                ? Number(spec.intrinsicWidth)
+                : null
+              : null,
+          height:
+            isTrimJob || hasNativePoster
+              ? Number(spec.intrinsicHeight) > 1
+                ? Number(spec.intrinsicHeight)
+                : null
+              : null,
           errorMessage: null,
           spec,
           abortCtrl,
@@ -244,8 +254,8 @@ export function ChatVideoPrepProvider({ children, supabaseClient }) {
                 status: 'checking',
                 progress: 0.05,
                 posterUrl: spec.posterUrl ?? null,
-                width: spec.intrinsicWidth ?? null,
-                height: spec.intrinsicHeight ?? null,
+                width: Number(spec.intrinsicWidth) > 1 ? Number(spec.intrinsicWidth) : null,
+                height: Number(spec.intrinsicHeight) > 1 ? Number(spec.intrinsicHeight) : null,
               })
               const watched = new Set([String(spec.nativeAssetId)])
               const onNativeProgress = (event) => {
@@ -294,7 +304,18 @@ export function ChatVideoPrepProvider({ children, supabaseClient }) {
                 }
                 watched.add(String(exported.assetId))
                 cancelId = String(exported.assetId)
-                updateJob(jobId, { status: 'uploading', progress: 0.72 })
+                const clipMeta = nativeExportClipMeta(exported, {
+                  posterUrl: spec.posterUrl,
+                  width: spec.intrinsicWidth,
+                  height: spec.intrinsicHeight,
+                })
+                updateJob(jobId, {
+                  status: 'uploading',
+                  progress: 0.72,
+                  posterUrl: clipMeta.posterUrl,
+                  width: clipMeta.width,
+                  height: clipMeta.height,
+                })
                 void (async () => {
                   try {
                     const videoUrl = await uploadNativeChatVideoToR2(
@@ -303,8 +324,8 @@ export function ChatVideoPrepProvider({ children, supabaseClient }) {
                       Number(exported.byteSize) || 0,
                       { signal: abortCtrl.signal },
                     )
-                    const posterPublicUrl = spec.posterUrl
-                      ? await uploadChatPosterToR2(supabaseClient, spec.posterUrl).catch(() => null)
+                    const posterPublicUrl = clipMeta.posterUrl
+                      ? await uploadChatPosterToR2(supabaseClient, clipMeta.posterUrl).catch(() => null)
                       : null
                     if (abortCtrl.signal.aborted) {
                       removeJob(jobId)

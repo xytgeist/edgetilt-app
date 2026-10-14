@@ -685,12 +685,30 @@ export function isEdgeVideoLocalUrl(url) {
 
 /**
  * Trim + crop on device. Returns a new `assetId` for the MP4.
+ * Newer shells also return trim-start `posterUrl` / `posterJpegBase64` and clip `width`/`height`.
  *
  * @param {Record<string, unknown>} payload
  */
 export async function exportEdgeVideo(payload) {
   if (canPickEdgeAndroidVideo()) return invokeEdgeAndroidVideo('exportEdgeVideo', payload)
   return edgeNativeInvoke('exportEdgeVideo', payload)
+}
+
+/**
+ * Prefer export-time poster + dims (trim start / exported clip). Fall back to pick-time values.
+ *
+ * @param {Record<string, unknown> | null | undefined} exported
+ * @param {{ posterUrl?: string | null, width?: number | null, height?: number | null }} [fallback]
+ */
+export function nativeExportClipMeta(exported, fallback = {}) {
+  const posterUrl = nativeVideoPosterUrl(exported) || String(fallback.posterUrl || '').trim() || null
+  const ew = Number(exported?.width)
+  const eh = Number(exported?.height)
+  const fw = Number(fallback.width)
+  const fh = Number(fallback.height)
+  const width = Number.isFinite(ew) && ew > 1 ? ew : Number.isFinite(fw) && fw > 1 ? fw : null
+  const height = Number.isFinite(eh) && eh > 1 ? eh : Number.isFinite(fh) && fh > 1 ? fh : null
+  return { posterUrl, width, height }
 }
 
 /**

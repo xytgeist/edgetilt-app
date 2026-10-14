@@ -339,13 +339,17 @@ class EdgeVideoNative(
       o.optDouble("intrinsicHeight", probe.height.toDouble()),
     )
     if (canPassthrough(source, full, startSec, endSec, crop, probe.width, probe.height, maxUpload)) {
-      return JSONObject()
-        .put("ok", true)
-        .put("passthrough", true)
-        .put("assetId", assetId)
-        .put("sourceAssetId", assetId)
-        .put("byteSize", source.byteSize)
-        .put("previewUrl", EdgeVideoStore.previewUrl(assetId))
+      // Overwrite pick poster with the trim-start still so chat/Lounge match the clip.
+      val atStart = EdgeVideoStore.probeAt(activity, source.file, assetId, startSec)
+      return exportResultJson(
+        okAssetId = assetId,
+        sourceAssetId = assetId,
+        byteSize = source.byteSize,
+        passthrough = true,
+        width = atStart.width.takeIf { it > 1 } ?: probe.width,
+        height = atStart.height.takeIf { it > 1 } ?: probe.height,
+        hasPoster = atStart.hasPosterFile,
+      )
     }
 
     checkCancelled(assetId)
@@ -440,12 +444,39 @@ class EdgeVideoNative(
     }
     val stored = EdgeVideoStore.adoptExported(activity, outFile, size)
     postProgress("encoding", 1.0, assetId)
-    return JSONObject()
+    // Exported file t≈0 is the trim start (and cropped frame when crop was applied).
+    val outProbe = EdgeVideoStore.probeAt(activity, stored.file, stored.id, 0.0)
+    return exportResultJson(
+      okAssetId = stored.id,
+      sourceAssetId = assetId,
+      byteSize = size,
+      passthrough = false,
+      width = outProbe.width,
+      height = outProbe.height,
+      hasPoster = outProbe.hasPosterFile,
+    )
+  }
+
+  private fun exportResultJson(
+    okAssetId: String,
+    sourceAssetId: String,
+    byteSize: Long,
+    passthrough: Boolean,
+    width: Int,
+    height: Int,
+    hasPoster: Boolean,
+  ): JSONObject {
+    val o = JSONObject()
       .put("ok", true)
-      .put("assetId", stored.id)
-      .put("sourceAssetId", assetId)
-      .put("byteSize", size)
-      .put("previewUrl", EdgeVideoStore.previewUrl(stored.id))
+      .put("passthrough", passthrough)
+      .put("assetId", okAssetId)
+      .put("sourceAssetId", sourceAssetId)
+      .put("byteSize", byteSize)
+      .put("previewUrl", EdgeVideoStore.previewUrl(okAssetId))
+    if (width > 1) o.put("width", width)
+    if (height > 1) o.put("height", height)
+    if (hasPoster) o.put("posterUrl", EdgeVideoStore.posterPreviewUrl(okAssetId))
+    return o
   }
 
   private fun canPassthrough(

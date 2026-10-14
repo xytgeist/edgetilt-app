@@ -341,8 +341,10 @@ export function createThreadComposeVideoPrepController({
         return
       }
 
-      const { encodedFile, streamVideoUid } = result
-      updatePartVideoSlot(partIdx, (prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
+      const { encodedFile, streamVideoUid, posterUrl, width, height } = result
+      updatePartVideoSlot(partIdx, (prev) =>
+        loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId, { posterUrl, width, height }),
+      )
       clearHud(partIdx)
     } catch (e) {
       if (!handoff.settled) {

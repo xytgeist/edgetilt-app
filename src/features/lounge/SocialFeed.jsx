@@ -3531,8 +3531,10 @@ export default function SocialFeed({
             dismissLoungeMediaPrepUploadBarAfterPrep(jobId, loungePostSnapshotRef.current)
             return
           }
-          const { encodedFile, streamVideoUid } = result
-          setComposerVideoSlot((prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
+          const { encodedFile, streamVideoUid, posterUrl, width, height } = result
+          setComposerVideoSlot((prev) =>
+            loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId, { posterUrl, width, height }),
+          )
           dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) {
@@ -3689,8 +3691,10 @@ export default function SocialFeed({
             dismissLoungeMediaPrepUploadBarAfterPrep(jobId, loungePostSnapshotRef.current)
             return
           }
-          const { encodedFile, streamVideoUid } = result
-          setQuoteRepostVideoSlot((prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
+          const { encodedFile, streamVideoUid, posterUrl, width, height } = result
+          setQuoteRepostVideoSlot((prev) =>
+            loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId, { posterUrl, width, height }),
+          )
           dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) {
@@ -5261,8 +5265,10 @@ export default function SocialFeed({
             dismissLoungeMediaPrepUploadBarAfterPrep(jobId, loungeDetailCommentSnapshotRef.current)
             return
           }
-          const { encodedFile, streamVideoUid } = result
-          setLoungeDetailCommentVideoSlot((prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
+          const { encodedFile, streamVideoUid, posterUrl, width, height } = result
+          setLoungeDetailCommentVideoSlot((prev) =>
+            loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId, { posterUrl, width, height }),
+          )
           dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) handoff.reject(e instanceof Error ? e : new Error(String(e)))
@@ -5409,8 +5415,10 @@ export default function SocialFeed({
             dismissLoungeMediaPrepUploadBarAfterPrep(jobId, loungeDetailEditSnapshotRef.current)
             return
           }
-          const { encodedFile, streamVideoUid } = result
-          setLoungeDetailEditVideoSlot((prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
+          const { encodedFile, streamVideoUid, posterUrl, width, height } = result
+          setLoungeDetailEditVideoSlot((prev) =>
+            loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId, { posterUrl, width, height }),
+          )
           dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) handoff.reject(e instanceof Error ? e : new Error(String(e)))
@@ -5557,8 +5565,10 @@ export default function SocialFeed({
             dismissLoungeMediaPrepUploadBarAfterPrep(jobId, loungeDetailCommentEditSnapshotRef.current)
             return
           }
-          const { encodedFile, streamVideoUid } = result
-          setLoungeDetailCommentEditVideoSlot((prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
+          const { encodedFile, streamVideoUid, posterUrl, width, height } = result
+          setLoungeDetailCommentEditVideoSlot((prev) =>
+            loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId, { posterUrl, width, height }),
+          )
           dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) handoff.reject(e instanceof Error ? e : new Error(String(e)))

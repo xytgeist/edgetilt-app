@@ -31,6 +31,40 @@ export function sportByKey(key) {
   return SPORTS_BET_SPORTS.find((s) => s.key === raw) || null
 }
 
+/** UFC / boxing / tennis … Side should list people, not Home/Away. */
+export function isParticipantSport(sportKey, sportLabel) {
+  const lower = `${sportKey || ''} ${sportLabel || ''}`.toLowerCase()
+  return (
+    /\bufc\b/.test(lower)
+    || /\bmma\b/.test(lower)
+    || /mma_mixed/.test(lower)
+    || /\bboxing\b/.test(lower)
+    || /\btennis\b/.test(lower)
+    || /\batp\b/.test(lower)
+    || /\bwta\b/.test(lower)
+    || sportKey === SPORTS_BET_SPORT_UFC
+    || sportKey === SPORTS_BET_SPORT_BOXING
+  )
+}
+
+/**
+ * Side options for participant sports. DB still uses home/away;
+ * labels are fighter/player names when we have them.
+ */
+export function participantSideOptions(draft) {
+  const away = String(draft?.away_team || '').trim()
+  const home = String(draft?.home_team || '').trim()
+  const pick = String(draft?.selection_label || '').trim()
+  const opts = []
+  if (away) opts.push({ value: 'away', label: away })
+  if (home) opts.push({ value: 'home', label: home })
+  if (!opts.length && pick) {
+    const v = draft?.side === 'away' ? 'away' : 'home'
+    opts.push({ value: v, label: pick })
+  }
+  return opts
+}
+
 export function resolveSportsBetSport(sportKey, sportLabel) {
   const keyRaw = String(sportKey || '').trim()
   const labelRaw = String(sportLabel || '').trim()

@@ -43,7 +43,13 @@ import {
 } from './sportsBetStake.js'
 import { loadSportsBetSettings, saveSportsBetSettings } from './sportsBetSettings.js'
 import { normalizeSportsBetSource, sportsBetSourceLabel } from './sportsBetSources.js'
-import { resolveSportsBetSport, SPORTS_BET_SPORTS, sportByKey } from './sportsBetSports.js'
+import {
+  isParticipantSport,
+  participantSideOptions,
+  resolveSportsBetSport,
+  SPORTS_BET_SPORTS,
+  sportByKey,
+} from './sportsBetSports.js'
 
 function emptyDraft(unitSize = readUnitSizeDollars()) {
   const units = String(DEFAULT_STAKE_UNITS)
@@ -116,6 +122,31 @@ function applyEventLabelToDraft(d, label) {
     away_team: parsed.away_team,
     home_team: parsed.home_team,
   }
+}
+
+function sideSelectOptions(draft) {
+  if (draft.market === 'prop' || draft.market === 'total') {
+    return [
+      { value: 'over', label: 'Over' },
+      { value: 'under', label: 'Under' },
+    ]
+  }
+  if (isParticipantSport(draft.sport_key, draft.sport_label)) {
+    const opts = participantSideOptions(draft)
+    if (opts.length) return opts
+    const pick = String(draft.selection_label || '').trim()
+    return [{
+      value: draft.side === 'away' ? 'away' : 'home',
+      label: pick || 'Select fighter / player',
+    }]
+  }
+  return [
+    { value: 'home', label: 'Home' },
+    { value: 'away', label: 'Away' },
+    { value: 'over', label: 'Over' },
+    { value: 'under', label: 'Under' },
+    { value: 'draw', label: 'Draw' },
+  ]
 }
 
 function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
@@ -1009,11 +1040,12 @@ export default function SportsBetTracker({
                   placeholder="BUF Bills vs LV Raiders"
                 />
               </label>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <label className="block min-w-0 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Event date
                 <input
                   type="datetime-local"
-                  className={`${inputClass} mt-1`}
+                  data-sports-bet-datetime
+                  className={`${inputClass} mt-1 min-w-0 max-w-full`}
                   value={commenceToDatetimeLocal(draft.commence_time)}
                   onChange={(e) => setDraft((d) => ({
                     ...d,
@@ -1091,20 +1123,9 @@ export default function SportsBetTracker({
                   value={draft.side}
                   onChange={(e) => setDraft((d) => ({ ...d, side: e.target.value }))}
                 >
-                  {draft.market === 'prop' || draft.market === 'total' ? (
-                    <>
-                      <option value="over">Over</option>
-                      <option value="under">Under</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="home">Home</option>
-                      <option value="away">Away</option>
-                      <option value="over">Over</option>
-                      <option value="under">Under</option>
-                      <option value="draw">Draw</option>
-                    </>
-                  )}
+                  {sideSelectOptions(draft).map((o) => (
+                    <option key={`${o.value}-${o.label}`} value={o.value}>{o.label}</option>
+                  ))}
                 </select>
               </label>
               <div className="grid grid-cols-2 gap-2">

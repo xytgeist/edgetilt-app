@@ -11818,6 +11818,14 @@ html.light [data-sports-bet-stat] .text-cyan-400 {
   overscroll-behavior-x: none;
   touch-action: pan-y;
 }
+/* WebKit datetime-local has a large intrinsic min-width … keep it in the column. */
+[data-sports-bet-composer] input[data-sports-bet-datetime],
+[data-sports-bet-composer] input[type='datetime-local'] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
 
 html.light [data-sports-bet-composer] {
   background-color: #ffffff !important;

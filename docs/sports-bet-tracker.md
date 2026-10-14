@@ -63,7 +63,7 @@ Why not DIY BookSync:
 ## Build order (next sessions)
 
 1. **Odds-cell Log (bones shipped `1.4.1058`, fill complete `1.4.1061`)** … **hold** (or right-click) the number on the hub board / odds table. Tap still opens the book. Composer fills book / market / side / line / odds / selection. Stake defaults to **1u**.
-2. **Slip capture (heuristic v2 `1.4.1135`)** … paste text, or photo on IPA/APK (`recognizeText`, purpose `sports-bet-slip`) → heuristic parse → confirm. Stake lands as **dollars** (not units). Extracts event, sport, book (allowlist only … never invent), commence time, and rich prop labels when possible. Casino `TEAM MLB` = moneyline, not baseball. Fixtures: `node scripts/sports-bet-slip-parse-fixtures.mjs`. Not a trained slip model / LLM yet.
+2. **Slip capture (heuristic v2 `1.4.1139`)** … paste text, or photo on IPA/APK (`recognizeText`, purpose `sports-bet-slip`) → heuristic parse → confirm. Stake lands as **dollars** (not units). Extracts event, sport, book (allowlist only … never invent), commence time, and rich prop labels when possible. UFC/boxing: Side shows fighter names (DB still home/away). Casino `TEAM MLB` = moneyline, not baseball. Fixtures: `node scripts/sports-bet-slip-parse-fixtures.mjs`. LLM slip parse still deferred … heuristics cover known books; Vision can wait for messy OCR / unknown layouts.
 3. **CSV / statement import (bones shipped)** … file with Odds / Selection columns; bulk insert when more than one row parses.
 4. **Real book connect** … only via licensed aggregator or official partner APIs, behind Sports Edge. **Never scrape logins.**
 

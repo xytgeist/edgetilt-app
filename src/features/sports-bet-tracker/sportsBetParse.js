@@ -3,6 +3,7 @@
  */
 
 import {
+  isParticipantSport,
   resolveSportsBetSport,
   SPORTS_BET_SPORT_BOXING,
   SPORTS_BET_SPORT_UFC,
@@ -87,20 +88,71 @@ function titleCaseWords(s) {
     .join(' ')
 }
 
-/** Split "A @ B" / "A vs B" into away / home. */
+function looksLikePersonName(part) {
+  const s = String(part || '').trim()
+  if (!s || s.length > 40) return false
+  if (/\b(winner|total|rounds|fight|event|ticket|straight|bet)\b/i.test(s)) return false
+  return /^[A-Za-z][A-Za-z.'\-]*(?:\s+[A-Za-z][A-Za-z.'\-]*){0,3}$/.test(s)
+}
+
+/** Split "A @ B" / "A vs B" / "A / B" (UFC) into away / home. */
 export function parseEventMatchup(text) {
   const s = String(text || '').trim()
   if (!s) return { event: '', away_team: '', home_team: '' }
   const m = /^(.+?)\s+(?:@|vs\.?|v\.?)\s+(.+)$/i.exec(s)
-  if (!m) return { event: s, away_team: s, home_team: '' }
-  const away = m[1].trim()
-  const home = m[2].trim()
-  const sep = /@/.test(m[0]) ? '@' : 'vs'
-  return {
-    event: `${away} ${sep} ${home}`,
-    away_team: away,
-    home_team: home,
+  if (m) {
+    const away = m[1].trim()
+    const home = m[2].trim()
+    const sep = /@/.test(m[0]) ? '@' : 'vs'
+    return {
+      event: `${away} ${sep} ${home}`,
+      away_team: away,
+      home_team: home,
+    }
   }
+  // "POIRIER/MCGREGOR" or "MAIN EVENT - POIRIER/MCGREGOR"
+  const slash = /([A-Za-z][A-Za-z.'\-]*(?:\s+[A-Za-z][A-Za-z.'\-]*){0,2})\s*\/\s*([A-Za-z][A-Za-z.'\-]*(?:\s+[A-Za-z][A-Za-z.'\-]*){0,2})\s*$/.exec(s)
+  if (slash && looksLikePersonName(slash[1]) && looksLikePersonName(slash[2])) {
+    const away = slash[1].trim()
+    const home = slash[2].trim()
+    return {
+      event: s,
+      away_team: away,
+      home_team: home,
+    }
+  }
+  return { event: s, away_team: s, home_team: '' }
+}
+
+function normalizeNameKey(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+/** Map a selection string onto away/home when names overlap. */
+export function sideForParticipantSelection(selection, awayTeam, homeTeam) {
+  const sel = normalizeNameKey(selection)
+  if (!sel) return null
+  // Whole-slip blobs contain both fighters … do not guess from that.
+  if (sel.includes('\n') || sel.length > 48) return null
+  const away = normalizeNameKey(awayTeam)
+  const home = normalizeNameKey(homeTeam)
+  const selTokens = sel.split(/\s+/).filter(Boolean)
+  const last = selTokens[selTokens.length - 1] || ''
+  const hitAway = away && (sel.includes(away) || away.includes(sel) || (last && away.includes(last)))
+  const hitHome = home && (sel.includes(home) || home.includes(sel) || (last && home.includes(last)))
+  if (hitAway && !hitHome) return 'away'
+  if (hitHome && !hitAway) return 'home'
+  if (hitAway && hitHome) {
+    // Prefer the longer / more specific match (e.g. "d poirier" vs bare last names in event).
+    const awayScore = away.includes(sel) || sel.includes(away) ? away.length : (last && away.includes(last) ? last.length : 0)
+    const homeScore = home.includes(sel) || sel.includes(home) ? home.length : (last && home.includes(last) ? last.length : 0)
+    if (awayScore > homeScore) return 'away'
+    if (homeScore > awayScore) return 'home'
+  }
+  return null
 }
 
 function extractBook(text) {
@@ -186,12 +238,22 @@ function extractEvent(text) {
   // UFC card title as event when no @/vs (prefer MAIN EVENT / numbered cards)
   for (const line of lines) {
     if (/\bufc\s*\d+/i.test(line) || /\bmain\s*event\b/i.test(line)) {
-      return { event: line.trim(), away_team: '', home_team: '' }
+      const parsed = parseEventMatchup(line.trim())
+      return {
+        event: parsed.event || line.trim(),
+        away_team: parsed.home_team ? parsed.away_team : '',
+        home_team: parsed.home_team || '',
+      }
     }
   }
   for (const line of lines) {
-    if (/\bufc\b/i.test(line) && /poirier|mcgregor|vs/i.test(line)) {
-      return { event: line.trim(), away_team: '', home_team: '' }
+    if (/\bufc\b/i.test(line) && /(?:vs|\/)/i.test(line)) {
+      const parsed = parseEventMatchup(line.trim())
+      return {
+        event: parsed.event || line.trim(),
+        away_team: parsed.home_team ? parsed.away_team : '',
+        home_team: parsed.home_team || '',
+      }
     }
   }
   return { event: '', away_team: '', home_team: '' }
@@ -485,6 +547,31 @@ function extractMarketDetails(text, oddsLine) {
     }
   }
 
+  // Barstool / app UFC: fighter on its own line above American odds ("D Poirier" / "-145")
+  if (/\bufc\b|\bmma\b|\bboxing\b|fight|bout|title/i.test(raw)) {
+    const oddsTrim = String(oddsLine || '').trim()
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i]
+      const isOddsLine = /^[+-]\d{3,5}\s*$/.test(line)
+        || (oddsTrim && (line === oddsTrim || line.includes(oddsTrim)))
+      if (!isOddsLine) continue
+      const prev = lines[i - 1] || ''
+      if (
+        looksLikePersonName(prev)
+        && !/\b(sportsbook|event|ticket|straight|risk|payout|main|total|rounds)\b/i.test(prev)
+      ) {
+        return {
+          market: 'h2h',
+          side: 'home',
+          line: null,
+          player_name: '',
+          prop_stat: '',
+          selection_label: titleCaseWords(prev),
+        }
+      }
+    }
+  }
+
   // Generic over/under total (game total, not player)
   const total = /\b(over|under)\s+([0-9]+(?:\.[0-9]+)?)\b/i.exec(raw)
   if (total && !/[A-Za-z]{3,}\s+(over|under)\s+/i.test(raw)) {
@@ -566,7 +653,12 @@ function draftFromBits({
   }
 
   if (!label) {
-    label = String(selection || eventLabel || '').slice(0, 120)
+    const sel = String(selection || '').trim()
+    if (sel && !sel.includes('\n') && sel.length <= 80) {
+      label = sel.slice(0, 120)
+    } else if (eventLabel) {
+      label = String(eventLabel).slice(0, 120)
+    }
   }
 
   const dollars = stakeDollars != null && Number(stakeDollars) > 0 ? Number(stakeDollars) : null
@@ -636,7 +728,23 @@ export function parseSportsBetSlipText(text) {
     commence_time,
   })
 
-  return draft ? [draft] : []
+  if (!draft) return []
+
+  // Participant sports: map pick onto home/away from fighter names (UI shows those names).
+  if (
+    isParticipantSport(draft.sport_key, draft.sport_label)
+    && draft.market !== 'prop'
+    && draft.market !== 'total'
+  ) {
+    const mapped = sideForParticipantSelection(
+      draft.selection_label,
+      draft.away_team,
+      draft.home_team,
+    )
+    if (mapped) draft.side = mapped
+  }
+
+  return [draft]
 }
 
 function parseDelimited(text) {

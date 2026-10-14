@@ -163,6 +163,32 @@ Jul 10 2021 20:27:51
       event_includes: 'POIRIER',
       sport_label: 'UFC',
       sport_key: 'mma_mixed_martial_arts',
+      away_team: 'POIRIER',
+      home_team: 'MCGREGOR',
+      side: 'away',
+    },
+  },
+  {
+    name: 'Barstool UFC name above odds',
+    text: `
+BARSTOOL SPORTSBOOK
+MAIN EVENT - POIRIER/MCGREGOR
+UFC 303
+D Poirier
+-145
+Risk $50.00
+`,
+    expect: {
+      book: 'Barstool',
+      stake_dollars: 50,
+      market: 'h2h',
+      odds: -145,
+      selection_includes: 'Poirier',
+      sport_label: 'UFC',
+      sport_key: 'mma_mixed_martial_arts',
+      away_team: 'POIRIER',
+      home_team: 'MCGREGOR',
+      side: 'away',
     },
   },
 ]
@@ -207,6 +233,15 @@ for (const fx of fixtures) {
     }
     if (e.sport_key) {
       assert(d.sport_key === e.sport_key, `${fx.name}: sport_key want ${e.sport_key} got ${d.sport_key}`)
+    }
+    if (e.away_team != null) {
+      assert(d.away_team === e.away_team, `${fx.name}: away_team want ${e.away_team} got ${d.away_team}`)
+    }
+    if (e.home_team != null) {
+      assert(d.home_team === e.home_team, `${fx.name}: home_team want ${e.home_team} got ${d.home_team}`)
+    }
+    if (e.side != null) {
+      assert(d.side === e.side, `${fx.name}: side want ${e.side} got ${d.side}`)
     }
     if (e.commence_date) {
       const [y, mo, day] = e.commence_date.split('-').map(Number)

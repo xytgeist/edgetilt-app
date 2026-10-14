@@ -1153,6 +1153,33 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
   }
 
   private func createTus(fileSize: Int64, token: String, supabaseURL: String, anonKey: String, streamMaxDurationSeconds: Int) async throws -> TusCreate {
+    var lastMissing: Error?
+    // One remint when create is 2xx without stream-media-id (Android saw this once).
+    // May leave a short-lived orphan Stream draft; cheaper than failing the post.
+    for attempt in 0..<2 {
+      do {
+        return try await createTusOnce(
+          fileSize: fileSize,
+          token: token,
+          supabaseURL: supabaseURL,
+          anonKey: anonKey,
+          streamMaxDurationSeconds: streamMaxDurationSeconds
+        )
+      } catch EdgeVideoError.cancelled {
+        throw EdgeVideoError.cancelled
+      } catch {
+        let msg = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        let missingUid = msg.localizedCaseInsensitiveContains("did not return a video id")
+        if !missingUid || attempt >= 1 { throw error }
+        lastMissing = error
+        NSLog("EdgeVideo tus create missing stream-media-id; reminting")
+        try await Task.sleep(nanoseconds: 400_000_000)
+      }
+    }
+    throw lastMissing ?? EdgeVideoError.uploadFailed("Could not start the upload.")
+  }
+
+  private func createTusOnce(fileSize: Int64, token: String, supabaseURL: String, anonKey: String, streamMaxDurationSeconds: Int) async throws -> TusCreate {
     guard let url = URL(string: "\(supabaseURL)/functions/v1/lounge-cf-stream-tus-create") else {
       throw EdgeVideoError.uploadFailed("Could not start the upload.")
     }

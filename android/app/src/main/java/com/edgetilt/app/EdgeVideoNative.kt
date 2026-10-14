@@ -518,6 +518,37 @@ class EdgeVideoNative(
     anonKey: String,
     streamMaxDurationSeconds: Int,
   ): TusCreate {
+    var lastMissingUid: Exception? = null
+    // One remint when CF/Edge returns 2xx without stream-media-id (seen once on device).
+    // May leave a short-lived orphan draft on Stream; cheaper than failing the post.
+    for (attempt in 0..1) {
+      try {
+        return createTusOnce(fileSize, token, supabaseURL, anonKey, streamMaxDurationSeconds)
+      } catch (e: Cancelled) {
+        throw e
+      } catch (e: Exception) {
+        val missingUid = (e.message ?: "").contains("did not return a video id")
+        if (!missingUid || attempt >= 1) throw e
+        lastMissingUid = e
+        Log.w(TAG, "tus create missing stream-media-id; reminting", e)
+        try {
+          Thread.sleep(400)
+        } catch (_: InterruptedException) {
+          Thread.currentThread().interrupt()
+          throw e
+        }
+      }
+    }
+    throw lastMissingUid ?: IllegalArgumentException("Could not start the upload.")
+  }
+
+  private fun createTusOnce(
+    fileSize: Long,
+    token: String,
+    supabaseURL: String,
+    anonKey: String,
+    streamMaxDurationSeconds: Int,
+  ): TusCreate {
     val url = URL("$supabaseURL/functions/v1/lounge-cf-stream-tus-create")
     val conn = (url.openConnection() as HttpURLConnection).apply {
       requestMethod = "POST"
@@ -541,17 +572,32 @@ class EdgeVideoNative(
       }
       if (code == 401 || code == 403) throw IllegalArgumentException("You must be signed in to post a video.")
       if (code !in 200..299) throw IllegalArgumentException(messageFrom(body, code))
-      val uid = (conn.getHeaderField("stream-media-id") ?: "").trim()
+      val uid = responseHeader(conn, "stream-media-id").trim()
       if (!uid.matches(Regex("^[0-9a-fA-F]{32}$"))) {
         throw IllegalArgumentException("Video upload finished but the service did not return a video id.")
       }
-      val locationHeader = conn.getHeaderField("Location")
-        ?: throw IllegalArgumentException("Could not start the upload.")
+      val locationHeader = responseHeader(conn, "Location").ifEmpty {
+        throw IllegalArgumentException("Could not start the upload.")
+      }
       val location = URL(url, locationHeader).toString()
       return TusCreate(location, uid)
     } finally {
       conn.disconnect()
     }
+  }
+
+  /** Case-insensitive header read (HttpURLConnection can be picky about custom names). */
+  private fun responseHeader(conn: HttpURLConnection, name: String): String {
+    conn.getHeaderField(name)?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
+    var i = 0
+    while (true) {
+      val key = conn.getHeaderFieldKey(i) ?: break
+      if (key.equals(name, ignoreCase = true)) {
+        return conn.getHeaderField(i)?.trim().orEmpty()
+      }
+      i++
+    }
+    return ""
   }
 
   private fun patchFile(file: File, location: String, assetId: String, byteSize: Long) {

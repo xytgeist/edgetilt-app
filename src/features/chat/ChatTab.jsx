@@ -1482,8 +1482,16 @@ function ChatTabBody({
 }
 
 const ROOM_LONG_PRESS_MS = 380
+/** Cancel long-press once the finger moves this far (before axis lock). */
 const ROOM_LONG_PRESS_MOVE_PX = 10
-const ROOM_SWIPE_AXIS_LOCK_PX = 8
+/** Horizontal lock … slightly eager so archive/delete beats list scroll. */
+const ROOM_SWIPE_AXIS_LOCK_PX = 6
+/** Vertical lock … needs clearer intent; keep pan-y native momentum (4e1116de). */
+const ROOM_SWIPE_VERTICAL_LOCK_PX = 18
+/** Lock X when abs(dx) >= abs(dy) * this (favor swipe on mild diagonals). */
+const ROOM_SWIPE_H_OVER_V = 0.75
+/** Lock Y only when abs(dy) > abs(dx) * this. */
+const ROOM_SWIPE_V_OVER_H = 1.35
 const ROOM_SWIPE_COMMIT_RATIO = 0.38
 const ROOM_SWIPE_COMMIT_MIN_PX = 72
 const ROOM_SWIPE_SNAP_MS = 240
@@ -1672,6 +1680,7 @@ function ChatRoomListRow({
       startY: e.clientY,
       axis: null,
       pointerId: e.pointerId,
+      touchClaimed: false,
     }
     // Do not capture yet ... capture kills native list scrolling for this touch.
     // Capture only after horizontal swipe locks (see onPointerMove).
@@ -1688,8 +1697,27 @@ function ChatRoomListRow({
     if (e.pointerType === 'mouse' && e.buttons === 0) return
     const dx = e.clientX - g.startX
     const dy = e.clientY - g.startY
+    const absDx = Math.abs(dx)
+    const absDy = Math.abs(dy)
     if (!g.axis) {
-      if (Math.abs(dx) > ROOM_SWIPE_AXIS_LOCK_PX && Math.abs(dx) > Math.abs(dy)) {
+      // Any meaningful move cancels long-press (axis lock thresholds are higher).
+      if (absDx > ROOM_LONG_PRESS_MOVE_PX || absDy > ROOM_LONG_PRESS_MOVE_PX) {
+        clearTimer()
+      }
+      // Early claim while dx leads … stop pan-y scroll from eating a mild diagonal swipe.
+      if (
+        !g.touchClaimed &&
+        absDx >= 4 &&
+        absDx >= absDy &&
+        foregroundRef.current
+      ) {
+        g.touchClaimed = true
+        foregroundRef.current.style.touchAction = 'none'
+      }
+      if (
+        absDx > ROOM_SWIPE_AXIS_LOCK_PX &&
+        absDx >= absDy * ROOM_SWIPE_H_OVER_V
+      ) {
         g.axis = 'x'
         clearTimer()
         swipeDraggingRef.current = true
@@ -1704,8 +1732,15 @@ function ChatRoomListRow({
         } catch {
           /* ignore */
         }
-      } else if (Math.abs(dy) > ROOM_LONG_PRESS_MOVE_PX && Math.abs(dy) > Math.abs(dx)) {
+      } else if (
+        absDy > ROOM_SWIPE_VERTICAL_LOCK_PX &&
+        absDy > absDx * ROOM_SWIPE_V_OVER_H
+      ) {
         // Hand vertical pans to native overflow scroll (momentum + rubber-band).
+        // Do not keep touch-action none / capture … that was undoing 4e1116de.
+        if (foregroundRef.current) {
+          foregroundRef.current.style.touchAction = ''
+        }
         g.axis = 'y'
         g.pointerId = null
         clearTimer()

@@ -950,7 +950,10 @@ export default function LoungeVideoCropModal({
             <img
               src={posterUrl}
               alt=""
-              className="pointer-events-none absolute inset-0 z-[2] h-full w-full object-contain"
+              // Sit above the video pixels but leave the bottom chrome for native controls /
+              // scrubber (Android WebView draws those inside the <video> box).
+              className="pointer-events-none absolute inset-x-0 top-0 z-[2] object-contain"
+              style={{ bottom: 52 }}
               draggable={false}
             />
           ) : null}

@@ -975,7 +975,10 @@ export default function SportsBetTracker({
                 {sportsBetSourceLabel(draft.source)}
               </p>
             ) : null}
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 pb-3">
+            <div
+              data-sports-bet-composer-scroll
+              className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-3 touch-pan-y"
+            >
               {draft.slip_preview_url ? (
                 <div data-sports-bet-slip-preview className="overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900/80">
                   <p className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
@@ -986,12 +989,13 @@ export default function SportsBetTracker({
                     target="_blank"
                     rel="noreferrer"
                     title="Open full slip photo"
-                    className="block px-2 pb-2 pt-1"
+                    className="block max-w-full px-2 pb-2 pt-1"
                   >
                     <img
                       src={draft.slip_preview_url}
                       alt="Bet slip"
-                      className="mx-auto max-h-56 w-full object-contain"
+                      draggable={false}
+                      className="mx-auto max-h-56 max-w-full object-contain"
                     />
                   </a>
                 </div>

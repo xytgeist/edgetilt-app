@@ -166,9 +166,15 @@ export function buildSelectionLabel({
   selectionLabel,
   playerName,
   propStat,
+  legs,
 }) {
   const custom = String(selectionLabel || '').trim()
   const m = String(market || 'spread')
+  if (m === 'parlay') {
+    if (custom) return custom
+    const n = Array.isArray(legs) ? legs.length : 0
+    return n ? `Parlay (${n} leg${n === 1 ? '' : 's'})` : 'Parlay'
+  }
   if (m === 'prop') {
     if (custom && !playerName) return custom
     const player = String(playerName || '').trim()

@@ -63,8 +63,8 @@ Why not DIY BookSync:
 ## Build order (next sessions)
 
 1. **Odds-cell Log (bones shipped `1.4.1058`, fill complete `1.4.1061`)** … **hold** (or right-click) the number on the hub board / odds table. Tap still opens the book. Composer fills book / market / side / line / odds / selection. Stake defaults to **1u**.
-2. **Slip capture (heuristic v2 `1.4.1139`)** … paste text, or photo on IPA/APK (`recognizeText`, purpose `sports-bet-slip`) → heuristic parse → confirm. Stake lands as **dollars** (not units). Extracts event, sport, book (allowlist only … never invent), commence time, and rich prop labels when possible. UFC/boxing: Side shows fighter names (DB still home/away). Casino `TEAM MLB` = moneyline, not baseball. Fixtures: `node scripts/sports-bet-slip-parse-fixtures.mjs`. LLM slip parse still deferred … heuristics cover known books; Vision can wait for messy OCR / unknown layouts.
-3. **CSV / statement import (bones shipped)** … file with Odds / Selection columns; bulk insert when more than one row parses.
+2. **Slip capture (heuristic v2 `1.4.1140`)** … paste text, or photo on IPA/APK (`recognizeText`, purpose `sports-bet-slip`) → heuristic parse → confirm. Multi-photo (up to 8) → **review queue** (edit / skip / save all). Stake lands as **dollars**. Extracts event, sport, book (allowlist), commence, props. UFC/boxing: Side shows fighter names (DB still home/away). **Parlays:** detect Parlay/SGP → parent ticket + legs (`sports_bet_legs`). Casino `TEAM MLB` = moneyline, not baseball. Fixtures: `node scripts/sports-bet-slip-parse-fixtures.mjs`. LLM Vision still deferred for messy OCR.
+3. **CSV / statement import (bones shipped)** … file with Odds / Selection columns; bulk insert when more than one row parses (no review queue).
 4. **Real book connect** … only via licensed aggregator or official partner APIs, behind Sports Edge. **Never scrape logins.**
 
 Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autofill **out** through sportsbook deep links we already have on odds rows.
@@ -79,7 +79,7 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 | **Hold odds cell** to log that book/line | Tap-replaces-open-book (tap still opens the sportsbook) |
 | Paste slip + IPA photo OCR + CSV import (heuristic, confirm first) | Trained slip Vision model / share-sheet auto-ingest |
 | Units stake, American odds, market (spread / ML / total / **player prop** / other), **Sport** (NFL, CFB, …) | White-label / official book connect |
-| Open → **auto-grade** spread / ML / total (ESPN); props stay manual | Parlay legs; verified public record |
+| Open → **auto-grade** spread / ML / total (ESPN); **parlay legs** roll up parent; props stay manual | Verified public record; SGP push-odds reduction |
 | P&L units + ROI + record | Hard `sports-edge` paywall |
 | CLV vs locked **`lounge_market_files`** close (RPC) |  |
 | Free for verified users while Sports Edge SKU is dark |  |
@@ -95,6 +95,7 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 - Settings **`sports_bet_settings`** (unit size + starting bankroll) … **`20261006030000_sports_bet_settings.sql`**; default bankroll **$10k** … **`20261011050000_sports_bet_settings_default_bankroll.sql`**
 - Tap-through confirm flag **`sports_bets.confirmed`** + source `odds_tap` … **`20261006040000_sports_bets_tap_confirm.sql`**
 - Player prop market + `player_name` / `prop_stat` … **`20261006050000_sports_bets_prop_market.sql`**
+- Parlay legs … **`20261014160000_sports_bet_parlay_legs.sql`** (`market=parlay` + **`sports_bet_legs`**). Applied on **test**; prod when Ryan asks.
 - CLV: **`sports_bets_refresh_clv()`** security definer reads locked closes for the caller’s event ids (does not widen market-file RLS to the client)
 
 Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** test + prod 2026-10-05 (intake sources). Applied **`20261006030000`** + **`20261006040000`** + **`20261006050000`** on **test + prod** 2026-10-06.

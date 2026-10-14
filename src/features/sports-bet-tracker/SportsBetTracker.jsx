@@ -30,7 +30,22 @@ import {
 } from './sportsBetNav.js'
 import SportsBetToolsSheet from './SportsBetToolsSheet.jsx'
 import { parseEventMatchup, parseSportsBetCsv, parseSportsBetIntake } from './sportsBetParse.js'
+import {
+  combinedOddsFromLegs,
+  isParlayDraft,
+  normalizeParlayLegs,
+  parlaySelectionLabel,
+} from './sportsBetParlay.js'
 import { ocrSportsBetSlipImage } from './sportsBetOcr.js'
+
+const MAX_SLIP_PHOTOS = 8
+
+function blankParlayLegs() {
+  return normalizeParlayLegs([
+    { market: 'h2h', side: 'home', selection_label: '', odds: '-110' },
+    { market: 'h2h', side: 'home', selection_label: '', odds: '-110' },
+  ])
+}
 import {
   DEFAULT_BANKROLL_START,
   DEFAULT_STAKE_UNITS,
@@ -75,6 +90,7 @@ function emptyDraft(unitSize = readUnitSizeDollars()) {
     prop_stat: '',
     slip_preview_url: '',
     source: 'manual',
+    legs: [],
   }
 }
 
@@ -189,11 +205,20 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     prop_stat: prefill.prop_stat ? String(prefill.prop_stat) : '',
     slip_preview_url: prefill.slip_preview_url ? String(prefill.slip_preview_url) : '',
     source: normalizeSportsBetSource(prefill.source, 'manual'),
+    legs: normalizeParlayLegs(prefill.legs || prefill.sports_bet_legs || []),
+  }
+  if (next.market === 'parlay') {
+    if (next.legs.length < 2) next.legs = blankParlayLegs()
+    next.selection_label = parlaySelectionLabel(next.legs, next.selection_label)
+    next.side = ''
+    next.home_team = ''
+    next.away_team = ''
+    next.line = ''
   }
   if (!next.event_label) next.event_label = eventLabelFromDraft(next)
   const sport = resolveSportsBetSport(next.sport_key, next.sport_label)
   next.sport_key = sport.key
-  next.sport_label = sport.label
+  next.sport_label = next.market === 'parlay' ? (sport.label || 'Parlay') : sport.label
   return next
 }
 
@@ -266,6 +291,9 @@ export default function SportsBetTracker({
   const [toolsOpen, setToolsOpen] = useState(false)
   const [toolsTool, setToolsTool] = useState('')
   const [toolsSeed, setToolsSeed] = useState(null)
+  /** Multi-slip confirm queue: [{ key, draft }] */
+  const [reviewQueue, setReviewQueue] = useState(null)
+  const [reviewEditingKey, setReviewEditingKey] = useState(null)
   const csvInputRef = useRef(null)
   const photoInputRef = useRef(null)
 
@@ -332,11 +360,20 @@ export default function SportsBetTracker({
 
   const closeComposer = () => {
     setDraft((prev) => {
-      revokeSlipPreviewUrl(prev.slip_preview_url)
+      // Keep slip preview if this draft is still in the multi-slip review queue.
+      const keepPreview = reviewEditingKey
+        && Array.isArray(reviewQueue)
+        && reviewQueue.some((item) => (
+          item.key === reviewEditingKey
+          && item.draft?.slip_preview_url
+          && item.draft.slip_preview_url === prev.slip_preview_url
+        ))
+      if (!keepPreview) revokeSlipPreviewUrl(prev.slip_preview_url)
       return emptyDraft(unitSize)
     })
     setComposerOpen(false)
     setEditingId(null)
+    setReviewEditingKey(null)
   }
 
   const openComposer = (prefill) => {
@@ -445,14 +482,76 @@ export default function SportsBetTracker({
         ? prev.map((row) => (row.id === bet.id ? bet : row))
         : [bet, ...prev]
     ))
-    closeComposer()
+    if (reviewEditingKey && Array.isArray(reviewQueue)) {
+      const nextQueue = reviewQueue.filter((item) => item.key !== reviewEditingKey)
+      setReviewQueue(nextQueue.length ? nextQueue : null)
+      setReviewEditingKey(null)
+      setDraft((prev) => {
+        // Preview owned by queue item we just saved … revoke after remove.
+        revokeSlipPreviewUrl(prev.slip_preview_url)
+        return emptyDraft(unitSize)
+      })
+      setComposerOpen(false)
+      setEditingId(null)
+    } else {
+      closeComposer()
+    }
     void refreshSportsBetClv(supabaseClient).then(() => load())
   }
 
-  const applyIntakeDrafts = async (drafts, { bulk = false } = {}) => {
+  const closeReviewQueue = () => {
+    if (Array.isArray(reviewQueue)) {
+      for (const item of reviewQueue) {
+        revokeSlipPreviewUrl(item.draft?.slip_preview_url)
+      }
+    }
+    setReviewQueue(null)
+    setReviewEditingKey(null)
+  }
+
+  const openReviewEdit = (key) => {
+    const item = Array.isArray(reviewQueue)
+      ? reviewQueue.find((row) => row.key === key)
+      : null
+    if (!item) return
+    setReviewEditingKey(key)
+    setEditingId(null)
+    setDraft((prev) => {
+      if (
+        prev.slip_preview_url
+        && prev.slip_preview_url !== item.draft?.slip_preview_url
+      ) {
+        revokeSlipPreviewUrl(prev.slip_preview_url)
+      }
+      return { ...item.draft }
+    })
+    setComposerOpen(true)
+    setError('')
+  }
+
+  const skipReviewItem = (key) => {
+    setReviewQueue((prev) => {
+      if (!Array.isArray(prev)) return null
+      const item = prev.find((row) => row.key === key)
+      if (item) revokeSlipPreviewUrl(item.draft?.slip_preview_url)
+      const next = prev.filter((row) => row.key !== key)
+      return next.length ? next : null
+    })
+  }
+
+  const applyIntakeDrafts = async (drafts, { bulk = false, review = false } = {}) => {
     const list = Array.isArray(drafts) ? drafts.filter(Boolean) : []
     if (!list.length) {
       setError('Could not read a bet from that. Check odds look like -110 / +150.')
+      return
+    }
+    if (review && list.length > 1) {
+      const stamp = Date.now()
+      setReviewQueue(list.map((row, i) => ({
+        key: `${stamp}-${i}`,
+        draft: draftFromPrefill(row, unitSize),
+      })))
+      setError('')
       return
     }
     if (!bulk || list.length === 1) {
@@ -480,6 +579,34 @@ export default function SportsBetTracker({
     setSaving(false)
     if (inserted.length) setBets((prev) => [...inserted, ...prev])
     if (lastErr) setError(`Imported ${inserted.length}/${list.length}. ${lastErr}`)
+  }
+
+  const saveReviewQueueAll = async () => {
+    if (!userId) {
+      setError('Sign in to import bets.')
+      return
+    }
+    const list = Array.isArray(reviewQueue) ? reviewQueue : []
+    if (!list.length) return
+    setSaving(true)
+    setError('')
+    const inserted = []
+    let lastErr = ''
+    for (const item of list) {
+      const payload = {
+        ...item.draft,
+        unit_size_dollars: item.draft.unit_size_dollars || unitSize,
+      }
+      const { bet, error: saveErr } = await insertSportsBet(supabaseClient, userId, payload)
+      if (saveErr) lastErr = saveErr
+      else if (bet) inserted.push(bet)
+      revokeSlipPreviewUrl(item.draft?.slip_preview_url)
+    }
+    setSaving(false)
+    setReviewQueue(null)
+    if (inserted.length) setBets((prev) => [...inserted, ...prev])
+    if (lastErr) setError(`Saved ${inserted.length}/${list.length}. ${lastErr}`)
+    void refreshSportsBetClv(supabaseClient).then(() => load())
   }
 
   const onSettle = async (id, status) => {
@@ -563,31 +690,51 @@ export default function SportsBetTracker({
   }
 
   const onBetSlipPhotoPicked = (e) => {
-    const file = e.target.files?.[0]
+    const files = Array.from(e.target.files || []).slice(0, MAX_SLIP_PHOTOS)
     e.target.value = ''
-    if (!file) return
+    if (!files.length) return
     void (async () => {
       setError('')
-      const previewUrl = typeof URL !== 'undefined' && URL.createObjectURL
-        ? URL.createObjectURL(file)
-        : ''
-      const { text, error: ocrErr, native } = await ocrSportsBetSlipImage(file)
-      if (!native) {
-        revokeSlipPreviewUrl(previewUrl)
+      setSaving(true)
+      const collected = []
+      let nativeOk = false
+      let lastOcrErr = ''
+      for (const file of files) {
+        const previewUrl = typeof URL !== 'undefined' && URL.createObjectURL
+          ? URL.createObjectURL(file)
+          : ''
+        const { text, error: ocrErr, native } = await ocrSportsBetSlipImage(file)
+        if (!native) {
+          revokeSlipPreviewUrl(previewUrl)
+          continue
+        }
+        nativeOk = true
+        if (ocrErr) {
+          revokeSlipPreviewUrl(previewUrl)
+          lastOcrErr = ocrErr
+          continue
+        }
+        const drafts = parseSportsBetIntake(text).filter(Boolean)
+        if (!drafts.length) {
+          revokeSlipPreviewUrl(previewUrl)
+          lastOcrErr = 'Could not read a bet from that slip.'
+          continue
+        }
+        for (const d of drafts) {
+          collected.push({ ...d, slip_preview_url: previewUrl })
+        }
+      }
+      setSaving(false)
+      if (!nativeOk) {
         setError('Photo OCR needs the EdgeTilt app. Paste the slip text instead.')
         setPasteOpen(true)
         return
       }
-      if (ocrErr) {
-        revokeSlipPreviewUrl(previewUrl)
-        setError(ocrErr)
+      if (!collected.length) {
+        setError(lastOcrErr || 'Could not read a bet from those photos.')
         return
       }
-      const drafts = parseSportsBetIntake(text).map((d) => (
-        d ? { ...d, slip_preview_url: previewUrl } : d
-      ))
-      if (!drafts.length) revokeSlipPreviewUrl(previewUrl)
-      await applyIntakeDrafts(drafts)
+      await applyIntakeDrafts(collected, { review: true })
     })()
   }
 
@@ -763,6 +910,7 @@ export default function SportsBetTracker({
             ref={photoInputRef}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
             onChange={onBetSlipPhotoPicked}
           />
@@ -819,11 +967,13 @@ export default function SportsBetTracker({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="truncate text-[15px] font-bold text-white">
-                      {bet.selection_label}
+                      {bet.market === 'parlay'
+                        ? parlaySelectionLabel(bet.legs || bet.sports_bet_legs, bet.selection_label)
+                        : bet.selection_label}
                     </div>
                     <div className="mt-0.5 text-[12px] text-zinc-400">
                       {[
-                        bet.sport_label || bet.sport_key,
+                        bet.market === 'parlay' ? 'Parlay' : (bet.sport_label || bet.sport_key),
                         bet.book,
                         formatAmericanOdds(bet.odds),
                         `${bet.stake_units}u`,
@@ -832,11 +982,24 @@ export default function SportsBetTracker({
                       ]
                         .filter(Boolean)
                         .join(' · ')}
-                      {bet.line != null && bet.market !== 'h2h'
+                      {bet.line != null && bet.market !== 'h2h' && bet.market !== 'parlay'
                         ? ` · ${formatLine(bet.line, bet.market)}`
                         : ''}
                     </div>
-                    {bet.away_team && bet.home_team ? (
+                    {bet.market === 'parlay' && (bet.legs || bet.sports_bet_legs)?.length ? (
+                      <ul className="mt-1 space-y-0.5">
+                        {(bet.legs || bet.sports_bet_legs).map((leg) => (
+                          <li
+                            key={leg.id || `${leg.leg_index}-${leg.selection_label}`}
+                            className="truncate text-[11px] text-zinc-500"
+                          >
+                            {leg.selection_label}
+                            {leg.odds != null ? ` · ${formatAmericanOdds(leg.odds)}` : ''}
+                            {leg.status && leg.status !== 'open' ? ` · ${leg.status}` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : bet.away_team && bet.home_team ? (
                       <div className="mt-0.5 truncate text-[11px] text-zinc-500">
                         {bet.away_team} @ {bet.home_team}
                       </div>
@@ -978,6 +1141,101 @@ export default function SportsBetTracker({
         </ul>
       </div>
 
+      {reviewQueue?.length && !composerOpen ? (
+        <AppModalOverlay
+          role="dialog"
+          aria-modal="true"
+          aria-label="Review slips"
+          onClick={closeReviewQueue}
+        >
+          <div
+            data-sports-bet-review
+            className="relative z-[1] flex w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-3xl border border-zinc-700 bg-zinc-950 shadow-xl max-h-[min(85dvh,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-4.5rem))]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-2">
+              <h2 className="text-lg font-black text-white">
+                Review {reviewQueue.length} slip{reviewQueue.length === 1 ? '' : 's'}
+              </h2>
+              <button
+                type="button"
+                onClick={closeReviewQueue}
+                className="rounded-full p-2 text-zinc-400 active:bg-zinc-800"
+                aria-label="Close review"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-3">
+              {reviewQueue.map((item) => {
+                const d = item.draft || {}
+                const title = d.market === 'parlay'
+                  ? parlaySelectionLabel(d.legs, d.selection_label)
+                  : (d.selection_label || 'Bet')
+                return (
+                  <div
+                    key={item.key}
+                    className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/70"
+                  >
+                    {d.slip_preview_url ? (
+                      <img
+                        src={d.slip_preview_url}
+                        alt=""
+                        className="max-h-36 w-full object-contain bg-zinc-950"
+                      />
+                    ) : null}
+                    <div className="px-3 py-2.5">
+                      <div className="truncate text-[15px] font-bold text-white">{title}</div>
+                      <div className="mt-0.5 text-[12px] text-zinc-400">
+                        {[
+                          d.market === 'parlay' ? 'Parlay' : (d.sport_label || d.market),
+                          formatAmericanOdds(d.odds),
+                          d.stake_dollars ? formatUsd(d.stake_dollars) : null,
+                          d.book,
+                        ].filter(Boolean).join(' · ')}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => openReviewEdit(item.key)}
+                          className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-bold uppercase text-cyan-200"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => skipReviewItem(item.key)}
+                          className="rounded-lg border border-zinc-700 px-2.5 py-1 text-[11px] font-bold uppercase text-zinc-400"
+                        >
+                          Skip
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="flex shrink-0 gap-2 border-t border-zinc-800 px-4 py-3">
+              <button
+                type="button"
+                onClick={closeReviewQueue}
+                className="flex-1 rounded-2xl border border-zinc-700 py-3 text-[14px] font-bold text-zinc-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void saveReviewQueueAll()}
+                className="flex-[1.4] rounded-2xl bg-cyan-600 py-3 text-[14px] font-bold text-white active:bg-cyan-500 disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : `Save all (${reviewQueue.length})`}
+              </button>
+            </div>
+          </div>
+        </AppModalOverlay>
+      ) : null}
+
       {composerOpen ? (
         <AppModalOverlay
           role="dialog"
@@ -1032,44 +1290,6 @@ export default function SportsBetTracker({
                 </div>
               ) : null}
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Event
-                <input
-                  className={`${inputClass} mt-1`}
-                  value={eventLabelFromDraft(draft)}
-                  onChange={(e) => setDraft((d) => applyEventLabelToDraft(d, e.target.value))}
-                  placeholder="BUF Bills vs LV Raiders"
-                />
-              </label>
-              <label className="block min-w-0 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Event date
-                <input
-                  type="datetime-local"
-                  data-sports-bet-datetime
-                  className={`${inputClass} mt-1 min-w-0 max-w-full`}
-                  value={commenceToDatetimeLocal(draft.commence_time)}
-                  onChange={(e) => setDraft((d) => ({
-                    ...d,
-                    commence_time: datetimeLocalToIso(e.target.value),
-                  }))}
-                />
-              </label>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Sport
-                <select
-                  className={`${inputClass} mt-1`}
-                  value={resolveSportsBetSport(draft.sport_key, draft.sport_label).key || ''}
-                  onChange={(e) => {
-                    const s = sportByKey(e.target.value) || { key: e.target.value, label: e.target.value }
-                    setDraft((d) => ({ ...d, sport_key: s.key, sport_label: s.label }))
-                  }}
-                >
-                  <option value="">Select</option>
-                  {SPORTS_BET_SPORTS.map((s) => (
-                    <option key={s.key} value={s.key}>{s.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Market
                 <select
                   className={`${inputClass} mt-1`}
@@ -1077,13 +1297,27 @@ export default function SportsBetTracker({
                   onChange={(e) => {
                     const market = e.target.value
                     setDraft((d) => {
+                      if (market === 'parlay') {
+                        const legs = d.legs?.length >= 2 ? normalizeParlayLegs(d.legs) : blankParlayLegs()
+                        return {
+                          ...d,
+                          market,
+                          side: '',
+                          line: '',
+                          home_team: '',
+                          away_team: '',
+                          event_label: '',
+                          legs,
+                          selection_label: parlaySelectionLabel(legs, d.selection_label),
+                        }
+                      }
                       let side = d.side
                       if (market === 'prop' || market === 'total') {
                         side = side === 'under' ? 'under' : 'over'
-                      } else if (side === 'over' || side === 'under') {
+                      } else if (!side || side === 'over' || side === 'under') {
                         side = 'home'
                       }
-                      return { ...d, market, side }
+                      return { ...d, market, side, legs: [] }
                     })
                   }}
                 >
@@ -1091,65 +1325,213 @@ export default function SportsBetTracker({
                   <option value="h2h">Moneyline</option>
                   <option value="total">Total</option>
                   <option value="prop">Player prop</option>
+                  <option value="parlay">Parlay</option>
                   <option value="other">Other</option>
                 </select>
               </label>
-              {draft.market === 'prop' ? (
+              {isParlayDraft(draft) ? (
+                <div className="space-y-2 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      Legs ({normalizeParlayLegs(draft.legs).length})
+                    </p>
+                    <button
+                      type="button"
+                      className="text-[11px] font-bold uppercase text-cyan-400 active:text-cyan-300"
+                      onClick={() => setDraft((d) => {
+                        const combined = combinedOddsFromLegs(d.legs)
+                        return combined == null ? d : { ...d, odds: String(combined) }
+                      })}
+                    >
+                      Recompute odds
+                    </button>
+                  </div>
+                  {normalizeParlayLegs(draft.legs).map((leg, idx) => (
+                    <div key={`leg-${idx}`} className="space-y-1.5 rounded-xl border border-zinc-800 px-2.5 py-2">
+                      <label className="block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                        Selection
+                        <input
+                          className={`${inputClass} mt-0.5 py-2 text-[14px]`}
+                          value={leg.selection_label}
+                          onChange={(e) => setDraft((d) => {
+                            const legs = normalizeParlayLegs(d.legs).map((row, i) => (
+                              i === idx ? { ...row, selection_label: e.target.value } : row
+                            ))
+                            return {
+                              ...d,
+                              legs,
+                              selection_label: parlaySelectionLabel(legs),
+                            }
+                          })}
+                          placeholder="BUF Bills +3.5"
+                        />
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                          Market
+                          <select
+                            className={`${inputClass} mt-0.5 py-2 text-[14px]`}
+                            value={leg.market || 'h2h'}
+                            onChange={(e) => setDraft((d) => ({
+                              ...d,
+                              legs: normalizeParlayLegs(d.legs).map((row, i) => (
+                                i === idx ? { ...row, market: e.target.value } : row
+                              )),
+                            }))}
+                          >
+                            <option value="spread">Spread</option>
+                            <option value="h2h">ML</option>
+                            <option value="total">Total</option>
+                            <option value="prop">Prop</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </label>
+                        <label className="block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                          Odds
+                          <input
+                            className={`${inputClass} mt-0.5 py-2 text-[14px]`}
+                            inputMode="numeric"
+                            value={leg.odds}
+                            onChange={(e) => setDraft((d) => ({
+                              ...d,
+                              legs: normalizeParlayLegs(d.legs).map((row, i) => (
+                                i === idx ? { ...row, odds: e.target.value } : row
+                              )),
+                            }))}
+                            placeholder="-110"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="w-full rounded-xl border border-dashed border-zinc-700 py-2 text-[12px] font-bold text-zinc-400 active:bg-zinc-800"
+                    onClick={() => setDraft((d) => {
+                      const legs = [
+                        ...normalizeParlayLegs(d.legs),
+                        { market: 'h2h', side: 'home', selection_label: '', odds: '-110' },
+                      ]
+                      return {
+                        ...d,
+                        legs: normalizeParlayLegs(legs),
+                        selection_label: parlaySelectionLabel(legs),
+                      }
+                    })}
+                  >
+                    + Add leg
+                  </button>
+                </div>
+              ) : (
                 <>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Player
+                    Event
                     <input
                       className={`${inputClass} mt-1`}
-                      value={draft.player_name}
-                      onChange={(e) => setDraft((d) => ({ ...d, player_name: e.target.value }))}
-                      placeholder="Ja'Marr Chase"
+                      value={eventLabelFromDraft(draft)}
+                      onChange={(e) => setDraft((d) => applyEventLabelToDraft(d, e.target.value))}
+                      placeholder="BUF Bills vs LV Raiders"
+                    />
+                  </label>
+                  <label className="block min-w-0 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Event date
+                    <input
+                      type="datetime-local"
+                      data-sports-bet-datetime
+                      className={`${inputClass} mt-1 min-w-0 max-w-full`}
+                      value={commenceToDatetimeLocal(draft.commence_time)}
+                      onChange={(e) => setDraft((d) => ({
+                        ...d,
+                        commence_time: datetimeLocalToIso(e.target.value),
+                      }))}
                     />
                   </label>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Stat
-                    <input
+                    Sport
+                    <select
                       className={`${inputClass} mt-1`}
-                      value={draft.prop_stat}
-                      onChange={(e) => setDraft((d) => ({ ...d, prop_stat: e.target.value }))}
-                      placeholder="rec yds"
-                    />
+                      value={resolveSportsBetSport(draft.sport_key, draft.sport_label).key || ''}
+                      onChange={(e) => {
+                        const s = sportByKey(e.target.value) || { key: e.target.value, label: e.target.value }
+                        setDraft((d) => ({ ...d, sport_key: s.key, sport_label: s.label }))
+                      }}
+                    >
+                      <option value="">Select</option>
+                      {SPORTS_BET_SPORTS.map((s) => (
+                        <option key={s.key} value={s.key}>{s.label}</option>
+                      ))}
+                    </select>
                   </label>
+                  {draft.market === 'prop' ? (
+                    <>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                        Player
+                        <input
+                          className={`${inputClass} mt-1`}
+                          value={draft.player_name}
+                          onChange={(e) => setDraft((d) => ({ ...d, player_name: e.target.value }))}
+                          placeholder="Ja'Marr Chase"
+                        />
+                      </label>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                        Stat
+                        <input
+                          className={`${inputClass} mt-1`}
+                          value={draft.prop_stat}
+                          onChange={(e) => setDraft((d) => ({ ...d, prop_stat: e.target.value }))}
+                          placeholder="rec yds"
+                        />
+                      </label>
+                    </>
+                  ) : null}
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Side
+                    <select
+                      className={`${inputClass} mt-1`}
+                      value={draft.side}
+                      onChange={(e) => setDraft((d) => ({ ...d, side: e.target.value }))}
+                    >
+                      {sideSelectOptions(draft).map((o) => (
+                        <option key={`${o.value}-${o.label}`} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      Line
+                      <input
+                        className={`${inputClass} mt-1`}
+                        inputMode="decimal"
+                        value={draft.line}
+                        onChange={(e) => setDraft((d) => ({ ...d, line: e.target.value }))}
+                        placeholder="-3.5"
+                      />
+                    </label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      Odds
+                      <input
+                        className={`${inputClass} mt-1`}
+                        inputMode="numeric"
+                        value={draft.odds}
+                        onChange={(e) => setDraft((d) => ({ ...d, odds: e.target.value }))}
+                        placeholder="-110"
+                      />
+                    </label>
+                  </div>
                 </>
-              ) : null}
-              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Side
-                <select
-                  className={`${inputClass} mt-1`}
-                  value={draft.side}
-                  onChange={(e) => setDraft((d) => ({ ...d, side: e.target.value }))}
-                >
-                  {sideSelectOptions(draft).map((o) => (
-                    <option key={`${o.value}-${o.label}`} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
+              )}
+              {isParlayDraft(draft) ? (
                 <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Line
-                  <input
-                    className={`${inputClass} mt-1`}
-                    inputMode="decimal"
-                    value={draft.line}
-                    onChange={(e) => setDraft((d) => ({ ...d, line: e.target.value }))}
-                    placeholder="-3.5"
-                  />
-                </label>
-                <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Odds
+                  Combined odds
                   <input
                     className={`${inputClass} mt-1`}
                     inputMode="numeric"
                     value={draft.odds}
                     onChange={(e) => setDraft((d) => ({ ...d, odds: e.target.value }))}
-                    placeholder="-110"
+                    placeholder="+450"
                   />
                 </label>
-              </div>
+              ) : null}
               <div className="grid grid-cols-2 gap-2">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                   Stake (units)
@@ -1356,7 +1738,7 @@ export default function SportsBetTracker({
               onClick={() => {
                 const drafts = parseSportsBetIntake(pasteText)
                 setPasteOpen(false)
-                void applyIntakeDrafts(drafts, { bulk: drafts.length > 1 })
+                void applyIntakeDrafts(drafts, { review: drafts.length > 1 })
               }}
             >
               Read bets

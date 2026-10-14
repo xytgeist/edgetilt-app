@@ -9,6 +9,11 @@ import {
   SPORTS_BET_SPORT_UFC,
   sportByKey,
 } from './sportsBetSports.js'
+import {
+  combinedOddsFromLegs,
+  normalizeParlayLegs,
+  parlaySelectionLabel,
+} from './sportsBetParlay.js'
 
 const MONEY_RE = /\$?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)/
 
@@ -664,10 +669,11 @@ function draftFromBits({
   const dollars = stakeDollars != null && Number(stakeDollars) > 0 ? Number(stakeDollars) : null
   const units = stakeUnits != null && Number(stakeUnits) > 0 ? Number(stakeUnits) : null
 
+  const marketFinal = mkt || 'other'
   return {
     book: book || '',
-    market: mkt || 'other',
-    side: sd || 'home',
+    market: marketFinal,
+    side: marketFinal === 'parlay' ? '' : (sd || 'home'),
     line: ln != null && ln !== '' ? String(ln) : '',
     odds: String(american),
     stake_units: units != null ? String(units) : '',
@@ -684,13 +690,153 @@ function draftFromBits({
     prop_stat: stat,
     event_label: eventLabel,
     source,
+    legs: [],
   }
+}
+
+function looksLikeParlayText(text) {
+  return /\bparlay\b|\bsgp\b|same\s*game\s*parlay|\d+\s*-\s*leg\b|\d+\s+legs?\b/i.test(
+    String(text || ''),
+  )
+}
+
+function extractTotalParlayOdds(text) {
+  const raw = String(text || '')
+  const m = /total\s*odds\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
+    || /combined\s*(?:odds|price)\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
+    || /parlay\s*odds\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
+  return m ? americanOrNull(m[1]) : null
+}
+
+function legStubFromSelection(sel, odds, rawSport) {
+  const selection = String(sel || '').trim()
+  if (!selection || selection.length > 100) return null
+  if (/^(total|parlay|straight|single|wager|risk|payout|ticket)/i.test(selection)) return null
+  if (/\bodds\b/i.test(selection) && selection.length < 24) return null
+  const details = extractMarketDetails(selection, `${selection} ${odds}`)
+  const eventBits = parseEventMatchup(selection)
+  const sport = rawSport || extractSport(selection, {
+    casinoMlbIsMoneyline: Boolean(details.casinoMlbIsMoneyline),
+  })
+  let market = details.market || 'h2h'
+  if (market === 'other' && /[+-]\d+\.\d/.test(selection)) market = 'spread'
+  if (market === 'other') market = 'h2h'
+  return {
+    market,
+    side: details.side || '',
+    line: details.line != null && details.line !== '' ? String(details.line) : '',
+    odds: String(odds),
+    selection_label: details.selection_label || selection,
+    player_name: details.player_name || '',
+    prop_stat: details.prop_stat || '',
+    home_team: eventBits.home_team || '',
+    away_team: eventBits.home_team ? eventBits.away_team : '',
+    event_label: eventBits.event || '',
+    sport_key: sport.key || '',
+    sport_label: sport.label || '',
+    commence_time: '',
+    event_id: '',
+  }
+}
+
+/** Extract ≥2 legs from a parlay slip. */
+export function extractParlayLegs(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  const sport = extractSport(text)
+  const legs = []
+  const seen = new Set()
+
+  const pushLeg = (sel, odds) => {
+    const american = americanOrNull(odds)
+    if (american == null) return
+    const stub = legStubFromSelection(sel, american, sport)
+    if (!stub) return
+    const key = `${normalizeNameKey(stub.selection_label)}|${stub.odds}`
+    if (seen.has(key)) return
+    seen.add(key)
+    legs.push(stub)
+  }
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    if (
+      /total\s*odds|potential\s*payout|ticket\s*cost|to\s*win|to\s*collect|max\s*payout|printed|transaction|betslip|terms and conditions/i.test(line)
+    ) {
+      continue
+    }
+    if (/^wager\b|^risk\b/i.test(line)) continue
+    if (looksLikeTicketIdOdds(line)) continue
+
+    const withOdds = /^(.+?)\s+([+-]\d{3,5})\s*$/.exec(line)
+    if (withOdds) {
+      pushLeg(withOdds[1], withOdds[2])
+      continue
+    }
+
+    if (/^[+-]\d{3,5}\s*$/.test(line)) {
+      const prev = lines[i - 1] || ''
+      if (prev && !/total\s*odds|parlay|wager|risk|payout|ticket|straight|single/i.test(prev)) {
+        pushLeg(prev, line)
+      }
+    }
+  }
+
+  return legs
+}
+
+export function parseParlaySlipText(text) {
+  const raw = String(text || '').replace(/\r/g, '').trim()
+  if (!raw || !looksLikeParlayText(raw)) return null
+
+  const legs = extractParlayLegs(raw)
+  if (legs.length < 2) return null
+
+  const totalOdds = extractTotalParlayOdds(raw)
+  const fromLegs = combinedOddsFromLegs(legs)
+  const odds = totalOdds ?? fromLegs
+  if (odds == null) return null
+
+  const book = extractBook(raw)
+  const stakeDollars = extractStakeDollars(raw)
+  const commence_time = extractCommenceTime(raw)
+  const sport = extractSport(raw)
+  const normalized = normalizeParlayLegs(legs)
+
+  const draft = draftFromBits({
+    selection: parlaySelectionLabel(normalized),
+    odds,
+    stakeDollars,
+    book,
+    event: '',
+    source: 'slip',
+    market: 'parlay',
+    side: '',
+    line: null,
+    selection_label: parlaySelectionLabel(normalized),
+    sport_key: sport.key || '',
+    sport_label: sport.label || 'Parlay',
+    home_team: '',
+    away_team: '',
+    commence_time,
+  })
+  if (!draft) return null
+  draft.legs = normalized
+  draft.selection_label = parlaySelectionLabel(normalized)
+  draft.market = 'parlay'
+  draft.side = ''
+  draft.home_team = ''
+  draft.away_team = ''
+  draft.event_label = ''
+  return draft
 }
 
 /** Free-text bet slip / share-sheet paste / OCR. */
 export function parseSportsBetSlipText(text) {
   const raw = String(text || '').replace(/\r/g, '').trim()
   if (!raw) return []
+
+  const parlay = parseParlaySlipText(raw)
+  if (parlay) return [parlay]
 
   const primary = findPrimaryOdds(raw)
   if (!primary) return []

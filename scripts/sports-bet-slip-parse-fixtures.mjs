@@ -191,6 +191,25 @@ Risk $50.00
       side: 'away',
     },
   },
+  {
+    name: '2-leg parlay',
+    text: `
+2 Leg Parlay
+BUF Bills +3.5                              -110
+KC Chiefs ML                                -150
+Total Odds                                  +250
+Wager                              $50.00
+Potential Payout                   $175.00
+Football / NFL
+`,
+    expect: {
+      market: 'parlay',
+      stake_dollars: 50,
+      odds: 250,
+      selection_includes: 'Parlay',
+      legs: 2,
+    },
+  },
 ]
 
 function assert(cond, msg) {
@@ -242,6 +261,10 @@ for (const fx of fixtures) {
     }
     if (e.side != null) {
       assert(d.side === e.side, `${fx.name}: side want ${e.side} got ${d.side}`)
+    }
+    if (e.legs != null) {
+      const n = Array.isArray(d.legs) ? d.legs.length : 0
+      assert(n === e.legs, `${fx.name}: legs want ${e.legs} got ${n}`)
     }
     if (e.commence_date) {
       const [y, mo, day] = e.commence_date.split('-').map(Number)

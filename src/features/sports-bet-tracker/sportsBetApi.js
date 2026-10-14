@@ -1,12 +1,24 @@
 import { buildSelectionLabel, profitUnitsForStatus } from './sportsBetMath.js'
 import { normalizeSportsBetSource } from './sportsBetSources.js'
 import { resolveSportsBetSport } from './sportsBetSports.js'
+import {
+  isParlayDraft,
+  normalizeParlayLegs,
+  parlaySelectionLabel,
+  sortLegsOnBet,
+} from './sportsBetParlay.js'
 
 const SELECT = `
   id, user_id, event_id, sport_key, sport_label, home_team, away_team, commence_time,
   book, market, side, selection_label, line, odds, stake_units, stake_dollars, unit_size_dollars,
   status, result_at, profit_units, close_line, close_odds, clv_pts, clv_graded_at,
   notes, tags, source, confirmed, player_name, prop_stat, created_at, updated_at
+`.replace(/\s+/g, ' ').trim()
+
+const LEG_SELECT = `
+  id, bet_id, user_id, leg_index, event_id, sport_key, sport_label, home_team, away_team,
+  commence_time, market, side, selection_label, line, odds, player_name, prop_stat, status,
+  created_at, updated_at
 `.replace(/\s+/g, ' ').trim()
 
 function draftToRow(userId, draft) {
@@ -17,16 +29,23 @@ function draftToRow(userId, draft) {
   if (!Number.isFinite(odds) || odds === 0) return { error: 'Odds required' }
   if (!Number.isFinite(stakeUnits) || stakeUnits <= 0) return { error: 'Stake units required' }
   const sport = resolveSportsBetSport(draft.sport_key, draft.sport_label)
-  const selection_label = buildSelectionLabel({
-    market,
-    side,
-    homeTeam: draft.home_team,
-    awayTeam: draft.away_team,
-    line: draft.line,
-    selectionLabel: draft.selection_label,
-    playerName: draft.player_name,
-    propStat: draft.prop_stat,
-  })
+  const legs = market === 'parlay' ? normalizeParlayLegs(draft.legs || draft.sports_bet_legs) : []
+  if (market === 'parlay' && legs.length < 2) {
+    return { error: 'Parlay needs at least 2 legs' }
+  }
+  const selection_label = market === 'parlay'
+    ? parlaySelectionLabel(legs, draft.selection_label)
+    : buildSelectionLabel({
+      market,
+      side,
+      homeTeam: draft.home_team,
+      awayTeam: draft.away_team,
+      line: draft.line,
+      selectionLabel: draft.selection_label,
+      playerName: draft.player_name,
+      propStat: draft.prop_stat,
+      legs,
+    })
   const direct = draft.stake_dollars == null || draft.stake_dollars === ''
     ? null
     : Number(draft.stake_dollars)
@@ -40,19 +59,23 @@ function draftToRow(userId, draft) {
   return {
     row: {
       ...(userId ? { user_id: userId } : {}),
-      event_id: draft.event_id ? String(draft.event_id) : null,
+      event_id: market === 'parlay' ? null : (draft.event_id ? String(draft.event_id) : null),
       sport_key: sport.key || null,
-      sport_label: sport.label || null,
-      home_team: draft.home_team ? String(draft.home_team) : null,
-      away_team: draft.away_team ? String(draft.away_team) : null,
+      sport_label: market === 'parlay'
+        ? (sport.label || 'Parlay')
+        : (sport.label || null),
+      home_team: market === 'parlay' ? null : (draft.home_team ? String(draft.home_team) : null),
+      away_team: market === 'parlay' ? null : (draft.away_team ? String(draft.away_team) : null),
       commence_time: draft.commence_time || null,
       book: draft.book ? String(draft.book).trim() : null,
       market,
-      side,
+      side: market === 'parlay' ? null : side,
       selection_label,
-      player_name: draft.player_name ? String(draft.player_name).trim() : null,
-      prop_stat: draft.prop_stat ? String(draft.prop_stat).trim() : null,
-      line: draft.line == null || draft.line === '' ? null : Number(draft.line),
+      player_name: market === 'parlay' ? null : (draft.player_name ? String(draft.player_name).trim() : null),
+      prop_stat: market === 'parlay' ? null : (draft.prop_stat ? String(draft.prop_stat).trim() : null),
+      line: market === 'parlay' || draft.line == null || draft.line === ''
+        ? null
+        : Number(draft.line),
       odds: Math.round(odds),
       stake_units: stakeUnits,
       stake_dollars,
@@ -62,18 +85,69 @@ function draftToRow(userId, draft) {
       source: normalizeSportsBetSource(draft.source, 'manual'),
       confirmed: draft.confirmed === false ? false : true,
     },
+    legs,
   }
+}
+
+function legToRow(userId, betId, leg, index) {
+  const market = String(leg.market || 'h2h')
+  const oddsRaw = leg.odds == null || leg.odds === '' ? null : Number(leg.odds)
+  const odds = Number.isFinite(oddsRaw) && oddsRaw !== 0 ? Math.round(oddsRaw) : null
+  const selection_label = String(leg.selection_label || '').trim() || `Leg ${index + 1}`
+  return {
+    user_id: userId,
+    bet_id: betId,
+    leg_index: index,
+    event_id: leg.event_id ? String(leg.event_id) : null,
+    sport_key: leg.sport_key ? String(leg.sport_key) : null,
+    sport_label: leg.sport_label ? String(leg.sport_label) : null,
+    home_team: leg.home_team ? String(leg.home_team) : null,
+    away_team: leg.away_team ? String(leg.away_team) : null,
+    commence_time: leg.commence_time || null,
+    market,
+    side: leg.side ? String(leg.side) : null,
+    selection_label,
+    line: leg.line == null || leg.line === '' ? null : Number(leg.line),
+    odds,
+    player_name: leg.player_name ? String(leg.player_name).trim() : null,
+    prop_stat: leg.prop_stat ? String(leg.prop_stat).trim() : null,
+    status: leg.status && leg.status !== 'open' ? String(leg.status) : 'open',
+  }
+}
+
+async function replaceLegs(supabaseClient, userId, betId, legs) {
+  const { error: delErr } = await supabaseClient
+    .from('sports_bet_legs')
+    .delete()
+    .eq('bet_id', betId)
+  if (delErr) return delErr.message
+  if (!legs.length) return null
+  const rows = legs.map((leg, i) => legToRow(userId, betId, leg, i))
+  const { error: insErr } = await supabaseClient.from('sports_bet_legs').insert(rows)
+  return insErr?.message || null
 }
 
 export async function listSportsBets(supabaseClient, { limit = 200 } = {}) {
   if (!supabaseClient) return { bets: [], error: 'No client' }
   const { data, error } = await supabaseClient
     .from('sports_bets')
-    .select(SELECT)
+    .select(`${SELECT}, sports_bet_legs (${LEG_SELECT})`)
     .order('created_at', { ascending: false })
     .limit(limit)
-  if (error) return { bets: [], error: error.message }
-  return { bets: data || [], error: null }
+  if (error) {
+    // Older DBs without legs table: fall back so tracker still loads.
+    if (/sports_bet_legs|schema cache/i.test(error.message || '')) {
+      const plain = await supabaseClient
+        .from('sports_bets')
+        .select(SELECT)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      if (plain.error) return { bets: [], error: plain.error.message }
+      return { bets: (plain.data || []).map((b) => sortLegsOnBet({ ...b, sports_bet_legs: [] })), error: null }
+    }
+    return { bets: [], error: error.message }
+  }
+  return { bets: (data || []).map((b) => sortLegsOnBet(b)), error: null }
 }
 
 export async function insertSportsBet(supabaseClient, userId, draft) {
@@ -87,7 +161,22 @@ export async function insertSportsBet(supabaseClient, userId, draft) {
     .select(SELECT)
     .single()
   if (error) return { bet: null, error: error.message }
-  return { bet: data, error: null }
+  let bet = sortLegsOnBet({ ...data, sports_bet_legs: [] })
+  if (isParlayDraft(draft) && built.legs.length) {
+    const legErr = await replaceLegs(supabaseClient, userId, data.id, built.legs)
+    if (legErr) {
+      await supabaseClient.from('sports_bets').delete().eq('id', data.id)
+      return { bet: null, error: legErr }
+    }
+    const { data: withLegs, error: reloadErr } = await supabaseClient
+      .from('sports_bets')
+      .select(`${SELECT}, sports_bet_legs (${LEG_SELECT})`)
+      .eq('id', data.id)
+      .single()
+    if (!reloadErr && withLegs) bet = sortLegsOnBet(withLegs)
+    else bet = sortLegsOnBet({ ...data, sports_bet_legs: built.legs })
+  }
+  return { bet, error: null }
 }
 
 export async function updateSportsBet(supabaseClient, betId, draft) {
@@ -102,7 +191,22 @@ export async function updateSportsBet(supabaseClient, betId, draft) {
     .select(SELECT)
     .single()
   if (error) return { bet: null, error: error.message }
-  return { bet: data, error: null }
+
+  const userId = data.user_id
+  if (String(patch.market) === 'parlay') {
+    const legErr = await replaceLegs(supabaseClient, userId, betId, built.legs)
+    if (legErr) return { bet: null, error: legErr }
+  } else {
+    await supabaseClient.from('sports_bet_legs').delete().eq('bet_id', betId)
+  }
+
+  const { data: withLegs, error: reloadErr } = await supabaseClient
+    .from('sports_bets')
+    .select(`${SELECT}, sports_bet_legs (${LEG_SELECT})`)
+    .eq('id', betId)
+    .single()
+  if (!reloadErr && withLegs) return { bet: sortLegsOnBet(withLegs), error: null }
+  return { bet: sortLegsOnBet({ ...data, sports_bet_legs: built.legs }), error: null }
 }
 
 export async function confirmSportsBet(supabaseClient, betId) {
@@ -111,10 +215,10 @@ export async function confirmSportsBet(supabaseClient, betId) {
     .from('sports_bets')
     .update({ confirmed: true })
     .eq('id', betId)
-    .select(SELECT)
+    .select(`${SELECT}, sports_bet_legs (${LEG_SELECT})`)
     .single()
   if (error) return { bet: null, error: error.message }
-  return { bet: data, error: null }
+  return { bet: sortLegsOnBet(data), error: null }
 }
 
 export async function settleSportsBet(supabaseClient, betId, status) {
@@ -145,10 +249,10 @@ export async function settleSportsBet(supabaseClient, betId, status) {
       ...(next === 'open' ? {} : { confirmed: true }),
     })
     .eq('id', betId)
-    .select(SELECT)
+    .select(`${SELECT}, sports_bet_legs (${LEG_SELECT})`)
     .single()
   if (error) return { bet: null, error: error.message }
-  return { bet: data, error: null }
+  return { bet: sortLegsOnBet(data), error: null }
 }
 
 export async function deleteSportsBet(supabaseClient, betId) {

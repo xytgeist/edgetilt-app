@@ -1214,6 +1214,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-14:** **Bet Tracker multi-slip + parlays (`1.4.1140`).** Photo `multiple` (cap 8) → review queue. Parlay parent + **`sports_bet_legs`** (SQL **`20261014160000`** on **test**). Parse / composer / list / leg rollup grade. Edge **`sports-bets-grade`** on test. Spec **`docs/sports-bet-tracker.md`**. **Prod SQL + Edge not applied.**
 - **2026-10-13:** **Prod DB dumps → private R2.** `scripts/db-dump-to-r2.mjs` + `docs/db-r2-backups.md`: `pg_dump` custom format → private bucket (`DB_BACKUP_R2_*`), 14-day prune, Windows daily 3:15 AM task for **production only**. Test stays on Supabase included daily backups. On-demand `--tag=pre-migrate` before scary prod SQL. First run prints egress estimate … keep daily until dump size known. No PITR. No app version bump.
 - **2026-10-12:** **Strengthen preserve-intentional-behavior.** Broader than debounce/guards: any “fix” must trace impact + why existing code exists so it does not undo a prior fix. Audit template/gate require **Why existing code**. **`AGENTS.md`** + **`.cursor/rules/preserve-intentional-behavior.mdc`**. No app version bump.
 - **2026-10-12:** **Agent audit-before-impl protocol.** Always-apply **`.cursor/rules/audit-before-impl.mdc`** + tracked **`.cursor/audit-current.example.md`**; live **`.cursor/audit-current.md`** gitignored. Pointer in **`AGENTS.md`**. No app version bump.

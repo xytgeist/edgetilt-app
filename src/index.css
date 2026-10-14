@@ -11827,9 +11827,21 @@ html.light [data-sports-bet-stat] .text-cyan-400 {
   box-sizing: border-box;
 }
 
-html.light [data-sports-bet-composer] {
+html.light [data-sports-bet-composer],
+html.light [data-sports-bet-review] {
   background-color: #ffffff !important;
   border-color: #d4d4d8 !important;
+}
+html.light [data-sports-bet-review] .text-white {
+  color: #18181b !important;
+}
+html.light [data-sports-bet-review] .border-zinc-800,
+html.light [data-sports-bet-review] .border-zinc-700 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-sports-bet-review] .bg-zinc-900\/70,
+html.light [data-sports-bet-review] .bg-zinc-950 {
+  background-color: #f4f4f5 !important;
 }
 html.light [data-sports-bet-composer] [data-sports-bet-slip-preview] {
   background-color: #f4f4f5 !important;

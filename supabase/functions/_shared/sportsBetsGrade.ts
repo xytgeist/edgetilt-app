@@ -150,6 +150,51 @@ const SELECT = `
   market, side, selection_label, line, odds, stake_units, status
 `.replace(/\s+/g, ' ').trim()
 
+const LEG_SELECT = `
+  id, bet_id, user_id, sport_key, home_team, away_team, commence_time,
+  market, side, selection_label, line, odds, status
+`.replace(/\s+/g, ' ').trim()
+
+type SportsBetLegRow = {
+  id: string
+  bet_id: string
+  user_id: string
+  sport_key: string | null
+  home_team: string | null
+  away_team: string | null
+  commence_time: string | null
+  market: string
+  side: string | null
+  selection_label: string
+  line: number | null
+  odds: number | null
+  status: string
+}
+
+function rollupParlayStatusFromLegs(
+  legs: { status?: string | null }[],
+): 'open' | 'won' | 'lost' | 'push' | 'void' {
+  let won = 0
+  let lost = 0
+  let push = 0
+  let voided = 0
+  let open = 0
+  for (const leg of legs) {
+    const s = String(leg.status || 'open')
+    if (s === 'open') open += 1
+    else if (s === 'won') won += 1
+    else if (s === 'lost') lost += 1
+    else if (s === 'push') push += 1
+    else if (s === 'void') voided += 1
+    else open += 1
+  }
+  if (lost > 0) return 'lost'
+  if (open > 0) return 'open'
+  if (won > 0 && push === 0 && voided === 0) return 'won'
+  if (won === 0 && push === 0 && voided > 0) return 'void'
+  return 'push'
+}
+
 export async function gradeOpenSportsBets(
   admin: SupabaseClient,
   opts: { userId?: string } = {},
@@ -169,15 +214,25 @@ export async function gradeOpenSportsBets(
   const { data, error } = await q
   if (error) return { resolved: 0, scanned: 0, errors: [error.message] }
   const bets = (data || []) as SportsBetRow[]
-  if (!bets.length) return { resolved: 0, scanned: 0, errors: [] }
 
-  const bySport = new Map<string, SportsBetRow[]>()
-  for (const bet of bets) {
-    const sk = String(bet.sport_key || '').trim() || 'unknown'
-    const list = bySport.get(sk) || []
-    list.push(bet)
-    bySport.set(sk, list)
+  let legQ = admin
+    .from('sports_bet_legs')
+    .select(LEG_SELECT)
+    .eq('status', 'open')
+    .in('market', ['spread', 'h2h', 'total'])
+    .not('home_team', 'is', null)
+    .not('away_team', 'is', null)
+    .limit(500)
+  if (opts.userId) legQ = legQ.eq('user_id', opts.userId)
+
+  const { data: legData, error: legErr } = await legQ
+  // Missing table on older envs … skip legs, still grade straights.
+  const legs = (!legErr && legData ? legData : []) as SportsBetLegRow[]
+  if (legErr && !/relation|schema cache|does not exist/i.test(legErr.message || '')) {
+    errors.push(`legs: ${legErr.message}`)
   }
+
+  if (!bets.length && !legs.length) return { resolved: 0, scanned: 0, errors }
 
   const boards = new Map<string, EspnCompletedEvent[]>()
   const loadBoard = async (sportKey: string) => {
@@ -196,6 +251,15 @@ export async function gradeOpenSportsBets(
 
   let resolved = 0
   const nowIso = new Date().toISOString()
+  const touchedParlayIds = new Set<string>()
+
+  const bySport = new Map<string, SportsBetRow[]>()
+  for (const bet of bets) {
+    const sk = String(bet.sport_key || '').trim() || 'unknown'
+    const list = bySport.get(sk) || []
+    list.push(bet)
+    bySport.set(sk, list)
+  }
 
   for (const [sportKey, list] of bySport.entries()) {
     const board = await loadBoard(sportKey)
@@ -228,5 +292,94 @@ export async function gradeOpenSportsBets(
     }
   }
 
-  return { resolved, scanned: bets.length, errors }
+  const legsBySport = new Map<string, SportsBetLegRow[]>()
+  for (const leg of legs) {
+    const sk = String(leg.sport_key || '').trim() || 'unknown'
+    const list = legsBySport.get(sk) || []
+    list.push(leg)
+    legsBySport.set(sk, list)
+  }
+
+  for (const [sportKey, list] of legsBySport.entries()) {
+    const board = await loadBoard(sportKey)
+    if (!board.length) continue
+
+    for (const leg of list) {
+      const mk = espnMarketKey(leg.market)
+      if (!espnFallbackCoversMarket(sportKey, mk)) continue
+      const scores = matchEspnFinalScore(board, String(leg.home_team), String(leg.away_team))
+      if (!scores) continue
+      const asBet: SportsBetRow = {
+        id: leg.id,
+        user_id: leg.user_id,
+        sport_key: leg.sport_key,
+        home_team: leg.home_team,
+        away_team: leg.away_team,
+        commence_time: leg.commence_time,
+        market: leg.market,
+        side: leg.side,
+        selection_label: leg.selection_label,
+        line: leg.line,
+        odds: Number(leg.odds) || -110,
+        stake_units: 1,
+        status: leg.status,
+      }
+      const grade = gradeSportsBetOutcome(asBet, scores.homeScore, scores.awayScore)
+      if (!grade) continue
+
+      const { error: upErr } = await admin
+        .from('sports_bet_legs')
+        .update({ status: grade.status })
+        .eq('id', leg.id)
+        .eq('status', 'open')
+
+      if (upErr) {
+        errors.push(`leg ${leg.id}: ${upErr.message}`)
+        continue
+      }
+      touchedParlayIds.add(leg.bet_id)
+      resolved += 1
+    }
+  }
+
+  for (const betId of touchedParlayIds) {
+    const { data: allLegs, error: loadErr } = await admin
+      .from('sports_bet_legs')
+      .select('status')
+      .eq('bet_id', betId)
+    if (loadErr || !allLegs?.length) {
+      if (loadErr) errors.push(`rollup ${betId}: ${loadErr.message}`)
+      continue
+    }
+    const next = rollupParlayStatusFromLegs(allLegs)
+    if (next === 'open') continue
+
+    const { data: parent, error: parentErr } = await admin
+      .from('sports_bets')
+      .select('id, stake_units, odds, status')
+      .eq('id', betId)
+      .eq('status', 'open')
+      .eq('market', 'parlay')
+      .maybeSingle()
+    if (parentErr || !parent) continue
+
+    const profit_units = profitUnitsForSportsBetStatus(
+      next,
+      Number(parent.stake_units),
+      Number(parent.odds),
+    )
+    const { error: upParent } = await admin
+      .from('sports_bets')
+      .update({
+        status: next,
+        result_at: nowIso,
+        profit_units,
+        confirmed: true,
+      })
+      .eq('id', betId)
+      .eq('status', 'open')
+    if (upParent) errors.push(`parlay ${betId}: ${upParent.message}`)
+  }
+
+  return { resolved, scanned: bets.length + legs.length, errors }
 }

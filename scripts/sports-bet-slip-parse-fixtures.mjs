@@ -52,6 +52,7 @@ F2C76-E1FF-8055
       odds: 310,
       selection_includes: 'Lopez',
       sport_label: 'Boxing',
+      sport_key: 'boxing_boxing',
     },
   },
   {
@@ -99,6 +100,7 @@ Ticket 568089239281249199
       selection_includes: 'Distance',
       event_includes: 'Alvarez',
       sport_label: 'Boxing',
+      sport_key: 'boxing_boxing',
     },
   },
   {
@@ -160,6 +162,7 @@ Jul 10 2021 20:27:51
       selection_includes: 'Poirier',
       event_includes: 'POIRIER',
       sport_label: 'UFC',
+      sport_key: 'mma_mixed_martial_arts',
     },
   },
 ]
@@ -201,6 +204,9 @@ for (const fx of fixtures) {
     }
     if (e.sport_label) {
       assert(d.sport_label === e.sport_label, `${fx.name}: sport want ${e.sport_label} got ${d.sport_label}`)
+    }
+    if (e.sport_key) {
+      assert(d.sport_key === e.sport_key, `${fx.name}: sport_key want ${e.sport_key} got ${d.sport_key}`)
     }
     if (e.commence_date) {
       const [y, mo, day] = e.commence_date.split('-').map(Number)

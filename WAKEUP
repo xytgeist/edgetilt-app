@@ -140,6 +140,9 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 ### Mac Theo 2026-10-14 ... Bet Tracker slip photo on Log a bet
 **Web `1.4.1136`.** Photo OCR opens composer with the slip image attached (blob preview) so fields can be checked against the ticket. Session-only … not saved to DB.
 
+### Mac Theo 2026-10-14 ... Bet Tracker Sport: UFC / Boxing
+**Web `1.4.1138`.** Sport dropdown includes UFC (`mma_mixed_martial_arts`) + Boxing (`boxing_boxing`). Slip parse no longer maps UFC → Other.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.
 

@@ -2,7 +2,12 @@
  * Slip / CSV bones. Heuristic only … user confirms in the composer before save.
  */
 
-import { resolveSportsBetSport } from './sportsBetSports.js'
+import {
+  resolveSportsBetSport,
+  SPORTS_BET_SPORT_BOXING,
+  SPORTS_BET_SPORT_UFC,
+  sportByKey,
+} from './sportsBetSports.js'
 
 const MONEY_RE = /\$?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)/
 
@@ -215,10 +220,11 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
       return resolveSportsBetSport('baseball_mlb', 'MLB')
     }
   }
-  if (/\bufc\b/i.test(s)) return { key: 'other', label: 'UFC' }
-  if (/\bmma\b/i.test(s)) return { key: 'other', label: 'MMA' }
+  if (/\bufc\b/i.test(s) || /\bmma\b/i.test(s)) {
+    return sportByKey(SPORTS_BET_SPORT_UFC) || { key: SPORTS_BET_SPORT_UFC, label: 'UFC' }
+  }
   if (/\bboxing\b|title\s*bout|lightweight\s*title|fight\s+to\s+go/i.test(s)) {
-    return { key: 'other', label: 'Boxing' }
+    return sportByKey(SPORTS_BET_SPORT_BOXING) || { key: SPORTS_BET_SPORT_BOXING, label: 'Boxing' }
   }
   if (NFL_TEAM_HINT.test(s)) {
     return resolveSportsBetSport('americanfootball_nfl', 'NFL')

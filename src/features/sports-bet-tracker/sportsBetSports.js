@@ -8,7 +8,11 @@ import {
   LOUNGE_SPORTS_HUB_FILTER_PGA,
 } from '../lounge/loungeSportsHubNav.js'
 
-/** Hub leagues plus Other. Values are Odds API sport_key. */
+/** Odds API keys used elsewhere for fight sports. */
+export const SPORTS_BET_SPORT_UFC = 'mma_mixed_martial_arts'
+export const SPORTS_BET_SPORT_BOXING = 'boxing_boxing'
+
+/** Hub leagues + fight sports + Other. Values are Odds API sport_key when applicable. */
 export const SPORTS_BET_SPORTS = [
   { key: LOUNGE_SPORTS_HUB_FILTER_NFL, label: 'NFL' },
   { key: LOUNGE_SPORTS_HUB_FILTER_CFB, label: 'CFB' },
@@ -17,6 +21,8 @@ export const SPORTS_BET_SPORTS = [
   { key: LOUNGE_SPORTS_HUB_FILTER_NHL, label: 'NHL' },
   { key: LOUNGE_SPORTS_HUB_FILTER_PGA, label: 'Golf' },
   { key: LOUNGE_SPORTS_HUB_FILTER_MLS, label: 'MLS' },
+  { key: SPORTS_BET_SPORT_UFC, label: 'UFC' },
+  { key: SPORTS_BET_SPORT_BOXING, label: 'Boxing' },
   { key: 'other', label: 'Other' },
 ]
 
@@ -29,15 +35,20 @@ export function resolveSportsBetSport(sportKey, sportLabel) {
   const keyRaw = String(sportKey || '').trim()
   const labelRaw = String(sportLabel || '').trim()
   const lower = `${keyRaw} ${labelRaw}`.toLowerCase()
-  // Fight sports stay under Other with a specific label (UFC / Boxing / MMA).
-  if (/\bufc\b/.test(lower)) return { key: 'other', label: 'UFC' }
-  if (/\bmma\b/.test(lower)) return { key: 'other', label: 'MMA' }
-  if (/\bboxing\b/.test(lower)) return { key: 'other', label: 'Boxing' }
+  // UFC before generic MMA … slips say UFC more often than "MMA".
+  if (/\bufc\b/.test(lower) || keyRaw === SPORTS_BET_SPORT_UFC || /\bmma_mixed/.test(lower)) {
+    return sportByKey(SPORTS_BET_SPORT_UFC)
+  }
+  if (/\bmma\b/.test(lower)) return sportByKey(SPORTS_BET_SPORT_UFC)
+  if (/\bboxing\b/.test(lower) || keyRaw === SPORTS_BET_SPORT_BOXING) {
+    return sportByKey(SPORTS_BET_SPORT_BOXING)
+  }
   const byKey = sportByKey(keyRaw)
   if (byKey) {
-    // Preserve slip labels like "UFC" when key is already `other`.
-    if (byKey.key === 'other' && labelRaw && labelRaw.toLowerCase() !== 'other') {
-      return { key: 'other', label: labelRaw }
+    // Legacy slip drafts used key=other + label=UFC/Boxing.
+    if (byKey.key === 'other' && labelRaw) {
+      const byLegacy = resolveSportsBetSport('', labelRaw)
+      if (byLegacy.key && byLegacy.key !== 'other') return byLegacy
     }
     return byKey
   }

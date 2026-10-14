@@ -67,7 +67,18 @@ function emptyDraft(unitSize = readUnitSizeDollars()) {
     commence_time: '',
     player_name: '',
     prop_stat: '',
+    slip_preview_url: '',
     source: 'manual',
+  }
+}
+
+function revokeSlipPreviewUrl(url) {
+  const s = String(url || '')
+  if (!s.startsWith('blob:')) return
+  try {
+    URL.revokeObjectURL(s)
+  } catch {
+    /* ignore */
   }
 }
 
@@ -145,6 +156,7 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     commence_time: prefill.commence_time ? String(prefill.commence_time) : '',
     player_name: prefill.player_name ? String(prefill.player_name) : '',
     prop_stat: prefill.prop_stat ? String(prefill.prop_stat) : '',
+    slip_preview_url: prefill.slip_preview_url ? String(prefill.slip_preview_url) : '',
     source: normalizeSportsBetSource(prefill.source, 'manual'),
   }
   if (!next.event_label) next.event_label = eventLabelFromDraft(next)
@@ -287,9 +299,25 @@ export default function SportsBetTracker({
     }
   }, [supabaseClient, userId])
 
-  const openComposer = (prefill) => {
+  const closeComposer = () => {
+    setDraft((prev) => {
+      revokeSlipPreviewUrl(prev.slip_preview_url)
+      return emptyDraft(unitSize)
+    })
+    setComposerOpen(false)
     setEditingId(null)
-    setDraft(draftFromPrefill(isUsefulSportsBetPrefill(prefill) ? prefill : null, unitSize))
+  }
+
+  const openComposer = (prefill) => {
+    const useful = isUsefulSportsBetPrefill(prefill) ? prefill : null
+    setEditingId(null)
+    setDraft((prev) => {
+      const next = draftFromPrefill(useful, unitSize)
+      if (prev.slip_preview_url && prev.slip_preview_url !== next.slip_preview_url) {
+        revokeSlipPreviewUrl(prev.slip_preview_url)
+      }
+      return next
+    })
     setComposerOpen(true)
     setError('')
   }
@@ -297,12 +325,15 @@ export default function SportsBetTracker({
   const openEdit = (bet) => {
     if (!bet) return
     setEditingId(bet.id)
-    setDraft(draftFromPrefill({
-      ...bet,
-      stake_units: bet.stake_units,
-      stake_dollars: bet.stake_dollars,
-      source: bet.source || 'manual',
-    }, unitSize))
+    setDraft((prev) => {
+      revokeSlipPreviewUrl(prev.slip_preview_url)
+      return draftFromPrefill({
+        ...bet,
+        stake_units: bet.stake_units,
+        stake_dollars: bet.stake_dollars,
+        source: bet.source || 'manual',
+      }, unitSize)
+    })
     setComposerOpen(true)
     setError('')
   }
@@ -383,9 +414,7 @@ export default function SportsBetTracker({
         ? prev.map((row) => (row.id === bet.id ? bet : row))
         : [bet, ...prev]
     ))
-    setComposerOpen(false)
-    setEditingId(null)
-    setDraft(emptyDraft(unitSize))
+    closeComposer()
     void refreshSportsBetClv(supabaseClient).then(() => load())
   }
 
@@ -508,17 +537,26 @@ export default function SportsBetTracker({
     if (!file) return
     void (async () => {
       setError('')
+      const previewUrl = typeof URL !== 'undefined' && URL.createObjectURL
+        ? URL.createObjectURL(file)
+        : ''
       const { text, error: ocrErr, native } = await ocrSportsBetSlipImage(file)
       if (!native) {
+        revokeSlipPreviewUrl(previewUrl)
         setError('Photo OCR needs the EdgeTilt app. Paste the slip text instead.')
         setPasteOpen(true)
         return
       }
       if (ocrErr) {
+        revokeSlipPreviewUrl(previewUrl)
         setError(ocrErr)
         return
       }
-      await applyIntakeDrafts(parseSportsBetIntake(text))
+      const drafts = parseSportsBetIntake(text).map((d) => (
+        d ? { ...d, slip_preview_url: previewUrl } : d
+      ))
+      if (!drafts.length) revokeSlipPreviewUrl(previewUrl)
+      await applyIntakeDrafts(drafts)
     })()
   }
 
@@ -914,10 +952,7 @@ export default function SportsBetTracker({
           role="dialog"
           aria-modal="true"
           aria-label={editingId ? 'Edit bet' : 'Log bet'}
-          onClick={() => {
-            setComposerOpen(false)
-            setEditingId(null)
-          }}
+          onClick={closeComposer}
         >
           <div
             data-sports-bet-composer
@@ -928,10 +963,7 @@ export default function SportsBetTracker({
               <h2 className="text-lg font-black text-white">{editingId ? 'Edit bet' : 'Log a bet'}</h2>
               <button
                 type="button"
-                onClick={() => {
-                  setComposerOpen(false)
-                  setEditingId(null)
-                }}
+                onClick={closeComposer}
                 className="rounded-full p-2 text-zinc-400 active:bg-zinc-800"
                 aria-label="Close composer"
               >
@@ -944,6 +976,26 @@ export default function SportsBetTracker({
               </p>
             ) : null}
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 pb-3">
+              {draft.slip_preview_url ? (
+                <div data-sports-bet-slip-preview className="overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900/80">
+                  <p className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                    Slip photo … check against fields below
+                  </p>
+                  <a
+                    href={draft.slip_preview_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Open full slip photo"
+                    className="block px-2 pb-2 pt-1"
+                  >
+                    <img
+                      src={draft.slip_preview_url}
+                      alt="Bet slip"
+                      className="mx-auto max-h-56 w-full object-contain"
+                    />
+                  </a>
+                </div>
+              ) : null}
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Event
                 <input

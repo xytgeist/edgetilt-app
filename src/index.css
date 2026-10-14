@@ -11816,6 +11816,10 @@ html.light [data-sports-bet-composer] {
   background-color: #ffffff !important;
   border-color: #d4d4d8 !important;
 }
+html.light [data-sports-bet-composer] [data-sports-bet-slip-preview] {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+}
 html.light [data-sports-bet-composer] .border-zinc-800 {
   border-color: #e4e4e7 !important;
 }

@@ -23,6 +23,7 @@ import PokerBankrollHeroCarousel, {
   stakeHeroThemeIndexForDeal,
 } from './PokerBankrollHeroCarousel.jsx'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
+import BankrollSessionHistoryRow from '../bankroll/BankrollSessionHistoryRow.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
 import PokerBankrollTrendTab from './PokerBankrollTrendTab.jsx'
 import PokerCashGamePicker from './PokerCashGamePicker.jsx'
@@ -544,6 +545,8 @@ export default function PokerBankrollTracker({
   const [standaloneOpenSwapId, setStandaloneOpenSwapId] = useState(/** @type {string | null} */ (null))
   /** Inline Mark settled on completed session cards. */
   const [sessionCardSwapBusyId, setSessionCardSwapBusyId] = useState(null)
+  /** Exclusive open swipe-delete row in session history. */
+  const [openSwipeSessionId, setOpenSwipeSessionId] = useState(/** @type {string | null} */ (null))
   /** @type {Record<string, object>} */
   const [swapProfilesById, setSwapProfilesById] = useState({})
   /** Soft events for incoming / listed swaps keyed by tournament_event_id. */
@@ -1449,6 +1452,7 @@ export default function PokerBankrollTracker({
   useEffect(() => {
     if (isActivePage) return
     setSheet(null)
+    setOpenSwipeSessionId(null)
     setTermsDealId(null)
     setLedgerDealId(null)
     setStakeChatMenuDealId(null)
@@ -3815,13 +3819,14 @@ export default function PokerBankrollTracker({
   }
 
   /**
-   * Delete one completed session or a full history series group from the detail sheet.
+   * Delete one completed session or a full history series group (detail sheet or swipe).
    * @param {object[]} sessionList
+   * @returns {Promise<boolean>} true when rows were deleted
    */
   async function deleteCompletedSessionsFromDetail(sessionList) {
-    if (!supabaseClient || !userId || saving) return
+    if (!supabaseClient || !userId || saving) return false
     const rows = (Array.isArray(sessionList) ? sessionList : []).filter((s) => s?.id)
-    if (!rows.length) return
+    if (!rows.length) return false
 
     const swapCount = uniqueSwapsForSeriesSessions(rows, swapsBySessionId).length
     const isSeries = rows.length > 1
@@ -3849,7 +3854,7 @@ export default function PokerBankrollTracker({
             cancelLabel: 'Cancel',
           })
         : window.confirm(`${title}\n\n${message}`)
-    if (!ok) return
+    if (!ok) return false
 
     setSaving(true)
     setError('')
@@ -3886,8 +3891,10 @@ export default function PokerBankrollTracker({
       }
       triggerTapHapticLight()
       await loadData()
+      return true
     } catch (e) {
       setError(e?.message || 'Delete failed.')
+      return false
     } finally {
       setSaving(false)
     }
@@ -5082,21 +5089,20 @@ export default function PokerBankrollTracker({
                       )
                     : []
                   return (
-                    <li key={item.id}>
-                      {/* div+role=button … Settle is a real <button>; nested buttons are invalid HTML */}
+                    <BankrollSessionHistoryRow
+                      key={item.id}
+                      sessionId={item.id}
+                      openSwipeId={openSwipeSessionId}
+                      onSwipeOpen={setOpenSwipeSessionId}
+                      onActivate={() => openSessionDetail(session, seriesSessions)}
+                      onRequestDelete={() => deleteCompletedSessionsFromDetail(seriesSessions)}
+                      asDiv
+                      foregroundClassName="flex w-full cursor-pointer items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 active:bg-zinc-800/80"
+                    >
                       <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => openSessionDetail(session, seriesSessions)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            openSessionDetail(session, seriesSessions)
-                          }
-                        }}
                         data-elevated-card="surface"
                         data-poker-history-series={isSeriesGroup ? 'true' : undefined}
-                        className="flex w-full cursor-pointer items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
+                        className="contents"
                       >
                         <span
                           className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
@@ -5320,6 +5326,7 @@ export default function PokerBankrollTracker({
                                           data-poker-session-swap-settle-btn
                                           aria-label="Mark settled"
                                           title="Mark settled"
+                                          onPointerDown={(e) => e.stopPropagation()}
                                           onClick={(e) => {
                                             e.stopPropagation()
                                             void markSessionCardSwapSettled(swap)
@@ -5378,7 +5385,7 @@ export default function PokerBankrollTracker({
                           ) : null}
                         </span>
                       </div>
-                    </li>
+                    </BankrollSessionHistoryRow>
                   )
                 })}
               </ul>

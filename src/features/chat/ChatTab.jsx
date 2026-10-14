@@ -688,6 +688,7 @@ function ChatTabBody({
 
   // ── Room long-press actions ───────────────────────────────────────────────
 
+  /** @returns {Promise<boolean>} false when user cancels delete confirm or the action fails */
   const handleRoomAction = useCallback(async (action, room) => {
     setRoomMenu(null)
     if (action === 'delete') {
@@ -706,10 +707,7 @@ function ChatTabBody({
               ? `Leave "${label}"? It will be removed from your inbox.`
               : `Delete "${label}"? It will be removed from your inbox.`,
           )
-      if (!confirmed) {
-        setOpenSwipeRoomId(null)
-        return
-      }
+      if (!confirmed) return false
     }
     try {
       if (action === 'mark_unread') await chatMarkUnread(supabaseClient, room.id)
@@ -725,8 +723,10 @@ function ChatTabBody({
         if (activeRoomId === room.id) setActiveRoomId(null)
       }
       void refreshInboxLists()
+      return true
     } catch (e) {
       setActionErr(e?.message || 'Action failed.')
+      return false
     }
   }, [supabaseClient, refreshInboxLists, activeRoomId, showGlobalConfirm])
 
@@ -1347,8 +1347,8 @@ function ChatTabBody({
                   setActiveRoomId(roomId)
                 }}
                 onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y, listMode: 'archived' })}
-                onUnarchive={(r) => void handleRoomAction('unarchive', r)}
-                onDelete={(r) => void handleRoomAction('delete', r)}
+                onUnarchive={(r) => handleRoomAction('unarchive', r)}
+                onRequestDelete={(r) => handleRoomAction('delete', r)}
                 openSwipeRoomId={openSwipeRoomId}
                 onSwipeOpen={setOpenSwipeRoomId}
               />
@@ -1402,8 +1402,8 @@ function ChatTabBody({
                 setActiveRoomId(roomId)
               }}
               onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y, listMode: 'inbox' })}
-              onArchive={(r) => void handleRoomAction('archive', r)}
-              onDelete={(r) => void handleRoomAction('delete', r)}
+              onArchive={(r) => handleRoomAction('archive', r)}
+              onRequestDelete={(r) => handleRoomAction('delete', r)}
               openSwipeRoomId={openSwipeRoomId}
               onSwipeOpen={setOpenSwipeRoomId}
             />
@@ -1423,8 +1423,8 @@ function ChatTabBody({
                 setActiveRoomId(roomId)
               }}
               onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y, listMode: 'inbox' })}
-              onArchive={(r) => void handleRoomAction('archive', r)}
-              onDelete={(r) => void handleRoomAction('delete', r)}
+              onArchive={(r) => handleRoomAction('archive', r)}
+              onRequestDelete={(r) => handleRoomAction('delete', r)}
               openSwipeRoomId={openSwipeRoomId}
               onSwipeOpen={setOpenSwipeRoomId}
             />
@@ -1488,6 +1488,7 @@ const ROOM_SWIPE_COMMIT_RATIO = 0.38
 const ROOM_SWIPE_COMMIT_MIN_PX = 72
 const ROOM_SWIPE_SNAP_MS = 240
 const ROOM_SWIPE_ICON_FULL_PX = 52
+const ROOM_SWIPE_SNAP_TRANSITION = 'transform 240ms cubic-bezier(0.32, 0.72, 0, 1)'
 
 function getRoomSwipeCommitThreshold(width) {
   return Math.max(ROOM_SWIPE_COMMIT_MIN_PX, width * ROOM_SWIPE_COMMIT_RATIO)
@@ -1578,7 +1579,8 @@ function ChatRoomListRow({
   onLongPress,
   onArchive,
   onUnarchive,
-  onDelete,
+  /** @type {(room: any) => Promise<boolean>|boolean|void} */
+  onRequestDelete,
   openSwipeRoomId,
   onSwipeOpen,
 }) {
@@ -1589,6 +1591,8 @@ function ChatRoomListRow({
   const rowWidthRef = useRef(320)
   const offsetRef = useRef(0)
   const swipeDraggingRef = useRef(false)
+  const committingRef = useRef(false)
+  const commitTimerRef = useRef(null)
   const gestureRef = useRef({
     startX: 0,
     startY: 0,
@@ -1598,6 +1602,13 @@ function ChatRoomListRow({
   const [offsetX, setOffsetX] = useState(0)
   const [swipeDragging, setSwipeDragging] = useState(false)
 
+  const clearCommitTimer = useCallback(() => {
+    if (commitTimerRef.current != null) {
+      window.clearTimeout(commitTimerRef.current)
+      commitTimerRef.current = null
+    }
+  }, [])
+
   const setOffset = useCallback((next, { syncDom = false } = {}) => {
     offsetRef.current = next
     setOffsetX(next)
@@ -1605,6 +1616,18 @@ function ChatRoomListRow({
       foregroundRef.current.style.transform = `translate3d(${next}px, 0, 0)`
     }
   }, [])
+
+  const restoreSnapTransition = useCallback(() => {
+    if (foregroundRef.current) {
+      foregroundRef.current.style.transition = ROOM_SWIPE_SNAP_TRANSITION
+    }
+  }, [])
+
+  const animateOffsetTo = useCallback((next) => {
+    restoreSnapTransition()
+    if (foregroundRef.current) void foregroundRef.current.offsetWidth
+    setOffset(next, { syncDom: true })
+  }, [restoreSnapTransition, setOffset])
 
   useEffect(() => {
     const el = rowRef.current
@@ -1618,9 +1641,11 @@ function ChatRoomListRow({
     return () => ro.disconnect()
   }, [])
 
+  useEffect(() => () => clearCommitTimer(), [clearCommitTimer])
+
   useEffect(() => {
-    // Don't yank the row closed while this row is actively dragging.
-    if (swipeDraggingRef.current) return
+    // Don't yank closed while dragging or mid swipe-away / confirm.
+    if (swipeDraggingRef.current || committingRef.current) return
     if (openSwipeRoomId !== room.id) setOffset(0)
   }, [openSwipeRoomId, room.id, setOffset])
 
@@ -1640,6 +1665,7 @@ function ChatRoomListRow({
   }, [room, onLongPress, clearTimer])
 
   const onPointerDown = useCallback((e) => {
+    if (committingRef.current) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
     gestureRef.current = {
       startX: e.clientX,
@@ -1656,6 +1682,7 @@ function ChatRoomListRow({
   }, [clearTimer, fireLongPress])
 
   const onPointerMove = useCallback((e) => {
+    if (committingRef.current) return
     const g = gestureRef.current
     if (g.pointerId == null || e.pointerId !== g.pointerId) return
     if (e.pointerType === 'mouse' && e.buttons === 0) return
@@ -1705,13 +1732,32 @@ function ChatRoomListRow({
       const offset = offsetRef.current
       const commitAt = getRoomSwipeCommitThreshold(width)
 
-      const runActionAfterSnap = (targetOffset, action) => {
+      const runCommitAction = (targetOffset, action) => {
+        // Keep exclusivity until action/confirm resolves; do not clear openSwipe yet
+        // or the openSwipe effect would setOffset(0) and kill the swipe-away.
+        committingRef.current = true
         swipeDraggingRef.current = false
         setSwipeDragging(false)
-        setOffset(targetOffset)
-        onSwipeOpen?.(null)
-        window.setTimeout(() => {
-          action?.()
+        animateOffsetTo(targetOffset)
+        clearCommitTimer()
+        commitTimerRef.current = window.setTimeout(() => {
+          commitTimerRef.current = null
+          void (async () => {
+            let ok = true
+            try {
+              const result = await action?.()
+              if (result === false) ok = false
+            } catch {
+              ok = false
+            }
+            if (!ok) {
+              committingRef.current = false
+              animateOffsetTo(0)
+              onSwipeOpen?.(null)
+              return
+            }
+            onSwipeOpen?.(null)
+          })()
         }, ROOM_SWIPE_SNAP_MS)
       }
 
@@ -1719,13 +1765,13 @@ function ChatRoomListRow({
         const leftAction = listMode === 'archived'
           ? () => onUnarchive?.(room)
           : () => onArchive?.(room)
-        runActionAfterSnap(-width, leftAction)
+        runCommitAction(-width, leftAction)
       } else if (offset >= commitAt) {
-        runActionAfterSnap(width, () => onDelete?.(room))
+        runCommitAction(width, () => onRequestDelete?.(room))
       } else {
         swipeDraggingRef.current = false
         setSwipeDragging(false)
-        setOffset(0)
+        animateOffsetTo(0)
         onSwipeOpen?.(null)
       }
     } else {
@@ -1734,7 +1780,17 @@ function ChatRoomListRow({
     }
     g.axis = null
     g.pointerId = null
-  }, [clearTimer, listMode, onArchive, onUnarchive, onDelete, onSwipeOpen, room, setOffset])
+  }, [
+    animateOffsetTo,
+    clearCommitTimer,
+    clearTimer,
+    listMode,
+    onArchive,
+    onUnarchive,
+    onRequestDelete,
+    onSwipeOpen,
+    room,
+  ])
 
   const onPointerUp = useCallback(
     (e) => {
@@ -1764,17 +1820,18 @@ function ChatRoomListRow({
   )
 
   const handleClick = useCallback(() => {
+    if (committingRef.current) return
     if (suppressClickRef.current) {
       suppressClickRef.current = false
       return
     }
     if (Math.abs(offsetRef.current) > 8) {
-      setOffset(0)
+      animateOffsetTo(0)
       onSwipeOpen?.(null)
       return
     }
     onOpen(room.id)
-  }, [onOpen, onSwipeOpen, room.id, setOffset])
+  }, [animateOffsetTo, onOpen, onSwipeOpen, room.id])
 
   const deleteProgress = offsetX > 0 ? getSwipeIconRevealProgress(offsetX) : 0
   const leftSwipeProgress = offsetX < 0 ? getSwipeIconRevealProgress(-offsetX) : 0
@@ -1782,7 +1839,7 @@ function ChatRoomListRow({
     ? 'chat-room-swipe-unarchive absolute inset-0'
     : 'chat-room-swipe-archive absolute inset-0'
   const LeftSwipeIcon = listMode === 'archived' ? ChatSwipeInboxIcon : ChatSwipeArchiveIcon
-  const rowTransition = swipeDragging ? 'none' : 'transform 240ms cubic-bezier(0.32, 0.72, 0, 1)'
+  const rowTransition = swipeDragging ? 'none' : ROOM_SWIPE_SNAP_TRANSITION
   const iconScale = (progress) => 0.84 + progress * 0.16
   const isPinnedInbox = listMode === 'inbox' && Boolean(room.pinned)
   const pinnedSurfaceClass = isPinnedInbox ? 'chat-room-swipe-foreground-pinned' : 'bg-zinc-950'

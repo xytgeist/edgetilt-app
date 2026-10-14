@@ -61,6 +61,10 @@ export default function BankrollSessionHistoryRow({
   onActivate,
   /** @type {() => Promise<boolean>|boolean|void} resolves true after confirmed delete */
   onRequestDelete,
+  /** Use a div (role=button) when children include nested buttons (e.g. poker Settle). */
+  asDiv = false,
+  /** When set, replaces default slots-bankroll surface classes on the foreground. */
+  foregroundClassName = null,
   children,
 }) {
   const rowRef = useRef(null)
@@ -276,6 +280,17 @@ export default function BankrollSessionHistoryRow({
   const deleteProgress = offsetX > 0 ? getIconProgress(offsetX) : 0
   const iconScale = 0.84 + deleteProgress * 0.16
   const rowTransition = swipeDragging ? 'none' : SWIPE_SNAP_TRANSITION
+  const defaultSurfaceClass = isSelected
+    ? 'border p-4 transition-colors bg-cyan-950/40 border-cyan-700/60 active:bg-cyan-950/60'
+    : 'border p-4 transition-colors bg-zinc-900 border-zinc-800/60 active:bg-zinc-800'
+  const fgClassName = [
+    'bankroll-session-swipe-foreground relative z-[1] w-full text-left touch-manipulation',
+    foregroundClassName || defaultSurfaceClass,
+    offsetX !== 0 ? 'bankroll-session-swipe-foreground-active' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const Foreground = asDiv ? 'div' : 'button'
 
   return (
     <li ref={rowRef} className="bankroll-session-swipe-row relative list-none">
@@ -297,16 +312,23 @@ export default function BankrollSessionHistoryRow({
         )}
       </div>
 
-      <button
-        type="button"
+      <Foreground
+        {...(asDiv
+          ? {
+              role: 'button',
+              tabIndex: 0,
+              onKeyDown: (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleClick()
+                }
+              },
+            }
+          : { type: 'button' })}
         ref={foregroundRef}
         data-session-row
         onClick={handleClick}
-        className={`bankroll-session-swipe-foreground relative z-[1] w-full text-left border p-4 touch-manipulation transition-colors ${
-          isSelected
-            ? 'bg-cyan-950/40 border-cyan-700/60 active:bg-cyan-950/60'
-            : 'bg-zinc-900 border-zinc-800/60 active:bg-zinc-800'
-        } ${offsetX !== 0 ? 'bankroll-session-swipe-foreground-active' : ''}`}
+        className={fgClassName}
         style={{
           transform: `translate3d(${offsetX}px, 0, 0)`,
           transition: rowTransition,
@@ -322,7 +344,7 @@ export default function BankrollSessionHistoryRow({
         onContextMenu={(e) => e.preventDefault()}
       >
         {children}
-      </button>
+      </Foreground>
     </li>
   )
 }

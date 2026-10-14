@@ -208,7 +208,13 @@ class EdgeVideoNative(
       pendingPickRequestId = null
       if (rid != null) complete(rid, JSONObject().put("ok", false).put("cancelled", true))
     }
-    activeTransformer.get()?.cancel()
+    // Transformer must be cancelled on the main thread (same as create/start).
+    main.post {
+      try {
+        activeTransformer.get()?.cancel()
+      } catch (_: Exception) {
+      }
+    }
     try {
       activeUpload.get()?.disconnect()
     } catch (_: Exception) {
@@ -349,46 +355,45 @@ class EdgeVideoNative(
     val errorRef = AtomicReference<Exception?>(null)
     val latch = java.util.concurrent.CountDownLatch(1)
 
-    val transformer = Transformer.Builder(activity)
-      .setVideoMimeType(MimeTypes.VIDEO_H264)
-      .setAudioMimeType(MimeTypes.AUDIO_AAC)
-      .addListener(object : Transformer.Listener {
-        override fun onCompleted(composition: Composition, result: ExportResult) {
-          done.set(true)
-          latch.countDown()
-        }
+    // Media3 Transformer must be created, started, polled, and cancelled on one Looper
+    // (main). Access from the upload IO thread throws "Transformer is accessed on the wrong thread."
+    runOnMain {
+      checkCancelled(assetId)
+      val transformer = Transformer.Builder(activity)
+        .setVideoMimeType(MimeTypes.VIDEO_H264)
+        .setAudioMimeType(MimeTypes.AUDIO_AAC)
+        .addListener(object : Transformer.Listener {
+          override fun onCompleted(composition: Composition, result: ExportResult) {
+            done.set(true)
+            latch.countDown()
+          }
 
-        override fun onError(composition: Composition, result: ExportResult, exception: ExportException) {
-          errorRef.set(exception)
-          latch.countDown()
-        }
-      })
-      .build()
-    activeTransformer.set(transformer)
-    checkCancelled(assetId)
-    val started = java.util.concurrent.CountDownLatch(1)
-    main.post {
-      try {
-        transformer.start(composition, outFile.absolutePath)
-      } catch (e: Exception) {
-        errorRef.set(e)
-        latch.countDown()
-      } finally {
-        started.countDown()
-      }
+          override fun onError(composition: Composition, result: ExportResult, exception: ExportException) {
+            errorRef.set(exception)
+            latch.countDown()
+          }
+        })
+        .build()
+      activeTransformer.set(transformer)
+      transformer.start(composition, outFile.absolutePath)
     }
-    started.await()
 
     val holder = ProgressHolder()
     while (!latch.await(200, java.util.concurrent.TimeUnit.MILLISECONDS)) {
       checkCancelled(assetId)
-      if (transformer.getProgress(holder) == Transformer.PROGRESS_STATE_AVAILABLE) {
-        val p = holder.progress / 100.0
-        postProgress("encoding", p, assetId)
-        EdgeVideoFgService.progress(activity, "Preparing video", "${holder.progress}%", holder.progress)
+      var pct = -1
+      runOnMain {
+        val t = activeTransformer.get() ?: return@runOnMain
+        if (t.getProgress(holder) == Transformer.PROGRESS_STATE_AVAILABLE) {
+          pct = holder.progress
+        }
+      }
+      if (pct in 0..100) {
+        postProgress("encoding", pct / 100.0, assetId)
+        EdgeVideoFgService.progress(activity, "Preparing video", "$pct%", pct)
       }
     }
-    activeTransformer.set(null)
+    runOnMain { activeTransformer.set(null) }
     checkCancelled(assetId)
     errorRef.get()?.let {
       outFile.delete()
@@ -653,6 +658,27 @@ class EdgeVideoNative(
       .put("progress", clamped)
       .put("assetId", assetId)
     main.post { deliver(PROGRESS_EVENT, detail) }
+  }
+
+  /** Run [block] on the main looper and wait (Transformer / UI-bound APIs). */
+  private fun <T> runOnMain(block: () -> T): T {
+    if (Looper.myLooper() == Looper.getMainLooper()) return block()
+    val box = AtomicReference<Any?>()
+    val err = AtomicReference<Exception?>()
+    val done = java.util.concurrent.CountDownLatch(1)
+    main.post {
+      try {
+        box.set(block())
+      } catch (e: Exception) {
+        err.set(e)
+      } finally {
+        done.countDown()
+      }
+    }
+    done.await()
+    err.get()?.let { throw it }
+    @Suppress("UNCHECKED_CAST")
+    return box.get() as T
   }
 
   private fun startFg(title: String, text: String) {

@@ -53,7 +53,7 @@ Bump `versionCode` every upload. Org account + Play App Signing + internal track
 - **Upload key:** `33:56:43:97:85:D1:4C:AD:1B:CF:E8:89:34:31:8E:04:98:2B:AB:85:1C:D6:20:1B:0D:51:EE:41:B4:8D:7D:36`
 - **Debug:** `26:4E:6A:82:56:0F:D2:1D:8F:1A:67:13:F5:33:8E:04:97:16:A3:52:1B:C8:9C:07:14:12:33:95:0F:87:92:E3`
 
-All three for `com.edgetilt.app` live in `public/.well-known/assetlinks.json`. Play Console org: **DIGIVERSE VENTURES LLC** / `play@digiverse.ventures` (developer `8014913311107911454`). App **Edge Tilt** internal testing: **17 (1.3.13)** native video (trim preview broken); AAB ready for **18 (1.3.14)** HTTPS intercept preview fix (`app/build/outputs/bundle/prodRelease/app-prod-release.aab`).
+All three for `com.edgetilt.app` live in `public/.well-known/assetlinks.json`. Play Console org: **DIGIVERSE VENTURES LLC** / `play@digiverse.ventures` (developer `8014913311107911454`). App **Edge Tilt** internal testing: **18 (1.3.14)** trim preview; AAB ready for **19 (1.3.15)** Transformer main-thread fix after trim (`app/build/outputs/bundle/prodRelease/app-prod-release.aab`).
 
 ## App Links
 

@@ -125,8 +125,8 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 ### Windows Theo ACTIVE TRACK 2026-10-13 ... Prod DB dumps → private R2
 **I am Windows Theo.** Offsite `pg_dump` → private R2 for **production only** (`docs/db-r2-backups.md`). Test keeps Supabase daily backups. Script `scripts/db-dump-to-r2.mjs`, 14-day prune, Windows task daily 3:15 AM. Needs Ryan: create private bucket + `DB_BACKUP_R2_*` in `.env.master`, install `pg_dump`, first `npm run db:dump:r2:production` to size egress, then `npm run db:dump:r2:install-windows-task`. Before scary prod SQL: `--tag=pre-migrate`.
 
-### Mac Theo ACTIVE TRACK 2026-10-14 ... Android native video 1.3.14 trim preview
-**I am Mac Theo.** **1.3.13** trim UI black: WebView HTML5 media + `edge-video://` / ranged 206. **1.3.14 / vc 18:** preview = same-origin `https://…/__edge_native_video__/<id>` + Range double-skip pad. Web **`1.4.1124`**. Upload Play internal **18**. Re-smoke trim UI on clip >2:20. **Next native:** ML Kit.
+### Mac Theo ACTIVE TRACK 2026-10-14 ... Android native video 1.3.15
+**I am Mac Theo.** **1.3.14** trim preview fixed. **1.3.15 / vc 19:** Media3 Transformer create/start/progress/cancel all on main (was "wrong thread" after Confirm trim). Web still **`1.4.1124`**. Upload Play internal **19**. Smoke: trim → Confirm → encode/upload. **Next native:** ML Kit.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.

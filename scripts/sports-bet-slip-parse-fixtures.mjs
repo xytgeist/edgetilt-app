@@ -24,7 +24,9 @@ Ticket Cost $500,000.00
       stake_dollars: 500000,
       market: 'h2h',
       odds: 120,
-      selection_includes: '49ers',
+      selection_includes: '49ers ML',
+      selection_includes_odds: '+120',
+      selection_includes_stake: '$500,000',
       event_includes: 'Chiefs',
       event_label: '49ers @ Chiefs',
       sport_label: 'NFL',
@@ -264,6 +266,18 @@ for (const fx of fixtures) {
       assert(
         String(d.selection_label).toLowerCase().includes(e.selection_includes.toLowerCase()),
         `${fx.name}: selection_label missing ${e.selection_includes}: ${d.selection_label}`,
+      )
+    }
+    if (e.selection_includes_odds) {
+      assert(
+        String(d.selection_label).includes(e.selection_includes_odds),
+        `${fx.name}: selection_label missing odds ${e.selection_includes_odds}: ${d.selection_label}`,
+      )
+    }
+    if (e.selection_includes_stake) {
+      assert(
+        String(d.selection_label).includes(e.selection_includes_stake),
+        `${fx.name}: selection_label missing stake ${e.selection_includes_stake}: ${d.selection_label}`,
       )
     }
     if (e.player_name) {

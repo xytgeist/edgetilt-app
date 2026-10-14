@@ -9,7 +9,7 @@ import {
   SPORTS_BET_SPORT_UFC,
   sportByKey,
 } from './sportsBetSports.js'
-import { americanOddsInputString } from './sportsBetMath.js'
+import { americanOddsInputString, buildBetSummaryLabel, pickSeedFromLabel } from './sportsBetMath.js'
 import {
   combinedOddsFromLegs,
   normalizeParlayLegs,
@@ -880,12 +880,16 @@ export function parseParlaySlipText(text) {
   })
   if (!draft) return null
   draft.legs = normalized
-  draft.selection_label = parlaySelectionLabel(normalized)
   draft.market = 'parlay'
   draft.side = ''
   draft.home_team = ''
   draft.away_team = ''
   draft.event_label = ''
+  draft.selection_label = buildBetSummaryLabel({
+    ...draft,
+    selection_label: parlaySelectionLabel(normalized),
+    legs: normalized,
+  })
   return draft
 }
 
@@ -935,8 +939,16 @@ export function parseSportsBetSlipText(text) {
 
   if (!draft) return []
 
-  // Participant sports: map pick onto home/away from fighter names (UI shows those names).
-  if (
+  const pickSeed = pickSeedFromLabel(draft.selection_label)
+  // Map pick onto home/away for Side (fighters or team ML).
+  if (draft.market !== 'prop' && draft.market !== 'total' && pickSeed) {
+    const mapped = sideForParticipantSelection(
+      pickSeed,
+      draft.away_team,
+      draft.home_team,
+    )
+    if (mapped) draft.side = mapped
+  } else if (
     isParticipantSport(draft.sport_key, draft.sport_label)
     && draft.market !== 'prop'
     && draft.market !== 'total'
@@ -948,6 +960,12 @@ export function parseSportsBetSlipText(text) {
     )
     if (mapped) draft.side = mapped
   }
+
+  // Keep a short seed on the draft for summary, then replace with the rich Label.
+  draft.selection_label = buildBetSummaryLabel({
+    ...draft,
+    selection_label: pickSeed || draft.selection_label,
+  })
 
   return [draft]
 }

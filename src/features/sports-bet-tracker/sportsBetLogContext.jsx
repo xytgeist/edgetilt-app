@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { requestSportsBetLog } from './sportsBetNav.js'
-import { buildSelectionLabel, americanFromImplied } from './sportsBetMath.js'
+import { buildBetSummaryLabel, americanFromImplied } from './sportsBetMath.js'
 import { insertSportsBet } from './sportsBetApi.js'
 import { DEFAULT_STAKE_UNITS, readUnitSizeDollars, stakeDollarsFromUnits } from './sportsBetStake.js'
 import { resolveSportsBetSport } from './sportsBetSports.js'
@@ -34,16 +34,7 @@ export function mergeSportsBetOddsPrefill(game, partial) {
   merged.sport_key = sport.key
   merged.sport_label = sport.label
   merged.book = formatSportsBetBook(merged.book)
-  merged.selection_label = buildSelectionLabel({
-    market: merged.market,
-    side: merged.side,
-    homeTeam: merged.home_team,
-    awayTeam: merged.away_team,
-    line: merged.line,
-    selectionLabel: merged.selection_label,
-    playerName: merged.player_name,
-    propStat: merged.prop_stat,
-  })
+  merged.selection_label = buildBetSummaryLabel(merged)
   return merged
 }
 

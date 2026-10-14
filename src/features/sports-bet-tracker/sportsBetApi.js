@@ -1,10 +1,9 @@
-import { buildSelectionLabel, profitUnitsForStatus } from './sportsBetMath.js'
+import { buildBetSummaryLabel, profitUnitsForStatus } from './sportsBetMath.js'
 import { normalizeSportsBetSource } from './sportsBetSources.js'
 import { resolveSportsBetSport } from './sportsBetSports.js'
 import {
   isParlayDraft,
   normalizeParlayLegs,
-  parlaySelectionLabel,
   sortLegsOnBet,
 } from './sportsBetParlay.js'
 
@@ -33,17 +32,12 @@ function draftToRow(userId, draft) {
   if (market === 'parlay' && legs.length < 2) {
     return { error: 'Parlay needs at least 2 legs' }
   }
-  const selection_label = market === 'parlay'
-    ? parlaySelectionLabel(legs, draft.selection_label)
-    : buildSelectionLabel({
+  const selection_label = draft.label_manual && String(draft.selection_label || '').trim()
+    ? String(draft.selection_label).trim()
+    : buildBetSummaryLabel({
+      ...draft,
       market,
       side,
-      homeTeam: draft.home_team,
-      awayTeam: draft.away_team,
-      line: draft.line,
-      selectionLabel: draft.selection_label,
-      playerName: draft.player_name,
-      propStat: draft.prop_stat,
       legs,
     })
   const direct = draft.stake_dollars == null || draft.stake_dollars === ''

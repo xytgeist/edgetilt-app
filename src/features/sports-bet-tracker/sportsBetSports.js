@@ -54,11 +54,14 @@ export function isParticipantSport(sportKey, sportLabel) {
 export function participantSideOptions(draft) {
   const away = String(draft?.away_team || '').trim()
   const home = String(draft?.home_team || '').trim()
-  const pick = String(draft?.selection_label || '').trim()
+  // selection_label may be a full summary ("D Poirier ML +140 · …") … only use a short seed.
+  let pick = String(draft?.selection_label || '').trim()
+  if (pick.includes(' · ')) pick = pick.split(' · ')[0].replace(/\s+ML\b/i, '').trim()
+  pick = pick.replace(/^\[\d+\]\s*/, '').replace(/^\d{2,5}\s+/, '').trim()
   const opts = []
   if (away) opts.push({ value: 'away', label: away })
   if (home) opts.push({ value: 'home', label: home })
-  if (!opts.length && pick) {
+  if (!opts.length && pick && pick.length <= 48) {
     const v = draft?.side === 'away' ? 'away' : 'home'
     opts.push({ value: v, label: pick })
   }

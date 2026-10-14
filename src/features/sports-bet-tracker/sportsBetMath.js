@@ -165,6 +165,91 @@ export function currentSportsBankroll(bankrollStart, bets, fallbackUnitSize) {
   return start + pnl
 }
 
+/** Strip rotation / summary / odds junk to a short pick name. */
+export function pickSeedFromLabel(selectionLabel) {
+  let raw = String(selectionLabel || '').trim()
+  if (!raw) return ''
+  if (raw.includes(' · ')) raw = raw.split(' · ')[0].trim()
+  raw = raw.replace(/\s+ML\b/i, '').trim()
+  raw = raw.replace(/\s+[+-]\d{2,5}\s*$/i, '').trim()
+  raw = raw.replace(/^\[\d+\]\s*/, '').replace(/^\d{2,5}\s+/, '')
+  raw = raw.replace(/\bMLB\b/gi, '').replace(/\s{2,}/g, ' ').trim()
+  return raw
+}
+
+function formatStakePart(draft) {
+  const dollars = Number(draft?.stake_dollars)
+  if (Number.isFinite(dollars) && dollars > 0) {
+    const rounded = Number.isInteger(dollars) ? dollars : Number(dollars.toFixed(2))
+    return `$${rounded.toLocaleString('en-US')}`
+  }
+  const units = Number(draft?.stake_units)
+  if (Number.isFinite(units) && units > 0) return `${units}u`
+  return ''
+}
+
+function formatCommenceShort(iso) {
+  if (!iso) return ''
+  const dt = new Date(iso)
+  if (Number.isNaN(dt.getTime())) return ''
+  return `${dt.getMonth() + 1}/${dt.getDate()}/${dt.getFullYear()}`
+}
+
+function buildPickHead(draft) {
+  const market = String(draft?.market || 'spread')
+  const side = String(draft?.side || '')
+  const home = String(draft?.home_team || '').trim()
+  const away = String(draft?.away_team || '').trim()
+  const ln = formatLine(draft?.line, market)
+  let seed = pickSeedFromLabel(draft?.selection_label)
+  if (/\s@\s|\svs\s/i.test(seed)) seed = ''
+
+  if (market === 'prop') {
+    const player = String(draft?.player_name || seed || '').trim()
+    const ou = side === 'under' ? 'Under' : 'Over'
+    const stat = String(draft?.prop_stat || '').trim()
+    return [player, ou, ln, stat].filter(Boolean).join(' ') || 'Player prop'
+  }
+  if (market === 'total') {
+    if (side === 'under') return `Under ${ln || ''}`.trim()
+    return `Over ${ln || ''}`.trim()
+  }
+  if (market === 'spread') {
+    const team = side === 'home' ? (home || seed) : side === 'away' ? (away || seed) : (seed || away || home)
+    return `${team || 'Spread'} ${ln}`.trim()
+  }
+  if (market === 'h2h') {
+    let team = seed
+    if (!team) {
+      if (side === 'home') team = home
+      else if (side === 'away') team = away
+      else team = away || home
+    }
+    if (side === 'draw') return 'Draw ML'
+    return team ? `${team} ML` : 'ML'
+  }
+  if (market === 'parlay') {
+    const legs = draft?.legs || draft?.sports_bet_legs
+    const n = Array.isArray(legs) ? legs.length : 0
+    if (seed && /^parlay\b/i.test(seed)) return seed
+    return n ? `Parlay (${n} leg${n === 1 ? '' : 's'})` : 'Parlay'
+  }
+  return seed || [away, home].filter(Boolean).join(' @ ') || 'Bet'
+}
+
+/**
+ * Card / Label summary … e.g. "49ers ML +120 · $500,000 · 2/2/2020"
+ * (middot separators; not a dump of rotation numbers).
+ */
+export function buildBetSummaryLabel(draft) {
+  const head = buildPickHead(draft)
+  const oddsPart = formatAmericanOdds(draft?.odds)
+  const oddsOk = oddsPart && oddsPart !== '—'
+  const stakePart = formatStakePart(draft)
+  const datePart = formatCommenceShort(draft?.commence_time)
+  return [head, oddsOk ? oddsPart : '', stakePart, datePart].filter(Boolean).join(' · ')
+}
+
 export function buildSelectionLabel({
   market,
   side,
@@ -175,24 +260,45 @@ export function buildSelectionLabel({
   playerName,
   propStat,
   legs,
+  odds,
+  stakeDollars,
+  stakeUnits,
+  commenceTime,
 }) {
-  const custom = String(selectionLabel || '').trim()
+  // Prefer the rich summary when we have odds/stake/date context (slip + save path).
+  const summary = buildBetSummaryLabel({
+    market,
+    side,
+    home_team: homeTeam,
+    away_team: awayTeam,
+    line,
+    selection_label: selectionLabel,
+    player_name: playerName,
+    prop_stat: propStat,
+    legs,
+    odds,
+    stake_dollars: stakeDollars,
+    stake_units: stakeUnits,
+    commence_time: commenceTime,
+  })
+  if (odds != null && String(odds).trim() !== '') return summary
+
+  const custom = pickSeedFromLabel(selectionLabel) || String(selectionLabel || '').trim()
   const m = String(market || 'spread')
   if (m === 'parlay') {
-    if (custom) return custom
+    if (custom && /^parlay\b/i.test(custom)) return custom
     const n = Array.isArray(legs) ? legs.length : 0
     return n ? `Parlay (${n} leg${n === 1 ? '' : 's'})` : 'Parlay'
   }
   if (m === 'prop') {
-    if (custom && !playerName) return custom
-    const player = String(playerName || '').trim()
+    const player = String(playerName || custom || '').trim()
     const ou = side === 'under' ? 'Under' : 'Over'
     const ln = formatLine(line, 'prop')
     const stat = String(propStat || '').trim()
     const built = [player, ou, ln, stat].filter(Boolean).join(' ')
     return built || custom || 'Player prop'
   }
-  if (custom) return custom
+  if (custom && !/^\d{2,5}\s+/.test(String(selectionLabel || '').trim())) return custom
   const home = String(homeTeam || 'Home').trim()
   const away = String(awayTeam || 'Away').trim()
   const ln = formatLine(line, m)
@@ -200,7 +306,7 @@ export function buildSelectionLabel({
     if (side === 'home') return home
     if (side === 'away') return away
     if (side === 'draw') return 'Draw'
-    return 'Moneyline'
+    return custom || 'Moneyline'
   }
   if (m === 'total') {
     if (side === 'over') return `Over ${ln || ''}`.trim()

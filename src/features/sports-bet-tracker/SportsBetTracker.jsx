@@ -18,6 +18,7 @@ import {
 import {
   currentSportsBankroll,
   americanOddsInputString,
+  buildBetSummaryLabel,
   formatAmericanOdds,
   formatLine,
   summarizeBets,
@@ -92,6 +93,7 @@ function emptyDraft(unitSize = readUnitSizeDollars()) {
     slip_preview_url: '',
     source: 'manual',
     legs: [],
+    label_manual: false,
   }
 }
 
@@ -209,10 +211,10 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     slip_preview_url: prefill.slip_preview_url ? String(prefill.slip_preview_url) : '',
     source: normalizeSportsBetSource(prefill.source, 'manual'),
     legs: normalizeParlayLegs(prefill.legs || prefill.sports_bet_legs || []),
+    label_manual: prefill.label_manual === true,
   }
   if (next.market === 'parlay') {
     if (next.legs.length < 2) next.legs = blankParlayLegs()
-    next.selection_label = parlaySelectionLabel(next.legs, next.selection_label)
     next.side = ''
     next.home_team = ''
     next.away_team = ''
@@ -222,6 +224,9 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
   const sport = resolveSportsBetSport(next.sport_key, next.sport_label)
   next.sport_key = sport.key
   next.sport_label = next.market === 'parlay' ? (sport.label || 'Parlay') : sport.label
+  if (!next.label_manual) {
+    next.selection_label = buildBetSummaryLabel(next)
+  }
   return next
 }
 
@@ -383,7 +388,10 @@ export default function SportsBetTracker({
     const useful = isUsefulSportsBetPrefill(prefill) ? prefill : null
     setEditingId(null)
     setDraft((prev) => {
-      const next = draftFromPrefill(useful, unitSize)
+      const next = draftFromPrefill(
+        useful ? { ...useful, label_manual: false } : null,
+        unitSize,
+      )
       if (prev.slip_preview_url && prev.slip_preview_url !== next.slip_preview_url) {
         revokeSlipPreviewUrl(prev.slip_preview_url)
       }
@@ -403,6 +411,9 @@ export default function SportsBetTracker({
         stake_units: bet.stake_units,
         stake_dollars: bet.stake_dollars,
         source: bet.source || 'manual',
+        // Keep the stored card title when editing an existing bet.
+        label_manual: true,
+        legs: bet.legs || bet.sports_bet_legs,
       }, unitSize)
     })
     setComposerOpen(true)
@@ -1607,12 +1618,16 @@ export default function SportsBetTracker({
                 />
               </label>
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Label (optional)
+                Label
                 <input
                   className={`${inputClass} mt-1`}
-                  value={draft.selection_label}
-                  onChange={(e) => setDraft((d) => ({ ...d, selection_label: e.target.value }))}
-                  placeholder="Kirk Cousins Over 4.5 Passing Touchdowns"
+                  value={draft.label_manual ? draft.selection_label : buildBetSummaryLabel(draft)}
+                  onChange={(e) => setDraft((d) => ({
+                    ...d,
+                    label_manual: true,
+                    selection_label: e.target.value,
+                  }))}
+                  placeholder="49ers ML +120 · $500,000 · 2/2/2020"
                 />
               </label>
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">

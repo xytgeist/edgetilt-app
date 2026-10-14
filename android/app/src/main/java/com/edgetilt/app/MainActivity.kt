@@ -41,8 +41,8 @@ class MainActivity : Activity() {
   /** The JS bridge only answers while the main frame is on our own site (not Supabase / Google auth hops). */
   @Volatile private var onAppPage = false
   /**
-   * Live-session notif (and similar) may land before the SPA mounts.
-   * Queue `edge-live-session-open` until [ShellClient.onPageFinished] on an app host.
+   * Live-session tab from notif tap. Applied after SPA mount (auth may not be ready yet …
+   * [pokeLiveSessionOpen] retries `edge-live-session-open`).
    */
   @Volatile private var pendingLiveSessionTab: String? = null
 
@@ -84,12 +84,10 @@ class MainActivity : Activity() {
       }
       return
     }
-    // App Links / custom-scheme handoffs (live-session notif, yahoo-oauth, …).
-    // Never let WebView.restoreState win over a handoff … process death used to restore
-    // Lounge and skip loadUrl(start), so notif taps stayed on home.
+    // Deep link / live-session notif: never let WebView.restoreState win (would reopen Lounge).
     val handoff = resolveIncomingUri(intent)
     if (handoff != null) {
-      queueLiveSessionOpenIfNeeded(handoff)
+      pendingLiveSessionTab = liveSessionTab(intent, handoff)
       webView.loadUrl(handoff.toString())
       return
     }
@@ -106,79 +104,77 @@ class MainActivity : Activity() {
     // Prefer in-page routing when the SPA is already up. A full loadUrl wipes LiveKit /
     // ChatCallProvider mid answer (Answer used to open ?tab=chat&room= this way).
     if (onAppPage && !webView.url.isNullOrBlank()) {
-      // Live-session: mirror iOS Island … `edge-live-session-open` (AppShell openLive*Bankroll).
-      // replaceState+popstate alone still left some cold/warm resumes on Lounge.
-      if (dispatchLiveSessionOpen(uri)) {
-        val target = uri.toString()
-        val quoted = JSONObject.quote(target)
-        webView.evaluateJavascript(
-          "(function(){try{var u=$quoted;if(location.href===u)return;history.replaceState(null,'',u);}catch(e){}})()",
-          null,
-        )
-        return
-      }
-      val target = uri.toString()
-      val quoted = JSONObject.quote(target)
-      webView.evaluateJavascript(
-        "(function(){try{var u=$quoted;if(location.href===u)return;history.replaceState(null,'',u);window.dispatchEvent(new PopStateEvent('popstate'));}catch(e){location.href=u;}})()",
-        null,
-      )
+      navigateSpaInPlace(uri, liveSessionTab(intent, uri))
     } else {
-      queueLiveSessionOpenIfNeeded(uri)
+      pendingLiveSessionTab = liveSessionTab(intent, uri)
       webView.loadUrl(uri.toString())
     }
   }
 
-  /** VIEW intent → https SPA URI (App Link rewrite or custom-scheme map), or null. */
+  /**
+   * VIEW intent → https SPA URI, or null.
+   * Live-session notif (1.3.12+): https `/?tab=` + [EdgeLiveBankroll.EXTRA_OPEN_TAB].
+   * Still maps legacy `edgetilt://live-session` if an old PendingIntent is alive.
+   */
   private fun resolveIncomingUri(intent: Intent?): Uri? {
-    val data = intent?.data ?: return null
-    return EdgeLinks.appLinkLoadUri(data)
-      ?: data.takeIf { EdgeLinks.staysInApp(it) }
-      ?: data.takeIf { EdgeLinks.isEdgeCustomScheme(it) }?.let { EdgeLinks.httpsFromCustomScheme(it) }
+    if (intent == null) return null
+    val data = intent.data
+    if (data != null) {
+      val mapped =
+        EdgeLinks.appLinkLoadUri(data)
+          ?: data.takeIf { EdgeLinks.staysInApp(it) }
+          ?: data.takeIf { EdgeLinks.isEdgeCustomScheme(it) }?.let { EdgeLinks.httpsFromCustomScheme(it) }
+      if (mapped != null) return mapped
+    }
+    val tab = intent.getStringExtra(EdgeLiveBankroll.EXTRA_OPEN_TAB)?.trim().orEmpty()
+    if (tab == "bankroll" || tab == "poker-bankroll") {
+      return spaTabUri(tab)
+    }
+    return null
   }
 
-  private fun liveSessionTab(uri: Uri): String? {
-    val tab = uri.getQueryParameter("tab")?.trim().orEmpty()
-    return when (tab) {
-      "bankroll", "poker-bankroll" -> tab
+  private fun spaTabUri(tab: String): Uri =
+    Uri.parse(BuildConfig.BASE_URL.trimEnd('/') + "/").buildUpon()
+      .appendQueryParameter("tab", tab)
+      .build()
+
+  private fun liveSessionTab(intent: Intent?, uri: Uri): String? {
+    val fromExtra = intent?.getStringExtra(EdgeLiveBankroll.EXTRA_OPEN_TAB)?.trim().orEmpty()
+    if (fromExtra == "bankroll" || fromExtra == "poker-bankroll") return fromExtra
+    val fromQuery = uri.getQueryParameter("tab")?.trim().orEmpty()
+    return when (fromQuery) {
+      "bankroll", "poker-bankroll" -> fromQuery
       else -> null
     }
   }
 
-  private fun queueLiveSessionOpenIfNeeded(uri: Uri) {
-    liveSessionTab(uri)?.let { pendingLiveSessionTab = it }
-  }
-
-  /** @return true when this URI is a live bankroll handoff and JS was queued/dispatched. */
-  private fun dispatchLiveSessionOpen(uri: Uri): Boolean {
-    val tab = liveSessionTab(uri) ?: return false
-    pendingLiveSessionTab = null
-    val quoted = JSONObject.quote(tab)
+  /** Warm path: replaceState + popstate (worked on 1.3.9) plus live-session poke retries. */
+  private fun navigateSpaInPlace(uri: Uri, liveTab: String?) {
+    val quoted = JSONObject.quote(uri.toString())
+    val poke =
+      if (liveTab != null) {
+        pendingLiveSessionTab = null
+        pokeLiveSessionOpenJs(liveTab)
+      } else {
+        ""
+      }
     webView.evaluateJavascript(
-      "(function(){try{window.dispatchEvent(new CustomEvent('edge-live-session-open',{detail:{tab:$quoted}}));}catch(e){}})()",
+      "(function(){try{var u=$quoted;if(location.href!==u){history.replaceState(null,'',u);window.dispatchEvent(new PopStateEvent('popstate'));}$poke}catch(e){location.href=u;}})()",
       null,
     )
-    return true
+  }
+
+  /** Retries until AppShell auth is ready (openLive*Bankroll no-ops early). */
+  private fun pokeLiveSessionOpenJs(tab: String): String {
+    val quoted = JSONObject.quote(tab)
+    return "var tab=$quoted,n=0;function poke(){try{window.dispatchEvent(new CustomEvent('edge-live-session-open',{detail:{tab:tab}}));}catch(e){}if(++n<20)setTimeout(poke,500);}poke();"
   }
 
   private fun flushPendingLiveSessionOpen() {
     val tab = pendingLiveSessionTab ?: return
     if (!onAppPage) return
-    val quoted = JSONObject.quote(tab)
-    // Fire once on first paint, then again after AppShell mounts listeners.
-    // Cold start still has `/?tab=bankroll` for applyFromUrl when auth resolves.
-    webView.evaluateJavascript(
-      "(function(){try{window.dispatchEvent(new CustomEvent('edge-live-session-open',{detail:{tab:$quoted}}));}catch(e){}})()",
-      null,
-    )
-    webView.postDelayed({
-      if (pendingLiveSessionTab != tab) return@postDelayed
-      pendingLiveSessionTab = null
-      webView.evaluateJavascript(
-        "(function(){try{window.dispatchEvent(new CustomEvent('edge-live-session-open',{detail:{tab:$quoted}}));}catch(e){}})()",
-        null,
-      )
-    }, 1500L)
+    pendingLiveSessionTab = null
+    webView.evaluateJavascript("(function(){try{${pokeLiveSessionOpenJs(tab)}}catch(e){}})()", null)
   }
 
   /** Deliver Custom Tabs OAuth result to JS (`edge-android-webauth`). */

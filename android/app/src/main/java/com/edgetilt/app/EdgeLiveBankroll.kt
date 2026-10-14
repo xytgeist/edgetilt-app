@@ -25,6 +25,9 @@ object EdgeLiveBankroll {
   private const val NOTIFY_ID = 71001
   private const val EXTRA_REQUEST_PROMOTED = "android.requestPromotedOngoing"
 
+  /** Survives OEM / task restore better than custom-scheme `data` alone. */
+  const val EXTRA_OPEN_TAB = "com.edgetilt.app.EXTRA_LIVE_SESSION_TAB"
+
   fun ensureChannel(ctx: Context) {
     if (Build.VERSION.SDK_INT < 26) return
     val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
@@ -166,13 +169,19 @@ object EdgeLiveBankroll {
     shortCritical: String?,
     pokerPaused: Boolean,
   ): Notification {
-    val openUri = Uri.parse("edgetilt://live-session?tab=${Uri.encode(tab)}")
+    // https SPA URL (not edgetilt://) so cold start hits staysInApp even if custom-scheme
+    // mapping is skipped. EXTRA_OPEN_TAB is a backup when Intent.data is dropped.
+    val openUri =
+      Uri.parse(BuildConfig.BASE_URL.trimEnd('/') + "/").buildUpon()
+        .appendQueryParameter("tab", tab)
+        .build()
     val open = PendingIntent.getActivity(
       ctx,
       NOTIFY_ID,
       Intent(ctx, MainActivity::class.java).apply {
         action = Intent.ACTION_VIEW
         data = openUri
+        putExtra(EXTRA_OPEN_TAB, tab)
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
       },
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,

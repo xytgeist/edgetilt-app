@@ -945,6 +945,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - [x] **`lounge-game-card`** (public game snapshot for link preview cards `/lounge/g/<id>`). No JWT (`verify_jwt = false`, deploy with `--no-verify-jwt`); reuses `buildLoungeSportsScoreboard` with a 20s cache, returns public fields only. On **test** since **`1.4.852`**. On **prod** (`jtjgtucumuoswnbauxry`) **2026-09-27** with **`1.4.852`**.
 - [x] **`lounge-sports-scoreboard`** (Lounge in-post game pill + live hub). TheRundown slate + `live_game_state` / plays / player stats when the key allows. Odds API multi-book lines on hub open. JWT. Source: `supabase/functions/lounge-sports-scoreboard/README.md`. On **test** since **`1.4.376`**. On **prod** (`jtjgtucumuoswnbauxry`) **2026-09-21** with **`1.4.401`**. CFB ESPN PBP fallback on test+prod since **`1.4.659`**. **1.4.856** (Sep 27, test + prod): per-isolate caches, TheRundown/ESPN play merge, NFL ESPN on test, odds cache 20s.
 - [x] **`sports-bets-grade`** (Bet Tracker auto-settle open spread / ML / total vs ESPN). JWT. Also runs from **`lounge-odds-poll` `grade_picks`**. On **test + prod** with **`1.4.1103`**. Source: `supabase/functions/sports-bets-grade/README.md`.
+- [x] **`sports-bet-slip-parse`** (Bet Tracker LLM fallback when OCR/heuristic fails). JWT + `OPENAI_API_KEY`. On **test** with **`1.4.1148`** (prod on promote). Source: `supabase/functions/sports-bet-slip-parse/README.md`.
 - [x] **`lounge-live-activity-token` / `lounge-live-activity-push`** (watched-game Island APNs). SQL `20261005040000` on **test + prod**. Edge deployed test + prod 2026-10-04. Prod IPA **1.4.95 (20261005022834)** TestFlight-only.
 - [x] **`lounge-cfb-game-players`** (CFB hub Players roster from **`cfb_players`**). JWT. Deployed **test** with **`1.4.659`**; **prod** with **`1.4.661`** promote. Source: `supabase/functions/lounge-cfb-game-players/README.md`.
 - [x] **`lounge-game-news`** (football hub News tab: ESPN injuries, preview/recap, Rotowire notes, matchup-only team stories). JWT checked in code (`verify_jwt = false`, like `lounge-cfb-game-players`). No secrets. On **test** since **`1.4.910`**; on **prod** 2026-09-29 with **`1.4.910`**.
@@ -1214,6 +1215,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-14:** **Bet Tracker failed slip queue + LLM (`1.4.1148`).** Review keeps OCR/parse fails (**Failed** + **Fill**). Weak drafts retry Edge **`sports-bet-slip-parse`**. Save all skips failed. Deploy that Edge on **test** (+ prod on promote).
+- **2026-10-14:** **Promoted `1.4.1147`** (side-less fight props). Frontend **`test` → `main`** (`9b5825ef`). No SQL / Edge.
 - **2026-10-14:** **Bet Tracker side-less fight props (`1.4.1147`).** Distance was too narrow. Method / rounds O/U (± KO) / round groups / knockdowns / Yes-No → Side **N/A** or Over/Under; fighter+method keeps fighter. Fighter Side UI only for h2h/spread. Fixtures expanded. No SQL / Edge.
 - **2026-10-14:** **Bet Tracker distance Side N/A (`1.4.1146`).** Fight To Go The Distance / market=other Side is empty (UI **N/A**), not home fighter. No SQL / Edge.
 - **2026-10-14:** **Promoted `1.4.1145`** (Mirage event OCR hardening). Frontend **`test` → `main`** (`b070474f`). No SQL / Edge.

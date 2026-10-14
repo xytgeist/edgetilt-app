@@ -1156,6 +1156,34 @@ export function parseParlaySlipText(text) {
   return draft
 }
 
+/**
+ * True when a heuristic draft is junk / too thin to trust (e.g. terminal id as event).
+ * Batch intake treats these as fails → LLM retry → Failed pill.
+ */
+export function isWeakSportsBetDraft(draft) {
+  if (!draft || typeof draft !== 'object') return true
+  const odds = String(draft.odds || '').trim()
+  if (!odds || !/^[+-]?\d{2,5}$/.test(odds)) return true
+  const event = String(draft.event_label || '').trim()
+  const away = String(draft.away_team || '').trim()
+  const home = String(draft.home_team || '').trim()
+  const matchup = event || [away, home].filter(Boolean).join(' @ ')
+  // Teller / terminal headers mistaken as matchups (CGT@MRH)
+  if (/^[A-Z0-9]{2,6}\s*@\s*[A-Z0-9]{2,6}$/i.test(matchup)) return true
+  if (away.length > 0 && away.length <= 3 && home.length > 0 && home.length <= 3) {
+    if (!/[a-z]{4,}/i.test(`${away} ${home}`)) return true
+  }
+  const market = String(draft.market || '')
+  const sel = String(draft.selection_label || '')
+  const stake = String(draft.stake_dollars || '').trim()
+  if (market === 'other' && !stake && !/distance|method|round|knock/i.test(sel)) {
+    // other with only a junk event/odds and no real pick label
+    if (!sel || sel === matchup || sel.startsWith(matchup)) return true
+  }
+  if ((market === 'spread' || market === 'h2h') && !away && !home && !sel) return true
+  return false
+}
+
 /** Free-text bet slip / share-sheet paste / OCR. */
 export function parseSportsBetSlipText(text) {
   const raw = String(text || '').replace(/\r/g, '').trim()

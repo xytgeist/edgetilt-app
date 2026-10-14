@@ -11843,6 +11843,11 @@ html.light [data-sports-bet-review] .bg-zinc-900\/70,
 html.light [data-sports-bet-review] .bg-zinc-950 {
   background-color: #f4f4f5 !important;
 }
+html.light [data-sports-bet-review] [data-sports-bet-failed-pill] {
+  border-color: #fda4af !important;
+  background-color: #fff1f2 !important;
+  color: #9f1239 !important;
+}
 html.light [data-sports-bet-composer] [data-sports-bet-slip-preview] {
   background-color: #f4f4f5 !important;
   border-color: #e4e4e7 !important;

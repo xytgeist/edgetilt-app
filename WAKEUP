@@ -168,7 +168,10 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 **Web `1.4.1146`.** Fight To Go The Distance (and market=other) Side is empty / **N/A**, not home fighter (e.g. W. Scull). No SQL / Edge.
 
 ### Mac Theo 2026-10-14 ... Bet Tracker side-less fight props
-**Web `1.4.1147`.** Broader than distance: method of victory, rounds O/U (± by KO), round groups/exact, knockdowns O/U, Yes/No fight props → Side **N/A** or Over/Under. Fighter+method ("Poirier by Decision") still maps fighter Side. Fighter ML only for h2h/spread. No SQL / Edge.
+**Web `1.4.1147`.** Broader than distance: method of victory, rounds O/U (± by KO), round groups/exact, knockdowns O/U, Yes/No fight props → Side **N/A** or Over/Under. Fighter+method ("Poirier by Decision") still maps fighter Side. Fighter ML only for h2h/spread. No SQL / Edge. **Promoted** `test` → `main` (`9b5825ef`).
+
+### Mac Theo 2026-10-14 ... Bet Tracker failed slip queue + LLM
+**Web `1.4.1148`.** Photo batch keeps OCR/parse failures in review with **Failed** pill + **Fill** (manual composer + slip preview). Weak junk parses (e.g. `CGT@MRH`) treated as fail. One LLM retry via Edge **`sports-bet-slip-parse`** (text and/or image). Save all skips failed rows. Deploy Edge on **test** (+ prod when promoting).
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.

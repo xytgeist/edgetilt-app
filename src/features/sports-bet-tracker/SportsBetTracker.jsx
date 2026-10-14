@@ -32,6 +32,7 @@ import {
 } from './sportsBetNav.js'
 import SportsBetToolsSheet from './SportsBetToolsSheet.jsx'
 import {
+  isWeakSportsBetDraft,
   looksLikeSideLessBet,
   parseEventMatchup,
   parseSportsBetCsv,
@@ -44,6 +45,7 @@ import {
   parlaySelectionLabel,
 } from './sportsBetParlay.js'
 import { ocrSportsBetSlipImage } from './sportsBetOcr.js'
+import { parseSportsBetSlipWithLlm } from './sportsBetSlipLlm.js'
 
 const MAX_SLIP_PHOTOS = 8
 
@@ -335,7 +337,7 @@ export default function SportsBetTracker({
   const [toolsOpen, setToolsOpen] = useState(false)
   const [toolsTool, setToolsTool] = useState('')
   const [toolsSeed, setToolsSeed] = useState(null)
-  /** Multi-slip confirm queue: [{ key, draft }] */
+  /** Multi-slip confirm queue: [{ key, draft, status, failReason, ocrText }] */
   const [reviewQueue, setReviewQueue] = useState(null)
   const [reviewEditingKey, setReviewEditingKey] = useState(null)
   const csvInputRef = useRef(null)
@@ -644,12 +646,19 @@ export default function SportsBetTracker({
       return
     }
     const list = Array.isArray(reviewQueue) ? reviewQueue : []
-    if (!list.length) return
+    const ready = list.filter((item) => item?.status !== 'failed')
+    const failedLeft = list.length - ready.length
+    if (!ready.length) {
+      setError(failedLeft
+        ? 'Fill failed slips manually (or Skip them) before Save all.'
+        : 'Nothing to save.')
+      return
+    }
     setSaving(true)
     setError('')
     const inserted = []
     let lastErr = ''
-    for (const item of list) {
+    for (const item of ready) {
       const payload = {
         ...item.draft,
         unit_size_dollars: item.draft.unit_size_dollars || unitSize,
@@ -659,9 +668,15 @@ export default function SportsBetTracker({
       else if (bet) inserted.push(bet)
       revokeSlipPreviewUrl(item.draft?.slip_preview_url)
     }
-    setReviewQueue(null)
+    // Keep failed rows in the queue so Ryan can still Fill them.
+    setReviewQueue((prev) => {
+      if (!Array.isArray(prev)) return null
+      const next = prev.filter((item) => item?.status === 'failed')
+      return next.length ? next : null
+    })
     if (inserted.length) setBets((prev) => [...inserted, ...prev])
-    if (lastErr) setError(`Saved ${inserted.length}/${list.length}. ${lastErr}`)
+    if (lastErr) setError(`Saved ${inserted.length}/${ready.length}. ${lastErr}`)
+    else if (failedLeft) setError(`Saved ${inserted.length}. ${failedLeft} failed slip${failedLeft === 1 ? '' : 's'} still need Fill.`)
     if (inserted.length) await gradeAndReload()
     setSaving(false)
   }
@@ -755,30 +770,86 @@ export default function SportsBetTracker({
       setSaving(true)
       const collected = []
       let nativeOk = false
-      let lastOcrErr = ''
       for (const file of files) {
         const previewUrl = typeof URL !== 'undefined' && URL.createObjectURL
           ? URL.createObjectURL(file)
           : ''
-        const { text, error: ocrErr, native } = await ocrSportsBetSlipImage(file)
+        const {
+          text,
+          error: ocrErr,
+          native,
+          imageBase64,
+          mimeType,
+        } = await ocrSportsBetSlipImage(file)
         if (!native) {
           revokeSlipPreviewUrl(previewUrl)
           continue
         }
         nativeOk = true
-        if (ocrErr) {
-          revokeSlipPreviewUrl(previewUrl)
-          lastOcrErr = ocrErr
-          continue
+
+        const pushFailed = (reason, ocrText = '') => {
+          collected.push({
+            key: `${Date.now()}-${collected.length}-${Math.random().toString(36).slice(2, 7)}`,
+            status: 'failed',
+            failReason: reason || 'Could not read this slip',
+            ocrText: ocrText || '',
+            draft: {
+              ...emptyDraft(unitSize),
+              slip_preview_url: previewUrl,
+              source: 'slip',
+              selection_label: '',
+              notes: ocrText ? `OCR:\n${String(ocrText).slice(0, 500)}` : '',
+            },
+          })
         }
-        const drafts = parseSportsBetIntake(text).filter(Boolean)
-        if (!drafts.length) {
-          revokeSlipPreviewUrl(previewUrl)
-          lastOcrErr = 'Could not read a bet from that slip.'
-          continue
+
+        let ocrText = String(text || '').trim()
+        let draft = null
+        let failReason = ''
+
+        if (ocrErr || !ocrText) {
+          failReason = ocrErr || 'No text on that photo'
+        } else {
+          const parsed = parseSportsBetIntake(ocrText).filter(Boolean)
+          draft = parsed[0] || null
+          if (!draft || isWeakSportsBetDraft(draft)) {
+            failReason = draft
+              ? 'Could not trust the auto-read … try Fill or AI'
+              : 'Could not read a bet from that slip'
+            draft = null
+          }
         }
-        for (const d of drafts) {
-          collected.push({ ...d, slip_preview_url: previewUrl })
+
+        // Heuristic miss / weak → one LLM attempt (text + image when we have them)
+        if (!draft && (ocrText || imageBase64) && supabaseClient && userId) {
+          const llm = await parseSportsBetSlipWithLlm(supabaseClient, {
+            text: ocrText,
+            imageBase64,
+            mimeType,
+          })
+          if (llm.draft && !isWeakSportsBetDraft(llm.draft)) {
+            draft = llm.draft
+            failReason = ''
+          } else if (llm.error) {
+            failReason = failReason
+              ? `${failReason}. AI: ${llm.error}`
+              : `AI: ${llm.error}`
+          }
+        }
+
+        if (draft) {
+          collected.push({
+            key: `${Date.now()}-${collected.length}-${Math.random().toString(36).slice(2, 7)}`,
+            status: 'ok',
+            failReason: '',
+            ocrText,
+            draft: draftFromPrefill(
+              { ...draft, slip_preview_url: previewUrl, source: 'slip' },
+              unitSize,
+            ),
+          })
+        } else {
+          pushFailed(failReason || 'Could not read this slip', ocrText)
         }
       }
       setSaving(false)
@@ -788,10 +859,16 @@ export default function SportsBetTracker({
         return
       }
       if (!collected.length) {
-        setError(lastOcrErr || 'Could not read a bet from those photos.')
+        setError('Could not read a bet from those photos.')
         return
       }
-      await applyIntakeDrafts(collected, { review: true })
+      const anyFailed = collected.some((row) => row.status === 'failed')
+      if (collected.length === 1 && !anyFailed) {
+        openComposer(collected[0].draft)
+        return
+      }
+      setReviewQueue(collected)
+      setError('')
     })()
   }
 
@@ -1226,13 +1303,18 @@ export default function SportsBetTracker({
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-3">
               {reviewQueue.map((item) => {
                 const d = item.draft || {}
-                const title = d.market === 'parlay'
-                  ? parlaySelectionLabel(d.legs, d.selection_label)
-                  : (d.selection_label || 'Bet')
+                const failed = item.status === 'failed'
+                const title = failed
+                  ? 'Could not auto-read'
+                  : (d.market === 'parlay'
+                    ? parlaySelectionLabel(d.legs, d.selection_label)
+                    : (d.selection_label || 'Bet'))
                 return (
                   <div
                     key={item.key}
-                    className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/70"
+                    className={`overflow-hidden rounded-2xl border bg-zinc-900/70 ${
+                      failed ? 'border-rose-500/40' : 'border-zinc-800'
+                    }`}
                   >
                     {d.slip_preview_url ? (
                       <img
@@ -1242,14 +1324,26 @@ export default function SportsBetTracker({
                       />
                     ) : null}
                     <div className="px-3 py-2.5">
-                      <div className="truncate text-[15px] font-bold text-white">{title}</div>
+                      <div className="flex items-start gap-2">
+                        <div className="min-w-0 flex-1 truncate text-[15px] font-bold text-white">{title}</div>
+                        {failed ? (
+                          <span
+                            data-sports-bet-failed-pill
+                            className="shrink-0 rounded-md border border-rose-500/50 bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-rose-200"
+                          >
+                            Failed
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="mt-0.5 text-[12px] text-zinc-400">
-                        {[
-                          d.market === 'parlay' ? 'Parlay' : (d.sport_label || d.market),
-                          formatAmericanOdds(d.odds),
-                          d.stake_dollars ? formatUsd(d.stake_dollars) : null,
-                          d.book,
-                        ].filter(Boolean).join(' · ')}
+                        {failed
+                          ? (item.failReason || 'Fill the form from the photo')
+                          : [
+                            d.market === 'parlay' ? 'Parlay' : (d.sport_label || d.market),
+                            formatAmericanOdds(d.odds),
+                            d.stake_dollars ? formatUsd(d.stake_dollars) : null,
+                            d.book,
+                          ].filter(Boolean).join(' · ')}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <button
@@ -1257,7 +1351,7 @@ export default function SportsBetTracker({
                           onClick={() => openReviewEdit(item.key)}
                           className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-bold uppercase text-cyan-200"
                         >
-                          Verify
+                          {failed ? 'Fill' : 'Verify'}
                         </button>
                         <button
                           type="button"
@@ -1282,11 +1376,13 @@ export default function SportsBetTracker({
               </button>
               <button
                 type="button"
-                disabled={saving}
+                disabled={saving || !reviewQueue.some((row) => row.status !== 'failed')}
                 onClick={() => void saveReviewQueueAll()}
                 className="flex-[1.4] rounded-2xl bg-cyan-600 py-3 text-[14px] font-bold text-white active:bg-cyan-500 disabled:opacity-50"
               >
-                {saving ? 'Saving…' : `Save all (${reviewQueue.length})`}
+                {saving
+                  ? 'Saving…'
+                  : `Save all (${reviewQueue.filter((row) => row.status !== 'failed').length})`}
               </button>
             </div>
           </div>

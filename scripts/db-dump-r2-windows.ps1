@@ -1,4 +1,4 @@
-# Daily runner for scripts/db-dump-to-r2.mjs (production → private R2 only).
+# Daily runner for scripts/db-dump-to-r2.mjs (production to private R2 only).
 # Test sandbox stays on Supabase included daily backups.
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path

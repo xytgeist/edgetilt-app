@@ -1,5 +1,5 @@
 # Install Windows scheduled task: daily private R2 DB dump (production only).
-# Test uses Supabase included daily backups … not this cron.
+# Test uses Supabase included daily backups ... not this cron.
 # powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-db-dump-r2-windows-task.ps1
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -32,7 +32,7 @@ Register-ScheduledTask `
   -Trigger $trigger `
   -Settings $settings `
   -Principal $principal `
-  -Description 'Home-PC: pg_dump Supabase production → private R2 (DB_BACKUP_R2_*). 14-day prune. Test stays on Supabase daily backups. See docs/db-r2-backups.md.' `
+  -Description 'Home-PC: pg_dump Supabase production to private R2 (DB_BACKUP_R2_*). 14-day prune. Test stays on Supabase daily backups. See docs/db-r2-backups.md.' `
   -Force | Out-Null
 
 Get-ScheduledTask -TaskName $taskName | Get-ScheduledTaskInfo | Format-List TaskName, LastRunTime, NextRunTime, LastTaskResult

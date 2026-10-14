@@ -40,6 +40,11 @@ class MainActivity : Activity() {
   private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
   /** The JS bridge only answers while the main frame is on our own site (not Supabase / Google auth hops). */
   @Volatile private var onAppPage = false
+  /**
+   * Live-session notif (and similar) may land before the SPA mounts.
+   * Queue `edge-live-session-open` until [ShellClient.onPageFinished] on an app host.
+   */
+  @Volatile private var pendingLiveSessionTab: String? = null
 
   @SuppressLint("SetJavaScriptEnabled")
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,19 +84,17 @@ class MainActivity : Activity() {
       }
       return
     }
-    // App Links / VIEW: allowed HTTPS paths (rewrite share permalinks like the IPA).
-    // Custom-scheme handoffs (live-session notif, yahoo-oauth, …) must map to https SPA
-    // URLs here too … onNewIntent already did; cold start used to fall through to BASE_URL
-    // (Lounge) and drop ?tab=bankroll.
-    val start =
-      EdgeLinks.appLinkLoadUri(intent?.data)?.toString()
-        ?: intent?.data?.takeIf { EdgeLinks.staysInApp(it) }?.toString()
-        ?: intent?.data
-          ?.takeIf { EdgeLinks.isEdgeCustomScheme(it) }
-          ?.let { EdgeLinks.httpsFromCustomScheme(it)?.toString() }
-        ?: BuildConfig.BASE_URL
+    // App Links / custom-scheme handoffs (live-session notif, yahoo-oauth, …).
+    // Never let WebView.restoreState win over a handoff … process death used to restore
+    // Lounge and skip loadUrl(start), so notif taps stayed on home.
+    val handoff = resolveIncomingUri(intent)
+    if (handoff != null) {
+      queueLiveSessionOpenIfNeeded(handoff)
+      webView.loadUrl(handoff.toString())
+      return
+    }
     if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
-      webView.loadUrl(start)
+      webView.loadUrl(BuildConfig.BASE_URL)
     }
   }
 
@@ -99,14 +102,21 @@ class MainActivity : Activity() {
     super.onNewIntent(intent)
     setIntent(intent)
     if (EdgeWebAuth.handleCallback(this, intent.data)) return
-    val uri =
-      EdgeLinks.appLinkLoadUri(intent.data)
-        ?: intent.data?.takeIf { EdgeLinks.staysInApp(it) }
-        ?: intent.data?.takeIf { EdgeLinks.isEdgeCustomScheme(it) }?.let { EdgeLinks.httpsFromCustomScheme(it) }
-        ?: return
+    val uri = resolveIncomingUri(intent) ?: return
     // Prefer in-page routing when the SPA is already up. A full loadUrl wipes LiveKit /
     // ChatCallProvider mid answer (Answer used to open ?tab=chat&room= this way).
     if (onAppPage && !webView.url.isNullOrBlank()) {
+      // Live-session: mirror iOS Island … `edge-live-session-open` (AppShell openLive*Bankroll).
+      // replaceState+popstate alone still left some cold/warm resumes on Lounge.
+      if (dispatchLiveSessionOpen(uri)) {
+        val target = uri.toString()
+        val quoted = JSONObject.quote(target)
+        webView.evaluateJavascript(
+          "(function(){try{var u=$quoted;if(location.href===u)return;history.replaceState(null,'',u);}catch(e){}})()",
+          null,
+        )
+        return
+      }
       val target = uri.toString()
       val quoted = JSONObject.quote(target)
       webView.evaluateJavascript(
@@ -114,8 +124,61 @@ class MainActivity : Activity() {
         null,
       )
     } else {
+      queueLiveSessionOpenIfNeeded(uri)
       webView.loadUrl(uri.toString())
     }
+  }
+
+  /** VIEW intent → https SPA URI (App Link rewrite or custom-scheme map), or null. */
+  private fun resolveIncomingUri(intent: Intent?): Uri? {
+    val data = intent?.data ?: return null
+    return EdgeLinks.appLinkLoadUri(data)
+      ?: data.takeIf { EdgeLinks.staysInApp(it) }
+      ?: data.takeIf { EdgeLinks.isEdgeCustomScheme(it) }?.let { EdgeLinks.httpsFromCustomScheme(it) }
+  }
+
+  private fun liveSessionTab(uri: Uri): String? {
+    val tab = uri.getQueryParameter("tab")?.trim().orEmpty()
+    return when (tab) {
+      "bankroll", "poker-bankroll" -> tab
+      else -> null
+    }
+  }
+
+  private fun queueLiveSessionOpenIfNeeded(uri: Uri) {
+    liveSessionTab(uri)?.let { pendingLiveSessionTab = it }
+  }
+
+  /** @return true when this URI is a live bankroll handoff and JS was queued/dispatched. */
+  private fun dispatchLiveSessionOpen(uri: Uri): Boolean {
+    val tab = liveSessionTab(uri) ?: return false
+    pendingLiveSessionTab = null
+    val quoted = JSONObject.quote(tab)
+    webView.evaluateJavascript(
+      "(function(){try{window.dispatchEvent(new CustomEvent('edge-live-session-open',{detail:{tab:$quoted}}));}catch(e){}})()",
+      null,
+    )
+    return true
+  }
+
+  private fun flushPendingLiveSessionOpen() {
+    val tab = pendingLiveSessionTab ?: return
+    if (!onAppPage) return
+    val quoted = JSONObject.quote(tab)
+    // Fire once on first paint, then again after AppShell mounts listeners.
+    // Cold start still has `/?tab=bankroll` for applyFromUrl when auth resolves.
+    webView.evaluateJavascript(
+      "(function(){try{window.dispatchEvent(new CustomEvent('edge-live-session-open',{detail:{tab:$quoted}}));}catch(e){}})()",
+      null,
+    )
+    webView.postDelayed({
+      if (pendingLiveSessionTab != tab) return@postDelayed
+      pendingLiveSessionTab = null
+      webView.evaluateJavascript(
+        "(function(){try{window.dispatchEvent(new CustomEvent('edge-live-session-open',{detail:{tab:$quoted}}));}catch(e){}})()",
+        null,
+      )
+    }, 1500L)
   }
 
   /** Deliver Custom Tabs OAuth result to JS (`edge-android-webauth`). */
@@ -186,6 +249,12 @@ class MainActivity : Activity() {
       EdgeCallRing.resetWebReady()
       // A full load drops the web's composer lock count, so drop the native lock with it.
       requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    }
+
+    override fun onPageFinished(view: WebView, url: String) {
+      onAppPage = EdgeLinks.isAppHost(Uri.parse(url))
+      // SPA listeners are up … deliver queued live-session notif open (iOS Island parity).
+      flushPendingLiveSessionOpen()
     }
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {

@@ -268,8 +268,6 @@ export default function LoungeVideoCropModal({
   const [posterUrl, setPosterUrl] = useState(() => String(initialPosterUrl || '').trim())
   /** Bound `<video src>` (ref-only left the first paint empty on Android). */
   const [mediaSrc, setMediaSrc] = useState('')
-  /** Hide poster overlay once the user has started playback. */
-  const [showPosterOverlay, setShowPosterOverlay] = useState(true)
   /** Separate blob URL for the hidden probe so WebKit decodes it independently of the main preview. */
   const [probeBlobUrl, setProbeBlobUrl] = useState('')
   const [intrinsicSize, setIntrinsicSize] = useState({ w: 0, h: 0 })
@@ -354,10 +352,9 @@ export default function LoungeVideoCropModal({
     setTrimErr('')
     posterCapturedRef.current = false
     posterSeekScheduledRef.current = false
-    setShowPosterOverlay(true)
     // Native picks already ship a JPEG poster. Do not clear it … the hidden probe
     // player is skipped for nativeAssetId (iOS black-screen guard), so this is the
-    // only still the trim <video poster> can show before playback.
+    // still the trim <video poster> attribute shows before playback.
     setPosterUrl(String(initialPosterUrl || '').trim())
     if (posterObjectUrlRef.current) {
       try {
@@ -959,11 +956,12 @@ export default function LoungeVideoCropModal({
             className="relative z-[1] max-h-[40vh] w-full object-contain"
             controls={!busy}
             playsInline
-            preload="auto"
+            // Native intercepted URLs often decode a black first frame with preload=auto,
+            // which dismisses the in-element `poster`. Metadata keeps the still until play.
+            preload={nativeAssetId ? 'metadata' : 'auto'}
             onLoadedMetadata={onMetaLoaded}
             onLoadedData={() => {
               onMetaLoaded()
-              // Android WebView often ignores <video poster>; grab a frame if we still have none.
               if (!nativeAssetId || posterCapturedRef.current) return
               if (String(initialPosterUrl || '').trim()) {
                 posterCapturedRef.current = true
@@ -973,20 +971,7 @@ export default function LoungeVideoCropModal({
               if (v && v.videoWidth > 1) capturePosterFromVideo(v)
             }}
             onDurationChange={onMetaLoaded}
-            onPlay={() => setShowPosterOverlay(false)}
-            onPlaying={() => setShowPosterOverlay(false)}
           />
-          {posterUrl && showPosterOverlay ? (
-            <img
-              src={posterUrl}
-              alt=""
-              // Sit above the video pixels but leave the bottom chrome for native controls /
-              // scrubber (Android WebView draws those inside the <video> box).
-              className="pointer-events-none absolute inset-x-0 top-0 z-[2] object-contain"
-              style={{ bottom: 52 }}
-              draggable={false}
-            />
-          ) : null}
           {nativeAssetId ? null : (
           <video
             ref={posterVideoRef}

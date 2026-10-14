@@ -123,6 +123,8 @@ export default function BankrollTracker({
   onBankrollSessionCreated = null,
   /** Landscape iPad Slots hub: fill the right pane, no second EDGE bar. */
   paneEmbed = false,
+  /** Shell destructive confirm (swipe / edit delete). */
+  showGlobalConfirm = null,
 }) {
   const ipadShell = useIpadAuthStage()
   const [userId, setUserId] = useState(null)
@@ -426,13 +428,38 @@ export default function BankrollTracker({
     }
   }
 
-  const deleteSession = async (sessionId) => {
+  const confirmDeleteSession = useCallback(async (session) => {
+    const label = (session?.casino_name || 'this session').trim() || 'this session'
+    if (typeof showGlobalConfirm === 'function') {
+      return showGlobalConfirm({
+        title: 'Delete session?',
+        message: `Delete ${label}? This can't be undone.`,
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+      })
+    }
+    if (typeof window !== 'undefined') {
+      return window.confirm(`Delete ${label}? This can't be undone.`)
+    }
+    return false
+  }, [showGlobalConfirm])
+
+  /** @returns {Promise<boolean>} true when the row was deleted */
+  const deleteSession = async (sessionId, { skipConfirm = false } = {}) => {
+    const session = sessions.find((s) => s.id === sessionId) || editingSession
+    if (!skipConfirm) {
+      const ok = await confirmDeleteSession(session)
+      if (!ok) return false
+    }
     try {
-      await supabaseClient.from('bankroll_sessions').delete().eq('id', sessionId)
+      const { error: delErr } = await supabaseClient.from('bankroll_sessions').delete().eq('id', sessionId)
+      if (delErr) throw delErr
       setSessions(prev => prev.filter(s => s.id !== sessionId))
       setSheet(null); setEditingSession(null)
+      return true
     } catch (e) {
       setError(e.message || 'Could not delete session.')
+      return false
     }
   }
 
@@ -1086,7 +1113,7 @@ export default function BankrollTracker({
                     openSwipeId={openSwipeSessionId}
                     onSwipeOpen={setOpenSwipeSessionId}
                     onActivate={() => (selectMode ? toggleSelectSession(session.id) : openEditSession(session))}
-                    onDelete={() => void deleteSession(session.id)}
+                    onRequestDelete={() => deleteSession(session.id)}
                   >
                     <div className="flex items-center gap-3">
                       {selectMode && (
@@ -1609,7 +1636,8 @@ export default function BankrollTracker({
                 {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
                 <div className="flex gap-3">
                   <button
-                    onClick={() => deleteSession(editingSession.id)}
+                    type="button"
+                    onClick={() => void deleteSession(editingSession.id)}
                     className="rounded-2xl border border-zinc-700 px-4 min-h-12 text-zinc-400 text-sm font-semibold touch-manipulation active:bg-zinc-800"
                   >
                     Delete

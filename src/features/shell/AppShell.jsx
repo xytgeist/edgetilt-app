@@ -3492,6 +3492,7 @@ export default function AppShell({
               freemiumUsageLoading={freemiumUsageLoading}
               onRequireSubscribeForBankroll={() => onRequireSubscribe?.('slots-edge')}
               onBankrollSessionCreated={refreshFreemiumUsage}
+              showGlobalConfirm={showGlobalConfirm}
               titleBarNavSlot={
                 slotsBankrollPanePortal || tab !== 'bankroll' ? null : renderTitleBarNavSlot()
               }

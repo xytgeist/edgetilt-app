@@ -6,6 +6,7 @@ const SWIPE_COMMIT_RATIO = 0.38
 const SWIPE_COMMIT_MIN_PX = 72
 const SWIPE_SNAP_MS = 240
 const SWIPE_ICON_FULL_PX = 52
+const SWIPE_SNAP_TRANSITION = 'transform 240ms cubic-bezier(0.32, 0.72, 0, 1)'
 
 function getCommitThreshold(width) {
   return Math.max(SWIPE_COMMIT_MIN_PX, width * SWIPE_COMMIT_RATIO)
@@ -49,6 +50,7 @@ function TrashIcon({ className = 'h-6 w-6' }) {
 /**
  * Session history row with swipe-right-to-delete (same gesture model as chat inbox).
  * Swipe is disabled while bulk Select mode is on.
+ * Full commit animates the card off-screen, then awaits onRequestDelete (confirm modal).
  */
 export default function BankrollSessionHistoryRow({
   sessionId,
@@ -57,7 +59,8 @@ export default function BankrollSessionHistoryRow({
   openSwipeId = null,
   onSwipeOpen,
   onActivate,
-  onDelete,
+  /** @type {() => Promise<boolean>|boolean|void} resolves true after confirmed delete */
+  onRequestDelete,
   children,
 }) {
   const rowRef = useRef(null)
@@ -65,6 +68,8 @@ export default function BankrollSessionHistoryRow({
   const rowWidthRef = useRef(320)
   const offsetRef = useRef(0)
   const swipeDraggingRef = useRef(false)
+  const committingRef = useRef(false)
+  const commitTimerRef = useRef(null)
   const gestureRef = useRef({
     startX: 0,
     startY: 0,
@@ -76,6 +81,13 @@ export default function BankrollSessionHistoryRow({
   const [offsetX, setOffsetX] = useState(0)
   const [swipeDragging, setSwipeDragging] = useState(false)
 
+  const clearCommitTimer = useCallback(() => {
+    if (commitTimerRef.current != null) {
+      window.clearTimeout(commitTimerRef.current)
+      commitTimerRef.current = null
+    }
+  }, [])
+
   const setOffset = useCallback((next, { syncDom = false } = {}) => {
     offsetRef.current = next
     setOffsetX(next)
@@ -83,6 +95,19 @@ export default function BankrollSessionHistoryRow({
       foregroundRef.current.style.transform = `translate3d(${next}px, 0, 0)`
     }
   }, [])
+
+  const restoreSnapTransition = useCallback(() => {
+    if (foregroundRef.current) {
+      foregroundRef.current.style.transition = SWIPE_SNAP_TRANSITION
+    }
+  }, [])
+
+  /** Apply snap target after re-enabling transition (same-frame set can skip the anim). */
+  const animateOffsetTo = useCallback((next) => {
+    restoreSnapTransition()
+    if (foregroundRef.current) void foregroundRef.current.offsetWidth
+    setOffset(next, { syncDom: true })
+  }, [restoreSnapTransition, setOffset])
 
   useEffect(() => {
     const el = rowRef.current
@@ -96,19 +121,24 @@ export default function BankrollSessionHistoryRow({
     return () => ro.disconnect()
   }, [])
 
+  useEffect(() => () => clearCommitTimer(), [clearCommitTimer])
+
   useEffect(() => {
     if (selectMode) {
+      clearCommitTimer()
+      committingRef.current = false
       swipeDraggingRef.current = false
       setSwipeDragging(false)
       setOffset(0)
       return
     }
-    if (swipeDraggingRef.current) return
+    // Don't yank closed while dragging or mid swipe-away / confirm.
+    if (swipeDraggingRef.current || committingRef.current) return
     if (openSwipeId !== sessionId) setOffset(0)
-  }, [openSwipeId, sessionId, selectMode, setOffset])
+  }, [openSwipeId, sessionId, selectMode, setOffset, clearCommitTimer])
 
   const onPointerDown = useCallback((e) => {
-    if (selectMode) return
+    if (selectMode || committingRef.current) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
     gestureRef.current = {
       startX: e.clientX,
@@ -126,7 +156,7 @@ export default function BankrollSessionHistoryRow({
   }, [selectMode])
 
   const onPointerMove = useCallback((e) => {
-    if (selectMode) return
+    if (selectMode || committingRef.current) return
     const g = gestureRef.current
     if (g.pointerId == null || e.pointerId !== g.pointerId) return
     if (e.pointerType === 'mouse' && e.buttons === 0) return
@@ -172,17 +202,36 @@ export default function BankrollSessionHistoryRow({
       const commitAt = getCommitThreshold(width)
 
       if (offset >= commitAt) {
+        // Keep exclusivity on this row until confirm resolves; do not call
+        // onSwipeOpen(null) yet or the openSwipe effect would setOffset(0).
+        committingRef.current = true
         swipeDraggingRef.current = false
         setSwipeDragging(false)
-        setOffset(width)
-        onSwipeOpen?.(null)
-        window.setTimeout(() => {
-          onDelete?.()
+        animateOffsetTo(width)
+        clearCommitTimer()
+        commitTimerRef.current = window.setTimeout(() => {
+          commitTimerRef.current = null
+          void (async () => {
+            let ok = false
+            try {
+              ok = Boolean(await onRequestDelete?.())
+            } catch {
+              ok = false
+            }
+            if (ok) {
+              // Parent removes the row; leave offset off-screen until unmount.
+              onSwipeOpen?.(null)
+              return
+            }
+            committingRef.current = false
+            animateOffsetTo(0)
+            onSwipeOpen?.(null)
+          })()
         }, SWIPE_SNAP_MS)
       } else {
         swipeDraggingRef.current = false
         setSwipeDragging(false)
-        setOffset(0)
+        animateOffsetTo(0)
         onSwipeOpen?.(null)
       }
     } else {
@@ -192,7 +241,7 @@ export default function BankrollSessionHistoryRow({
     g.axis = null
     g.pointerId = null
     g.scrollParent = null
-  }, [onDelete, onSwipeOpen, setOffset])
+  }, [animateOffsetTo, clearCommitTimer, onRequestDelete, onSwipeOpen])
 
   const onPointerUp = useCallback((e) => {
     if (gestureRef.current.pointerId !== e.pointerId) return
@@ -215,17 +264,18 @@ export default function BankrollSessionHistoryRow({
   }, [finishGesture])
 
   const handleClick = useCallback(() => {
+    if (committingRef.current) return
     if (Math.abs(offsetRef.current) > 8) {
-      setOffset(0)
+      animateOffsetTo(0)
       onSwipeOpen?.(null)
       return
     }
     onActivate?.()
-  }, [onActivate, onSwipeOpen, setOffset])
+  }, [animateOffsetTo, onActivate, onSwipeOpen])
 
   const deleteProgress = offsetX > 0 ? getIconProgress(offsetX) : 0
   const iconScale = 0.84 + deleteProgress * 0.16
-  const rowTransition = swipeDragging ? 'none' : 'transform 240ms cubic-bezier(0.32, 0.72, 0, 1)'
+  const rowTransition = swipeDragging ? 'none' : SWIPE_SNAP_TRANSITION
 
   return (
     <li ref={rowRef} className="bankroll-session-swipe-row relative list-none">

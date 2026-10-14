@@ -1,0 +1,33 @@
+---
+description: Before any fix/feature, map every other surface that could break — shared flags, callers, platforms
+alwaysApply: true
+---
+
+# Map impact before implementing
+
+**Ryan standing rule (2026-10-14):** whenever we implement a change, fix, or feature, **first determine everything else that could be impacted**. Do not treat the named file/feature as isolated.
+
+Question-only turns skip this. One-line typos / pure docs may skip if no behavior changes.
+
+## Required before production edits
+
+1. **Name the entry points** you will change (symbol, bridge method, CSS class, flag, RPC, event).
+2. **Grep them** across the repo (and platform twins: `EdgeNative` / `EdgeAndroid`, iOS / Android / web / PWA).
+3. **List other surfaces** that share the symbol, feature-detect, event name, notification channel, FG service, CSS class, or data contract ... even if Ryan did not name them.
+4. **Say the list to Ryan** (or put it in `.cursor/audit-current.md` Blast radius) **before** coding when the change is non-trivial. Include how you will avoid breaking each surface (gate, leave path alone, or ship the missing twin).
+5. **Feature flags are shared** ... if flipping `canX()` or adding a bridge method turns on another product surface (e.g. Lounge + Chat), either ship that surface’s full path in the same change or keep the flag false until it is complete.
+
+## Fail patterns
+
+- “Only touches `Foo.jsx`” without grepping `Foo` / its exports / its CSS.
+- Enabling a capability that another composer/tab already calls, without implementing that tab’s upload/API twin.
+- Reusing a notification channel, FG service type, or window event name that another feature owns.
+- Changing iOS bridge behavior without checking Android (or the reverse) when web routes both.
+
+## Related
+
+- Audit template Blast radius: **`.cursor/rules/audit-before-impl.mdc`**
+- Preserve intentional branches: **`.cursor/rules/preserve-intentional-behavior.mdc`**
+- AGENTS: `AGENT_RULE_BLAST_RADIUS`, `AGENT_RULE_CROSS_IMPACT_CHECK`
+
+`AGENT_RULE_MAP_IMPACT_BEFORE_IMPL` — searchability token.

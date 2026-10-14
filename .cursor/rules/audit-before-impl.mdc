@@ -15,7 +15,7 @@ Question-only turns, one-line typos, and pure doc/WAKEUP notes **skip** this.
 2. **Evidence must be real:** list paths/symbols you actually `Read` / `Grep` / opened this turn (or say none yet and open them first). “I audited auth” with no paths = fail.
 3. **Minimal change:** smallest diff that meets Ryan’s ask. Explicitly list what you are **not** doing (extra abstractions, speculative future-proofing, drive-bys).
 4. **Gaps:** each failure mode → fix in plan now, or `ACCEPT:` with a reason.
-5. **Blast radius:** other surfaces that could break. Grep shared symbols/classes. Aligns with **`AGENTS.md`** (`AGENT_RULE_BLAST_RADIUS`).
+5. **Blast radius (required):** map **every other surface** that could break ... shared symbols, feature-detects, bridge twins, CSS, events, channels. Grep first; list how each is protected. Standing rule: **`.cursor/rules/map-impact-before-impl.mdc`** (`AGENT_RULE_MAP_IMPACT_BEFORE_IMPL`). Also **`AGENTS.md`** (`AGENT_RULE_BLAST_RADIUS`).
 6. **Why existing code (required when changing prior behavior):** for each hold / guard / “weird” branch / prior fix you will touch, name the job it still does (blame / `git log -S` / docs). Do not delete or weaken it until you know. See **`AGENT_RULE_PRESERVE_INTENTIONAL_BEHAVIOR`**. A symptom fix that undoes a prior fix is a failed audit.
 7. **Implement:** set `Status: IMPLEMENTING`, then edit.
 8. **After code:** run Verify (real commands/checks), append results, set `Status: VERIFIED` or list blockers. Never claim VERIFIED without running checks.

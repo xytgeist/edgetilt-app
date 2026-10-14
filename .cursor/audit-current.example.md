@@ -15,6 +15,7 @@
 -
 
 ## Blast radius
+<!-- grep shared symbols/flags/events; list OTHER surfaces (Lounge vs Chat, iOS vs Android, etc.) and how each is protected -->
 -
 
 ## Why existing code is this way

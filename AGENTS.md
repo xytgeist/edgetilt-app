@@ -136,9 +136,11 @@ Cursor: **`.cursor/rules/preserve-intentional-behavior.mdc`**. Audit gate requir
 
 ### Report blast radius before landing changes
 
-> Before implementing (or when summarizing a diff), tell **Ryan** every **other surface** the change will affect — shared CSS classes, reused components, cross-feature imports, light/dark leakage — not only the file or feature he named. Grep the symbol/class first. Blast radius and “why existing code” go together: impact without history is how prior fixes get undone.
+> Before implementing (or when summarizing a diff), tell **Ryan** every **other surface** the change will affect — shared CSS classes, reused components, cross-feature imports, light/dark leakage, **shared feature-detects / bridge methods**, platforms — not only the file or feature he named. Grep the symbol/class first. If enabling a capability another surface already calls, ship that surface’s full path in the same change or keep the flag off. Blast radius and “why existing code” go together: impact without history is how prior fixes get undone.
 
-`AGENT_RULE_BLAST_RADIUS` — searchability token.
+Cursor (always apply): **`.cursor/rules/map-impact-before-impl.mdc`**.
+
+`AGENT_RULE_BLAST_RADIUS` / `AGENT_RULE_MAP_IMPACT_BEFORE_IMPL` — searchability tokens.
 
 ## CRITICAL — QUESTIONS VS IMPLEMENTATION
 

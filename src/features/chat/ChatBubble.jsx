@@ -622,9 +622,7 @@ export default function ChatBubble({
 
         <div
           className={`flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'} ${
-            isSingleVideoOnly || widenColumnForYoutube || widenColumnForLoungePost
-              ? CHAT_MESSAGE_COLUMN_WIDTH_CLASS
-              : 'max-w-[78%]'
+            isSingleVideoOnly || widenColumnForYoutube || widenColumnForLoungePost ? CHAT_MESSAGE_COLUMN_WIDTH_CLASS : 'max-w-[78%]'
           }`}
         >
           {/* Sender name - others only; first in run only; hidden in DMs */}
@@ -666,13 +664,7 @@ export default function ChatBubble({
             onContextMenu={(e) => e.preventDefault()}
             className={`chat-bubble-surface relative select-none text-[16px] leading-snug transition-opacity ${
               hasMedia && !isDeleted ? 'p-[3px]' : 'px-3 py-2'
-            } ${
-              isSingleVideoOnly
-                ? 'w-fit max-w-full'
-                : linkPreviewInBubble && youtubeLinkPreview
-                  ? 'w-full'
-                  : ''
-            } ${
+            } ${isSingleVideoOnly || (linkPreviewInBubble && youtubeLinkPreview) ? 'w-full' : ''} ${
               compactBubble ? '' : 'rounded-2xl'
             } ${
               isDeleted
@@ -718,7 +710,7 @@ export default function ChatBubble({
                   </div>
                 )}
                 {hasMedia && !isDeleted && (
-                  <div className={`relative ${isSingleVideoOnly ? 'w-fit max-w-full' : ''}`}>
+                  <div className={`relative ${isSingleVideoOnly ? 'w-full' : ''}`}>
                     <ChatMediaGrid media={allMedia} onOpen={isFinalizingMedia ? null : openViewer} />
                     {isFinalizingMedia && (
                       <div className="absolute inset-0 flex items-center justify-center rounded-[13px] bg-black/30">
@@ -1173,7 +1165,7 @@ function ChatMediaGrid({ media, onOpen }) {
 
   return (
     <div
-      className={`overflow-hidden rounded-[13px] ${singleVideo ? 'w-fit max-w-full' : ''} ${count === 1 ? '' : 'grid gap-0.5'} ${count === 2 ? 'grid-cols-2' : count >= 3 ? 'grid-cols-2' : ''}`}
+      className={`overflow-hidden rounded-[13px] ${singleVideo ? 'w-full' : ''} ${count === 1 ? '' : 'grid gap-0.5'} ${count === 2 ? 'grid-cols-2' : count >= 3 ? 'grid-cols-2' : ''}`}
     >
       {visible.map((item, i) => {
         const isLastVisible = i === GRID_MAX_VISIBLE - 1
@@ -1197,7 +1189,7 @@ function ChatMediaGrid({ media, onOpen }) {
             key={i}
             type="button"
             onClick={handleTileTap}
-            className={`relative block overflow-hidden bg-zinc-900 touch-manipulation active:opacity-80 ${spanFull ? 'col-span-2' : ''} ${singleVideo ? 'max-w-full' : ''}`}
+            className={`relative block overflow-hidden bg-zinc-900 touch-manipulation active:opacity-80 ${spanFull ? 'col-span-2' : ''} ${singleVideo ? 'w-full' : ''}`}
             style={
               singleVideo
                 ? chatVideoTileStyle({ width: item.displayWidth, height: item.displayHeight })

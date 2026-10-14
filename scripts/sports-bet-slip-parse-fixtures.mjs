@@ -54,6 +54,74 @@ Ticket Cost $500,000.00
     },
   },
   {
+    name: 'Mirage OCR asymmetric @ space',
+    text: `
+MIRAGE
+$500,000.00 Straight
+101 49ers MLB                    +120
+49ers@ Chiefs 2/2/2020 3:30 PM
+Ticket Cost $500,000.00
+`,
+    expect: {
+      book: 'Mirage',
+      event_label: '49ers @ Chiefs',
+      event_includes: 'Chiefs',
+      sport_label: 'NFL',
+      commence_date: '2020-02-02',
+    },
+  },
+  {
+    name: 'Mirage OCR @ before home only',
+    text: `
+MIRAGE
+$500,000.00 Straight
+101 49ers MLB                    +120
+49ers @Chiefs 2/2/2020 3:30 PM
+Ticket Cost $500,000.00
+`,
+    expect: {
+      book: 'Mirage',
+      event_label: '49ers @ Chiefs',
+      event_includes: 'Chiefs',
+      sport_label: 'NFL',
+    },
+  },
+  {
+    name: 'Mirage OCR trademark glue + split @ line',
+    text: `
+MIRAGE
+$500,000.00 Straight
+101 49ers MLB                    +120
+49ers®
+@ Chiefs          2/2/2020 3:30 PM
+Ticket Cost $500,000.00
+`,
+    expect: {
+      book: 'Mirage',
+      event_label: '49ers @ Chiefs',
+      event_includes: 'Chiefs',
+      sport_label: 'NFL',
+      commence_date: '2020-02-02',
+    },
+  },
+  {
+    name: 'Mirage OCR dropped @ nicknames + date',
+    text: `
+MIRAGE
+$500,000.00 Straight
+101 49ers MLB                    +120
+49ers Chiefs          2/2/2020 3:30 PM
+Ticket Cost $500,000.00
+`,
+    expect: {
+      book: 'Mirage',
+      event_label: '49ers @ Chiefs',
+      event_includes: 'Chiefs',
+      sport_label: 'NFL',
+      commence_date: '2020-02-02',
+    },
+  },
+  {
     name: 'Casino Lopez fight',
     text: `
 F2C76-E1FF-8055

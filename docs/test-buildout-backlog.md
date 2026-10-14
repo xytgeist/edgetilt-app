@@ -1214,6 +1214,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-14:** **Bet Tracker Mirage event OCR hardening (`1.4.1145`).** Asymmetric `@` spaces, fullwidth `＠`, trademark glue, split Team/`@ Home` lines, NFL nickname+date when `@` drops. Fixtures expanded. No SQL / Edge.
+- **2026-10-14:** **Promoted `1.4.1144`** (Bet Tracker grade-after-verify + dated ESPN). Frontend **`test` → `main`** (`8db6deda`). Edge **`sports-bets-grade`** already on prod.
 - **2026-10-14:** **Promoted `1.4.1143`** (Bet Tracker smart Label + Mirage `@` OCR). Frontend **`test` → `main`** (`05af2c68`). Includes **`1.4.1142`**. No SQL / Edge.
 - **2026-10-14:** **Promoted `1.4.1141`** (Bet Tracker Verify + Event Date +odds). Frontend **`test` → `main`** (`0f844173`). No SQL / Edge.
 - **2026-10-14:** **Promoted `1.4.1140`** (Bet Tracker multi-slip + parlays). Frontend **`test` → `main`** (`dd809e5c`). SQL **`20261014160000`** on **prod**. Edge **`sports-bets-grade`** on **prod**.

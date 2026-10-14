@@ -104,6 +104,7 @@ function looksLikePersonName(part) {
 /** Drop date/time / rotation junk glued onto a matchup side (OCR). */
 function stripMatchupSideJunk(side) {
   return String(side || '')
+    .replace(/[®©™]/g, '')
     .replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b.*$/i, '')
     .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b.*$/i, '')
     .replace(/\s+[+-]\d{2,5}\s*$/i, '')
@@ -113,9 +114,42 @@ function stripMatchupSideJunk(side) {
     .trim()
 }
 
+/** Vision OCR often mangles `@` spacing / width / trademark glue. */
+function normalizeMatchupOcrText(text) {
+  return String(text || '')
+    .replace(/\uFF20/g, '@') // fullwidth ＠
+    .replace(/[®©™]\s*@/g, '@')
+    .replace(/@\s*[®©™]/g, '@')
+    .replace(/[®©™]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+const NFL_NICKNAME_TOKEN_RE =
+  /\b(49ers|chiefs|bills|raiders|patriots|cowboys|packers|eagles|steelers|ravens|bengals|browns|titans|colts|jaguars|texans|broncos|chargers|rams|seahawks|cardinals|saints|falcons|panthers|buccaneers|bucs|dolphins|jets|giants|commanders|lions|bears|vikings)\b/gi
+
+/** When OCR drops `@`, recover "49ers Chiefs 2/2/2020" style NFL lines. */
+function parseNflNicknamePairMatchup(text) {
+  const s = normalizeMatchupOcrText(text)
+  if (!s || /@|\bvs\.?\b|\bat\b/i.test(s)) return null
+  if (!/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(s) && !/\b\d{1,2}:\d{2}\b/.test(s)) return null
+  const hits = []
+  for (const m of s.matchAll(NFL_NICKNAME_TOKEN_RE)) {
+    const nick = m[1]
+    if (!hits.some((h) => h.toLowerCase() === nick.toLowerCase())) hits.push(nick)
+    if (hits.length > 2) return null
+  }
+  if (hits.length !== 2) return null
+  return {
+    event: `${hits[0]} @ ${hits[1]}`,
+    away_team: hits[0],
+    home_team: hits[1],
+  }
+}
+
 /** Split "A @ B" / "A vs B" / "A at B" / "A / B" (UFC) into away / home. */
 export function parseEventMatchup(text) {
-  const s = String(text || '').trim()
+  const s = normalizeMatchupOcrText(text)
   if (!s) return { event: '', away_team: '', home_team: '' }
 
   const fromParts = (awayRaw, homeRaw, sep) => {
@@ -129,25 +163,23 @@ export function parseEventMatchup(text) {
     }
   }
 
-  // Spaced @
-  let m = /^(.+?)\s+@\s+(.+)$/.exec(s)
-  if (m) {
-    const hit = fromParts(m[1], m[2], '@')
-    if (hit) return hit
-  }
-  // OCR collapse: "49ers@Chiefs" (no spaces). Do not use bare "v" … that splits Alvarez / EVENT.
-  m = /^(.+[A-Za-z0-9])@([A-Za-z0-9].+)$/.exec(s)
+  // `@` with optional spaces: "A @ B", "A@B", OCR "A@ B" / "A @B"
+  let m = /^(.+?)\s*@\s*(.+)$/.exec(s)
   if (m) {
     const hit = fromParts(m[1], m[2], '@')
     if (hit) return hit
   }
   // vs / v. / at … require spaces so we never match a letter inside a name
+  // Do not use bare "v" … that splits Alvarez / EVENT.
   m = /^(.+?)\s+(?:vs\.?|v\.|at)\s+(.+)$/i.exec(s)
   if (m) {
     const sep = /\bat\b/i.test(m[0]) ? '@' : 'vs'
     const hit = fromParts(m[1], m[2], sep)
     if (hit) return hit
   }
+
+  const nflPair = parseNflNicknamePairMatchup(s)
+  if (nflPair) return nflPair
 
   // "POIRIER/MCGREGOR" or "MAIN EVENT - POIRIER/MCGREGOR"
   const slash = /([A-Za-z][A-Za-z.'\-]*(?:\s+[A-Za-z][A-Za-z.'\-]*){0,2})\s*\/\s*([A-Za-z][A-Za-z.'\-]*(?:\s+[A-Za-z][A-Za-z.'\-]*){0,2})\s*$/.exec(s)
@@ -249,33 +281,58 @@ function extractStakeDollars(text) {
   return null
 }
 
+function cleanEventCandidateLine(line) {
+  return normalizeMatchupOcrText(line)
+    .replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b.*$/i, '')
+    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b.*$/i, '')
+    .replace(/\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}\b.*$/i, '')
+    .replace(/\s+[+-]\d{2,5}\s*$/i, '')
+    // Prefer the matchup when OCR glues rotation + pick onto the same line
+    .replace(/^\d{2,5}\s+[A-Za-z0-9.]+\s+MLB\s+[+-]\d{2,5}\s+/i, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
 function extractEvent(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
-  for (const line of lines) {
-    if (PAYOUT_LINE_RE.test(line)) continue
-    if (/ticket\s*cost|slip\s*id|internal\s*id|betslip|account\s*#/i.test(line)) continue
-    if (/^(straight|single|parlay)\b/i.test(line) && line.length < 24) continue
+  const skipLine = (line) => {
+    if (PAYOUT_LINE_RE.test(line)) return true
+    if (/ticket\s*cost|slip\s*id|internal\s*id|betslip|account\s*#/i.test(line)) return true
+    if (/^(straight|single|parlay)\b/i.test(line) && line.length < 24) return true
     // "1 BET(S) @ $50,000.00" is stake, not a matchup
-    if (/\bbet\(s\)\s*@\s*\$/i.test(line) || /\b\d+\s*bet\(s\)\b/i.test(line)) continue
+    if (/\bbet\(s\)\s*@\s*\$/i.test(line) || /\b\d+\s*bet\(s\)\b/i.test(line)) return true
     // Skip "101 49ers MLB" style rotation lines (not the matchup)
-    if (/^\d{2,5}\s+\S+.+\bMLB\b/i.test(line) && !/(?:@|\bat\b|\bvs\.?\b)/i.test(line)) continue
+    if (/^\d{2,5}\s+\S+.+\bMLB\b/i.test(line) && !/(?:@|\bat\b|\bvs\.?\b)/i.test(line)) return true
     // Sport/market headers like "UFC - FIGHT WINNER/TOTAL ROUNDS" are not events
-    if (/fight\s*winner|total\s*rounds/i.test(line) && !/(?:@|\bat\b|\bvs\.?\b)/i.test(line)) continue
-    // `@` is non-word … do not wrap it in `\b` or "A @ B" never matches
-    if (/(?:@|\bat\b|\bvs\.?\b|\bv\.?\b)/i.test(line)) {
-      const cleaned = line
-        .replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b.*$/i, '')
-        .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b.*$/i, '')
-        .replace(/\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}\b.*$/i, '')
-        .replace(/\s+[+-]\d{2,5}\s*$/i, '')
-        // Prefer the matchup when OCR glues rotation + pick onto the same line
-        .replace(/^\d{2,5}\s+[A-Za-z0-9.]+\s+MLB\s+[+-]\d{2,5}\s+/i, '')
-        .replace(/\s{2,}/g, ' ')
-        .trim()
-      if (/\$/.test(cleaned)) continue
-      const parsed = parseEventMatchup(cleaned)
-      if (parsed.away_team && parsed.home_team) return parsed
+    if (/fight\s*winner|total\s*rounds/i.test(line) && !/(?:@|\bat\b|\bvs\.?\b)/i.test(line)) return true
+    return false
+  }
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    if (skipLine(line)) continue
+    // Join "49ers" + "@ Chiefs …" when OCR splits the matchup across lines
+    let candidate = line
+    const next = lines[i + 1]
+    if (
+      next
+      && !skipLine(next)
+      && !/(?:@|\bat\b|\bvs\.?\b)/i.test(line)
+      && /^\s*@/.test(normalizeMatchupOcrText(next))
+    ) {
+      candidate = `${line} ${next}`
     }
+    // `@` is non-word … do not wrap it in `\b` or "A @ B" never matches
+    const hasSep = /(?:@|\bat\b|\bvs\.?\b|\bv\.?\b)/i.test(candidate)
+    const hasNflPairDate = NFL_TEAM_HINT.test(candidate)
+      && /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{1,2}:\d{2}\b/.test(candidate)
+    if (!hasSep && !hasNflPairDate) continue
+    const cleaned = cleanEventCandidateLine(candidate)
+    if (!cleaned || /\$/.test(cleaned)) continue
+    const parsed = parseEventMatchup(
+      hasSep ? cleaned : candidate, // keep date on no-@ NFL pair path
+    )
+    if (parsed.away_team && parsed.home_team) return parsed
   }
   // UFC card title as event when no @/vs (prefer MAIN EVENT / numbered cards)
   for (const line of lines) {

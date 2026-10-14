@@ -455,6 +455,7 @@ function extractStakeDollars(text) {
     /\brisk\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /\bwager\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /\bstake\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+    /\btake\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /\d+\s*bet\(s\)\s*@\s*\$?\s*([0-9,]+\.?\d*)/i,
   ]
 
@@ -1156,6 +1157,18 @@ export function parseParlaySlipText(text) {
   return draft
 }
 
+function looksLikeTerminalMatchup(away, home, eventLabel) {
+  const event = String(eventLabel || '').trim()
+  const a = String(away || '').trim()
+  const h = String(home || '').trim()
+  const matchup = event || [a, h].filter(Boolean).join(' @ ')
+  if (/^[A-Z0-9]{2,6}\s*@\s*[A-Z0-9]{2,6}$/i.test(matchup)) return true
+  if (a.length > 0 && a.length <= 3 && h.length > 0 && h.length <= 3) {
+    if (!/[a-z]{4,}/i.test(`${a} ${h}`)) return true
+  }
+  return false
+}
+
 /**
  * True when a heuristic draft is junk / too thin to trust (e.g. terminal id as event).
  * Batch intake treats these as fails → LLM retry → Failed pill.
@@ -1168,11 +1181,7 @@ export function isWeakSportsBetDraft(draft) {
   const away = String(draft.away_team || '').trim()
   const home = String(draft.home_team || '').trim()
   const matchup = event || [away, home].filter(Boolean).join(' @ ')
-  // Teller / terminal headers mistaken as matchups (CGT@MRH)
-  if (/^[A-Z0-9]{2,6}\s*@\s*[A-Z0-9]{2,6}$/i.test(matchup)) return true
-  if (away.length > 0 && away.length <= 3 && home.length > 0 && home.length <= 3) {
-    if (!/[a-z]{4,}/i.test(`${away} ${home}`)) return true
-  }
+  if (looksLikeTerminalMatchup(away, home, event)) return true
   const market = String(draft.market || '')
   const sel = String(draft.selection_label || '')
   const stake = String(draft.stake_dollars || '').trim()
@@ -1182,6 +1191,94 @@ export function isWeakSportsBetDraft(draft) {
   }
   if ((market === 'spread' || market === 'h2h') && !away && !home && !sel) return true
   return false
+}
+
+/**
+ * Drop terminal-id "events" and other poison so a Failed Fill still gets usable fields.
+ */
+export function sanitizeSportsBetPartialDraft(draft) {
+  if (!draft || typeof draft !== 'object') return null
+  const next = { ...draft }
+  if (looksLikeTerminalMatchup(next.away_team, next.home_team, next.event_label)) {
+    next.away_team = ''
+    next.home_team = ''
+    next.event_label = ''
+    const sel = String(next.selection_label || '')
+    if (/^[A-Z0-9]{2,6}\s*@\s*[A-Z0-9]{2,6}/i.test(sel) || /^cgt\b/i.test(sel)) {
+      next.selection_label = ''
+    }
+  }
+  return next
+}
+
+/** Merge partials left→right; later non-empty strings win. Arrays: prefer non-empty legs. */
+export function mergeSportsBetPartialDrafts(...parts) {
+  const out = {}
+  for (const part of parts) {
+    if (!part || typeof part !== 'object') continue
+    for (const [key, value] of Object.entries(part)) {
+      if (key === 'legs') {
+        if (Array.isArray(value) && value.length) out.legs = value
+        continue
+      }
+      if (value == null) continue
+      const s = typeof value === 'string' ? value.trim() : value
+      if (s === '' || s === false) continue
+      out[key] = typeof value === 'string' ? value.trim() : value
+    }
+  }
+  return out
+}
+
+/**
+ * Best-effort fields even when odds/market parse fails (Failed Fill prefill).
+ */
+export function extractSportsBetPartialFields(text) {
+  const raw = String(text || '').replace(/\r/g, '').trim()
+  if (!raw) return null
+  const primary = findPrimaryOdds(raw)
+  const marketBits = primary
+    ? extractMarketDetails(raw, primary.line)
+    : {
+      market: '',
+      side: '',
+      line: null,
+      player_name: '',
+      prop_stat: '',
+      selection_label: '',
+    }
+  const eventBits = extractEvent(raw)
+  const sport = extractSport(raw, { casinoMlbIsMoneyline: Boolean(marketBits.casinoMlbIsMoneyline) })
+  const book = extractBook(raw)
+  const stakeDollars = extractStakeDollars(raw)
+  const commence_time = extractCommenceTime(raw)
+  let away = eventBits.away_team || ''
+  let home = eventBits.home_team || ''
+  let event_label = eventBits.event || ''
+  if (looksLikeTerminalMatchup(away, home, event_label)) {
+    away = ''
+    home = ''
+    event_label = ''
+  }
+  return sanitizeSportsBetPartialDraft({
+    book,
+    market: marketBits.market || '',
+    side: marketBits.side || '',
+    line: marketBits.line != null && marketBits.line !== '' ? String(marketBits.line) : '',
+    odds: primary ? americanOddsInputString(primary.odds) : '',
+    stake_dollars: stakeDollars != null ? String(stakeDollars) : '',
+    selection_label: marketBits.selection_label || '',
+    home_team: home,
+    away_team: away,
+    event_label,
+    sport_key: sport.key || '',
+    sport_label: sport.label || '',
+    commence_time: commence_time || '',
+    player_name: marketBits.player_name || '',
+    prop_stat: marketBits.prop_stat || '',
+    source: 'slip',
+    legs: [],
+  })
 }
 
 /** Free-text bet slip / share-sheet paste / OCR. */

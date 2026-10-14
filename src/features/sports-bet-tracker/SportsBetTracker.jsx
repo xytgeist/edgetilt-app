@@ -32,11 +32,14 @@ import {
 } from './sportsBetNav.js'
 import SportsBetToolsSheet from './SportsBetToolsSheet.jsx'
 import {
+  extractSportsBetPartialFields,
   isWeakSportsBetDraft,
   looksLikeSideLessBet,
+  mergeSportsBetPartialDrafts,
   parseEventMatchup,
   parseSportsBetCsv,
   parseSportsBetIntake,
+  sanitizeSportsBetPartialDraft,
 } from './sportsBetParse.js'
 import {
   combinedOddsFromLegs,
@@ -787,36 +790,29 @@ export default function SportsBetTracker({
         }
         nativeOk = true
 
-        const pushFailed = (reason, ocrText = '') => {
-          collected.push({
-            key: `${Date.now()}-${collected.length}-${Math.random().toString(36).slice(2, 7)}`,
-            status: 'failed',
-            failReason: reason || 'Could not read this slip',
-            ocrText: ocrText || '',
-            draft: {
-              ...emptyDraft(unitSize),
-              slip_preview_url: previewUrl,
-              source: 'slip',
-              selection_label: '',
-              notes: ocrText ? `OCR:\n${String(ocrText).slice(0, 500)}` : '',
-            },
-          })
-        }
-
         let ocrText = String(text || '').trim()
         let draft = null
         let failReason = ''
+        /** Best-effort fields to keep on Failed Fill even when the row is not auto-ok. */
+        let partial = ocrText ? extractSportsBetPartialFields(ocrText) : null
 
         if (ocrErr || !ocrText) {
           failReason = ocrErr || 'No text on that photo'
         } else {
           const parsed = parseSportsBetIntake(ocrText).filter(Boolean)
-          draft = parsed[0] || null
-          if (!draft || isWeakSportsBetDraft(draft)) {
-            failReason = draft
-              ? 'Could not trust the auto-read … try Fill or AI'
+          const candidate = parsed[0] || null
+          if (candidate && !isWeakSportsBetDraft(candidate)) {
+            draft = candidate
+          } else {
+            failReason = candidate
+              ? 'Could not trust the auto-read … check Fill'
               : 'Could not read a bet from that slip'
-            draft = null
+            if (candidate) {
+              partial = mergeSportsBetPartialDrafts(
+                partial,
+                sanitizeSportsBetPartialDraft(candidate),
+              )
+            }
           }
         }
 
@@ -827,9 +823,21 @@ export default function SportsBetTracker({
             imageBase64,
             mimeType,
           })
-          if (llm.draft && !isWeakSportsBetDraft(llm.draft)) {
-            draft = llm.draft
-            failReason = ''
+          if (llm.draft) {
+            const cleaned = sanitizeSportsBetPartialDraft(llm.draft)
+            partial = mergeSportsBetPartialDrafts(partial, cleaned)
+            if (!isWeakSportsBetDraft(cleaned) && !llm.partial) {
+              draft = cleaned
+              failReason = ''
+            } else if (!isWeakSportsBetDraft(cleaned) && llm.partial) {
+              // Usable enough despite soft error
+              draft = cleaned
+              failReason = ''
+            } else if (llm.error) {
+              failReason = failReason
+                ? `${failReason}. AI: ${llm.error}`
+                : `AI: ${llm.error}`
+            }
           } else if (llm.error) {
             failReason = failReason
               ? `${failReason}. AI: ${llm.error}`
@@ -849,7 +857,24 @@ export default function SportsBetTracker({
             ),
           })
         } else {
-          pushFailed(failReason || 'Could not read this slip', ocrText)
+          const merged = mergeSportsBetPartialDrafts(
+            sanitizeSportsBetPartialDraft(partial),
+            {
+              slip_preview_url: previewUrl,
+              source: 'slip',
+              notes: ocrText ? `OCR:\n${String(ocrText).slice(0, 500)}` : '',
+            },
+          )
+          collected.push({
+            key: `${Date.now()}-${collected.length}-${Math.random().toString(36).slice(2, 7)}`,
+            status: 'failed',
+            failReason: failReason || 'Could not read this slip',
+            ocrText: ocrText || '',
+            draft: draftFromPrefill(
+              { ...emptyDraft(unitSize), ...merged, slip_preview_url: previewUrl, source: 'slip' },
+              unitSize,
+            ),
+          })
         }
       }
       setSaving(false)

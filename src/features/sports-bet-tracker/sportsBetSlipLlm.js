@@ -25,25 +25,40 @@ export async function parseSportsBetSlipWithLlm(supabase, opts = {}) {
         mimeType: opts.mimeType || 'image/jpeg',
       },
     })
+    let body = data
     if (error) {
       let msg = error.message || 'AI slip parse failed'
       try {
-        const body = await response?.json?.()
-        if (body?.error) msg = String(body.error)
+        const fromRes = await response?.json?.()
+        if (fromRes && typeof fromRes === 'object') {
+          body = fromRes
+          if (fromRes.error) msg = String(fromRes.error)
+        }
       } catch {
         /* keep msg */
       }
+      const partial = body?.draft && typeof body.draft === 'object' ? body.draft : null
+      // 422 unusable still returns a partial draft … keep it for Failed Fill
+      if (partial) {
+        return {
+          draft: { ...partial, source: 'slip' },
+          error: msg,
+          engine: body?.engine ? String(body.engine) : 'openai',
+          partial: true,
+        }
+      }
       return { draft: null, error: msg }
     }
-    if (data?.error && !data?.draft) {
-      return { draft: null, error: String(data.error) }
+    if (body?.error && !body?.draft) {
+      return { draft: null, error: String(body.error) }
     }
-    const draft = data?.draft && typeof data.draft === 'object' ? data.draft : null
+    const draft = body?.draft && typeof body.draft === 'object' ? body.draft : null
     if (!draft) return { draft: null, error: 'AI returned no draft' }
     return {
       draft: { ...draft, source: 'slip' },
-      error: null,
-      engine: data?.engine ? String(data.engine) : 'openai',
+      error: body?.error ? String(body.error) : null,
+      engine: body?.engine ? String(body.engine) : 'openai',
+      partial: Boolean(body?.error),
     }
   } catch (err) {
     return {

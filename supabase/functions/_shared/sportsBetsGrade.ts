@@ -4,6 +4,7 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
+  espnDateKeysFromCommence,
   espnFallbackCoversMarket,
   fetchEspnCompletedScoreboard,
   matchEspnFinalScore,
@@ -234,11 +235,25 @@ export async function gradeOpenSportsBets(
 
   if (!bets.length && !legs.length) return { resolved: 0, scanned: 0, errors }
 
+  const datesBySport = new Map<string, Set<string>>()
+  const rememberDates = (sportKey: string, commence: string | null | undefined) => {
+    const sk = String(sportKey || '').trim() || 'unknown'
+    let set = datesBySport.get(sk)
+    if (!set) {
+      set = new Set<string>()
+      datesBySport.set(sk, set)
+    }
+    for (const d of espnDateKeysFromCommence(commence)) set.add(d)
+  }
+  for (const bet of bets) rememberDates(bet.sport_key, bet.commence_time)
+  for (const leg of legs) rememberDates(leg.sport_key, leg.commence_time)
+
   const boards = new Map<string, EspnCompletedEvent[]>()
   const loadBoard = async (sportKey: string) => {
     if (boards.has(sportKey)) return boards.get(sportKey) || []
+    const dates = [...(datesBySport.get(sportKey) || [])]
     try {
-      const board = await fetchEspnCompletedScoreboard(sportKey)
+      const board = await fetchEspnCompletedScoreboard(sportKey, { dates })
       boards.set(sportKey, board)
       return board
     } catch (err: unknown) {

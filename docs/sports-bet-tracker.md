@@ -79,7 +79,7 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 | **Hold odds cell** to log that book/line | Tap-replaces-open-book (tap still opens the sportsbook) |
 | Paste slip + IPA photo OCR + CSV import (heuristic, confirm first) | Trained slip Vision model / share-sheet auto-ingest |
 | Units stake, American odds, market (spread / ML / total / **player prop** / other), **Sport** (NFL, CFB, …) | White-label / official book connect |
-| Open → **auto-grade** spread / ML / total (ESPN); **parlay legs** roll up parent; props stay manual | Verified public record; SGP push-odds reduction |
+| Open → **auto-grade** spread / ML / total (ESPN, incl. dated boards from commence); grade runs after slip verify/save; **parlay legs** roll up parent; props stay manual | Verified public record; SGP push-odds reduction |
 | P&L units + ROI + record | Hard `sports-edge` paywall |
 | CLV vs locked **`lounge_market_files`** close (RPC) |  |
 | Free for verified users while Sports Edge SKU is dark |  |

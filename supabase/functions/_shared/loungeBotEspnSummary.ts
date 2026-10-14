@@ -134,83 +134,143 @@ function competitorLabel(comp: Record<string, unknown> | null | undefined): stri
   return String(athlete?.displayName || team?.displayName || team?.name || '').trim()
 }
 
-/**
- * One ESPN scoreboard fetch per sport. Only `completed` / `post` events.
- * MMA scores are 1-0 from the winner flag (ESPN does not give round totals here).
- */
-export async function fetchEspnCompletedScoreboard(sportKey: string): Promise<EspnCompletedEvent[]> {
-  const spec = espnScoreboardSpec(sportKey)
-  if (!spec) return []
+function parseEspnCompletedEvents(
+  data: { events?: unknown[] },
+  kind: 'team' | 'person',
+): EspnCompletedEvent[] {
+  const events = Array.isArray(data?.events) ? data.events : []
+  const out: EspnCompletedEvent[] = []
 
+  for (const evRaw of events) {
+    const ev = evRaw as Record<string, unknown>
+    const competitions = Array.isArray(ev.competitions) ? ev.competitions : []
+    for (const compRaw of competitions) {
+      const comp = compRaw as Record<string, unknown>
+      const status = (comp.status as { type?: { completed?: boolean; state?: string } } | undefined)?.type
+        || (ev.status as { type?: { completed?: boolean; state?: string } } | undefined)?.type
+      if (!isEspnCompletedStatus(status)) continue
+
+      const competitors = Array.isArray(comp.competitors) ? comp.competitors as Array<Record<string, unknown>> : []
+      if (competitors.length < 2) continue
+
+      if (kind === 'person') {
+        const a = competitors[0]
+        const b = competitors[1]
+        const aName = competitorLabel(a)
+        const bName = competitorLabel(b)
+        const winner = competitors.find((c) => c.winner === true)
+        const winnerName = competitorLabel(winner) || null
+        if (!aName || !bName || !winnerName) continue
+        const aWon = isEspnPersonMatch(winnerName, aName)
+        const bWon = isEspnPersonMatch(winnerName, bName)
+        if (aWon === bWon) continue
+        out.push({
+          kind: 'person',
+          homeName: aName,
+          awayName: bName,
+          winnerName,
+          homeScore: aWon ? 1 : 0,
+          awayScore: bWon ? 1 : 0,
+        })
+        continue
+      }
+
+      const homeComp = competitors.find((c) => c.homeAway === 'home') || competitors[0]
+      const awayComp = competitors.find((c) => c.homeAway === 'away') || competitors[1]
+      const homeName = competitorLabel(homeComp)
+      const awayName = competitorLabel(awayComp)
+      const homeScore = parseInt(String(homeComp?.score ?? ''), 10)
+      const awayScore = parseInt(String(awayComp?.score ?? ''), 10)
+      if (!homeName || !awayName || Number.isNaN(homeScore) || Number.isNaN(awayScore)) continue
+      out.push({
+        kind: 'team',
+        homeName,
+        awayName,
+        winnerName: homeScore === awayScore ? null : (homeScore > awayScore ? homeName : awayName),
+        homeScore,
+        awayScore,
+      })
+    }
+  }
+  return out
+}
+
+function boardRowKey(row: EspnCompletedEvent): string {
+  return `${row.kind}|${normalizeTeamName(row.homeName)}|${normalizeTeamName(row.awayName)}|${row.homeScore}|${row.awayScore}`
+}
+
+async function fetchEspnScoreboardUrl(
+  url: string,
+  kind: 'team' | 'person',
+): Promise<EspnCompletedEvent[]> {
   const ac = new AbortController()
   const timer = setTimeout(() => ac.abort(), ESPN_SCOREBOARD_MS)
   try {
-    const res = await fetch(spec.url, { headers: ESPN_HEADERS, signal: ac.signal })
+    const res = await fetch(url, { headers: ESPN_HEADERS, signal: ac.signal })
     if (!res.ok) {
-      throw new Error(`ESPN scoreboard ${sportKey}: HTTP ${res.status}`)
+      throw new Error(`ESPN scoreboard HTTP ${res.status}`)
     }
     const data = await res.json() as { events?: unknown[] }
-    const events = Array.isArray(data?.events) ? data.events : []
-    const out: EspnCompletedEvent[] = []
-
-    for (const evRaw of events) {
-      const ev = evRaw as Record<string, unknown>
-      const competitions = Array.isArray(ev.competitions) ? ev.competitions : []
-      for (const compRaw of competitions) {
-        const comp = compRaw as Record<string, unknown>
-        const status = (comp.status as { type?: { completed?: boolean; state?: string } } | undefined)?.type
-          || (ev.status as { type?: { completed?: boolean; state?: string } } | undefined)?.type
-        if (!isEspnCompletedStatus(status)) continue
-
-        const competitors = Array.isArray(comp.competitors) ? comp.competitors as Array<Record<string, unknown>> : []
-        if (competitors.length < 2) continue
-
-        if (spec.kind === 'person') {
-          const a = competitors[0]
-          const b = competitors[1]
-          const aName = competitorLabel(a)
-          const bName = competitorLabel(b)
-          const winner = competitors.find((c) => c.winner === true)
-          const winnerName = competitorLabel(winner) || null
-          if (!aName || !bName || !winnerName) continue
-          const aWon = isEspnPersonMatch(winnerName, aName)
-          const bWon = isEspnPersonMatch(winnerName, bName)
-          if (aWon === bWon) continue
-          out.push({
-            kind: 'person',
-            homeName: aName,
-            awayName: bName,
-            winnerName,
-            homeScore: aWon ? 1 : 0,
-            awayScore: bWon ? 1 : 0,
-          })
-          continue
-        }
-
-        const homeComp = competitors.find((c) => c.homeAway === 'home') || competitors[0]
-        const awayComp = competitors.find((c) => c.homeAway === 'away') || competitors[1]
-        const homeName = competitorLabel(homeComp)
-        const awayName = competitorLabel(awayComp)
-        const homeScore = parseInt(String(homeComp?.score ?? ''), 10)
-        const awayScore = parseInt(String(awayComp?.score ?? ''), 10)
-        if (!homeName || !awayName || Number.isNaN(homeScore) || Number.isNaN(awayScore)) continue
-        out.push({
-          kind: 'team',
-          homeName,
-          awayName,
-          winnerName: homeScore === awayScore ? null : (homeScore > awayScore ? homeName : awayName),
-          homeScore,
-          awayScore,
-        })
-      }
-    }
-    return out
-  } catch (err) {
-    console.warn(`ESPN completed scoreboard failed for ${sportKey}:`, err)
-    throw err
+    return parseEspnCompletedEvents(data, kind)
   } finally {
     clearTimeout(timer)
   }
+}
+
+/**
+ * ESPN scoreboard fetch per sport. Only `completed` / `post` events.
+ * Optional `dates` (YYYYMMDD) pull historical days so slip commence_times can grade.
+ * MMA scores are 1-0 from the winner flag (ESPN does not give round totals here).
+ */
+export async function fetchEspnCompletedScoreboard(
+  sportKey: string,
+  opts: { dates?: string[] } = {},
+): Promise<EspnCompletedEvent[]> {
+  const spec = espnScoreboardSpec(sportKey)
+  if (!spec) return []
+
+  const dateKeys = (opts.dates || [])
+    .map((d) => String(d || '').replace(/\D/g, ''))
+    .filter((d) => /^\d{8}$/.test(d))
+  const uniqueDates = [...new Set(dateKeys)].slice(0, 8)
+
+  const urls = [spec.url, ...uniqueDates.map((d) => `${spec.url}?dates=${d}`)]
+  const merged = new Map<string, EspnCompletedEvent>()
+  let lastErr: unknown = null
+
+  for (const url of urls) {
+    try {
+      const rows = await fetchEspnScoreboardUrl(url, spec.kind)
+      for (const row of rows) merged.set(boardRowKey(row), row)
+    } catch (err) {
+      lastErr = err
+      console.warn(`ESPN completed scoreboard failed for ${sportKey} (${url}):`, err)
+    }
+  }
+
+  if (!merged.size && lastErr) throw lastErr
+  return [...merged.values()]
+}
+
+/** YYYYMMDD keys around a commence time for ESPN `?dates=`. */
+export function espnDateKeysFromCommence(iso: string | null | undefined, nowMs = Date.now()): string[] {
+  if (!iso) return []
+  const dt = new Date(iso)
+  if (Number.isNaN(dt.getTime())) return []
+  // Skip far-future kicks … no final yet.
+  if (dt.getTime() > nowMs + 6 * 3600_000) return []
+  const keys = new Set<string>()
+  const pushUtc = (ms: number) => {
+    const d = new Date(ms)
+    const y = d.getUTCFullYear()
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const day = String(d.getUTCDate()).padStart(2, '0')
+    keys.add(`${y}${m}${day}`)
+  }
+  pushUtc(dt.getTime())
+  pushUtc(dt.getTime() - 12 * 3600_000)
+  pushUtc(dt.getTime() + 12 * 3600_000)
+  return [...keys]
 }
 
 /**

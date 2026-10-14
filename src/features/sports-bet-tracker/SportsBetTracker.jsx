@@ -323,16 +323,16 @@ export default function SportsBetTracker({
     }
   }, [supabaseClient])
 
-  const load = async () => {
-    setLoading(true)
+  /** Grade open bets (ESPN finals when possible), then refresh the list + CLV. */
+  const gradeAndReload = async ({ showLoading = false } = {}) => {
+    if (showLoading) setLoading(true)
     setError('')
-    // Auto-settle finished spread / ML / total bets before listing.
     await gradeOpenSportsBets(supabaseClient)
     const { bets: rows, error: listErr } = await listSportsBets(supabaseClient)
     if (listErr) {
       setError(listErr)
       setBets([])
-      setLoading(false)
+      if (showLoading) setLoading(false)
       return
     }
     const { error: clvErr } = await refreshSportsBetClv(supabaseClient)
@@ -342,7 +342,11 @@ export default function SportsBetTracker({
     } else {
       setBets(rows)
     }
-    setLoading(false)
+    if (showLoading) setLoading(false)
+  }
+
+  const load = async () => {
+    await gradeAndReload({ showLoading: true })
   }
 
   useEffect(() => {
@@ -474,8 +478,8 @@ export default function SportsBetTracker({
     const result = editingId
       ? await updateSportsBet(supabaseClient, editingId, draft)
       : await insertSportsBet(supabaseClient, userId, draft)
-    setSaving(false)
     if (result.error) {
+      setSaving(false)
       setError(result.error)
       return
     }
@@ -491,6 +495,7 @@ export default function SportsBetTracker({
         })
       }
     }
+    // Optimistic open row … gradeAndReload replaces with settled status when ESPN can.
     setBets((prev) => (
       editingId
         ? prev.map((row) => (row.id === bet.id ? bet : row))
@@ -510,7 +515,8 @@ export default function SportsBetTracker({
     } else {
       closeComposer()
     }
-    void refreshSportsBetClv(supabaseClient).then(() => load())
+    await gradeAndReload()
+    setSaving(false)
   }
 
   const closeReviewQueue = () => {
@@ -590,9 +596,10 @@ export default function SportsBetTracker({
       if (saveErr) lastErr = saveErr
       else if (bet) inserted.push(bet)
     }
-    setSaving(false)
     if (inserted.length) setBets((prev) => [...inserted, ...prev])
     if (lastErr) setError(`Imported ${inserted.length}/${list.length}. ${lastErr}`)
+    if (inserted.length) await gradeAndReload()
+    setSaving(false)
   }
 
   const saveReviewQueueAll = async () => {
@@ -616,11 +623,11 @@ export default function SportsBetTracker({
       else if (bet) inserted.push(bet)
       revokeSlipPreviewUrl(item.draft?.slip_preview_url)
     }
-    setSaving(false)
     setReviewQueue(null)
     if (inserted.length) setBets((prev) => [...inserted, ...prev])
     if (lastErr) setError(`Saved ${inserted.length}/${list.length}. ${lastErr}`)
-    void refreshSportsBetClv(supabaseClient).then(() => load())
+    if (inserted.length) await gradeAndReload()
+    setSaving(false)
   }
 
   const onSettle = async (id, status) => {

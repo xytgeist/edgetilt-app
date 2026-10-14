@@ -26,6 +26,27 @@ Ticket Cost $500,000.00
       odds: 120,
       selection_includes: '49ers',
       event_includes: 'Chiefs',
+      event_label: '49ers @ Chiefs',
+      sport_label: 'NFL',
+      commence_date: '2020-02-02',
+    },
+  },
+  {
+    name: 'Mirage OCR collapsed @',
+    text: `
+MIRAGE
+$500,000.00 Straight
+101 49ers MLB                    +120
+49ers@Chiefs 2/2/2020 3:30 PM
+Ticket Cost $500,000.00
+`,
+    expect: {
+      book: 'Mirage',
+      stake_dollars: 500000,
+      market: 'h2h',
+      odds: 120,
+      event_label: '49ers @ Chiefs',
+      event_includes: 'Chiefs',
       sport_label: 'NFL',
       commence_date: '2020-02-02',
     },
@@ -253,6 +274,12 @@ for (const fx of fixtures) {
       assert(
         ev.toLowerCase().includes(e.event_includes.toLowerCase()),
         `${fx.name}: event missing ${e.event_includes}: ${ev}`,
+      )
+    }
+    if (e.event_label != null) {
+      assert(
+        String(d.event_label || '') === e.event_label,
+        `${fx.name}: event_label want ${e.event_label} got ${d.event_label}`,
       )
     }
     if (e.sport_label) {

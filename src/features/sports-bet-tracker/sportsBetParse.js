@@ -101,21 +101,54 @@ function looksLikePersonName(part) {
   return /^[A-Za-z][A-Za-z.'\-]*(?:\s+[A-Za-z][A-Za-z.'\-]*){0,3}$/.test(s)
 }
 
-/** Split "A @ B" / "A vs B" / "A / B" (UFC) into away / home. */
+/** Drop date/time / rotation junk glued onto a matchup side (OCR). */
+function stripMatchupSideJunk(side) {
+  return String(side || '')
+    .replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b.*$/i, '')
+    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b.*$/i, '')
+    .replace(/\s+[+-]\d{2,5}\s*$/i, '')
+    .replace(/^\d{2,5}\s+/i, '')
+    .replace(/\bMLB\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+/** Split "A @ B" / "A vs B" / "A at B" / "A / B" (UFC) into away / home. */
 export function parseEventMatchup(text) {
   const s = String(text || '').trim()
   if (!s) return { event: '', away_team: '', home_team: '' }
-  const m = /^(.+?)\s+(?:@|vs\.?|v\.?)\s+(.+)$/i.exec(s)
-  if (m) {
-    const away = m[1].trim()
-    const home = m[2].trim()
-    const sep = /@/.test(m[0]) ? '@' : 'vs'
+
+  const fromParts = (awayRaw, homeRaw, sep) => {
+    const away = stripMatchupSideJunk(awayRaw)
+    const home = stripMatchupSideJunk(homeRaw)
+    if (!away || !home || /\$/.test(away) || /\$/.test(home)) return null
     return {
       event: `${away} ${sep} ${home}`,
       away_team: away,
       home_team: home,
     }
   }
+
+  // Spaced @
+  let m = /^(.+?)\s+@\s+(.+)$/.exec(s)
+  if (m) {
+    const hit = fromParts(m[1], m[2], '@')
+    if (hit) return hit
+  }
+  // OCR collapse: "49ers@Chiefs" (no spaces). Do not use bare "v" … that splits Alvarez / EVENT.
+  m = /^(.+[A-Za-z0-9])@([A-Za-z0-9].+)$/.exec(s)
+  if (m) {
+    const hit = fromParts(m[1], m[2], '@')
+    if (hit) return hit
+  }
+  // vs / v. / at … require spaces so we never match a letter inside a name
+  m = /^(.+?)\s+(?:vs\.?|v\.|at)\s+(.+)$/i.exec(s)
+  if (m) {
+    const sep = /\bat\b/i.test(m[0]) ? '@' : 'vs'
+    const hit = fromParts(m[1], m[2], sep)
+    if (hit) return hit
+  }
+
   // "POIRIER/MCGREGOR" or "MAIN EVENT - POIRIER/MCGREGOR"
   const slash = /([A-Za-z][A-Za-z.'\-]*(?:\s+[A-Za-z][A-Za-z.'\-]*){0,2})\s*\/\s*([A-Za-z][A-Za-z.'\-]*(?:\s+[A-Za-z][A-Za-z.'\-]*){0,2})\s*$/.exec(s)
   if (slash && looksLikePersonName(slash[1]) && looksLikePersonName(slash[2])) {
@@ -225,15 +258,18 @@ function extractEvent(text) {
     // "1 BET(S) @ $50,000.00" is stake, not a matchup
     if (/\bbet\(s\)\s*@\s*\$/i.test(line) || /\b\d+\s*bet\(s\)\b/i.test(line)) continue
     // Skip "101 49ers MLB" style rotation lines (not the matchup)
-    if (/^\d{2,5}\s+\S+.+\bMLB\b/i.test(line) && !/(?:@|\bvs\.?\b)/i.test(line)) continue
+    if (/^\d{2,5}\s+\S+.+\bMLB\b/i.test(line) && !/(?:@|\bat\b|\bvs\.?\b)/i.test(line)) continue
     // Sport/market headers like "UFC - FIGHT WINNER/TOTAL ROUNDS" are not events
-    if (/fight\s*winner|total\s*rounds/i.test(line) && !/(?:@|\bvs\.?\b)/i.test(line)) continue
+    if (/fight\s*winner|total\s*rounds/i.test(line) && !/(?:@|\bat\b|\bvs\.?\b)/i.test(line)) continue
     // `@` is non-word … do not wrap it in `\b` or "A @ B" never matches
-    if (/(?:@|\bvs\.?\b|\bv\.?\b)/i.test(line)) {
+    if (/(?:@|\bat\b|\bvs\.?\b|\bv\.?\b)/i.test(line)) {
       const cleaned = line
         .replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b.*$/i, '')
+        .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?\b.*$/i, '')
         .replace(/\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}\b.*$/i, '')
         .replace(/\s+[+-]\d{2,5}\s*$/i, '')
+        // Prefer the matchup when OCR glues rotation + pick onto the same line
+        .replace(/^\d{2,5}\s+[A-Za-z0-9.]+\s+MLB\s+[+-]\d{2,5}\s+/i, '')
         .replace(/\s{2,}/g, ' ')
         .trim()
       if (/\$/.test(cleaned)) continue

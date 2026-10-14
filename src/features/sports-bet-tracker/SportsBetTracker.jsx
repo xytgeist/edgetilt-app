@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Calculator, Camera, Check, ChevronLeft, ClipboardList, ClipboardPaste, FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { Calculator, Camera, Check, ChevronLeft, ClipboardList, ClipboardPaste, FileSpreadsheet, Loader2, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import AppModalOverlay from '../../components/AppModalOverlay.jsx'
@@ -12,6 +12,7 @@ import {
   listSportsBets,
   refreshSportsBetClv,
   settleSportsBet,
+  sportsBetAutoGradeLooksStale,
   sportsBetIsAutoGradeable,
   updateSportsBet,
 } from './sportsBetApi.js'
@@ -330,6 +331,8 @@ export default function SportsBetTracker({
   const [editingId, setEditingId] = useState(null)
   const [draft, setDraft] = useState(emptyDraft)
   const [saving, setSaving] = useState(false)
+  /** { title, detail?, current?, total? } while reading slips / saving */
+  const [progress, setProgress] = useState(null)
   const [filter, setFilter] = useState('all')
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
@@ -515,49 +518,54 @@ export default function SportsBetTracker({
       return
     }
     setSaving(true)
+    setProgress({ title: editingId ? 'Saving changes…' : 'Saving bet…', detail: 'Writing to your book' })
     setError('')
-    const result = editingId
-      ? await updateSportsBet(supabaseClient, editingId, draft)
-      : await insertSportsBet(supabaseClient, userId, draft)
-    if (result.error) {
-      setSaving(false)
-      setError(result.error)
-      return
-    }
-    const bet = result.bet
-    const nextUnit = Number(draft.unit_size_dollars)
-    if (Number.isFinite(nextUnit) && nextUnit > 0) {
-      writeUnitSizeDollars(nextUnit)
-      setUnitSize(nextUnit)
-      if (bankrollStart != null) {
-        void saveSportsBetSettings(supabaseClient, userId, {
-          unit_size_dollars: nextUnit,
-          bankroll_start: bankrollStart,
-        })
+    try {
+      const result = editingId
+        ? await updateSportsBet(supabaseClient, editingId, draft)
+        : await insertSportsBet(supabaseClient, userId, draft)
+      if (result.error) {
+        setError(result.error)
+        return
       }
+      const bet = result.bet
+      const nextUnit = Number(draft.unit_size_dollars)
+      if (Number.isFinite(nextUnit) && nextUnit > 0) {
+        writeUnitSizeDollars(nextUnit)
+        setUnitSize(nextUnit)
+        if (bankrollStart != null) {
+          void saveSportsBetSettings(supabaseClient, userId, {
+            unit_size_dollars: nextUnit,
+            bankroll_start: bankrollStart,
+          })
+        }
+      }
+      // Optimistic open row … gradeAndReload replaces with settled status when ESPN can.
+      setBets((prev) => (
+        editingId
+          ? prev.map((row) => (row.id === bet.id ? bet : row))
+          : [bet, ...prev]
+      ))
+      if (reviewEditingKey && Array.isArray(reviewQueue)) {
+        const nextQueue = reviewQueue.filter((item) => item.key !== reviewEditingKey)
+        setReviewQueue(nextQueue.length ? nextQueue : null)
+        setReviewEditingKey(null)
+        setDraft((prev) => {
+          // Preview owned by queue item we just saved … revoke after remove.
+          revokeSlipPreviewUrl(prev.slip_preview_url)
+          return emptyDraft(unitSize)
+        })
+        setComposerOpen(false)
+        setEditingId(null)
+      } else {
+        closeComposer()
+      }
+      setProgress({ title: 'Checking results…', detail: 'Auto-grade when ESPN has a final' })
+      await gradeAndReload()
+    } finally {
+      setSaving(false)
+      setProgress(null)
     }
-    // Optimistic open row … gradeAndReload replaces with settled status when ESPN can.
-    setBets((prev) => (
-      editingId
-        ? prev.map((row) => (row.id === bet.id ? bet : row))
-        : [bet, ...prev]
-    ))
-    if (reviewEditingKey && Array.isArray(reviewQueue)) {
-      const nextQueue = reviewQueue.filter((item) => item.key !== reviewEditingKey)
-      setReviewQueue(nextQueue.length ? nextQueue : null)
-      setReviewEditingKey(null)
-      setDraft((prev) => {
-        // Preview owned by queue item we just saved … revoke after remove.
-        revokeSlipPreviewUrl(prev.slip_preview_url)
-        return emptyDraft(unitSize)
-      })
-      setComposerOpen(false)
-      setEditingId(null)
-    } else {
-      closeComposer()
-    }
-    await gradeAndReload()
-    setSaving(false)
   }
 
   const closeReviewQueue = () => {
@@ -625,22 +633,36 @@ export default function SportsBetTracker({
     }
     setSaving(true)
     setError('')
-    const inserted = []
-    let lastErr = ''
-    for (const row of list) {
-      const filled = draftFromPrefill(row, unitSize)
-      const payload = {
-        ...filled,
-        unit_size_dollars: filled.unit_size_dollars || unitSize,
+    try {
+      const inserted = []
+      let lastErr = ''
+      for (let i = 0; i < list.length; i += 1) {
+        const row = list[i]
+        setProgress({
+          title: 'Importing CSV…',
+          detail: row.selection_label || `Row ${i + 1}`,
+          current: i + 1,
+          total: list.length,
+        })
+        const filled = draftFromPrefill(row, unitSize)
+        const payload = {
+          ...filled,
+          unit_size_dollars: filled.unit_size_dollars || unitSize,
+        }
+        const { bet, error: saveErr } = await insertSportsBet(supabaseClient, userId, payload)
+        if (saveErr) lastErr = saveErr
+        else if (bet) inserted.push(bet)
       }
-      const { bet, error: saveErr } = await insertSportsBet(supabaseClient, userId, payload)
-      if (saveErr) lastErr = saveErr
-      else if (bet) inserted.push(bet)
+      if (inserted.length) setBets((prev) => [...inserted, ...prev])
+      if (lastErr) setError(`Imported ${inserted.length}/${list.length}. ${lastErr}`)
+      if (inserted.length) {
+        setProgress({ title: 'Checking results…', detail: 'Auto-grade when ESPN has a final' })
+        await gradeAndReload()
+      }
+    } finally {
+      setSaving(false)
+      setProgress(null)
     }
-    if (inserted.length) setBets((prev) => [...inserted, ...prev])
-    if (lastErr) setError(`Imported ${inserted.length}/${list.length}. ${lastErr}`)
-    if (inserted.length) await gradeAndReload()
-    setSaving(false)
   }
 
   const saveReviewQueueAll = async () => {
@@ -659,29 +681,43 @@ export default function SportsBetTracker({
     }
     setSaving(true)
     setError('')
-    const inserted = []
-    let lastErr = ''
-    for (const item of ready) {
-      const payload = {
-        ...item.draft,
-        unit_size_dollars: item.draft.unit_size_dollars || unitSize,
+    try {
+      const inserted = []
+      let lastErr = ''
+      for (let i = 0; i < ready.length; i += 1) {
+        const item = ready[i]
+        setProgress({
+          title: 'Saving slips…',
+          detail: item.draft?.selection_label || `Slip ${i + 1}`,
+          current: i + 1,
+          total: ready.length,
+        })
+        const payload = {
+          ...item.draft,
+          unit_size_dollars: item.draft.unit_size_dollars || unitSize,
+        }
+        const { bet, error: saveErr } = await insertSportsBet(supabaseClient, userId, payload)
+        if (saveErr) lastErr = saveErr
+        else if (bet) inserted.push(bet)
+        revokeSlipPreviewUrl(item.draft?.slip_preview_url)
       }
-      const { bet, error: saveErr } = await insertSportsBet(supabaseClient, userId, payload)
-      if (saveErr) lastErr = saveErr
-      else if (bet) inserted.push(bet)
-      revokeSlipPreviewUrl(item.draft?.slip_preview_url)
+      // Keep failed rows in the queue so Ryan can still Fill them.
+      setReviewQueue((prev) => {
+        if (!Array.isArray(prev)) return null
+        const next = prev.filter((item) => item?.status === 'failed')
+        return next.length ? next : null
+      })
+      if (inserted.length) setBets((prev) => [...inserted, ...prev])
+      if (lastErr) setError(`Saved ${inserted.length}/${ready.length}. ${lastErr}`)
+      else if (failedLeft) setError(`Saved ${inserted.length}. ${failedLeft} failed slip${failedLeft === 1 ? '' : 's'} still need Fill.`)
+      if (inserted.length) {
+        setProgress({ title: 'Checking results…', detail: 'Auto-grade when ESPN has a final' })
+        await gradeAndReload()
+      }
+    } finally {
+      setSaving(false)
+      setProgress(null)
     }
-    // Keep failed rows in the queue so Ryan can still Fill them.
-    setReviewQueue((prev) => {
-      if (!Array.isArray(prev)) return null
-      const next = prev.filter((item) => item?.status === 'failed')
-      return next.length ? next : null
-    })
-    if (inserted.length) setBets((prev) => [...inserted, ...prev])
-    if (lastErr) setError(`Saved ${inserted.length}/${ready.length}. ${lastErr}`)
-    else if (failedLeft) setError(`Saved ${inserted.length}. ${failedLeft} failed slip${failedLeft === 1 ? '' : 's'} still need Fill.`)
-    if (inserted.length) await gradeAndReload()
-    setSaving(false)
   }
 
   const onSettle = async (id, status) => {
@@ -771,9 +807,23 @@ export default function SportsBetTracker({
     void (async () => {
       setError('')
       setSaving(true)
+      setProgress({
+        title: 'Reading slips…',
+        detail: `0 of ${files.length}`,
+        current: 0,
+        total: files.length,
+      })
       const collected = []
       let nativeOk = false
-      for (const file of files) {
+      try {
+      for (let fi = 0; fi < files.length; fi += 1) {
+        const file = files[fi]
+        setProgress({
+          title: 'Reading slips…',
+          detail: `Photo ${fi + 1} of ${files.length}`,
+          current: fi + 1,
+          total: files.length,
+        })
         const previewUrl = typeof URL !== 'undefined' && URL.createObjectURL
           ? URL.createObjectURL(file)
           : ''
@@ -799,6 +849,12 @@ export default function SportsBetTracker({
         if (ocrErr || !ocrText) {
           failReason = ocrErr || 'No text on that photo'
         } else {
+          setProgress({
+            title: 'Parsing slip…',
+            detail: `Photo ${fi + 1} of ${files.length}`,
+            current: fi + 1,
+            total: files.length,
+          })
           const parsed = parseSportsBetIntake(ocrText).filter(Boolean)
           const candidate = parsed[0] || null
           if (candidate && !isWeakSportsBetDraft(candidate)) {
@@ -818,6 +874,12 @@ export default function SportsBetTracker({
 
         // Heuristic miss / weak → one LLM attempt (text + image when we have them)
         if (!draft && (ocrText || imageBase64) && supabaseClient && userId) {
+          setProgress({
+            title: 'AI reading slip…',
+            detail: `Photo ${fi + 1} of ${files.length} (can take a few seconds)`,
+            current: fi + 1,
+            total: files.length,
+          })
           const llm = await parseSportsBetSlipWithLlm(supabaseClient, {
             text: ocrText,
             imageBase64,
@@ -877,7 +939,6 @@ export default function SportsBetTracker({
           })
         }
       }
-      setSaving(false)
       if (!nativeOk) {
         setError('Photo OCR needs the EdgeTilt app. Paste the slip text instead.')
         setPasteOpen(true)
@@ -894,6 +955,10 @@ export default function SportsBetTracker({
       }
       setReviewQueue(collected)
       setError('')
+      } finally {
+        setSaving(false)
+        setProgress(null)
+      }
     })()
   }
 
@@ -1201,22 +1266,27 @@ export default function SportsBetTracker({
                         Confirm
                       </button>
                     ) : null}
-                    {sportsBetIsAutoGradeable(bet) ? (
-                      <span className="inline-flex items-center rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-[11px] font-semibold text-zinc-500">
-                        Auto-grades when final
-                      </span>
-                    ) : (
-                      ['won', 'lost', 'push', 'void'].map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => void onSettle(bet.id, s)}
-                          className="rounded-lg border border-zinc-700 px-2.5 py-1 text-[11px] font-bold uppercase text-zinc-300 active:bg-zinc-800"
-                        >
-                          {s}
-                        </button>
-                      ))
-                    )}
+                    {(() => {
+                      const autoOk = sportsBetIsAutoGradeable(bet)
+                      const stale = sportsBetAutoGradeLooksStale(bet)
+                      if (!autoOk) {
+                        return ['won', 'lost', 'push', 'void'].map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => void onSettle(bet.id, s)}
+                            className="rounded-lg border border-zinc-700 px-2.5 py-1 text-[11px] font-bold uppercase text-zinc-300 active:bg-zinc-800"
+                          >
+                            {s}
+                          </button>
+                        ))
+                      }
+                      return (
+                        <span className="inline-flex items-center rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-[11px] font-semibold text-zinc-500">
+                          {stale ? 'No final matched yet' : 'Auto-grades when final'}
+                        </span>
+                      )
+                    })()}
                     <button
                       type="button"
                       onClick={() => openTools('hedge', bet)}
@@ -1942,6 +2012,45 @@ export default function SportsBetTracker({
         initialTool={toolsTool}
         seedBet={toolsSeed}
       />
+    ) : null}
+    {progress ? (
+      <div
+        data-sports-bet-progress
+        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 px-6"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <div className="w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-950 px-5 py-6 shadow-xl">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 shrink-0 animate-spin text-cyan-400" aria-hidden />
+            <div className="min-w-0">
+              <p className="text-[15px] font-bold text-white">{progress.title}</p>
+              {progress.detail ? (
+                <p className="mt-0.5 truncate text-sm text-zinc-400">{progress.detail}</p>
+              ) : null}
+            </div>
+          </div>
+          {Number.isFinite(progress.current) && Number.isFinite(progress.total) && progress.total > 0 ? (
+            <div className="mt-4">
+              <div className="mb-1.5 flex justify-between text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                <span>Progress</span>
+                <span>
+                  {progress.current}/{progress.total}
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-cyan-500 transition-[width] duration-300 ease-out"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, (100 * progress.current) / progress.total))}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
     ) : null}
     </>
   )

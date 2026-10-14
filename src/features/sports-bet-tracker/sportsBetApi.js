@@ -271,7 +271,26 @@ export async function gradeOpenSportsBets(supabaseClient) {
   return { resolved: Number(data?.resolved) || 0, error: null }
 }
 
+/**
+ * Markets/sports the Edge grader can actually settle via ESPN boards.
+ * Boxing has no scoreboard path … never promise auto-grade.
+ * UFC/MMA: moneyline only (1-0 person boards).
+ */
 export function sportsBetIsAutoGradeable(bet) {
   const m = String(bet?.market || '')
-  return m === 'spread' || m === 'h2h' || m === 'total'
+  if (m !== 'spread' && m !== 'h2h' && m !== 'total') return false
+  const sk = `${bet?.sport_key || ''} ${bet?.sport_label || ''}`.toLowerCase()
+  if (/\bboxing\b/.test(sk)) return false
+  if (/\bufc\b|\bmma\b|mma_mixed/.test(sk)) return m === 'h2h'
+  // Team sports with ESPN boards (NFL/CFB/NBA/MLB/NHL …)
+  return true
+}
+
+/** Open auto-gradeable bet whose event time is already well in the past. */
+export function sportsBetAutoGradeLooksStale(bet, nowMs = Date.now()) {
+  if (!sportsBetIsAutoGradeable(bet)) return false
+  if (String(bet?.status || 'open') !== 'open') return false
+  const t = bet?.commence_time ? new Date(bet.commence_time).getTime() : NaN
+  if (!Number.isFinite(t)) return false
+  return t < nowMs - 36 * 3600_000
 }

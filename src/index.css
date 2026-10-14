@@ -11782,6 +11782,26 @@ html.light [data-fantasy-home] .bg-sky-500\/10 {
 }
 
 /* Sports bet tracker (light mode) */
+html.light [data-sports-bet-progress] {
+  background: rgba(15, 23, 42, 0.45);
+}
+html.light [data-sports-bet-progress] > div {
+  border-color: #d4d4d8;
+  background: #ffffff;
+}
+html.light [data-sports-bet-progress] .text-white {
+  color: #18181b !important;
+}
+html.light [data-sports-bet-progress] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-sports-bet-progress] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-sports-bet-progress] .bg-zinc-800 {
+  background-color: #e4e4e7 !important;
+}
+
 html.light [data-sports-bet-tracker] h1.text-white,
 html.light [data-sports-bet-tracker] .text-white {
   color: #18181b !important;

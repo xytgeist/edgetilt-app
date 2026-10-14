@@ -76,9 +76,18 @@ function espnMarketKey(market: string): string {
   return m
 }
 
-export function sportsBetIsAutoGradeable(bet: { market?: string | null }): boolean {
+/** Markets/sports ESPN boards can settle. Boxing has no scoreboard path. UFC/MMA: h2h only. */
+export function sportsBetIsAutoGradeable(bet: {
+  market?: string | null
+  sport_key?: string | null
+  sport_label?: string | null
+}): boolean {
   const m = String(bet?.market || '')
-  return m === 'spread' || m === 'h2h' || m === 'total'
+  if (m !== 'spread' && m !== 'h2h' && m !== 'total') return false
+  const sk = `${bet?.sport_key || ''} ${bet?.sport_label || ''}`.toLowerCase()
+  if (/\bboxing\b/.test(sk)) return false
+  if (/\bufc\b|\bmma\b|mma_mixed/.test(sk)) return m === 'h2h'
+  return true
 }
 
 function sideIsHome(bet: SportsBetRow): boolean | null {

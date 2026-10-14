@@ -17,6 +17,7 @@ import {
 } from './sportsBetApi.js'
 import {
   currentSportsBankroll,
+  americanOddsInputString,
   formatAmericanOdds,
   formatLine,
   summarizeBets,
@@ -188,7 +189,9 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     market: prefill.market || 'spread',
     side: prefill.side || (prefill.market === 'prop' || prefill.market === 'total' ? 'over' : 'home'),
     line: prefill.line != null && prefill.line !== '' ? String(prefill.line) : '',
-    odds: prefill.odds != null && prefill.odds !== '' ? String(prefill.odds) : '-110',
+    odds: prefill.odds != null && prefill.odds !== ''
+      ? (americanOddsInputString(prefill.odds) || String(prefill.odds))
+      : '-110',
     stake_units: units,
     stake_dollars: dollars,
     unit_size_dollars: unitSize,
@@ -1200,7 +1203,7 @@ export default function SportsBetTracker({
                           onClick={() => openReviewEdit(item.key)}
                           className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-bold uppercase text-cyan-200"
                         >
-                          Edit
+                          Verify
                         </button>
                         <button
                           type="button"
@@ -1340,7 +1343,7 @@ export default function SportsBetTracker({
                       className="text-[11px] font-bold uppercase text-cyan-400 active:text-cyan-300"
                       onClick={() => setDraft((d) => {
                         const combined = combinedOddsFromLegs(d.legs)
-                        return combined == null ? d : { ...d, odds: String(combined) }
+                        return combined == null ? d : { ...d, odds: americanOddsInputString(combined) }
                       })}
                     >
                       Recompute odds

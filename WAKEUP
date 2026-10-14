@@ -149,6 +149,9 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 ### Mac Theo 2026-10-14 ... Bet Tracker multi-slip + parlays
 **Web `1.4.1140`.** Photo picker `multiple` (cap 8) → review queue (edit / skip / save all). Parlay market: parent `sports_bets` + `sports_bet_legs` (SQL **`20261014160000`**). Parse 2+ leg tickets; composer legs UI; list shows legs; grade rolls up when legs settle. **Promoted** `test` → `main` (`dd809e5c`). SQL + Edge **`sports-bets-grade`** on **test + prod**.
 
+### Mac Theo 2026-10-14 ... Bet Tracker Verify + Event Date +odds
+**Web `1.4.1141`.** Review queue **Verify** (was Edit). Parse `Event Date M/D/YYYY` + bare date-only. Draft odds keep leading `+` (e.g. `+310`).
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.
 

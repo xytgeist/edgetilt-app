@@ -38,7 +38,7 @@ $6,500.00 Straight Bet
 LIGHTWEIGHT TITLE BOUT
 2101  LOPEZ T
 +310 MLB
-10/17/2020
+Event Date 10/17/2020
 Win $20,150.00 to pay $26,650.00
 Ticket Cost $6,500.00
 Internal ID: 258044
@@ -50,9 +50,11 @@ F2C76-E1FF-8055
       stake_dollars: 6500,
       market: 'h2h',
       odds: 310,
+      odds_string: '+310',
       selection_includes: 'Lopez',
       sport_label: 'Boxing',
       sport_key: 'boxing_boxing',
+      commence_date: '2020-10-17',
     },
   },
   {
@@ -231,6 +233,12 @@ for (const fx of fixtures) {
     }
     if (e.market) assert(d.market === e.market, `${fx.name}: market want ${e.market} got ${d.market}`)
     if (e.odds != null) assert(Number(d.odds) === e.odds, `${fx.name}: odds want ${e.odds} got ${d.odds}`)
+    if (e.odds_string != null) {
+      assert(
+        String(d.odds) === e.odds_string,
+        `${fx.name}: odds string want ${e.odds_string} got ${d.odds}`,
+      )
+    }
     if (e.selection_includes) {
       assert(
         String(d.selection_label).toLowerCase().includes(e.selection_includes.toLowerCase()),

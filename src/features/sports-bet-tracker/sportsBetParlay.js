@@ -3,6 +3,7 @@
  */
 
 import { parlayFromOdds } from './sportsBetCalcMath.js'
+import { americanOddsInputString } from './sportsBetMath.js'
 
 export function isParlayDraft(draft) {
   return String(draft?.market || '') === 'parlay'
@@ -23,7 +24,9 @@ export function normalizeParlayLegs(legs) {
       side: leg?.side ? String(leg.side) : '',
       selection_label: String(leg?.selection_label || '').trim() || `Leg ${i + 1}`,
       line: leg?.line != null && leg.line !== '' ? String(leg.line) : '',
-      odds: leg?.odds != null && leg.odds !== '' ? String(leg.odds) : '',
+      odds: leg?.odds != null && leg.odds !== ''
+        ? (americanOddsInputString(leg.odds) || String(leg.odds))
+        : '',
       player_name: leg?.player_name ? String(leg.player_name) : '',
       prop_stat: leg?.prop_stat ? String(leg.prop_stat) : '',
       status: leg?.status ? String(leg.status) : 'open',

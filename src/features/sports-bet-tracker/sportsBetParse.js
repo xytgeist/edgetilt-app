@@ -9,6 +9,7 @@ import {
   SPORTS_BET_SPORT_UFC,
   sportByKey,
 } from './sportsBetSports.js'
+import { americanOddsInputString } from './sportsBetMath.js'
 import {
   combinedOddsFromLegs,
   normalizeParlayLegs,
@@ -338,14 +339,24 @@ function extractCommenceTime(text) {
 
   for (const line of lines) {
     let score = 1
-    if (/ticket\s*cost|printed|transaction|slip\s*id|book\s+\d/i.test(line)) score -= 2
+    if (/ticket\s*cost|printed|transaction|slip\s*id|book\s+\d|internal\s*id/i.test(line)) score -= 2
     if (/(?:@|\bvs\.?\b)/i.test(line) || /\bnfl\b|\bufc\b|event\s*start/i.test(line)) score += 3
+    if (/\bevent\s*date\b/i.test(line)) score += 6
     if (/january|february|march|april|may|june|july|august|september|october|november|december/i.test(line)) {
       score += 1
     }
 
+    // Event Date 10/17/2020  (explicit label … highest confidence date-only)
+    let m = /\bevent\s*date\s*[:=]?\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/i.exec(line)
+    if (m) {
+      let y = Number(m[3])
+      if (y < 100) y += 2000
+      push(toIsoLocal(y, Number(m[1]) - 1, Number(m[2]), 12, 0), score + 2)
+      continue
+    }
+
     // 2/2/2020 3:30 PM
-    let m = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i.exec(line)
+    m = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i.exec(line)
     if (m) {
       let y = Number(m[3])
       if (y < 100) y += 2000
@@ -389,6 +400,18 @@ function extractCommenceTime(text) {
       if (y < 100) y += 2000
       const { h, mi } = parseAmPmTime(m[4], m[5], m[6])
       push(toIsoLocal(y, Number(m[1]) - 1, Number(m[2]), h, mi), score)
+      continue
+    }
+
+    // Bare date-only 10/17/2020 (noon). Boost when slip has Event Date / fight context.
+    m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(line)
+    if (m) {
+      let y = Number(m[3])
+      if (y < 100) y += 2000
+      let dateScore = score
+      if (/\bevent\s*date\b/i.test(raw)) dateScore += 5
+      if (/\b(fight|bout|title|ufc|boxing|mma)\b/i.test(raw)) dateScore += 1
+      push(toIsoLocal(y, Number(m[1]) - 1, Number(m[2]), 12, 0), dateScore)
     }
   }
 
@@ -675,7 +698,7 @@ function draftFromBits({
     market: marketFinal,
     side: marketFinal === 'parlay' ? '' : (sd || 'home'),
     line: ln != null && ln !== '' ? String(ln) : '',
-    odds: String(american),
+    odds: americanOddsInputString(american),
     stake_units: units != null ? String(units) : '',
     stake_dollars: dollars != null ? String(dollars) : '',
     selection_label: label,
@@ -725,7 +748,7 @@ function legStubFromSelection(sel, odds, rawSport) {
     market,
     side: details.side || '',
     line: details.line != null && details.line !== '' ? String(details.line) : '',
-    odds: String(odds),
+    odds: americanOddsInputString(odds),
     selection_label: details.selection_label || selection,
     player_name: details.player_name || '',
     prop_stat: details.prop_stat || '',

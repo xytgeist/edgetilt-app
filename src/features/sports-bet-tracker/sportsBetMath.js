@@ -28,6 +28,14 @@ export function formatAmericanOdds(odds) {
   return o > 0 ? `+${o}` : `${o}`
 }
 
+/** Composer / draft string … always keep `+` on positive American odds. */
+export function americanOddsInputString(odds) {
+  const o = Number(odds)
+  if (!Number.isFinite(o) || o === 0) return ''
+  const n = Math.round(o)
+  return n > 0 ? `+${n}` : `${n}`
+}
+
 /** Implied probability 0-1 (Kalshi/Poly cents) → American odds. */
 export function americanFromImplied(prob) {
   const p = Number(prob)

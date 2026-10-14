@@ -79,11 +79,16 @@ class MainActivity : Activity() {
       }
       return
     }
-    // App Links / VIEW: only allowed HTTPS paths (then rewrite share permalinks like the IPA).
-    // Push / call intents may still pass other in-app URIs via staysInApp.
+    // App Links / VIEW: allowed HTTPS paths (rewrite share permalinks like the IPA).
+    // Custom-scheme handoffs (live-session notif, yahoo-oauth, …) must map to https SPA
+    // URLs here too … onNewIntent already did; cold start used to fall through to BASE_URL
+    // (Lounge) and drop ?tab=bankroll.
     val start =
       EdgeLinks.appLinkLoadUri(intent?.data)?.toString()
         ?: intent?.data?.takeIf { EdgeLinks.staysInApp(it) }?.toString()
+        ?: intent?.data
+          ?.takeIf { EdgeLinks.isEdgeCustomScheme(it) }
+          ?.let { EdgeLinks.httpsFromCustomScheme(it)?.toString() }
         ?: BuildConfig.BASE_URL
     if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
       webView.loadUrl(start)

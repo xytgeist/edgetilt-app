@@ -14,8 +14,8 @@ import {
  *
  * Shell mirrors ChatBubble's "isMine + isGroupEnd + single video" path:
  *   row flex-row-reverse → column w-[78%] items-end →
- *   bubble chat-bubble-surface p-[3px] rounded-2xl blue →
- *   media tile rounded-[13px] w-full + encoded aspect →
+ *   bubble chat-bubble-surface p-[3px] rounded-2xl blue w-fit →
+ *   media tile rounded-[13px] shrink-wrapped to aspect (max height) →
  *   blue tail SVG bottom-right
  */
 
@@ -147,12 +147,12 @@ export default function ChatVideoPrepBubble({ job, onCancel, onRetry }) {
     /* Row - mirrors ChatBubble's outer row for a sent (isMine) message */
     <div className="flex items-end gap-2 flex-row-reverse">
 
-      {/* Column - same 78% width cap as a delivered single-video bubble */}
+      {/* Column - same 78% cap as a delivered single-video bubble (tile maxWidth basis) */}
       <div className={`flex flex-col gap-1 items-end ${CHAT_MESSAGE_COLUMN_WIDTH_CLASS}`}>
 
         {/* Bubble surface - exactly mirrors the blue p-[3px] media bubble */}
         <div
-          className="chat-bubble-surface relative w-full select-none text-[16px] leading-snug p-[3px] text-white"
+          className="chat-bubble-surface relative w-fit max-w-full select-none text-[16px] leading-snug p-[3px] text-white"
           style={{
             backgroundColor: '#3b82f6',
             borderRadius: bubbleRadius,

@@ -1,8 +1,17 @@
-/** Matches ChatBubble sent/received message column cap. */
+/**
+ * Message column cap. Single-video keeps this width as the `maxWidth: 100%`
+ * containing block; the blue bubble itself is `w-fit` so portrait tiles shrink.
+ */
 export const CHAT_MESSAGE_COLUMN_WIDTH_CLASS = 'w-[78%] max-w-[78%]'
 
 /** WhatsApp-style media grid floor - same as ChatMediaGrid. */
 export const CHAT_MEDIA_TILE_MIN_WIDTH_PX = 160
+
+/**
+ * Max height for a single chat video tile. Width = min(column, maxH × aspect).
+ * Portrait clips shrink narrower; landscape stays column-wide and shorter.
+ */
+export const CHAT_VIDEO_TILE_MAX_HEIGHT_PX = 360
 
 /** Phone portrait clips before metadata arrives (encode box is 1280×720 max). */
 export const CHAT_VIDEO_DEFAULT_ASPECT_RATIO = 9 / 16
@@ -20,13 +29,16 @@ export function chatVideoTileAspectRatio(width, height) {
 
 /**
  * Inline style for a single chat video tile (prep bubble + delivered bubble).
+ * Shrink-wraps to aspect within {@link CHAT_VIDEO_TILE_MAX_HEIGHT_PX}.
  *
  * @param {{ width?: number | null, height?: number | null }} [dims]
  */
 export function chatVideoTileStyle(dims = {}) {
+  const ar = chatVideoTileAspectRatio(dims.width, dims.height)
+  const idealW = Math.round(CHAT_VIDEO_TILE_MAX_HEIGHT_PX * ar)
   return {
-    width: '100%',
-    minWidth: CHAT_MEDIA_TILE_MIN_WIDTH_PX,
-    aspectRatio: chatVideoTileAspectRatio(dims.width, dims.height),
+    width: Math.max(CHAT_MEDIA_TILE_MIN_WIDTH_PX, idealW),
+    maxWidth: '100%',
+    aspectRatio: ar,
   }
 }

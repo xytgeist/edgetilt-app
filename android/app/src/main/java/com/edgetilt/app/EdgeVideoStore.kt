@@ -11,8 +11,14 @@ import java.io.FileOutputStream
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-/** On-disk cache for native pick/export assets (`edge-video://local/<id>`). */
+/**
+ * On-disk cache for native pick/export assets.
+ * Preview URL is same-origin HTTPS (`/__edge_native_video__/<id>`) so Android WebView
+ * media can load it via `shouldInterceptRequest` (custom `edge-video://` is unreliable).
+ */
 object EdgeVideoStore {
+  /** Path prefix on [BuildConfig.BASE_URL] for trim-player intercept. */
+  const val PREVIEW_PATH_PREFIX = "/__edge_native_video__/"
   data class Asset(
     val id: String,
     val file: File,
@@ -114,7 +120,25 @@ object EdgeVideoStore {
     }
   }
 
-  fun previewUrl(id: String): String = "edge-video://local/${id.trim()}"
+  fun previewUrl(id: String): String {
+    val base = BuildConfig.BASE_URL.trimEnd('/')
+    return "$base$PREVIEW_PATH_PREFIX${id.trim()}"
+  }
+
+  /** Asset id from `edge-video://local/<id>` or `https://…/__edge_native_video__/<id>`. */
+  fun assetIdFromPreviewUri(uri: android.net.Uri): String? {
+    val scheme = uri.scheme?.lowercase() ?: return null
+    if (scheme == "edge-video") {
+      if ((uri.host ?: "") != "local") return null
+      return uri.path?.trim('/')?.takeIf { it.isNotEmpty() }
+    }
+    if (scheme == "https" || scheme == "http") {
+      val path = uri.path ?: return null
+      if (!path.startsWith(PREVIEW_PATH_PREFIX)) return null
+      return path.removePrefix(PREVIEW_PATH_PREFIX).trim('/').takeIf { it.isNotEmpty() }
+    }
+    return null
+  }
 
   data class Probe(val durationSec: Double, val width: Int, val height: Int, val posterJpegBase64: String)
 

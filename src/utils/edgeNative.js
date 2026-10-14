@@ -657,9 +657,14 @@ export function nativeVideoPosterDataUrl(asset) {
   return `data:image/jpeg;base64,${raw}`
 }
 
-/** Local shell file URL. Never use this as an `<img>` or composer `<video>` src. */
+/**
+ * Local shell file URL (IPA `edge-video://…`, Android same-origin `/__edge_native_video__/…`).
+ * Never use this as an `<img>` or composer `<video>` src … trim modal only.
+ */
 export function isEdgeVideoLocalUrl(url) {
-  return String(url || '').trim().toLowerCase().startsWith('edge-video:')
+  const s = String(url || '').trim().toLowerCase()
+  if (s.startsWith('edge-video:')) return true
+  return s.includes('/__edge_native_video__/')
 }
 
 /**

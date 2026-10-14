@@ -218,41 +218,50 @@ class EdgeVideoNative(
     return JSONObject().put("ok", true).toString()
   }
 
-  /** Serve `edge-video://local/<id>` for the trim player (Range supported). */
+  /**
+   * Serve native trim-player bytes.
+   * Prefer same-origin HTTPS `/__edge_native_video__/<id>` (HTML5 media works).
+   * Also keeps `edge-video://local/<id>` for older payloads.
+   *
+   * Android WebView re-applies `Range` by skipping into the intercepted stream even when
+   * we already returned a 206 slice (Chromium / wry#1864). Pad 206 bodies so that skip
+   * lands on the real first byte.
+   */
   fun intercept(request: WebResourceRequest): WebResourceResponse? {
     val url = request.url ?: return null
-    if (url.scheme != "edge-video") return null
-    val host = url.host ?: ""
-    if (host != "local") return WebResourceResponse("text/plain", "utf-8", null)
+    val id = EdgeVideoStore.assetIdFromPreviewUri(url) ?: return null
     val accept = (request.requestHeaders["Accept"] ?: request.requestHeaders["accept"] ?: "").lowercase()
     if (accept.contains("image/") && !accept.contains("video/")) {
       return WebResourceResponse("text/plain", "utf-8", null)
     }
-    val id = url.path?.trim('/') ?: ""
     val file = EdgeVideoStore.fileURL(activity, id) ?: return WebResourceResponse("text/plain", "utf-8", null)
-    val total = file.length().toInt()
-    if (total <= 0) return WebResourceResponse("text/plain", "utf-8", null)
+    val totalLong = file.length()
+    if (totalLong <= 0L) return WebResourceResponse("text/plain", "utf-8", null)
     val mime = when (file.extension.lowercase()) {
       "mp4", "m4v" -> "video/mp4"
       "mov" -> "video/quicktime"
       else -> "application/octet-stream"
     }
     val range = request.requestHeaders["Range"] ?: request.requestHeaders["range"]
-    var start = 0
-    var end = total - 1
+    var start = 0L
+    var end = totalLong - 1
     var status = 200
     if (!range.isNullOrBlank()) {
-      val parsed = parseRange(range, total)
+      val parsed = parseRange(range, totalLong)
       if (parsed == null) {
-        val headers = mapOf("Content-Range" to "bytes */$total")
+        val headers = mapOf("Content-Range" to "bytes */$totalLong")
         return WebResourceResponse("text/plain", "utf-8", 416, "Range Not Satisfiable", headers, null)
       }
       start = parsed.first
       end = parsed.second
       status = 206
     }
-    val length = end - start + 1
-    val stream = FileInputStream(file).also { it.skip(start.toLong()) }
+    val length = (end - start + 1).coerceAtLeast(0)
+    val raw = FileInputStream(file).also { it.skip(start) }
+    val bounded = BoundedInputStream(raw, length)
+    // WebView will skip `start` bytes again on our already-sliced 206 body.
+    val body: java.io.InputStream =
+      if (status == 206 && start > 0) RangeDoubleSkipPadStream(bounded, start) else bounded
     val headers = mutableMapOf(
       "Content-Type" to mime,
       "Accept-Ranges" to "bytes",
@@ -260,8 +269,9 @@ class EdgeVideoNative(
       "Access-Control-Allow-Origin" to "*",
       "Cache-Control" to "no-store",
     )
-    if (status == 206) headers["Content-Range"] = "bytes $start-$end/$total"
-    return WebResourceResponse(mime, null, status, "OK", headers, BoundedInputStream(stream, length.toLong()))
+    if (status == 206) headers["Content-Range"] = "bytes $start-$end/$totalLong"
+    val reason = if (status == 206) "Partial Content" else "OK"
+    return WebResourceResponse(mime, null, status, reason, headers, body)
   }
 
   // MARK: - Export
@@ -717,21 +727,21 @@ class EdgeVideoNative(
     return n
   }
 
-  private fun parseRange(header: String, total: Int): Pair<Int, Int>? {
+  private fun parseRange(header: String, total: Long): Pair<Long, Long>? {
     val raw = header.trim()
     if (!raw.lowercase().startsWith("bytes=")) return null
     val spec = raw.substring(6).split(",").firstOrNull() ?: return null
     val parts = spec.split("-", limit = 2)
     if (parts.size != 2) return null
     if (parts[0].isEmpty()) {
-      val suffix = parts[1].toIntOrNull() ?: return null
+      val suffix = parts[1].toLongOrNull() ?: return null
       if (suffix <= 0) return null
       val len = min(suffix, total)
       return (total - len) to (total - 1)
     }
-    val start = parts[0].toIntOrNull() ?: return null
+    val start = parts[0].toLongOrNull() ?: return null
     if (start < 0 || start >= total) return null
-    val end = if (parts[1].isEmpty()) total - 1 else min(parts[1].toIntOrNull() ?: (total - 1), total - 1)
+    val end = if (parts[1].isEmpty()) total - 1 else min(parts[1].toLongOrNull() ?: (total - 1), total - 1)
     if (end < start) return null
     return start to end
   }
@@ -773,6 +783,57 @@ class EdgeVideoNative(
       val n = super.read(b, off, min(len.toLong(), remaining).toInt())
       if (n > 0) remaining -= n
       return n
+    }
+
+    override fun available(): Int = 0
+  }
+
+  /**
+   * Chromium skips `rangeStart` bytes on intercepted responses even when the body is
+   * already a 206 slice. Expose that many skippable pad bytes first.
+   */
+  private class RangeDoubleSkipPadStream(
+    private val sliced: java.io.InputStream,
+    rangeStart: Long,
+  ) : java.io.InputStream() {
+    private var padLeft = rangeStart.coerceAtLeast(0)
+
+    override fun read(): Int {
+      if (padLeft > 0) {
+        padLeft--
+        return 0
+      }
+      return sliced.read()
+    }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+      if (len <= 0) return 0
+      if (padLeft > 0) {
+        val n = min(len.toLong(), padLeft).toInt()
+        java.util.Arrays.fill(b, off, off + n, 0)
+        padLeft -= n
+        if (padLeft > 0 || n == len) return n
+        val m = sliced.read(b, off + n, len - n)
+        return if (m < 0) n else n + m
+      }
+      return sliced.read(b, off, len)
+    }
+
+    override fun skip(n: Long): Long {
+      if (n <= 0) return 0
+      if (padLeft > 0) {
+        val fromPad = min(n, padLeft)
+        padLeft -= fromPad
+        if (fromPad == n) return fromPad
+        return fromPad + sliced.skip(n - fromPad)
+      }
+      return sliced.skip(n)
+    }
+
+    override fun available(): Int = 0
+
+    override fun close() {
+      sliced.close()
     }
   }
 

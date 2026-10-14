@@ -385,3 +385,94 @@ export function setEdgeAndroidAudioRoute(args) {
     return { ok: false, via: 'error' }
   }
 }
+
+const VIDEO_RESULT_EVENT = 'edge-android-video-result'
+
+/** True when this APK ships the full native video stack (Lounge + Chat share this gate). */
+export function canPickEdgeAndroidVideo() {
+  const b = bridge()
+  if (!b) return false
+  return (
+    typeof b.pickEdgeVideo === 'function' &&
+    typeof b.exportEdgeVideo === 'function' &&
+    typeof b.uploadEdgeVideoTus === 'function' &&
+    typeof b.uploadEdgeVideoPut === 'function' &&
+    typeof b.cancelEdgeVideo === 'function'
+  )
+}
+
+function newVideoRequestId() {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID().replace(/-/g, '')
+    }
+  } catch {
+    // fall through
+  }
+  return `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`
+}
+
+/**
+ * Async EdgeAndroid video method. Native returns `{ started, requestId }` immediately;
+ * completion is `edge-android-video-result` with the same `requestId`.
+ *
+ * @param {'pickEdgeVideo' | 'exportEdgeVideo' | 'uploadEdgeVideoTus' | 'uploadEdgeVideoPut'} method
+ * @param {Record<string, unknown>} [payload]
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export function invokeEdgeAndroidVideo(method, payload = {}) {
+  const b = bridgeWith(method)
+  if (!b) return Promise.resolve({ ok: false, error: 'noop' })
+  const requestId = newVideoRequestId()
+  return new Promise((resolve) => {
+    let done = false
+    const finish = (detail) => {
+      if (done) return
+      done = true
+      window.removeEventListener(VIDEO_RESULT_EVENT, onResult)
+      window.clearTimeout(timer)
+      resolve(detail && typeof detail === 'object' ? detail : { ok: false })
+    }
+    const onResult = (event) => {
+      const detail = event?.detail || {}
+      if (String(detail.requestId || '') !== requestId) return
+      finish(detail)
+    }
+    // Long encodes + uploads (lock screen / FG).
+    const timer = window.setTimeout(
+      () => finish({ ok: false, error: 'timeout', requestId }),
+      45 * 60_000,
+    )
+    window.addEventListener(VIDEO_RESULT_EVENT, onResult)
+    try {
+      const raw = b[method](JSON.stringify({ ...(payload || {}), requestId }))
+      const started = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+      if (started?.ok === false && started?.started !== true) {
+        finish({
+          ok: false,
+          error: typeof started?.error === 'string' ? started.error : 'Could not start',
+          requestId,
+        })
+      }
+    } catch {
+      finish({ ok: false, error: 'Could not start', requestId })
+    }
+  })
+}
+
+/**
+ * @param {string} [assetId]
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export async function cancelEdgeAndroidVideo(assetId) {
+  const b = bridgeWith('cancelEdgeVideo')
+  if (!b) return { ok: false }
+  try {
+    const id = String(assetId || '').trim()
+    const raw = b.cancelEdgeVideo(JSON.stringify(id ? { assetId: id } : {}))
+    const result = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+    return { ok: result?.ok !== false }
+  } catch {
+    return { ok: false }
+  }
+}

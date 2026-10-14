@@ -8,9 +8,12 @@
 
 import {
   canEdgeAndroidHaptic,
+  canPickEdgeAndroidVideo,
   canShareEdgeAndroid,
   canStartEdgeAndroidWebAuthSession,
   canSyncEdgeAndroidLiveBankrollActivity,
+  cancelEdgeAndroidVideo,
+  invokeEdgeAndroidVideo,
   isEdgeAndroidShell,
   shareEdgeAndroid,
   startEdgeAndroidWebAuthSession,
@@ -619,26 +622,30 @@ export async function pickEdgePhotos(payload = {}) {
 }
 
 /**
- * True when this IPA can pick a video as a file URL instead of a JS `File`.
+ * True when this IPA / APK can pick a video as a file URL instead of a JS `File`.
  * Old binaries and PWA are false. Those keep `<input type="file">` and ffmpeg.
+ * Android requires pick+export+tus+put+cancel so Lounge and Chat cannot half-arm.
  * @returns {boolean}
  */
 export function canPickEdgeVideo() {
-  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  if (typeof window === 'undefined') return false
+  if (canPickEdgeAndroidVideo()) return true
+  if (!isEdgeiOSShell()) return false
   return typeof window.EdgeNative?.pickEdgeVideo === 'function'
     && typeof window.EdgeNative?.exportEdgeVideo === 'function'
     && typeof window.EdgeNative?.uploadEdgeVideoTus === 'function'
 }
 
 /**
- * PHPicker video. Cancel returns `{ ok: false, cancelled: true }`.
+ * PHPicker / Android system picker video. Cancel returns `{ ok: false, cancelled: true }`.
  * A hit returns `{ assetId, previewUrl, duration, width, height, posterJpegBase64 }`.
- * `previewUrl` is `edge-video://…` and only plays inside the IPA.
+ * `previewUrl` is `edge-video://…` and only plays inside the shell.
  *
  * @param {{ purpose?: string }} [payload]
  * @returns {Promise<Record<string, unknown>>}
  */
 export async function pickEdgeVideo(payload = {}) {
+  if (canPickEdgeAndroidVideo()) return invokeEdgeAndroidVideo('pickEdgeVideo', payload)
   return edgeNativeInvoke('pickEdgeVideo', payload)
 }
 
@@ -650,7 +657,7 @@ export function nativeVideoPosterDataUrl(asset) {
   return `data:image/jpeg;base64,${raw}`
 }
 
-/** Local IPA file URL. Never use this as an `<img>` or composer `<video>` src. */
+/** Local shell file URL. Never use this as an `<img>` or composer `<video>` src. */
 export function isEdgeVideoLocalUrl(url) {
   return String(url || '').trim().toLowerCase().startsWith('edge-video:')
 }
@@ -661,6 +668,7 @@ export function isEdgeVideoLocalUrl(url) {
  * @param {Record<string, unknown>} payload
  */
 export async function exportEdgeVideo(payload) {
+  if (canPickEdgeAndroidVideo()) return invokeEdgeAndroidVideo('exportEdgeVideo', payload)
   return edgeNativeInvoke('exportEdgeVideo', payload)
 }
 
@@ -671,11 +679,13 @@ export async function exportEdgeVideo(payload) {
  * @param {Record<string, unknown>} payload
  */
 export async function uploadEdgeVideoTus(payload) {
+  if (canPickEdgeAndroidVideo()) return invokeEdgeAndroidVideo('uploadEdgeVideoTus', payload)
   return edgeNativeInvoke('uploadEdgeVideoTus', payload)
 }
 
 /** PUT an exported MP4 to a presigned URL (chat R2). */
 export async function uploadEdgeVideoPut(payload) {
+  if (canPickEdgeAndroidVideo()) return invokeEdgeAndroidVideo('uploadEdgeVideoPut', payload)
   return edgeNativeInvoke('uploadEdgeVideoPut', payload)
 }
 
@@ -683,6 +693,7 @@ export async function cancelEdgeVideo(assetId) {
   if (!canPickEdgeVideo()) return { ok: false }
   const id = String(assetId || '').trim()
   try {
+    if (canPickEdgeAndroidVideo()) return await cancelEdgeAndroidVideo(id)
     return await edgeNativeInvoke('cancelEdgeVideo', id ? { assetId: id } : null)
   } catch {
     return { ok: false }

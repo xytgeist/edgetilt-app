@@ -24,6 +24,7 @@ import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -36,6 +37,7 @@ class MainActivity : Activity() {
   private lateinit var webView: WebView
   private var fileCallback: ValueCallback<Array<Uri>>? = null
   private lateinit var videoPrep: EdgeVideoPrep
+  private lateinit var edgeVideo: EdgeVideoNative
   private var pendingMediaRequest: PermissionRequest? = null
   private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
   /** The JS bridge only answers while the main frame is on our own site (not Supabase / Google auth hops). */
@@ -55,6 +57,7 @@ class MainActivity : Activity() {
     root.addView(webView, FrameLayout.LayoutParams(-1, -1))
     setContentView(root)
     videoPrep = EdgeVideoPrep(this, root)
+    edgeVideo = EdgeVideoNative(this) { event, detail -> deliverWindowEvent(event, detail) }
     applySystemInsets(root)
 
     webView.settings.apply {
@@ -269,6 +272,10 @@ class MainActivity : Activity() {
       }
     }
 
+    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+      return edgeVideo.intercept(request) ?: super.shouldInterceptRequest(view, request)
+    }
+
     override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
       recreate()
       return true
@@ -423,6 +430,37 @@ class MainActivity : Activity() {
         JSONObject().put("ok", false).put("error", e.message ?: "failed").toString()
       }
     }
+
+    /** Lounge/Chat native video pick. Completes via `edge-android-video-result`. */
+    @JavascriptInterface
+    fun pickEdgeVideo(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
+      return edgeVideo.pick(json.ifBlank { "{}" })
+    }
+
+    @JavascriptInterface
+    fun exportEdgeVideo(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
+      return edgeVideo.export(json.ifBlank { "{}" })
+    }
+
+    @JavascriptInterface
+    fun uploadEdgeVideoTus(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
+      return edgeVideo.uploadTus(json.ifBlank { "{}" })
+    }
+
+    @JavascriptInterface
+    fun uploadEdgeVideoPut(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
+      return edgeVideo.uploadPut(json.ifBlank { "{}" })
+    }
+
+    @JavascriptInterface
+    fun cancelEdgeVideo(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).toString()
+      return edgeVideo.cancel(json.ifBlank { "{}" })
+    }
   }
 
   /** Styles match the IPA's `triggerHaptic`. */
@@ -538,6 +576,10 @@ class MainActivity : Activity() {
 
   @Deprecated("Platform Activity result")
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    if (requestCode == EdgeVideoNative.REQ_PICK) {
+      edgeVideo.onPickResult(resultCode, data)
+      return
+    }
     if (requestCode != REQ_FILES) {
       super.onActivityResult(requestCode, resultCode, data)
       return

@@ -53,7 +53,7 @@ Bump `versionCode` every upload. Org account + Play App Signing + internal track
 - **Upload key:** `33:56:43:97:85:D1:4C:AD:1B:CF:E8:89:34:31:8E:04:98:2B:AB:85:1C:D6:20:1B:0D:51:EE:41:B4:8D:7D:36`
 - **Debug:** `26:4E:6A:82:56:0F:D2:1D:8F:1A:67:13:F5:33:8E:04:97:16:A3:52:1B:C8:9C:07:14:12:33:95:0F:87:92:E3`
 
-All three for `com.edgetilt.app` live in `public/.well-known/assetlinks.json`. Play Console org: **DIGIVERSE VENTURES LLC** / `play@digiverse.ventures` (developer `8014913311107911454`). App **Edge Tilt** internal testing: **15 (1.3.11)** published 2026-10-13; **16 (1.3.12)** owed (notif https + extras).
+All three for `com.edgetilt.app` live in `public/.well-known/assetlinks.json`. Play Console org: **DIGIVERSE VENTURES LLC** / `play@digiverse.ventures` (developer `8014913311107911454`). App **Edge Tilt** internal testing: **16 (1.3.12)** live-session notif; **17 (1.3.13)** native Lounge/Chat video (upload owed).
 
 ## App Links
 
@@ -82,8 +82,13 @@ Web side: `src/utils/edgeAndroid.js` (`isEdgeAndroidShell()` = UA has `EdgeAndro
 | `setAudioRoute(json)` | In-call earpiece ↔ speakerphone via `AudioManager` (`MODE_IN_COMMUNICATION` + `isSpeakerphoneOn`). `json` = `{ route: 'speaker' \| 'earpiece' }`. Returns JSON `{ ok, route }`. APK **1.3.5+**. Web: `chatCallAudioOutput.js` calls this on every Speaker tap in the EdgeAndroid shell (phantom mic restart still runs as backup). |
 | `startWebAuthSession(json)` | Chrome Custom Tabs OAuth (IPA `ASWebAuthenticationSession` twin). `json` = `{ url, callbackScheme? }` (default scheme `edgetilt`). Returns JSON `{ ok, started?, via?, error? }` immediately; completion is window event `edge-android-webauth` with `{ ok, url?, cancelled?, error? }`. APK **1.3.7+**. Web: `startEdgeWebAuthSession` / `nativeGoogleOAuth.js` (EdgeTilt Google sign-in + Fantasy Yahoo). |
 | `syncLiveBankrollActivity(json)` | Live slots / poker session ongoing notification (iOS ActivityKit twin). `json` = `{ slots?, poker? }` (same payload as IPA). Empty ids clear. Tap → `https://…/?tab=bankroll\|poker-bankroll` + Intent extra (APK **1.3.12+**; older builds used `edgetilt://live-session`). Android 16+ Live Update promotion. Handoff beats WebView restore; warm uses popstate + retry `edge-live-session-open`. Web: `syncEdgeLiveBankrollActivity`. |
+| `pickEdgeVideo(json)` | IPA twin. `json` = `{ purpose?, maxSourceBytes?, maxUploadBytes?, maxClipSeconds?, requestId? }`. Starts system video picker; completes with window event `edge-android-video-result` `{ requestId, ok, cancelled?, assetId?, previewUrl?, duration?, width?, height?, byteSize?, posterJpegBase64?, error? }`. Progress N/A. Preview `edge-video://local/<id>` is served by the shell WebView (trim player). APK **1.3.13+**. |
+| `exportEdgeVideo(json)` | IPA twin. Trim/crop/re-encode via Media3 under a `dataSync` foreground service. Completes via `edge-android-video-result`. Progress: `edge-native-video-progress` `{ phase, progress, assetId }` (`checking` / `encoding`). APK **1.3.13+**. |
+| `uploadEdgeVideoTus(json)` | Lounge Stream tus (create Edge + PATCH). Completes via `edge-android-video-result`. Progress phase `upload`. APK **1.3.13+**. |
+| `uploadEdgeVideoPut(json)` | Chat R2 PUT to a presigned URL. Completes via `edge-android-video-result`. Progress phase `upload`. APK **1.3.13+**. |
+| `cancelEdgeVideo(json)` | `{ assetId? }` cancels in-flight encode/upload (and pending pick). Returns JSON `{ ok: true }`. APK **1.3.13+**. |
 
-Web feature-detects each newer method (`typeof EdgeAndroid.share === 'function'`), so older sideloaded APKs keep the web fallbacks. `shareViaBestAvailable`, `triggerEdgeNativeHaptic`, tap haptics and the composer portrait lock route to these automatically. Call ring: `src/utils/edgeCallKit.js` routes `reportEdgeIncomingCall` / listeners / `markEdgeCallKitWebReady` to Android when those methods exist; media stays web LiveKit (not a native LiveKit SDK).
+Web feature-detects each newer method (`typeof EdgeAndroid.share === 'function'`), so older sideloaded APKs keep the web fallbacks. **Native video:** `canPickEdgeVideo()` is true on EdgeAndroid only when pick+export+tus+**put**+cancel all exist (Lounge and Chat share that gate). File-chooser MOV prep (`EdgeVideoPrep`) stays as fallback. `shareViaBestAvailable`, `triggerEdgeNativeHaptic`, tap haptics and the composer portrait lock route to these automatically. Call ring: `src/utils/edgeCallKit.js` routes `reportEdgeIncomingCall` / listeners / `markEdgeCallKitWebReady` to Android when those methods exist; media stays web LiveKit (not a native LiveKit SDK).
 
 ## Permissions after sign-in
 
@@ -103,7 +108,7 @@ Web: `src/utils/edgeNativePush.js` routes Lounge Settings / Offers reminders to 
 
 ## Native parity roadmap
 
-Ryan (2026-09-29): bring the IPA's native wins to Android. Priority order and checkboxes live in `docs/test-buildout-backlog.md` → **Android** → *Native parity roadmap*. **Shipped:** call ring, MOV prep, share, photo picker, haptics / orientation, audio route, App Links, Google Custom Tabs, live-session notification / Live Updates (1.3.9). **Next native:** background Lounge video upload, ML Kit scan / OCR, shortcuts + widget. Add each new `window.EdgeAndroid` method to the bridge table above before the web side calls it.
+Ryan (2026-09-29): bring the IPA's native wins to Android. Priority order and checkboxes live in `docs/test-buildout-backlog.md` → **Android** → *Native parity roadmap*. **Shipped:** call ring, MOV prep, share, photo picker, haptics / orientation, audio route, App Links, Google Custom Tabs, live-session notification / Live Updates (1.3.9), **native Lounge/Chat video pick+export+tus/PUT under FG service (1.3.13)**. **Next native:** ML Kit scan / OCR, shortcuts + widget. Add each new `window.EdgeAndroid` method to the bridge table above before the web side calls it.
 
 **Device debugging:** phone on USB with USB debugging on, `adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof com.edgetilt.app)`, then any CDP client on `localhost:9222` (both the main WebView and bet sheet / popup WebViews show up as targets).
 

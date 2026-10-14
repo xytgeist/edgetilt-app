@@ -23,8 +23,8 @@ android {
     applicationId = "com.edgetilt.app"
     minSdk = 28
     targetSdk = 36
-    versionCode = 16
-    versionName = "1.3.12"
+    versionCode = 17
+    versionName = "1.3.13"
   }
 
   buildFeatures {

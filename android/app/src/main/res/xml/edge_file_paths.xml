@@ -2,4 +2,5 @@
 <paths>
   <cache-path name="share" path="share/" />
   <cache-path name="video" path="video/" />
+  <cache-path name="edge-video" path="edge-video/" />
 </paths>

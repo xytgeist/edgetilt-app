@@ -749,6 +749,7 @@ export default function ChatComposer({
                   file: null,
                   previewUrl: String(picked.previewUrl || ''),
                   nativeAssetId: String(picked.assetId),
+                  initialPosterUrl: posterUrl || '',
                   knownDurationSec: Number.isFinite(dur) && dur > 0 ? dur : undefined,
                 })
               } catch {
@@ -1074,6 +1075,7 @@ export default function ChatComposer({
           file={cropModalFile.file}
           previewUrl={cropModalFile.previewUrl}
           nativeAssetId={cropModalFile.nativeAssetId}
+          initialPosterUrl={cropModalFile.initialPosterUrl}
           knownDurationSec={cropModalFile.knownDurationSec}
           intent="composer"
           maxClipSec={currentChatVideoLimits().maxSeconds}

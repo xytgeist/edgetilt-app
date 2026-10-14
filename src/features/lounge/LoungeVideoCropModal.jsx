@@ -346,7 +346,10 @@ export default function LoungeVideoCropModal({
     setTrimErr('')
     posterCapturedRef.current = false
     posterSeekScheduledRef.current = false
-    setPosterUrl('')
+    // Native picks already ship a JPEG poster. Do not clear it … the hidden probe
+    // player is skipped for nativeAssetId (iOS black-screen guard), so this is the
+    // only still the trim <video poster> can show before playback.
+    setPosterUrl(String(initialPosterUrl || '').trim())
     if (posterObjectUrlRef.current) {
       try {
         URL.revokeObjectURL(posterObjectUrlRef.current)
@@ -402,7 +405,7 @@ export default function LoungeVideoCropModal({
         posterObjectUrlRef.current = ''
       }
     }
-  }, [file, previewUrl, knownDurationSec])
+  }, [file, previewUrl, knownDurationSec, initialPosterUrl])
 
   useEffect(() => {
     const vw = intrinsicSize.w

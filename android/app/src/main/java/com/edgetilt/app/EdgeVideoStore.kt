@@ -90,8 +90,10 @@ object EdgeVideoStore {
       val rotation = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
       val displayW = if (rotation == 90 || rotation == 270) h else w
       val displayH = if (rotation == 90 || rotation == 270) w else h
+      // t=0 is often empty on phone camera files; match IPA (~0.15s) as fallback.
       val frame = try {
         r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+          ?: r.getFrameAtTime(150_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
       } catch (_: Exception) {
         null
       }

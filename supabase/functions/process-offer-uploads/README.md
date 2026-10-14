@@ -16,7 +16,7 @@ Set these in your Supabase project before deploying:
 
 Optional tuning:
 
-- `OPENAI_VISION_MODEL` (default: `gpt-4o-mini`)
+- `OPENAI_VISION_MODEL` (default: `gpt-6-luna`; GPT-4o-mini retires 2027-01-14)
 - `AI_AUTO_CREATE_CONFIDENCE` (default: `0.78`)
 - `AI_PROCESS_BATCH_SIZE` (default: `20`)
 

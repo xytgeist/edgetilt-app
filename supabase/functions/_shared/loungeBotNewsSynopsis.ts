@@ -7,6 +7,10 @@ import { decodeHtmlEntities } from './decodeHtmlEntities.ts'
 import { sanitizeWireProse, splitWireSentences, cleanWireFeedExcerpt } from './wireBotProse.ts'
 import { LOUNGE_BOT_WIRE_SYNOPSIS_MAX } from './loungeBotCaptionLimits.ts'
 import type { NewsProfile } from './loungeBotNewsProfile.ts'
+import {
+  openaiChatReasoningNone,
+  resolveOpenAiChatModel,
+} from './openaiModelDefaults.ts'
 const OPENAI_TIMEOUT_MS = 12000
 
 const PERSONA: Record<NewsProfile, string> = {
@@ -231,7 +235,8 @@ export async function composeWirePost(opts: WirePostComposeInput): Promise<WireP
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: Deno.env.get('OPENAI_CHAT_MODEL') || 'gpt-4o-mini',
+          model: resolveOpenAiChatModel(),
+          ...openaiChatReasoningNone(),
           temperature: 0.3,
           max_tokens: 220,
           response_format: { type: 'json_object' },

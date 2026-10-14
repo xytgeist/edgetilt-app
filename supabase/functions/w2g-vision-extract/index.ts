@@ -6,17 +6,21 @@
  * Slots Edge Starter+ is bulk import in the app, not this function.
  *
  * Secrets: OPENAI_API_KEY (same as process-offer-uploads)
- * Optional: OPENAI_VISION_MODEL (default gpt-4o-mini)
+ * Optional: OPENAI_VISION_MODEL (default gpt-6-luna)
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
+import {
+  openaiResponsesReasoningNone,
+  resolveOpenAiVisionModel,
+} from '../_shared/openaiModelDefaults.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const OPENAI_MODEL = Deno.env.get('OPENAI_VISION_MODEL') ?? 'gpt-4o-mini'
+const OPENAI_MODEL = resolveOpenAiVisionModel()
 const MAX_BYTES = 4_500_000
 
 type W2GFields = {
@@ -154,6 +158,7 @@ Rules:
     },
     body: JSON.stringify({
       model: OPENAI_MODEL,
+      ...openaiResponsesReasoningNone(),
       input: [
         {
           role: 'user',

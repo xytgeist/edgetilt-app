@@ -1,4 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import {
+  openaiResponsesReasoningNone,
+  resolveOpenAiVisionModel,
+} from '../_shared/openaiModelDefaults.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,7 +27,7 @@ type ParsedOffer = {
   notes?: string | null
 }
 
-const OPENAI_MODEL = Deno.env.get('OPENAI_VISION_MODEL') ?? 'gpt-4o-mini'
+const OPENAI_MODEL = resolveOpenAiVisionModel()
 const AUTO_CREATE_CONFIDENCE = Number(Deno.env.get('AI_AUTO_CREATE_CONFIDENCE') ?? '0.78')
 const MAX_BATCH_SIZE = Number(Deno.env.get('AI_PROCESS_BATCH_SIZE') ?? '20')
 const MAX_EVENTS_PER_IMAGE = Number(Deno.env.get('AI_MAX_EVENTS_PER_IMAGE') ?? '30')
@@ -256,6 +260,7 @@ Rules:
     },
     body: JSON.stringify({
       model: OPENAI_MODEL,
+      ...openaiResponsesReasoningNone(),
       input: [
         {
           role: 'user',

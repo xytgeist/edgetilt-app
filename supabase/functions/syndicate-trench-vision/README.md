@@ -5,7 +5,7 @@ Admin-only. Reads an ESPN Analytics **team** win-rate screenshot (PRWR / RSWR / 
 ## Secrets
 
 - `OPENAI_API_KEY` (already on test + prod for splits / offers)
-- Optional `OPENAI_VISION_MODEL` (default `gpt-4o-mini`)
+- Optional `OPENAI_VISION_MODEL` (default `gpt-6-luna`; GPT-4o-mini retires 2027-01-14)
 
 ## Deploy
 

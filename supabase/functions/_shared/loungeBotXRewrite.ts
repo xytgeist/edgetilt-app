@@ -8,6 +8,10 @@ import {
 import { isXTwitterHttpUrl, stripXTwitterUrlsFromText } from './loungeBotXTweetUrl.ts'
 import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
 import { sanitizeBotProse } from './wireBotProse.ts'
+import {
+  openaiChatReasoningNone,
+  resolveOpenAiChatModel,
+} from './openaiModelDefaults.ts'
 
 export function getUsMarketSessionContext(d = new Date()): { sessionName: string; timeContext: string } {
   const fmt = new Intl.DateTimeFormat('en-US', {
@@ -87,7 +91,8 @@ export async function rewriteTweetForBot(opts: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: Deno.env.get('OPENAI_CHAT_MODEL') || 'gpt-4o-mini',
+          model: resolveOpenAiChatModel(),
+          ...openaiChatReasoningNone(),
           temperature: 0.75,
           max_tokens: 900,
           messages: [

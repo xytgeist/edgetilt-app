@@ -10,7 +10,7 @@ Auth’d Edge Function: OpenAI vision extracts the six TurboTax-combine W-2G fie
 ## Secrets
 
 - `OPENAI_API_KEY` (already used by `process-offer-uploads`)
-- Optional `OPENAI_VISION_MODEL` (default `gpt-4o-mini`)
+- Optional `OPENAI_VISION_MODEL` (default `gpt-6-luna`; GPT-4o-mini retires 2027-01-14)
 
 ## Deploy (test first)
 

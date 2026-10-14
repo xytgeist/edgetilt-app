@@ -5,11 +5,15 @@
  * PBWR / PRWR / RBWR / RSWR per NFL team. No scrape … human screenshot only.
  *
  * Secrets: OPENAI_API_KEY
- * Optional: OPENAI_VISION_MODEL (default gpt-4o-mini)
+ * Optional: OPENAI_VISION_MODEL (default gpt-6-luna)
  */
 import { requireAdminUser, adminOpsCorsHeaders, adminOpsJson } from '../_shared/adminAuth.ts'
+import {
+  openaiResponsesReasoningNone,
+  resolveOpenAiVisionModel,
+} from '../_shared/openaiModelDefaults.ts'
 
-const OPENAI_MODEL = Deno.env.get('OPENAI_VISION_MODEL') ?? 'gpt-4o-mini'
+const OPENAI_MODEL = resolveOpenAiVisionModel()
 const MAX_BYTES = 4_500_000
 
 type TrenchTeam = {
@@ -202,6 +206,7 @@ Rules:
     },
     body: JSON.stringify({
       model: OPENAI_MODEL,
+      ...openaiResponsesReasoningNone(),
       input: [
         {
           role: 'user',

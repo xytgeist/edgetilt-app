@@ -17,8 +17,10 @@ import java.util.concurrent.ConcurrentHashMap
  * media can load it via `shouldInterceptRequest` (custom `edge-video://` is unreliable).
  */
 object EdgeVideoStore {
-  /** Path prefix on [BuildConfig.BASE_URL] for trim-player intercept. */
+  /** Path prefix on [BuildConfig.BASE_URL] for trim-player video intercept. */
   const val PREVIEW_PATH_PREFIX = "/__edge_native_video__/"
+  /** JPEG poster still for trim UI / composer (keeps pick result free of huge base64). */
+  const val POSTER_PATH_PREFIX = "/__edge_native_video_poster__/"
   data class Asset(
     val id: String,
     val file: File,
@@ -80,7 +82,19 @@ object EdgeVideoStore {
     return asset
   }
 
-  fun probe(ctx: Context, file: File): Probe {
+  fun posterFile(ctx: Context, id: String): File? {
+    val key = id.trim()
+    if (key.isEmpty()) return null
+    val f = File(root(ctx), "$key.jpg")
+    return f.takeIf { it.isFile && it.length() > 0 }
+  }
+
+  fun posterPreviewUrl(id: String): String {
+    val base = BuildConfig.BASE_URL.trimEnd('/')
+    return "$base$POSTER_PATH_PREFIX${id.trim()}"
+  }
+
+  fun probe(ctx: Context, file: File, assetId: String = ""): Probe {
     val r = MediaMetadataRetriever()
     return try {
       r.setDataSource(file.absolutePath)
@@ -94,15 +108,31 @@ object EdgeVideoStore {
       val frame = try {
         r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
           ?: r.getFrameAtTime(150_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+          ?: r.getFrameAtTime(1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
       } catch (_: Exception) {
         null
       }
-      val poster = frame?.let { bitmapToJpegBase64(it, 0.72f) } ?: ""
+      val jpeg = frame?.let { bitmapToJpegBytes(it, 0.72f) }
       frame?.recycle()
-      Probe(durationMs / 1000.0, displayW, displayH, poster)
+      val id = assetId.trim()
+      if (jpeg != null && jpeg.isNotEmpty() && id.isNotEmpty()) {
+        try {
+          File(root(ctx), "$id.jpg").writeBytes(jpeg)
+        } catch (e: Exception) {
+          Log.w(TAG, "poster write failed", e)
+        }
+      }
+      // Keep a small base64 for IPA-shaped web helpers; big payloads go through posterUrl file.
+      val posterB64 =
+        if (jpeg != null && jpeg.size <= 48_000) {
+          Base64.encodeToString(jpeg, Base64.NO_WRAP)
+        } else {
+          ""
+        }
+      Probe(durationMs / 1000.0, displayW, displayH, posterB64, hasPosterFile = jpeg != null && id.isNotEmpty())
     } catch (e: Exception) {
       Log.w(TAG, "probe failed", e)
-      Probe(0.0, 0, 0, "")
+      Probe(0.0, 0, 0, "", hasPosterFile = false)
     } finally {
       try {
         r.release()
@@ -142,9 +172,15 @@ object EdgeVideoStore {
     return null
   }
 
-  data class Probe(val durationSec: Double, val width: Int, val height: Int, val posterJpegBase64: String)
+  data class Probe(
+    val durationSec: Double,
+    val width: Int,
+    val height: Int,
+    val posterJpegBase64: String,
+    val hasPosterFile: Boolean = false,
+  )
 
-  private fun bitmapToJpegBase64(bmp: Bitmap, quality: Float): String {
+  private fun bitmapToJpegBytes(bmp: Bitmap, quality: Float): ByteArray {
     val maxSide = 720
     val scaled = if (maxOf(bmp.width, bmp.height) > maxSide) {
       val scale = maxSide.toFloat() / maxOf(bmp.width, bmp.height)
@@ -155,7 +191,7 @@ object EdgeVideoStore {
     val stream = java.io.ByteArrayOutputStream()
     scaled.compress(Bitmap.CompressFormat.JPEG, (quality * 100).toInt().coerceIn(40, 92), stream)
     if (scaled !== bmp) scaled.recycle()
-    return Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+    return stream.toByteArray()
   }
 
   private const val TAG = "EdgeVideoStore"

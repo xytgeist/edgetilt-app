@@ -658,12 +658,28 @@ export function nativeVideoPosterDataUrl(asset) {
 }
 
 /**
- * Local shell file URL (IPA `edge-video://…`, Android same-origin `/__edge_native_video__/…`).
- * Never use this as an `<img>` or composer `<video>` src … trim modal only.
+ * Poster for composer / trim UI. Prefers data URL, then Android same-origin poster file URL
+ * (`/__edge_native_video_poster__/…`) so the pick event stays small.
+ */
+export function nativeVideoPosterUrl(asset) {
+  const data = nativeVideoPosterDataUrl(asset)
+  if (data) return data
+  const u = String(asset?.posterUrl || '').trim()
+  if (!u) return null
+  if (u.startsWith('data:image/')) return u
+  if (u.toLowerCase().includes('/__edge_native_video_poster__/')) return u
+  return null
+}
+
+/**
+ * Local shell *video* URL (IPA `edge-video://…`, Android `/__edge_native_video__/…`).
+ * Never use as an `<img>` or composer `<video>` src … trim modal only.
+ * Poster file URLs (`…_poster__/`) are NOT local video … they are fine for `<img>`.
  */
 export function isEdgeVideoLocalUrl(url) {
   const s = String(url || '').trim().toLowerCase()
   if (s.startsWith('edge-video:')) return true
+  if (s.includes('/__edge_native_video_poster__/')) return false
   return s.includes('/__edge_native_video__/')
 }
 

@@ -24,7 +24,7 @@ import {
   plainTextFromComposerRoot,
 } from '../lounge/loungeRichComposerDom.js'
 import { notifyChatMediaPickerActive } from './chatMediaPickerRegistry.js'
-import { canPickEdgeVideo, nativeVideoPosterDataUrl, pickEdgeVideo, tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
+import { canPickEdgeVideo, nativeVideoPosterUrl, pickEdgeVideo, tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
 import {
   shouldBlockComposerKeyboard,
   useEdgeiOSComposerPortraitLock,
@@ -730,7 +730,7 @@ export default function ChatComposer({
                   return
                 }
                 const dur = Number(picked.duration)
-                const posterUrl = nativeVideoPosterDataUrl(picked)
+                const posterUrl = nativeVideoPosterUrl(picked)
                 if (loungeVideoDurationWithinCap(dur, limits)) {
                   onVideoConfirmed?.({
                     type: 'nativeEdgeVideo',

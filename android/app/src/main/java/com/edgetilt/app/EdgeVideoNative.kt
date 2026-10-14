@@ -106,19 +106,23 @@ class EdgeVideoNative(
           return@submit
         }
         val asset = EdgeVideoStore.insertCopy(activity, uri, maxBytes)
-        val probe = EdgeVideoStore.probe(activity, asset.file)
-        complete(
-          requestId,
-          JSONObject()
-            .put("ok", true)
-            .put("assetId", asset.id)
-            .put("previewUrl", EdgeVideoStore.previewUrl(asset.id))
-            .put("byteSize", asset.byteSize)
-            .put("duration", probe.durationSec)
-            .put("width", probe.width)
-            .put("height", probe.height)
-            .put("posterJpegBase64", probe.posterJpegBase64),
-        )
+        val probe = EdgeVideoStore.probe(activity, asset.file, asset.id)
+        val result = JSONObject()
+          .put("ok", true)
+          .put("assetId", asset.id)
+          .put("previewUrl", EdgeVideoStore.previewUrl(asset.id))
+          .put("byteSize", asset.byteSize)
+          .put("duration", probe.durationSec)
+          .put("width", probe.width)
+          .put("height", probe.height)
+        // Prefer short posterUrl … huge base64 in evaluateJavascript often fails silently.
+        if (probe.hasPosterFile) {
+          result.put("posterUrl", EdgeVideoStore.posterPreviewUrl(asset.id))
+        }
+        if (probe.posterJpegBase64.isNotEmpty()) {
+          result.put("posterJpegBase64", probe.posterJpegBase64)
+        }
+        complete(requestId, result)
       } catch (e: Exception) {
         Log.w(TAG, "pick copy failed", e)
         val msg = e.message?.takeIf { it.isNotBlank() } ?: "Could not open that video."
@@ -235,6 +239,7 @@ class EdgeVideoNative(
    */
   fun intercept(request: WebResourceRequest): WebResourceResponse? {
     val url = request.url ?: return null
+    interceptPoster(url, request)?.let { return it }
     val id = EdgeVideoStore.assetIdFromPreviewUri(url) ?: return null
     val accept = (request.requestHeaders["Accept"] ?: request.requestHeaders["accept"] ?: "").lowercase()
     if (accept.contains("image/") && !accept.contains("video/")) {
@@ -278,6 +283,31 @@ class EdgeVideoNative(
     if (status == 206) headers["Content-Range"] = "bytes $start-$end/$totalLong"
     val reason = if (status == 206) "Partial Content" else "OK"
     return WebResourceResponse(mime, null, status, reason, headers, body)
+  }
+
+  private fun interceptPoster(url: android.net.Uri, request: WebResourceRequest): WebResourceResponse? {
+    val scheme = url.scheme?.lowercase() ?: return null
+    if (scheme != "https" && scheme != "http") return null
+    val path = url.path ?: return null
+    if (!path.startsWith(EdgeVideoStore.POSTER_PATH_PREFIX)) return null
+    val id = path.removePrefix(EdgeVideoStore.POSTER_PATH_PREFIX).trim('/').takeIf { it.isNotEmpty() }
+      ?: return WebResourceResponse("text/plain", "utf-8", null)
+    val file = EdgeVideoStore.posterFile(activity, id)
+      ?: return WebResourceResponse("text/plain", "utf-8", null)
+    val headers = mapOf(
+      "Content-Type" to "image/jpeg",
+      "Content-Length" to file.length().toString(),
+      "Access-Control-Allow-Origin" to "*",
+      "Cache-Control" to "no-store",
+    )
+    return WebResourceResponse(
+      "image/jpeg",
+      null,
+      200,
+      "OK",
+      headers,
+      FileInputStream(file),
+    )
   }
 
   // MARK: - Export

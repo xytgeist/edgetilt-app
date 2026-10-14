@@ -57,7 +57,7 @@ import {
 } from '../../utils/communityFeedPost'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { isShellNavLoungeHomeSuppressed } from '../../utils/shellNavGhostClickGuard.js'
-import { isEdgeVideoLocalUrl, nativeVideoPosterDataUrl, openExternalUrl } from '../../utils/edgeNative.js'
+import { isEdgeVideoLocalUrl, nativeVideoPosterUrl, openExternalUrl } from '../../utils/edgeNative.js'
 import { useEdgeiOSComposerPortraitLock } from '../../utils/edgeiOSComposerPortraitLock.js'
 import { prefetchFfmpegCore } from '../../utils/loungeVideoFfmpegTrim.js'
 import {
@@ -5849,7 +5849,7 @@ export default function SocialFeed({
       if (!assetId) return
       const dur = Number(asset.duration)
       const known = Number.isFinite(dur) && dur > 0 ? dur : 0
-      const posterUrl = nativeVideoPosterDataUrl(asset)
+      const posterUrl = nativeVideoPosterUrl(asset)
       const previewUrl = String(asset.previewUrl || '').trim()
       const mode = threadComposeOpenRef.current
         ? LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE

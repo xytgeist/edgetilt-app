@@ -263,6 +263,10 @@ export default function LoungeVideoCropModal({
   const [phase, setPhase] = useState('idle')
   const [trimErr, setTrimErr] = useState('')
   const [posterUrl, setPosterUrl] = useState(() => String(initialPosterUrl || '').trim())
+  /** Bound `<video src>` (ref-only left the first paint empty on Android). */
+  const [mediaSrc, setMediaSrc] = useState('')
+  /** Hide poster overlay once the user has started playback. */
+  const [showPosterOverlay, setShowPosterOverlay] = useState(true)
   /** Separate blob URL for the hidden probe so WebKit decodes it independently of the main preview. */
   const [probeBlobUrl, setProbeBlobUrl] = useState('')
   const [intrinsicSize, setIntrinsicSize] = useState({ w: 0, h: 0 })
@@ -342,10 +346,12 @@ export default function LoungeVideoCropModal({
     const u = file ? URL.createObjectURL(file) : previewUrl
     const uProbe = file ? URL.createObjectURL(file) : previewUrl
     urlRef.current = u
+    setMediaSrc(u || '')
     setProbeBlobUrl(uProbe)
     setTrimErr('')
     posterCapturedRef.current = false
     posterSeekScheduledRef.current = false
+    setShowPosterOverlay(true)
     // Native picks already ship a JPEG poster. Do not clear it … the hidden probe
     // player is skipped for nativeAssetId (iOS black-screen guard), so this is the
     // only still the trim <video poster> can show before playback.
@@ -395,6 +401,7 @@ export default function LoungeVideoCropModal({
         }
       }
       urlRef.current = ''
+      setMediaSrc('')
       setProbeBlobUrl('')
       if (posterObjectUrlRef.current) {
         try {
@@ -917,18 +924,36 @@ export default function LoungeVideoCropModal({
         <div ref={videoStageRef} className="relative mt-3 min-h-[min(40vh,220px)] overflow-hidden rounded-xl border border-zinc-700/80 bg-zinc-900">
           <video
             ref={videoRef}
-            src={urlRef.current || undefined}
+            src={mediaSrc || undefined}
             poster={posterUrl || undefined}
             className="relative z-[1] max-h-[40vh] w-full object-contain"
             controls={!busy}
             playsInline
-            preload="metadata"
+            preload="auto"
             onLoadedMetadata={onMetaLoaded}
             onLoadedData={() => {
               onMetaLoaded()
+              // Android WebView often ignores <video poster>; grab a frame if we still have none.
+              if (!nativeAssetId || posterCapturedRef.current) return
+              if (String(initialPosterUrl || '').trim()) {
+                posterCapturedRef.current = true
+                return
+              }
+              const v = videoRef.current
+              if (v && v.videoWidth > 1) capturePosterFromVideo(v)
             }}
             onDurationChange={onMetaLoaded}
+            onPlay={() => setShowPosterOverlay(false)}
+            onPlaying={() => setShowPosterOverlay(false)}
           />
+          {posterUrl && showPosterOverlay ? (
+            <img
+              src={posterUrl}
+              alt=""
+              className="pointer-events-none absolute inset-0 z-[2] h-full w-full object-contain"
+              draggable={false}
+            />
+          ) : null}
           {nativeAssetId ? null : (
           <video
             ref={posterVideoRef}

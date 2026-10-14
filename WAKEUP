@@ -125,8 +125,8 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 ### Windows Theo ACTIVE TRACK 2026-10-13 ... Prod DB dumps → private R2
 **I am Windows Theo.** Offsite `pg_dump` → private R2 for **production only** (`docs/db-r2-backups.md`). Test keeps Supabase daily backups. Script `scripts/db-dump-to-r2.mjs`, 14-day prune, Windows task daily 3:15 AM. Needs Ryan: create private bucket + `DB_BACKUP_R2_*` in `.env.master`, install `pg_dump`, first `npm run db:dump:r2:production` to size egress, then `npm run db:dump:r2:install-windows-task`. Before scary prod SQL: `--tag=pre-migrate`.
 
-### Mac Theo ACTIVE TRACK 2026-10-14 ... Android native video 1.3.17
-**I am Mac Theo.** **1.3.17 / vc 21:** remint tus create once if `stream-media-id` missing (+ case-insensitive header read). iOS Swift same remint (next IPA). Web already retries whole tus. Poster fix still **1.3.16** + web **`1.4.1125`**. Upload Play **21**. **Next native:** ML Kit.
+### Mac Theo ACTIVE TRACK 2026-10-14 ... Android native video 1.3.18
+**I am Mac Theo.** Poster still missing on prod: **main never got 1.4.1125+** (stuck at 1.3.14 tip). **1.3.18 / vc 22 + web `1.4.1126`:** poster file URL `/__edge_native_video_poster__/` (no huge base64 in bridge), trim UI img overlay, capture frame if empty. **Promote main.** Upload Play **22**. **Next native:** ML Kit.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.

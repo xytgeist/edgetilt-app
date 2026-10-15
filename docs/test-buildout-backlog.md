@@ -1215,6 +1215,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-15:** **Promoted `1.4.1199`** (Offers mailer photo lightbox). Frontend **`test` → `main`** (`575da72a7`). No SQL / Edge.
 - **2026-10-15:** **Offers mailer photo lightbox (`1.4.1199`).** Event detail + AI review tap opens in-app `ChatImageMediaViewer` (object-contain fullscreen) instead of `target=_blank` (Android pan / iOS in-app browser).
 - **2026-10-15:** **Promoted `1.4.1198`** (Bet Tracker slip harden through Match Betting + Offers mailer session-day expand). Frontend **`test` → `main`** (`0616d0d21`). No new SQL. Redeployed Edge **`sports-bet-slip-parse`** + **`process-offer-uploads`** on **test + prod**.
 - **2026-10-15:** **Offers mailer expand discrete session days (`process-offer-uploads`).** "Dec 10 & 11" / short timed tournament ranges → one event per day (fixes Android dropping Dec 11 while iOS got all three). Redeploy Edge test + prod.

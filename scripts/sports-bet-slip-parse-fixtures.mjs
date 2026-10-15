@@ -1257,6 +1257,25 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 4 (Ryan yes): DK My Bets won Jokic N+ SGP … Wager/Paid + WON badge
+    // OCR batch compares Math.abs(odds) … expect 575 for printed -575
+    file: 'dk-won-jokic-sgp-3.ocr.txt',
+    expect: {
+      legs: 3,
+      odds: 575,
+      stake_dollars: 2.94,
+      to_collect_dollars: 3.45,
+      to_win_dollars: 0.51,
+      status: 'won',
+      book: 'DraftKings',
+      sport_label: 'NBA',
+      sport_key: 'basketball_nba',
+      leg0: 'Jokic',
+      leg_last: 'Jokic',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

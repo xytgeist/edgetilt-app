@@ -316,7 +316,8 @@ Rules:
 - Always fill stake_dollars + to_win_dollars + to_collect_dollars when those $ amounts appear (TO WIN / TO COLLECT / YOU WON / Max Payout / TOTAL WAGER / WON ON). These matter more than combined odds on casino tickets.
 - stake_dollars: number only (no $). Map TAKE / Wager / Risk / Ticket Cost / TOTAL WAGER → stake (never invent from a default unit size). OCR may glue "$70.00 TOTAL WAGER" or put $ on the line above/below the label … still map it.
 - to_collect_dollars: TO COLLECT / YOU WON / WON ON / Max Payout (includes stake). to_win_dollars: TO WIN profit only (or collect − stake). OCR may glue "$207.85 WON ON FANDUEL" or put $ above/below WON ON … do not use the TOTAL WAGER amount as the win.
-- status: "won" when WON ON / YOU WON / Total Won. "lost" when LOST / LOST ON / Did not win / $0.00 payout on a settled My Bets receipt (Finished + TOTAL WAGER, no PLACE BET). Otherwise "open". Never mark an open betslip (PLACE BET) as lost.
+- status: "won" when WON ON / YOU WON / Total Won / standalone WON badge (DK My Bets). "lost" when LOST / LOST ON / Did not win / $0.00 payout on a settled My Bets receipt (Finished + TOTAL WAGER, no PLACE BET). Otherwise "open". Never mark an open betslip (PLACE BET) as lost.
+- DK "Wager: $X Paid: $Y" → stake_dollars=X, to_collect_dollars=Y (Paid includes stake)
 - commence_time: ISO 8601 if event date/time known
 - sport_label: NFL | CFB | NBA | MLB | NHL | UFC | Boxing | Golf | MLS | Tennis | Table Tennis | Other … fill whenever inferable (filter by sport)
 - sport_key when known: americanfootball_nfl, americanfootball_ncaaf, basketball_nba, baseball_mlb, icehockey_nhl, mma_mixed_martial_arts, boxing_boxing, tennis, tabletennis

@@ -761,6 +761,8 @@ export function detectSlipResult(text) {
   if (/\b(?:bet\s*lost|ticket\s*lost|wager\s*lost)\b/i.test(raw)) return 'lost'
   // Standalone LOST / Loss badge on its own line (My Bets settled)
   if (/(?:^|\n)\s*(?:lost|loss)\s*(?:\n|$)/i.test(raw)) return 'lost'
+  // Standalone WON badge (DK My Bets … "WON ON" already handled above)
+  if (/(?:^|\n)\s*won\s*(?:\n|$)/i.test(raw)) return 'won'
 
   // Open betslip chrome … do not infer loss from nav "Settled" alone
   if (/\b(?:place\s*bet|review\s*line\s*changes|keep\s*picks|add\s*(?:to\s*)?(?:bet)?slip|clear\s*betslip)\b/i.test(raw)) {
@@ -844,6 +846,8 @@ function extractPayoutDollars(text) {
     // "WON ON FANDUEL $207.85" … book name may sit between label and $
     /\bwon\s+on\b(?:\s+[A-Za-z.]+)*\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /\b(?:you\s*won|total\s*won)\b(?:\s+[A-Za-z.]+)*\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+    // DK My Bets: "Wager: $2.94 Paid: $3.45"
+    /\bpaid\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /(?:potential\s*payout|max\s*payout|max\s*pay|to\s*collect|est\.?\s*\/?\s*payout|total\s*payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /(?:payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
   ]
@@ -958,7 +962,7 @@ function extractPayoutDollars(text) {
 function isParlayLegJunkLine(line) {
   const s = String(line || '')
   if (isParlayTicketChromeSelection(s)) return true
-  return /must\s*start|plate\s*appearance|bet\s*with\s*friends|keep\s*picks|terms\s+and|download\s+the|sign\s*up|mobile\s*wagering|clear\s*betslip|help\s*center|place\s*bet|round\s*robin|stake\s*all|quick\s*sgp|log\s*in/i.test(
+  return /must\s*start|plate\s*appearance|bet\s*with\s*friends|keep\s*picks|terms\s+and|download\s+the|sign\s*up|mobile\s*wagering|clear\s*betslip|help\s*center|place\s*bet|round\s*robin|stake\s*all|quick\s*sgp|log\s*in|bet\s*id\b|hide\s*legs|show\s*legs|^placed\s*:/i.test(
     s,
   )
 }
@@ -1067,7 +1071,8 @@ function extractAppPlayerPropLegs(text) {
       for (let j = i + 1; j < Math.min(i + 4, lines.length); j += 1) {
         const next = lines[j]
         if (/^[×xX]?\s*\d+\+/.test(next) || /^(over|under)\s+\d/i.test(next)) break
-        if (/(?:@|\bat\b)/i.test(next) || bareAmericanOddsLine(next) || /^\$|stake|parlay|0\.00/i.test(next)) break
+        if (isParlayLegJunkLine(next)) break
+        if (/(?:@|\bat\b)/i.test(next) || bareAmericanOddsLine(next) || /^\$|stake|parlay|0\.00|wager\s*:|paid\s*:/i.test(next)) break
         detail.push(next.replace(/^\+\s*/, ''))
       }
       const blob = detail.join(' ').replace(/\s+/g, ' ').trim()
@@ -1668,11 +1673,21 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
   if (mlbClubHits >= 2) {
     return resolveSportsBetSport('baseball_mlb', 'MLB')
   }
+  // NBA nicknames before NFL … Lions/Giants-style collisions are rare here; Pacers/Nuggets unique
+  const nbaClubHits = (s.match(
+    /\b(?:pacers|nuggets|lakers|celtics|bulls|heat|knicks|nets|76ers|sixers|cavaliers|cavs|pistons|bucks|hawks|hornets|wizards|magic|thunder|blazers|trail\s*blazers|jazz|kings|suns|warriors|clippers|rockets|spurs|mavericks|mavs|grizzlies|pelicans|timberwolves|wolves)\b/gi,
+  ) || []).length
+  if (nbaClubHits >= 2) {
+    return resolveSportsBetSport('basketball_nba', 'NBA')
+  }
   if (NFL_TEAM_HINT.test(s)) {
     return resolveSportsBetSport('americanfootball_nfl', 'NFL')
   }
   if (mlbClubHits >= 1) {
     return resolveSportsBetSport('baseball_mlb', 'MLB')
+  }
+  if (nbaClubHits >= 1) {
+    return resolveSportsBetSport('basketball_nba', 'NBA')
   }
   // Person vs person moneyline parlays with no league printed … US books flood table tennis
   {

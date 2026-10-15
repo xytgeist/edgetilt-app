@@ -110,6 +110,7 @@ Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`*
 - Money: **1u** default stake, **$** field, default **$100** unit size, default bankroll start **$10,000**. **Bankroll** and **unit size** are set from the tracker chips / **Set bankroll & unit size** (and Unit size on Log a bet). Bankroll = start + settled $ P&L.
 - **Auto-grade:** open spread / h2h / total bets settle from ESPN finals via Edge **`sports-bets-grade`** (tracker load/refresh) and the existing **`lounge-odds-poll` `grade_picks`** cron. **Boxing** never promises auto-grade (no ESPN board). UFC/MMA: moneyline only. Props / other stay manual. Past commence still open → chip **No final matched yet** (not “when final”). Manual override on auto-gradeable rows.
 - **Progress:** overlay while photo OCR / AI parse, Save / Save all / CSV import, and post-save grade. Delete uses a card-local spinner (“Deleting…”) only.
+- **Label summary:** pick + odds share a space (`49ers ML +120`); middots only before stake/date.
 - **Tools sheet** (`SportsBetToolsSheet.jsx`, `?tab=sports-bets&betTools=`): Sports Hub **Tools** chip + tracker **Tools**. Featured **Parlay / Hedge / Kelly** prefill from open bets and bankroll. Utilities: payout, converter, implied, EV, no-vig, arb. Open-bet **Hedge** / settled **Payout**. Not nine hub tiles. Math: `sportsBetCalcMath.js`.
 - Git: scaffold **`0ef9edbd`** (`1.4.1057`) on **`origin/test`**. Notes commit is the tip after computer-change writeup. Draft PR: `cursor/sports-bet-tracker-9369`.
 

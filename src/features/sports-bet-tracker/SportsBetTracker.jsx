@@ -22,6 +22,7 @@ import {
   buildBetSummaryLabel,
   formatAmericanOdds,
   formatLine,
+  softenBetSummaryOddsSeparator,
   summarizeBets,
 } from './sportsBetMath.js'
 import {
@@ -1204,9 +1205,11 @@ export default function SportsBetTracker({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="truncate text-[15px] font-bold text-white">
-                      {bet.market === 'parlay'
-                        ? parlaySelectionLabel(bet.legs || bet.sports_bet_legs, bet.selection_label)
-                        : bet.selection_label}
+                      {softenBetSummaryOddsSeparator(
+                        bet.market === 'parlay'
+                          ? parlaySelectionLabel(bet.legs || bet.sports_bet_legs, bet.selection_label)
+                          : bet.selection_label,
+                      )}
                     </div>
                     <div className="mt-0.5 text-[12px] text-zinc-400">
                       {[
@@ -1426,9 +1429,11 @@ export default function SportsBetTracker({
                 const failed = item.status === 'failed'
                 const title = failed
                   ? 'Could not auto-read'
-                  : (d.market === 'parlay'
-                    ? parlaySelectionLabel(d.legs, d.selection_label)
-                    : (d.selection_label || 'Bet'))
+                  : softenBetSummaryOddsSeparator(
+                    d.market === 'parlay'
+                      ? parlaySelectionLabel(d.legs, d.selection_label)
+                      : (d.selection_label || 'Bet'),
+                  )
                 return (
                   <div
                     key={item.key}

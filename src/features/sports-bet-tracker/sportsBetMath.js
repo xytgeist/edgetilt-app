@@ -245,16 +245,29 @@ function buildPickHead(draft) {
 }
 
 /**
+ * Soften older stored labels that used a middot between pick and odds
+ * ("49ers ML · +120 · $…" → "49ers ML +120 · $…").
+ */
+export function softenBetSummaryOddsSeparator(label) {
+  const s = String(label || '').trim()
+  if (!s) return ''
+  return s
+    .replace(/^(.+?)\s·\s([+-]\d{2,})\s·\s/, '$1 $2 · ')
+    .replace(/^(.+?)\s·\s([+-]\d{2,})$/, '$1 $2')
+}
+
+/**
  * Card / Label summary … e.g. "49ers ML +120 · $500,000 · 2/2/2020"
- * (middot separators; not a dump of rotation numbers).
+ * (space between pick and odds; middot before stake/date).
  */
 export function buildBetSummaryLabel(draft) {
   const head = buildPickHead(draft)
   const oddsPart = formatAmericanOdds(draft?.odds)
   const oddsOk = oddsPart && oddsPart !== '—'
+  const pick = oddsOk ? `${head} ${oddsPart}`.trim() : head
   const stakePart = formatStakePart(draft)
   const datePart = formatCommenceShort(draft?.commence_time)
-  return [head, oddsOk ? oddsPart : '', stakePart, datePart].filter(Boolean).join(' · ')
+  return [pick, stakePart, datePart].filter(Boolean).join(' · ')
 }
 
 export function buildSelectionLabel({

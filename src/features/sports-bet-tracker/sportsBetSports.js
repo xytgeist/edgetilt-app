@@ -11,6 +11,9 @@ import {
 /** Odds API keys used elsewhere for fight sports. */
 export const SPORTS_BET_SPORT_UFC = 'mma_mixed_martial_arts'
 export const SPORTS_BET_SPORT_BOXING = 'boxing_boxing'
+/** Racket / participant sports (not always Odds API hub filters). */
+export const SPORTS_BET_SPORT_TENNIS = 'tennis'
+export const SPORTS_BET_SPORT_TABLE_TENNIS = 'tabletennis'
 
 /** Hub leagues + fight sports + Other. Values are Odds API sport_key when applicable. */
 export const SPORTS_BET_SPORTS = [
@@ -23,6 +26,8 @@ export const SPORTS_BET_SPORTS = [
   { key: LOUNGE_SPORTS_HUB_FILTER_MLS, label: 'MLS' },
   { key: SPORTS_BET_SPORT_UFC, label: 'UFC' },
   { key: SPORTS_BET_SPORT_BOXING, label: 'Boxing' },
+  { key: SPORTS_BET_SPORT_TENNIS, label: 'Tennis' },
+  { key: SPORTS_BET_SPORT_TABLE_TENNIS, label: 'Table Tennis' },
   { key: 'other', label: 'Other' },
 ]
 
@@ -39,11 +44,14 @@ export function isParticipantSport(sportKey, sportLabel) {
     || /\bmma\b/.test(lower)
     || /mma_mixed/.test(lower)
     || /\bboxing\b/.test(lower)
+    || /\btable\s*tennis\b/.test(lower)
     || /\btennis\b/.test(lower)
     || /\batp\b/.test(lower)
     || /\bwta\b/.test(lower)
     || sportKey === SPORTS_BET_SPORT_UFC
     || sportKey === SPORTS_BET_SPORT_BOXING
+    || sportKey === SPORTS_BET_SPORT_TENNIS
+    || sportKey === SPORTS_BET_SPORT_TABLE_TENNIS
   )
 }
 
@@ -79,6 +87,12 @@ export function resolveSportsBetSport(sportKey, sportLabel) {
   if (/\bmma\b/.test(lower)) return sportByKey(SPORTS_BET_SPORT_UFC)
   if (/\bboxing\b/.test(lower) || keyRaw === SPORTS_BET_SPORT_BOXING) {
     return sportByKey(SPORTS_BET_SPORT_BOXING)
+  }
+  if (/\btable\s*tennis\b/.test(lower) || keyRaw === SPORTS_BET_SPORT_TABLE_TENNIS || keyRaw === 'table_tennis') {
+    return sportByKey(SPORTS_BET_SPORT_TABLE_TENNIS)
+  }
+  if (/\btennis\b/.test(lower) || /\batp\b/.test(lower) || /\bwta\b/.test(lower) || keyRaw === SPORTS_BET_SPORT_TENNIS) {
+    return sportByKey(SPORTS_BET_SPORT_TENNIS)
   }
   const byKey = sportByKey(keyRaw)
   if (byKey) {

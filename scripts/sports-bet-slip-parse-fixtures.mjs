@@ -1234,9 +1234,25 @@ const ocrBatch = [
       to_collect_dollars: 2129.55,
       status: 'open',
       book: 'FanDuel',
+      sport_label: 'MLB',
+      sport_key: 'baseball_mlb',
       leg0: 'Cubs',
       leg_last: 'Dodgers',
       leg_odds: [-120, -172, 106, -194, -142, -102, -126, 112, -120],
+      no_junk_sels: true,
+    },
+  },
+  {
+    // Candidate 2 (Ryan yes): DK Bet Placed 3-pick table tennis … sport inferred
+    file: 'dk-placed-tt-3.ocr.txt',
+    expect: {
+      legs: 3,
+      odds: 642,
+      status: 'open',
+      sport_label: 'Table Tennis',
+      sport_key: 'tabletennis',
+      leg0: 'Wiecek',
+      leg_last: 'Skorski',
       no_junk_sels: true,
     },
   },
@@ -1504,6 +1520,12 @@ for (const row of ocrBatch) {
     }
     if (e.status) assert(d.status === e.status, `${name}: status want ${e.status} got ${d.status}`)
     if (e.book) assert(d.book === e.book, `${name}: book ${d.book}`)
+    if (e.sport_label) {
+      assert(d.sport_label === e.sport_label, `${name}: sport want ${e.sport_label} got ${d.sport_label}`)
+    }
+    if (e.sport_key) {
+      assert(d.sport_key === e.sport_key, `${name}: sport_key want ${e.sport_key} got ${d.sport_key}`)
+    }
     if (e.leg0) {
       assert(
         String(legs[0]?.selection_label || '').toLowerCase().includes(e.leg0.toLowerCase()),

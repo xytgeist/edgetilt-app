@@ -6,6 +6,8 @@ import {
   isParticipantSport,
   resolveSportsBetSport,
   SPORTS_BET_SPORT_BOXING,
+  SPORTS_BET_SPORT_TABLE_TENNIS,
+  SPORTS_BET_SPORT_TENNIS,
   SPORTS_BET_SPORT_UFC,
   sportByKey,
 } from './sportsBetSports.js'
@@ -1652,8 +1654,39 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
   ) {
     return sportByKey(SPORTS_BET_SPORT_BOXING) || { key: SPORTS_BET_SPORT_BOXING, label: 'Boxing' }
   }
+  if (/\btable\s*tennis\b|\bittf\b|\btt\s*elite\b|\bchallenger\s*tt\b/i.test(s)) {
+    return sportByKey(SPORTS_BET_SPORT_TABLE_TENNIS)
+      || { key: SPORTS_BET_SPORT_TABLE_TENNIS, label: 'Table Tennis' }
+  }
+  if (/\btennis\b|\batp\b|\bwta\b/i.test(s)) {
+    return sportByKey(SPORTS_BET_SPORT_TENNIS) || { key: SPORTS_BET_SPORT_TENNIS, label: 'Tennis' }
+  }
+  // MLB club names before NFL nickname hints … Giants/Rangers/etc. collide
+  const mlbClubHits = (s.match(
+    /\b(?:cubs|braves|yankees|dodgers|giants|astros|orioles|reds|rays|twins|pirates|nationals|white\s*sox|cardinals|rangers|phillies|mets|red\s*sox|guardians|tigers|royals|mariners|athletics|angels|padres|rockies|diamondbacks|brewers|marlins)\b/gi,
+  ) || []).length
+  if (mlbClubHits >= 2) {
+    return resolveSportsBetSport('baseball_mlb', 'MLB')
+  }
   if (NFL_TEAM_HINT.test(s)) {
     return resolveSportsBetSport('americanfootball_nfl', 'NFL')
+  }
+  if (mlbClubHits >= 1) {
+    return resolveSportsBetSport('baseball_mlb', 'MLB')
+  }
+  // Person vs person moneyline parlays with no league printed … US books flood table tennis
+  {
+    const personVs = [...s.matchAll(
+      /\b([A-Za-z][A-Za-z.'-]+(?:\s+[A-Za-z][A-Za-z.'-]+){1,3})\s+vs\.?\s+([A-Za-z][A-Za-z.'-]+(?:\s+[A-Za-z][A-Za-z.'-]+){1,3})\b/gi,
+    )]
+    const teamish = (
+      NFL_TEAM_HINT.test(s)
+      || /\b(?:nfl|nba|mlb|nhl|cfb|ncaaf|mls|ufc|mma|boxing)\b/i.test(s)
+    )
+    if (personVs.length >= 2 && !teamish) {
+      return sportByKey(SPORTS_BET_SPORT_TABLE_TENNIS)
+        || { key: SPORTS_BET_SPORT_TABLE_TENNIS, label: 'Table Tennis' }
+    }
   }
   return { key: '', label: '' }
 }
@@ -2389,17 +2422,21 @@ function extractAppSpreadTotalLegs(text) {
     if (!stub) continue
 
     const matchupLine = lines[i + 2] || ''
-    if (/(?:@|\bat\b|\bv\.?\b)/i.test(matchupLine)) {
+    // Prefer \bvs\b … bare \bv\b wrongly misses "vs" (word-boundary after v fails)
+    if (/(?:@|\bat\b|\bvs\.?\b)/i.test(matchupLine)) {
       const cleaned = matchupLine
         .replace(/^[•·→]\s*/, '')
         .replace(/\bNFL\s*[•·]\s*/i, '')
         .replace(/[©]/g, '@')
+        .replace(/\s*[•·«].*$/, '')
+        .replace(/\s+Today\b.*$/i, '')
         .replace(/\s+/g, ' ')
+        .trim()
       const ev = parseEventMatchup(cleaned)
       stub.event_label = ev.event || cleaned
       stub.away_team = ev.away_team || ''
       stub.home_team = ev.home_team || ''
-      const sport = extractSport(matchupLine)
+      const sport = extractSport([matchupLine, text].join('\n'))
       stub.sport_key = sport.key || ''
       stub.sport_label = sport.label || ''
     }
@@ -2460,9 +2497,15 @@ function extractAppMoneylineBetslipLegs(text) {
         odds = oddsTok
         break
       }
-      if (/(?:@|\bat\b)/i.test(next)) {
-        const ev = parseEventMatchup(next.replace(/^[•·→]\s*/, '').replace(/\s*[•·].*$/, ''))
-        event_label = ev.event || next
+      if (/(?:@|\bat\b|\bvs\.?\b)/i.test(next)) {
+        const cleaned = next
+          .replace(/^[•·→]\s*/, '')
+          .replace(/\s*[•·«].*$/, '')
+          .replace(/\s*[·•]\s*Today\b.*$/i, '')
+          .replace(/\s+Today\b.*$/i, '')
+          .trim()
+        const ev = parseEventMatchup(cleaned)
+        event_label = ev.event || cleaned
         away_team = ev.away_team || ''
         home_team = ev.home_team || ''
       }
@@ -2471,7 +2514,7 @@ function extractAppMoneylineBetslipLegs(text) {
     const key = normalizeNameKey(selection_label)
     if (seen.has(key)) return
     seen.add(key)
-    const sport = extractSport([selection_label, event_label].join(' '))
+    const sport = extractSport([selection_label, event_label, text].join(' '))
     pending.push(emptyLegStub({
       market: 'h2h',
       odds,
@@ -3130,8 +3173,25 @@ export function parseParlaySlipText(text) {
 
   const book = extractBook(raw)
   const commence_time = extractCommenceTime(raw)
-  const sport = extractSport(raw)
-  const normalized = normalizeParlayLegs(legs)
+  let sport = extractSport(raw)
+  // Prefer a sport already on legs (e.g. person-vs-person → Table Tennis)
+  if (!sport.key) {
+    for (const leg of legs) {
+      const ls = resolveSportsBetSport(leg.sport_key, leg.sport_label)
+      if (ls.key) {
+        sport = ls
+        break
+      }
+    }
+  }
+  let normalized = normalizeParlayLegs(legs)
+  if (sport.key) {
+    normalized = normalized.map((leg) => (
+      leg.sport_key
+        ? leg
+        : { ...leg, sport_key: sport.key, sport_label: sport.label }
+    ))
+  }
 
   const draft = draftFromBits({
     selection: parlaySelectionLabel(normalized),

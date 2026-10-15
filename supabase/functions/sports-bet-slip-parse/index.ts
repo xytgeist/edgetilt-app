@@ -170,6 +170,15 @@ function normalizeSport(key: unknown, label: unknown): { sport_key: string; spor
   if (k.includes('boxing') || /boxing/i.test(lab)) {
     return { sport_key: 'boxing_boxing', sport_label: 'Boxing' }
   }
+  if (k.includes('tabletennis') || k.includes('table_tennis') || /table\s*tennis/i.test(lab)) {
+    return { sport_key: 'tabletennis', sport_label: 'Table Tennis' }
+  }
+  if (k === 'tennis' || k.includes('tennis') || /\btennis\b|\batp\b|\bwta\b/i.test(lab)) {
+    // Avoid re-matching table tennis (handled above)
+    if (!/table/.test(k) && !/table\s*tennis/i.test(lab)) {
+      return { sport_key: 'tennis', sport_label: 'Tennis' }
+    }
+  }
   if (lab) return { sport_key: k || 'other', sport_label: lab }
   return { sport_key: '', sport_label: '' }
 }
@@ -309,8 +318,9 @@ Rules:
 - to_collect_dollars: TO COLLECT / YOU WON / WON ON / Max Payout (includes stake). to_win_dollars: TO WIN profit only (or collect − stake). OCR may glue "$207.85 WON ON FANDUEL" or put $ above/below WON ON … do not use the TOTAL WAGER amount as the win.
 - status: "won" when WON ON / YOU WON / Total Won. "lost" when LOST / LOST ON / Did not win / $0.00 payout on a settled My Bets receipt (Finished + TOTAL WAGER, no PLACE BET). Otherwise "open". Never mark an open betslip (PLACE BET) as lost.
 - commence_time: ISO 8601 if event date/time known
-- sport_label: NFL | CFB | NBA | MLB | NHL | UFC | Boxing | Golf | MLS | Other
-- sport_key when known: americanfootball_nfl, americanfootball_ncaaf, basketball_nba, baseball_mlb, icehockey_nhl, mma_mixed_martial_arts, boxing_boxing
+- sport_label: NFL | CFB | NBA | MLB | NHL | UFC | Boxing | Golf | MLS | Tennis | Table Tennis | Other … fill whenever inferable (filter by sport)
+- sport_key when known: americanfootball_nfl, americanfootball_ncaaf, basketball_nba, baseball_mlb, icehockey_nhl, mma_mixed_martial_arts, boxing_boxing, tennis, tabletennis
+- Person vs person moneyline parlays with no league printed (common on US books) → Table Tennis unless Tennis/ATP/WTA/UFC/Boxing is explicit
 - Point spreads: market=spread, line signed for the picked side (+3.5 or -9), side home/away from the matchup
 - Casino codes like PLB before a spread mean point spread
 - Ignore ticket barcodes, teller ids, terminal codes (e.g. CGT@MRH is NOT the event)

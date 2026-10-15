@@ -309,7 +309,10 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
   if (!next.event_label) next.event_label = eventLabelFromDraft(next)
   const sport = resolveSportsBetSport(next.sport_key, next.sport_label)
   next.sport_key = sport.key
-  next.sport_label = next.market === 'parlay' ? (sport.label || 'Parlay') : sport.label
+  // Keep inferred league/sport on parlays (Table Tennis, MLB, …) … only fall back to "Parlay"
+  next.sport_label = next.market === 'parlay'
+    ? (sport.label || 'Parlay')
+    : sport.label
   if (!next.label_manual) {
     next.selection_label = buildBetSummaryLabel(next)
   }
@@ -1259,7 +1262,11 @@ export default function SportsBetTracker({
                     </div>
                     <div className="mt-0.5 text-[12px] text-zinc-400">
                       {[
-                        bet.market === 'parlay' ? 'Parlay' : (bet.sport_label || bet.sport_key),
+                        bet.market === 'parlay'
+                          ? (bet.sport_label && bet.sport_label !== 'Parlay'
+                            ? bet.sport_label
+                            : 'Parlay')
+                          : (bet.sport_label || bet.sport_key),
                         bet.book,
                         bet.odds != null ? formatAmericanOdds(bet.odds) : null,
                         `${bet.stake_units}u`,

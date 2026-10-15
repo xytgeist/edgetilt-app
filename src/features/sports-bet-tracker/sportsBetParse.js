@@ -38,6 +38,7 @@ const BOOK_PATTERNS = [
   { re: /\bfan\s*duel\b|\bfanduel\b|\bfd\b/i, name: 'FanDuel' },
   { re: /\bbet\s*mgm\b|\bbetmgm\b/i, name: 'BetMGM' },
   { re: /\bcaesars\b/i, name: 'Caesars' },
+  { re: /\bgolden\s*nugget\b/i, name: 'Golden Nugget' },
   { re: /\bfanatics\b/i, name: 'Fanatics' },
   { re: /\bbetrivers\b|\bsugarhouse\b/i, name: 'BetRivers' },
   { re: /\bliga\s*365\b|\bliga365\b/i, name: 'LIGA365' },
@@ -272,8 +273,17 @@ function numOrNull(v) {
 
 function parseMoneyAmount(raw) {
   if (raw == null || raw === '') return null
-  const s = String(raw).replace(/[$,\s]/g, '').trim()
+  let s = String(raw).replace(/[$\s]/g, '').trim()
   if (!s) return null
+  // European thousands: "1.200.00" / "3.600,00" → 1200 / 3600
+  if (/^\d{1,3}(\.\d{3})+,\d{2}$/.test(s)) {
+    s = s.replace(/\./g, '').replace(',', '.')
+  } else if (/^\d{1,3}(\.\d{3})+\.\d{2}$/.test(s)) {
+    const parts = s.split('.')
+    s = `${parts.slice(0, -1).join('')}.${parts[parts.length - 1]}`
+  } else {
+    s = s.replace(/,/g, '')
+  }
   const n = Number(s)
   return Number.isFinite(n) && n >= 0 ? n : null
 }
@@ -466,15 +476,16 @@ function extractStakeDollars(text) {
   }
 
   const labeled = [
-    /ticket\s*cost\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
-    /\brisk\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
-    /\btotal\s*wager\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
-    /\bwager\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
-    /\bstake\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
-    /\btake\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
-    /\d+\s*bet\(s\)\s*@\s*\$?\s*([0-9,]+\.?\d*)/i,
-    /\bplace\s*bet\s*\$?\s*([0-9,]+\.?\d*)/i,
-    /\bbet\s*amount\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+    /ticket\s*cost\s*[:=]?\s*\$?\s*([0-9.,]+)/i,
+    /\brisk\s*[:=]?\s*\$?\s*([0-9.,]+)/i,
+    /\btotal\s*wager\s*[:=]?\s*\$?\s*([0-9.,]+)/i,
+    /\bwager\s*[:=]?\s*\$?\s*([0-9.,]+)/i,
+    /\bstake\s*[:=]?\s*\$?\s*([0-9.,]+)/i,
+    /\btake\s*[:=]?\s*\$?\s*([0-9.,]+)/i,
+    /\d+\s*bet\(s\)\s*@\s*\$?\s*([0-9.,]+)/i,
+    /\d+\s*bets?\s*@\s*\$?\s*([0-9.,]+)/i,
+    /\bplace\s*bet\s*\$?\s*([0-9.,]+)/i,
+    /\bbet\s*amount\s*[:=]?\s*\$?\s*([0-9.,]+)/i,
   ]
 
   for (const line of lines) {
@@ -507,11 +518,12 @@ function extractStakeDollars(text) {
     if (n != null && n > 0) return n
   }
 
-  // "Wager" / "Risk" / "Wager Amount:" then amount on next line (or first bare $ soon after)
+  // "Wager" / "Risk" / "Ticket Cost:" then amount on a later bare $ line
   for (let i = 0; i < lines.length; i += 1) {
-    if (!/^(?:wager(?:\s*amount)?|risk)\s*:?\s*$/i.test(lines[i])) continue
-    for (let j = i + 1; j < Math.min(i + 6, lines.length); j += 1) {
-      const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(lines[j])
+    if (!/^(?:wager(?:\s*amount)?|risk|ticket\s*cost)\s*:?\s*$/i.test(lines[i])) continue
+    for (let j = i + 1; j < Math.min(i + 14, lines.length); j += 1) {
+      if (PAYOUT_LINE_RE.test(lines[j]) && !/ticket\s*cost/i.test(lines[j])) continue
+      const m = /^\$?\s*([0-9.,]+)\s*$/.exec(lines[j])
       if (!m) continue
       const n = parseMoneyAmount(m[1])
       if (n != null && n > 0) return n
@@ -640,6 +652,8 @@ function normalizeSlipOcrText(text) {
   return String(text || '')
     .replace(/\u00bd/g, '.5')
     .replace(/(\d)\s*1\/2\b/g, '$1.5')
+    // Caesars OCR: "- 1700" (do not eat the next line's team name)
+    .replace(/([+-])\s+(\d{3,6})\b/g, '$1$2')
 }
 
 /**
@@ -1075,7 +1089,9 @@ function extractCasinoBracketLegs(text) {
       continue
     }
 
+    // "[101] RAVENS" or OCR drop leading bracket: "522] KNICKS"
     const head = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s*$/i.exec(line)
+      || /^(\d{2,4}(?:\/\d{2,4})?)\]\s+(.+?)\s*$/i.exec(line)
     if (!head) continue
     const pickRaw = head[2].trim()
     if (!pickRaw || /^(ticket|parlay|straight|bet)/i.test(pickRaw)) continue
@@ -1740,10 +1756,10 @@ function looksLikeParlayText(text) {
   return false
 }
 
-/** Bare American odds line, optionally with trailing OCR "x" / "X". */
+/** Bare American odds line, optionally with trailing OCR junk (x / ł). */
 function bareAmericanOddsLine(line) {
-  const m = /^([+-]\d{3,6})\s*[xX]?\s*$/.exec(String(line || '').trim())
-  return m ? americanOddsInputString(m[1]) : ''
+  const m = /^([+-])\s*(\d{3,6})\s*[^\d]*$/.exec(String(line || '').trim())
+  return m ? americanOddsInputString(`${m[1]}${m[2]}`) : ''
 }
 
 function extractTotalParlayOdds(text) {
@@ -1766,10 +1782,10 @@ function extractTotalParlayOdds(text) {
     const n = americanOrNull(oddsTok)
     if (n != null) return n
   }
-  // "4 Pick Parlay" / "3 Leg Parlay" … bunched leg juices then ticket plus … prefer fat +
+  // "4 Pick Parlay" / "3 Leg Parlay" / "10-Leg Parlay" … bunched juices then ticket plus
   {
     const block = /(\d+)\s*(?:pick\s+)?pa[ry]lay([\s\S]{0,280})/i.exec(raw)
-      || /(\d+)\s*leg\s+pa[ryi]lay([\s\S]{0,280})/i.exec(raw)
+      || /(\d+)\s*-?\s*leg\s+pa[ryi]lay([\s\S]{0,280})/i.exec(raw)
     if (block) {
       const found = [...block[2].matchAll(/([+-]\d{3,6})/g)]
         .map((x) => americanOrNull(x[1]))
@@ -2020,27 +2036,39 @@ function extractAppMoneylineBetslipLegs(text) {
   const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
   const pending = []
   const seen = new Set()
+  // When ticket odds exist, juices are usually bunched … leave empty for zip (avoid
+  // Pittsburgh's "-1700" before Money Line stealing alignment).
+  const preferZip = extractTotalParlayOdds(text) != null
 
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i]
-    if (!/^(?:moneyline|money\s*line)$/i.test(lines[i + 1] || '')) continue
-    const team = line.replace(/^[×xX$]\s*/, '').trim()
-    if (!team || team.length > 48 || /singles|parlay|stake|clear|straights|remove/i.test(team)) continue
+  const isSkipLookbackLine = (l) => (
+    bareAmericanOddsLine(l)
+    || /(?:\bat\b|event\s*time|football\s*\||^ticket|^max\s|money\s*line|^\d{1,2}:\d{2})/i.test(l)
+  )
+
+  const pushTeam = (teamRaw, fromIdx) => {
+    const team = String(teamRaw || '').replace(/^[×xX$]\s*/, '').trim()
+    if (!team || team.length > 48 || /singles|parlay|stake|clear|straights|remove|ticket|max\s*win|caesars|event\s*time|football\s*\|/i.test(team)) {
+      return
+    }
+    if (bareAmericanOddsLine(team) || /^(?:moneyline|money\s*line)/i.test(team)) return
+    if (/(?:@|\bat\b)/i.test(team) && team.length > 28) return // matchup line, not pick
     let event_label = ''
     let away_team = ''
     let home_team = ''
     let odds = ''
-    // Leading juice on previous line (DK: "-200" then "TB Rays")
-    const prev = lines[i - 1] || ''
-    if (/^[+-]\d{3,5}$/.test(prev)) odds = americanOddsInputString(prev)
+    const prev = lines[fromIdx - 1] || ''
+    if (!preferZip && bareAmericanOddsLine(prev)) odds = bareAmericanOddsLine(prev)
 
-    for (let j = i + 2; j < Math.min(i + 10, lines.length); j += 1) {
+    for (let j = fromIdx + 1; j < Math.min(fromIdx + 10, lines.length); j += 1) {
       const next = lines[j]
-      if (/^(?:moneyline|money\s*line)$/i.test(next) || /^[×xX]/.test(next)) break
-      if (/^[+-]\d{3,5}$/.test(next)) {
+      if (/^(?:moneyline|money\s*line)(?:\s+ft)?$/i.test(next) || /^[×xX]/.test(next)) break
+      if (/^[A-Za-z].{2,40}$/.test(next) && /^(?:moneyline|money\s*line)/i.test(lines[j + 1] || '')) break
+      const oddsTok = bareAmericanOddsLine(next)
+      if (oddsTok) {
+        if (preferZip) break // leave for zipBunched
         const after = lines.slice(j + 1).find((l) => l && !/^(sun|mon|tue|wed|thu|fri|sat|\d{1,2}:\d{2}|0\.00)/i.test(l))
-        if (after && /^[+-]\d{3,5}$/.test(after)) break // bunched trail
-        odds = americanOddsInputString(next)
+        if (after && bareAmericanOddsLine(after)) break // bunched trail
+        odds = oddsTok
         break
       }
       if (/(?:@|\bat\b)/i.test(next)) {
@@ -2052,7 +2080,7 @@ function extractAppMoneylineBetslipLegs(text) {
     }
     const selection_label = `${titleCaseWords(team)} ML`
     const key = normalizeNameKey(selection_label)
-    if (seen.has(key)) continue
+    if (seen.has(key)) return
     seen.add(key)
     const sport = extractSport([selection_label, event_label].join(' '))
     pending.push(emptyLegStub({
@@ -2067,7 +2095,75 @@ function extractAppMoneylineBetslipLegs(text) {
     }))
   }
 
-  return zipBunchedAmericanOdds(pending, text).filter((l) => l.odds)
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    // DK / Fanatics: "GB Packers" then "Moneyline"
+    if (/^(?:moneyline|money\s*line)$/i.test(lines[i + 1] || '')) {
+      pushTeam(line, i + 1)
+      continue
+    }
+    // Caesars retail: odds may sit between team and "Money Line"
+    // "Pittsburgh Panthers" / "-1700" / "Money Line"
+    if (/^(?:moneyline|money\s*line)$/i.test(line)) {
+      let j = i - 1
+      while (j >= 0 && isSkipLookbackLine(lines[j])) j -= 1
+      if (j >= 0) pushTeam(lines[j], i)
+    }
+  }
+
+  const zipped = zipBunchedAmericanOdds(pending, text)
+  if (pending.length >= 2 && extractTotalParlayOdds(text) != null) {
+    return zipped.length >= 2 ? zipped : pending
+  }
+  return zipped.filter((l) => l.odds)
+}
+
+/**
+ * Golden Nugget AC / retail: "3585 Creighton Bluejays Money Line FT" + bunched odds.
+ */
+function extractNumberedMoneyLineFtLegs(text) {
+  const raw = normalizeSlipOcrText(text)
+  if (!/money\s*line\s*ft/i.test(raw)) return []
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const m = /^(\d{3,5})\s+(.+?)\s+money\s*line\s*ft\s*$/i.exec(lines[i])
+    if (!m) continue
+    const team = titleCaseWords(m[2].trim())
+    if (!team || team.length > 48) continue
+    let event_label = ''
+    let away_team = ''
+    let home_team = ''
+    const next = lines[i + 1] || ''
+    if (/(?:@|\bat\b)/i.test(next)) {
+      const ev = parseEventMatchup(next.replace(/\s+/g, ' '))
+      event_label = ev.event || next
+      away_team = ev.away_team || ''
+      home_team = ev.home_team || ''
+    }
+    const selection_label = `${team} ML`
+    const key = normalizeNameKey(selection_label)
+    if (seen.has(key)) continue
+    seen.add(key)
+    const sport = extractSport([selection_label, event_label, raw].join(' '))
+    pending.push(emptyLegStub({
+      market: 'h2h',
+      selection_label,
+      home_team,
+      away_team,
+      event_label,
+      sport_key: sport.key || 'basketball_ncaab',
+      sport_label: sport.label || 'CBB',
+    }))
+  }
+
+  const zipped = zipBunchedAmericanOdds(pending, text)
+  if (pending.length >= 2 && extractTotalParlayOdds(text) != null) {
+    return zipped.length >= 2 ? zipped : pending
+  }
+  return zipped.filter((l) => l.odds)
 }
 
 /**
@@ -2430,6 +2526,10 @@ export function extractParlayLegs(text) {
   const combo = extractDkMlTotalComboLegs(text)
   if (combo.length >= 2) return combo
 
+  // Golden Nugget AC "3585 Creighton Bluejays Money Line FT"
+  const mlFt = extractNumberedMoneyLineFtLegs(text)
+  if (mlFt.length >= 2) return mlFt
+
   const fdMine = extractFanDuelMyBetsLegs(text)
   if (fdMine.length >= 2) return fdMine
 
@@ -2438,6 +2538,16 @@ export function extractParlayLegs(text) {
 
   const decimalLegs = extractDecimalOddsParlayLegs(text)
   if (decimalLegs.length >= 2) return decimalLegs
+
+  // Caesars retail "Money Line" (two words) with juices between team+market … beat spreadTot.
+  // Require the space so FanDuel/DK "Moneyline" open slips stay on spreadTot.
+  {
+    const moneyLineHits = (String(text || '').match(/\bmoney\s+line\b/gi) || []).length
+    if (moneyLineHits >= 2) {
+      const mlFirst = extractAppMoneylineBetslipLegs(text)
+      if (mlFirst.length >= 2) return mlFirst
+    }
+  }
 
   // Spreads/totals/ML open betslips before ML-only … mixed CBB slips must not stop at 3 moneylines
   const spreadTot = extractAppSpreadTotalLegs(text)

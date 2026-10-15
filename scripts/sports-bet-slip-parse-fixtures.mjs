@@ -963,6 +963,68 @@ const ocrBatch = [
     file: 'dk-nfl-ml-5-xstrip.ocr.txt',
     expect: { legs: 5, stake_dollars: 100, leg0: 'Packers', leg_last: 'Bills' },
   },
+  // Batch #4 (2026-10-14) … Caesars Horseshoe ML, GN AC numbered ML FT, casino brackets
+  {
+    file: 'caesars-horseshoe-10.ocr.txt',
+    expect: {
+      legs: 10,
+      odds: 184,
+      stake_dollars: 3600,
+      book: 'Caesars',
+      leg_odds: [-430, -250, -420, -1000, -1700, -15000, -10000, -2400, -1600, -7000],
+      leg0: 'Eag',
+      leg_last: 'Badgers',
+    },
+  },
+  {
+    file: 'caesars-horseshoe-4.ocr.txt',
+    expect: {
+      legs: 4,
+      odds: 194,
+      stake_dollars: 1200,
+      book: 'Caesars',
+      leg_odds: [-250, -267, -420, -430],
+      leg0: 'Bengals',
+      leg_last: 'Eagles',
+    },
+  },
+  {
+    file: 'gn-ac-cbb-ml-5.ocr.txt',
+    expect: {
+      legs: 5,
+      odds: 219,
+      stake_dollars: 25,
+      book: 'Golden Nugget',
+      leg_odds: [-240, -320, -380, -700, -525],
+      leg0: 'Creighton',
+      leg_last: 'Villanova',
+    },
+  },
+  {
+    file: 'gn-casino-5.ocr.txt',
+    expect: {
+      legs: 5,
+      stake_dollars: 10,
+      book: 'Golden Nugget',
+      leg0: 'Wolves',
+      leg_last: 'Kings',
+    },
+  },
+  {
+    file: 'caesars-casino-5.ocr.txt',
+    expect: {
+      legs: 5,
+      stake_dollars: 25,
+      book: 'Caesars',
+      leg_odds: [-110, 125, -170, -410, -190],
+      leg0: 'Ravens',
+      leg_last: 'Lakers',
+    },
+  },
+  {
+    file: 'dk-alt-yards-boost-2.ocr.txt',
+    expect: { legs: 4, odds: 9993, stake_dollars: 15, leg_odds: [155, 220, 220, 210], leg0: 'Chase' },
+  },
 ]
 
 let ocrCount = 0

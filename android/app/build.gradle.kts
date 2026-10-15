@@ -23,8 +23,8 @@ android {
     applicationId = "com.edgetilt.app"
     minSdk = 28
     targetSdk = 36
-    versionCode = 24
-    versionName = "1.3.20"
+    versionCode = 25
+    versionName = "1.3.21"
   }
 
   buildFeatures {
@@ -38,6 +38,7 @@ android {
       dimension = "env"
       buildConfigField("String", "BASE_URL", "\"https://edgetilt.com\"")
       resValue("string", "app_name", "Edge")
+      resValue("string", "shortcut_target_package", "com.edgetilt.app")
       // App Links hosts (verified via /.well-known/assetlinks.json on each host).
       manifestPlaceholders["appLinkHost"] = "edgetilt.com"
       manifestPlaceholders["appLinkHostWww"] = "www.edgetilt.com"
@@ -47,6 +48,7 @@ android {
       applicationIdSuffix = ".test"
       buildConfigField("String", "BASE_URL", "\"https://lvslotpro.com\"")
       resValue("string", "app_name", "Edge Test")
+      resValue("string", "shortcut_target_package", "com.edgetilt.app.test")
       manifestPlaceholders["appLinkHost"] = "lvslotpro.com"
       manifestPlaceholders["appLinkHostWww"] = "www.lvslotpro.com"
     }

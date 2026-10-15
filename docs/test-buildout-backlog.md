@@ -230,7 +230,7 @@ Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.js
 - [x] **System photo picker** (multi-select, no storage permission): image / video-only file inputs open `ACTION_PICK_IMAGES` on Android 13+ inside the shell's file chooser, no web change. APK 1.1.0, emulator verified pick → `File` on the input (Sep 30).
 - [x] **Haptics + composer orientation lock:** `EdgeAndroid.haptic` / `setOrientationLock`, APK 1.1.0, web 1.4.954 (tap haptics, W-2G success, composer portrait lock; rotate hint + keyboard block stay off in the APK). Emulator verified lock → portrait, release → back to landscape with auto-rotate on (Sep 30). Real-device feel check owed.
 - [x] **Call speaker / earpiece routing (APK 1.3.5):** `EdgeAndroid.setAudioRoute` + web `chatCallAudioOutput.js` on every Speaker tap.
-- [ ] **Android-only:** app shortcuts (long-press icon: Start session / Lounge / Log a win) and a home-screen bankroll / live-session widget.
+- [x] **Android-only:** app shortcuts (long-press icon: Start session / Lounge / Log a win) and a home-screen bankroll / live-session widget. **APK 1.3.21 / vc 25 + web `1.4.1201`:** static shortcuts via `edgetilt://open?tab=…`; `EdgeLiveSessionWidget` mirrors `syncLiveBankrollActivity`; `?tab=bankroll&startSession=1` opens the start sheet. Smoke owed (long-press + widget add + live session update).
 - Skip: Sign in with Apple, service-worker bust (iOS-only needs). Play Billing stays the policy item above.
 
 ---
@@ -1215,6 +1215,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-15:** **Android shortcuts + live-session widget (`1.3.21` / vc **25** + web `1.4.1201`).** Long-press: Lounge / Start session / Log a win. Home widget mirrors live bankroll notif. `startSession=1` deep link. Smoke owed. (Windows lane; Mac notified on theo.)
 - **2026-10-15:** **Android ML Kit scan/OCR device smoke COMPLETE (Ryan PASSED).** APK **1.3.20** / vc **24**. W-2G Take photo + Offers calendar/mailer Take photo + bet-slip OCR. Follow-on Edge harden during smoke: mailer year inference + discrete session-day expand (`process-offer-uploads`).
 - **2026-10-15:** **Promoted `1.4.1200`** (hamburger tap-through guard). Frontend **`test` → `main`** (`01ed93ceb`). No SQL / Edge.
 - **2026-10-15:** **Hamburger tap-through guard (`1.4.1200`).** After menu nav, ~400ms full-document ghost swallow (Sports Hub→MLB / wrong dest) then dock-only Home shield for the rest of 1200ms. Keeps intentional hub-tool taps after the short window.

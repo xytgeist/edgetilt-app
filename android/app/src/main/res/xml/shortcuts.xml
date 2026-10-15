@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Long-press app icon shortcuts. Use edgetilt://open?tab=… so prod + staging
+  both map through EdgeLinks.httpsFromCustomScheme → BuildConfig.BASE_URL.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+  <shortcut
+    android:shortcutId="lounge"
+    android:enabled="true"
+    android:icon="@drawable/ic_stat_edge"
+    android:shortcutShortLabel="@string/shortcut_lounge_short"
+    android:shortcutLongLabel="@string/shortcut_lounge_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="@string/shortcut_target_package"
+      android:targetClass="com.edgetilt.app.MainActivity"
+      android:data="edgetilt://open?tab=home" />
+  </shortcut>
+
+  <shortcut
+    android:shortcutId="start_session"
+    android:enabled="true"
+    android:icon="@drawable/ic_stat_edge"
+    android:shortcutShortLabel="@string/shortcut_start_session_short"
+    android:shortcutLongLabel="@string/shortcut_start_session_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="@string/shortcut_target_package"
+      android:targetClass="com.edgetilt.app.MainActivity"
+      android:data="edgetilt://open?tab=bankroll&amp;startSession=1" />
+  </shortcut>
+
+  <shortcut
+    android:shortcutId="log_win"
+    android:enabled="true"
+    android:icon="@drawable/ic_stat_edge"
+    android:shortcutShortLabel="@string/shortcut_log_win_short"
+    android:shortcutLongLabel="@string/shortcut_log_win_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="@string/shortcut_target_package"
+      android:targetClass="com.edgetilt.app.MainActivity"
+      android:data="edgetilt://open?tab=logbook" />
+  </shortcut>
+</shortcuts>

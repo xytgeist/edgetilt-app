@@ -525,6 +525,8 @@ export default function AppShell({
   const [pendingPlayLogSessionId, setPendingPlayLogSessionId] = useState(null)
   const [pendingW2GPrefill, setPendingW2GPrefill] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
+  /** Launcher shortcut / deep link: open slots bankroll start-session sheet. */
+  const [pendingBankrollStartSession, setPendingBankrollStartSession] = useState(false)
   const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
   const [pendingTournamentSwapId, setPendingTournamentSwapId] = useState(null)
   /** Alert tap for rewritten withdrawn invite (deal row already gone). */
@@ -1767,6 +1769,10 @@ export default function AppShell({
         } else {
           setTab('bankroll')
           setMenuOpen(false)
+          const startSessionRaw = (params.get('startSession') || '').trim().toLowerCase()
+          if (startSessionRaw === '1' || startSessionRaw === 'true') {
+            setPendingBankrollStartSession(true)
+          }
         }
       }
       if (targetTab === 'poker-bankroll') {
@@ -3494,6 +3500,8 @@ export default function AppShell({
               onRequireSubscribeForBankroll={() => onRequireSubscribe?.('slots-edge')}
               onBankrollSessionCreated={refreshFreemiumUsage}
               showGlobalConfirm={showGlobalConfirm}
+              autoOpenStartSession={pendingBankrollStartSession}
+              onAutoOpenStartSessionConsumed={() => setPendingBankrollStartSession(false)}
               titleBarNavSlot={
                 slotsBankrollPanePortal || tab !== 'bankroll' ? null : renderTitleBarNavSlot()
               }

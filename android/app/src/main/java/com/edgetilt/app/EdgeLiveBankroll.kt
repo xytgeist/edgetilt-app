@@ -98,6 +98,7 @@ object EdgeLiveBankroll {
         pokerPaused = pokerPaused && slotsId.isEmpty(),
       )
       nm.notify(NOTIFY_ID, notification)
+      EdgeLiveSessionWidget.persistLive(ctx, title = title, text = text, tab = tab)
       JSONObject()
         .put("ok", true)
         .put("supported", true)
@@ -113,6 +114,7 @@ object EdgeLiveBankroll {
   fun clear(ctx: Context): Boolean {
     val nm = ctx.getSystemService(NotificationManager::class.java) ?: return false
     nm.cancel(NOTIFY_ID)
+    EdgeLiveSessionWidget.persistIdle(ctx)
     return true
   }
 

@@ -38,6 +38,9 @@
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
+      <meta-data
+        android:name="android.app.shortcuts"
+        android:resource="@xml/shortcuts" />
       <!--
         App Links (autoVerify). Paths mirror iOS AASA + /lounge/g/*.
         Root "/" covers SPA query deep links (?post= / ?u= / ?profile= / ?game= / ?yahoo=);
@@ -126,5 +129,17 @@
     <receiver
       android:name=".EdgeCallActionReceiver"
       android:exported="false" />
+
+    <receiver
+      android:name=".EdgeLiveSessionWidget"
+      android:exported="true"
+      android:label="@string/widget_live_session_description">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/edge_live_session_widget_info" />
+    </receiver>
   </application>
 </manifest>

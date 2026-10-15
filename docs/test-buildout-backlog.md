@@ -1215,6 +1215,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-15:** **Promoted `1.4.1200`** (hamburger tap-through guard). Frontend **`test` → `main`** (`01ed93ceb`). No SQL / Edge.
 - **2026-10-15:** **Hamburger tap-through guard (`1.4.1200`).** After menu nav, ~400ms full-document ghost swallow (Sports Hub→MLB / wrong dest) then dock-only Home shield for the rest of 1200ms. Keeps intentional hub-tool taps after the short window.
 - **2026-10-15:** **Promoted `1.4.1199`** (Offers mailer photo lightbox). Frontend **`test` → `main`** (`575da72a7`). No SQL / Edge.
 - **2026-10-15:** **Offers mailer photo lightbox (`1.4.1199`).** Event detail + AI review tap opens in-app `ChatImageMediaViewer` (object-contain fullscreen) instead of `target=_blank` (Android pan / iOS in-app browser).

@@ -1349,6 +1349,20 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 9 (Ryan yes): cashed-out 19-leg collapsed … money + Notes; 0 legs
+    file: 'fd-cashed-19leg-collapsed.ocr.txt',
+    expect: {
+      legs: 0,
+      odds: 2983218,
+      stake_dollars: 20,
+      to_collect_dollars: 66714.41,
+      to_win_dollars: 66694.41,
+      status: 'won',
+      book: 'FanDuel',
+      notes_includes: 'Parlay picks (19):',
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

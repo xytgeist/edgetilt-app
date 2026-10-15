@@ -292,8 +292,8 @@ function parseMoneyAmount(raw) {
 
 function americanOrNull(v) {
   const s = String(v || '').trim()
-  // Up to 6 digits … fat casino parlays (+52285) and boost tickets
-  const m = /^([+-]?\d{2,6})$/.exec(s)
+  // Up to 8 digits … fat casino parlays (+52285) and longshot tickets (+2983218)
+  const m = /^([+-]?\d{2,8})$/.exec(s)
   if (!m) return null
   const n = Number(m[1])
   // American odds are typically ±100+; allow +120 style. Reject tiny spreads like +3.5 via non-integer path above.
@@ -756,7 +756,7 @@ export function detectSlipResult(text) {
   if (!raw.trim()) return 'open'
 
   // Cashed tickets first … never reclassify as lost
-  if (/\b(?:won\s+on\b|you\s*won\b|total\s*won\b)/i.test(raw)) return 'won'
+  if (/\b(?:won\s+on\b|you\s*won\b|total\s*won\b|cashed\s*out\b)/i.test(raw)) return 'won'
 
   // Explicit loss copy (FanDuel / DK / Caesars / etc.)
   if (/\b(?:lost\s+on\b|you\s*lost\b|total\s*lost\b)/i.test(raw)) return 'lost'
@@ -894,9 +894,9 @@ function extractPayoutDollars(text) {
   if (footer?.collect != null && footer.collect > 0) return footer.collect
 
   // FanDuel open My Bets: "$10.00 $2,129.55" / "TOTAL WAGER TOTAL PAYOUT" (payout is right $)
-  // Settled: "$5.00 $156.70" / "TOTAL WAGER WON ON FANDUEL"
+  // Settled: "$5.00 $156.70" / "TOTAL WAGER WON ON FANDUEL" / "TOTAL WAGER CASHED OUT"
   for (let i = 0; i < lines.length; i += 1) {
-    if (!/\btotal\s*payout\b|\bwon\s+on\b/i.test(lines[i])) continue
+    if (!/\btotal\s*payout\b|\bwon\s+on\b|\bcashed\s*out\b/i.test(lines[i])) continue
     for (const candidate of [lines[i - 1] || '', lines[i + 1] || '']) {
       const dual = /^\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
       if (dual) {
@@ -914,10 +914,10 @@ function extractPayoutDollars(text) {
     }
   }
 
-  // "$611.82" above OR below "WON ON FANDUEL" … never steal TOTAL WAGER $ as the win
-  // Line may be bare "WON ON FANDUEL" or glued "TOTAL WAGER WON ON FANDUEL"
+  // "$611.82" above OR below "WON ON FANDUEL" / "CASHED OUT" … never steal TOTAL WAGER $ as the win
+  // Line may be bare "WON ON FANDUEL" or glued "TOTAL WAGER WON ON FANDUEL" / "TOTAL WAGER CASHED OUT"
   for (let i = 0; i < lines.length; i += 1) {
-    if (!/\b(?:won\s+on|you\s*won|total\s*won)\b/i.test(lines[i])) continue
+    if (!/\b(?:won\s+on|you\s*won|total\s*won|cashed\s*out)\b/i.test(lines[i])) continue
     const neighbors = []
     for (const candidate of [lines[i - 1] || '', lines[i + 1] || '']) {
       const dual = /^\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
@@ -2207,12 +2207,12 @@ function extractTotalParlayOdds(text) {
   // FanDuel open betslip: "3 Leg Parlay +584" on one line (ticket total, not a leg)
   {
     const same = (
-      /(?:^|\n)\s*\d+\s*-?\s*legs?\s+pa[ry]lay\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
-      || /(?:^|\n)\s*\d+\s*picks?\s+pa[ry]lay\s+([+-]\d{3,6})\b/i.exec(raw)
-      || /(?:^|\n)\s*\d+\s*-?\s*legs?\s+pa[ry]lay\s*\n\s*([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
+      /(?:^|\n)\s*\d+\s*-?\s*legs?\s+pa[ry]lay\s+([+-]\d{3,8})\s*(?:\n|$)/i.exec(raw)
+      || /(?:^|\n)\s*\d+\s*picks?\s+pa[ry]lay\s+([+-]\d{3,8})\b/i.exec(raw)
+      || /(?:^|\n)\s*\d+\s*-?\s*legs?\s+pa[ry]lay\s*\n\s*([+-]\d{3,8})\s*(?:\n|$)/i.exec(raw)
       // Settled / open SGP header: "Same Game Parlay™ +3134" / "SGP Same Game Parlay +3134"
-      || /(?:^|\n)\s*(?:sgp\s+)?same\s*game\s*parlay\S*\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
-      || /(?:^|\n)\s*sgp\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
+      || /(?:^|\n)\s*(?:sgp\s+)?same\s*game\s*parlay\S*\s+([+-]\d{3,8})\s*(?:\n|$)/i.exec(raw)
+      || /(?:^|\n)\s*sgp\s+([+-]\d{3,8})\s*(?:\n|$)/i.exec(raw)
     )
     if (same) {
       const n = americanOrNull(same[1])
@@ -3060,7 +3060,9 @@ function extractParlayPickSummaryNotes(text) {
   let declared = null
   let start = -1
   for (let i = 0; i < lines.length; i += 1) {
+    // "9 PICKS PARLAY +40109" / "19 leg parlay +2983218"
     const m = /^(\d+)\s*picks?\s+pa[ry]lay\b/i.exec(lines[i])
+      || /^(\d+)\s*-?\s*legs?\s+pa[ry]lay\b/i.exec(lines[i])
     if (!m) continue
     declared = Number(m[1])
     start = i + 1
@@ -3068,19 +3070,26 @@ function extractParlayPickSummaryNotes(text) {
   }
   if (start < 0 || !Number.isFinite(declared) || declared < 2) return ''
   const parts = []
-  for (let i = start; i < Math.min(start + 8, lines.length); i += 1) {
+  for (let i = start; i < Math.min(start + 14, lines.length); i += 1) {
     const line = lines[i]
-    if (/^(wager|paid|risk|total\s*wager|hide\s*legs|show\s*legs|bet\s*id|\$)/i.test(line)) break
+    // Skip chrome between header and the collapsed name list (bonus pill, etc.)
+    if (/bonus\s*bet|free\s*bet|\$\d[\d,.]*\s*$/i.test(line) && !/,/.test(line) && !/moneyline/i.test(line)) {
+      continue
+    }
+    if (/^(wager|paid|risk|total\s*wager|hide\s*legs|show\s*legs|bet\s*id|reuse\s*selections)/i.test(line)) break
+    if (/^\$?\s*[\d,]+\.?\d*\s+\$?\s*[\d,]+\.?\d*\s*$/.test(line)) break
     if (/^[A-Za-z].+\s+[+-]\d{2,5}\s*$/.test(line)) break
-    if (/anytime\s*td|moneyline|spread|top\s*\d+/i.test(line)) break
-    // Name list lines (commas or continuation)
-    if (/[A-Za-z]/.test(line) && (/,/.test(line) || parts.length > 0)) {
-      parts.push(line.replace(/,+\s*$/, '').trim())
+    if (/anytime\s*td|spread|top\s*\d+/i.test(line) && !/,/.test(line)) break
+    // Collapsed FD list: "Lakers Moneyline, Dodgers Moneyline…" (Moneyline OK inside list)
+    if (/[A-Za-z]/.test(line) && (/,/.test(line) || /moneyline/i.test(line) || parts.length > 0)) {
+      parts.push(line.replace(/,+\s*$/, '').replace(/\.\.\.$/, '').trim())
       continue
     }
     if (parts.length) break
   }
-  const blob = parts.join(', ').replace(/\s*,\s*,/g, ',').replace(/\s+/g, ' ').trim()
+  let blob = parts.join(', ').replace(/\s*,\s*,/g, ',').replace(/\s+/g, ' ').trim()
+  // OCR wrap: "Dodgers,\nMoneyline," → "Dodgers Moneyline,"
+  blob = blob.replace(/,\s*(Moneyline)\b/gi, ' $1')
   if (!blob || blob.length < 8) return ''
   // Need enough commas to look like a multi-name summary (not one event line)
   const commas = (blob.match(/,/g) || []).length
@@ -3467,17 +3476,27 @@ export function parseParlaySlipText(text) {
   if (!raw || !looksLikeParlayText(raw)) return null
 
   const legs = extractParlayLegs(raw)
-  if (legs.length < 2) return null
+  const pickNotesEarly = extractParlayPickSummaryNotes(raw)
+  const moneyEarly = ticketMoneyFromText(raw)
+  const collapsedMoneyOnly = (
+    legs.length < 2
+    && moneyEarly.stake_dollars != null
+    && moneyEarly.to_collect_dollars != null
+    && declaredParlayLegCount(raw) != null
+    && Boolean(pickNotesEarly)
+  )
+  if (legs.length < 2 && !collapsedMoneyOnly) return null
 
   // Only fill combined odds when the ticket prints an American/decimal total.
   // Do NOT invent from leg product or stake→payout (those go in To win / To collect).
   const totalOdds = extractTotalParlayOdds(raw)
-  const money = ticketMoneyFromText(raw)
+  const money = moneyEarly
   const stakeDollars = money.stake_dollars ?? extractStakeDollars(raw)
 
   const book = extractBook(raw)
   const commence_time = extractCommenceTime(raw)
-  let sport = extractSport(raw)
+  // Collapsed multi-league cashout name lists (Lakers + Dodgers + Oilers…) → leave sport blank
+  let sport = collapsedMoneyOnly ? { key: '', label: '' } : extractSport(raw)
   // Prefer a sport already on legs (e.g. person-vs-person → Table Tennis)
   if (!sport.key) {
     for (const leg of legs) {
@@ -3509,7 +3528,7 @@ export function parseParlaySlipText(text) {
     line: null,
     selection_label: parlaySelectionLabel(normalized),
     sport_key: sport.key || '',
-    sport_label: sport.label || 'Parlay',
+    sport_label: sport.label || (collapsedMoneyOnly ? '' : 'Parlay'),
     home_team: '',
     away_team: '',
     commence_time,
@@ -3531,10 +3550,21 @@ export function parseParlaySlipText(text) {
   })
   const withMoney = attachTicketMoney(draft, raw)
   withMoney.status = detectSlipResult(raw)
-  // Collapsed "N PICKS" name list → Notes (not legs)
-  const pickNotes = extractParlayPickSummaryNotes(raw)
+  // Collapsed "N PICKS" / "N leg parlay" name list → Notes (not legs)
+  const pickNotes = pickNotesEarly || extractParlayPickSummaryNotes(raw)
   if (pickNotes && !String(withMoney.notes || '').trim()) {
     withMoney.notes = pickNotes
+  }
+  // Declared N when legs empty … label from count (cashout / collapsed)
+  if (!normalized.length) {
+    const declared = declaredParlayLegCount(raw)
+    if (declared != null) {
+      withMoney.selection_label = buildBetSummaryLabel({
+        ...withMoney,
+        selection_label: `Parlay (${declared} legs)`,
+        legs: [],
+      })
+    }
   }
   return withMoney
 }
@@ -3558,7 +3588,7 @@ function looksLikeTerminalMatchup(away, home, eventLabel) {
 export function isWeakSportsBetDraft(draft, ocrText = '') {
   if (!draft || typeof draft !== 'object') return true
   const odds = String(draft.odds || '').trim()
-  const hasOdds = Boolean(odds && /^[+-]?\d{2,6}$/.test(odds))
+  const hasOdds = Boolean(odds && /^[+-]?\d{2,8}$/.test(odds))
   const hasMoney = (
     parseMoneyAmount(draft.to_collect_dollars) != null
     || parseMoneyAmount(draft.to_win_dollars) != null

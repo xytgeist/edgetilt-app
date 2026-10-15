@@ -2819,7 +2819,17 @@ function extractAppMoneylineBetslipLegs(text) {
   )
 
   const pushTeam = (teamRaw, fromIdx) => {
-    const team = String(teamRaw || '').replace(/^[×xX$]\s*/, '').trim()
+    // Fliff/ESPN settled: "@ New York Yankees Won" / OCR "ry) Tampa Bay Rays Won"
+    let legStatus = ''
+    if (/\bwon\b/i.test(teamRaw)) legStatus = 'won'
+    else if (/\blost\b/i.test(teamRaw)) legStatus = 'lost'
+    else if (/\bvoid\b/i.test(teamRaw)) legStatus = 'void'
+    const team = String(teamRaw || '')
+      .replace(/^[×xX$@©®™*&~\s]+/, '')
+      .replace(/^[a-z]{1,3}\)\s*/i, '')
+      .replace(/\b(?:won|lost|open|void)\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim()
     if (!team || team.length > 48 || /singles|parlay|stake|clear|straights|remove|ticket|max\s*win|caesars|event\s*time|football\s*\|/i.test(team)) {
       return
     }
@@ -2832,10 +2842,37 @@ function extractAppMoneylineBetslipLegs(text) {
     const prev = lines[fromIdx - 1] || ''
     if (!preferZip && bareAmericanOddsLine(prev)) odds = bareAmericanOddsLine(prev)
 
+    const isTeamMatchupLine = (line) => {
+      const s = String(line || '')
+      if (!s || /\b(?:won|lost|open|void)\b/i.test(s)) return false
+      return /\bat\b/i.test(s) || /\bvs\.?\b/i.test(s) || /\s@\s/.test(s)
+    }
+
+    // Prefer matchup above the pick (Fliff/ESPN: matchup → "@ Team Won" → Money Line)
+    for (let j = fromIdx - 1; j >= Math.max(0, fromIdx - 6); j -= 1) {
+      const up = lines[j]
+      if (!up || bareAmericanOddsLine(up) || /^(?:moneyline|money\s*line)/i.test(up)) continue
+      if (/\b(?:won|lost|open|void)\b/i.test(up)) continue
+      if (/parlay|odds\s*price|slip\s*id|bet\s*amount|total\s*payout|promotion|bonus/i.test(up)) break
+      if (isTeamMatchupLine(up)) {
+        const cleaned = up
+          .replace(/^[•·→]\s*/, '')
+          .replace(/\s*[•·«].*$/, '')
+          .trim()
+        const ev = parseEventMatchup(cleaned)
+        event_label = ev.event || cleaned
+        away_team = ev.away_team || ''
+        home_team = ev.home_team || ''
+        break
+      }
+    }
+
     for (let j = fromIdx + 1; j < Math.min(fromIdx + 10, lines.length); j += 1) {
       const next = lines[j]
       if (/^(?:moneyline|money\s*line)(?:\s+ft)?$/i.test(next) || /^[×xX]/.test(next)) break
       if (/^[A-Za-z].{2,40}$/.test(next) && /^(?:moneyline|money\s*line)/i.test(lines[j + 1] || '')) break
+      // Next leg's settled pick … stop before stealing the following matchup
+      if (/\b(?:won|lost)\b/i.test(next)) break
       const oddsTok = bareAmericanOddsLine(next)
       if (oddsTok) {
         if (preferZip) break // leave for zipBunched
@@ -2844,7 +2881,7 @@ function extractAppMoneylineBetslipLegs(text) {
         odds = oddsTok
         break
       }
-      if (/(?:@|\bat\b|\bvs\.?\b)/i.test(next)) {
+      if (!event_label && isTeamMatchupLine(next)) {
         const cleaned = next
           .replace(/^[•·→]\s*/, '')
           .replace(/\s*[•·«].*$/, '')
@@ -2871,6 +2908,7 @@ function extractAppMoneylineBetslipLegs(text) {
       event_label,
       sport_key: sport.key || '',
       sport_label: sport.label || '',
+      ...(legStatus ? { status: legStatus } : {}),
     }))
   }
 
@@ -4126,6 +4164,15 @@ export function extractParlayLegs(text) {
 export function slicePrimarySlipCard(text) {
   const raw = String(text || '').replace(/\r/g, '')
   if (!raw.trim()) return raw
+
+  // Fliff / ESPN: Parlay: N Legs … then Straight SLIP ID below in the same crop
+  const straightSlip = /(?:^|\n)\s*Straight\s+SLIP\s*ID\s*:/i.exec(raw)
+  if (
+    straightSlip
+    && /\bParlay\s*:\s*\d+\s*Legs?\b/i.test(raw.slice(0, straightSlip.index))
+  ) {
+    return raw.slice(0, straightSlip.index).trim()
+  }
 
   const idMatches = [...raw.matchAll(/\bBET\s*ID\s*:/gi)]
   if (idMatches.length >= 2) {

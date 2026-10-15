@@ -61,6 +61,46 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [ ] **Accessibility (soft).** ASC does not claim Accessibility. No full WCAG 2.1 AA program. Revisit when Ryan wants a pass (alt text, labels, keyboard, contrast) … not panic, industry-wide risk.
 - [ ] **Age gate (optional).** Product is adult gambling social + store 18+; no DOB at signup. Only add a hard age gate if counsel wants affirmative collection beyond “not directed under 18.”
 
+Related platform-ops list (abuse, money webhooks, mod queue, attribution, vendor discipline): **Planned (Platform ops — Denk iceberg)** below.
+
+---
+
+## Planned (Platform ops — Denk iceberg)
+
+**Source:** Tyler Denk / beehiiv X post ([status/2110371582153748942](https://x.com/denk_tweets/status/2110371582153748942)) … weekend-clone backlog as a warning, not a feature list. Ryan ask 2026-10-15: park EdgeTilt follow-ups. Pair with **Planned (Legal / compliance — Limestone audit)** above. **Not a beehiiv clone.** Do not build an ESP, ad network, podcast host, webinar stack, or recommendation marketplace.
+
+**Already good (do not reopen unless something regresses):**
+
+- Live-site shell (web ships without a store binary)
+- Vendors on purpose: Vercel, Supabase + RLS, Stripe / IAP, R2 / Stream, Cloudflare, Resend **transactional only**
+- Counsel Terms / Privacy / Guidelines + 18+ store; no session replay / Meta pixels
+- Dual-machine + prod-is-prod + secrets hygiene + R2 dumps
+- Lounge / chat / CallKit / LiveKit / APNs as real native, not weekend `getUserMedia`
+- Staff pin / delete / role UI exists; DB moderator `UPDATE` is ready (no dedicated queue yet)
+
+**Do not build (explicit skip):**
+
+- [-] Newsletter platform / IP warming / Gmail complaint loops / Outlook HTML renderer
+- [-] Second ESP, second auth vendor, or a new analytics pixel “because we can vibe it”
+
+### Must address
+
+- [ ] **DMCA designated agent.** Same item as Limestone (priority). Lounge UGC without a Copyright Office agent + public contact has no safe harbor.
+- [ ] **Keep marketing email dark.** Same item as Limestone CAN-SPAM. Resend stays billing / poker / affiliate. No “quick newsletter” without unsubscribe + postal + 10-day opt-out.
+- [ ] **Digiverse tax / payout identity.** Apple Finance W-9 still open (EIN already on leftover Individual vendor). Mercury bank Processing. Do not invent TIN. Do not attach leftover USAA. Store review is not blocked; payouts are.
+- [ ] **UGC takedown SLA + mod queue.** Report → human queue → remove → ban, with an owner. Pin/delete in the staff ⋯ menu is not a queue. Needed for DMCA process, not just taste.
+- [ ] **Gambling-adjacent rails.** Keep 18+ and App Store 2.3.6 notes honest. Do not scrape books or publisher sites we already flagged (sports ToS, news ToS). One legal letter kills a feature.
+- [ ] **Vendor forever-bill discipline.** The real monthly cost is Vercel + Supabase + Stripe + R2 + Stream + APNs + LiveKit + Cloudflare. Adding a twin of any of those is a decision, not a weekend default.
+
+### Should improve
+
+- [ ] **Abuse / bots.** Signup + Lounge + invites + affiliates: disposable emails, rate limits, honeypots as volume grows. Fake accounts become a money problem.
+- [ ] **Money webhook integrity.** Stripe / IAP / Connect / affiliate: signed payloads, retries, attempt log, disable-without-delete. Clawback path when payouts are wrong.
+- [ ] **Observability / pager.** Ops dashboard is not on-call. Need a wake-up when Stream, APNs, or a cron dies at 3am.
+- [ ] **Acquisition source on every account.** UTM / `?ref=` / promo as a first-class field (affiliates already have pieces). Pays off the first time we spend on ads.
+- [ ] **Ban / revoke immediately.** Kill session + tokens + Connect access when someone is banned or leaves. “Remove role” is not full revoke.
+- [ ] **Accessibility / media.** Same soft Limestone item (alt text, labels, image resize). Not panic; do not claim ASC Accessibility until a real pass.
+
 ---
 
 ## Planned (Fantasy suite)
@@ -1215,6 +1255,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-15:** **Platform ops todos (Denk / beehiiv iceberg).** Scored EdgeTilt against Tyler Denk’s “weekend clone” backlog. Not a newsletter build. Parked under **Planned (Platform ops — Denk iceberg)**. Must: DMCA + CAN-SPAM (same as Limestone), Digiverse W-9, UGC takedown queue, gambling rails, no second ESP. Improve: bots, money webhooks, pager, acquisition source, ban-revoke, a11y. No code.
 - **2026-10-15:** **Android shortcuts + live-session widget (`1.3.21` / vc **25** + web `1.4.1201`).** Long-press: Lounge / Start session / Log a win. Home widget mirrors live bankroll notif. `startSession=1` deep link. Smoke owed. (Windows lane; Mac notified on theo.)
 - **2026-10-15:** **Android ML Kit scan/OCR device smoke COMPLETE (Ryan PASSED).** APK **1.3.20** / vc **24**. W-2G Take photo + Offers calendar/mailer Take photo + bet-slip OCR. Follow-on Edge harden during smoke: mailer year inference + discrete session-day expand (`process-offer-uploads`).
 - **2026-10-15:** **Promoted `1.4.1200`** (hamburger tap-through guard). Frontend **`test` → `main`** (`01ed93ceb`). No SQL / Edge.

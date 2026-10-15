@@ -224,7 +224,7 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 ### Mac Theo 2026-10-14 ... Caesars casino Edge junk selections
 **Web `1.4.1165`.** Caesars `[101] RAVENS` 5-team: Edge glued dates / `TO WIN: TICKET COST:` into selections. Hydrate prefers lowest-junk source when counts tie; junk legs → weak; casino OCR accepts `>25]`. Edge prompt: team-only labels. Redeploy **`sports-bet-slip-parse`** test + prod. **Promoted** `main` @ `e4bdf5dc`.
 
-**Web `1.4.1166`.** Caesars legs OK but combined odds `-190` (last leg). Hydrate repairs stolen ticket odds from stake→payout / leg product (~`+52285`). Edge prompt: never copy leg juice as ticket odds. Redeploy **`sports-bet-slip-parse`** test. Fixtures **61/61**. No promote this turn.
+**Web `1.4.1166`.** Caesars legs OK but combined odds `-190` (last leg). Hydrate repairs stolen ticket odds from stake→payout / leg product (~`+52285`). Edge prompt: never copy leg juice as ticket odds. Redeploy **`sports-bet-slip-parse`** test + prod. Fixtures **61/61**. **Promoted** `main` @ `fde42df0`.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.

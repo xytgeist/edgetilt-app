@@ -21,6 +21,28 @@ export const LOUNGE_SPORTS_HUB_FILTER_MLS = 'soccer_usa_mls'
 export const LOUNGE_SPORTS_HUB_FILTER_PGA = 'golf_pga'
 
 /**
+ * Sports Hub All-slate / league-button order by US popularity.
+ * Pros first; college after; MLS last among major boards (Ryan 2026-10-14).
+ * Lower = higher on the list.
+ * @param {string} [sportKey]
+ * @returns {number}
+ */
+export function loungeSportsHubSportPopularityRank(sportKey) {
+  const sk = String(sportKey || '').toLowerCase()
+  if (sk.includes('ncaaf') || sk === 'cfb') return 60
+  if (sk.includes('nfl')) return 10
+  if (sk.includes('ncaab') || sk === 'cbb') return 70
+  if (sk.includes('nba')) return 20
+  if (sk.includes('mlb')) return 30
+  if (sk.includes('nhl') || sk.includes('icehockey')) return 40
+  if (sk.startsWith('golf_') || sk === 'pga' || sk === 'golf') return 50
+  if (sk.includes('mma') || sk.includes('ufc')) return 80
+  if (sk.includes('soccer_usa_mls') || sk === 'mls') return 90
+  if (sk.includes('soccer')) return 95
+  return 100
+}
+
+/**
  * @param {string} [filter]
  * @returns {string}
  */

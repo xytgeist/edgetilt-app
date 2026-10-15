@@ -1,5 +1,7 @@
 /** Keep in sync with `supabase/functions/_shared/loungeSportsScoreboard.ts` slate window. */
 
+import { loungeSportsHubSportPopularityRank } from './loungeSportsHubNav.js'
+
 const PT = 'America/Los_Angeles'
 
 /** Lower = more prominent. Uses `side.conference` from enrich (no import cycle with loungeSportsMatch). */
@@ -281,7 +283,22 @@ function hubGamesUnsorted(games, sportKey, now) {
 /** All Sports Hub = PT today. Individual league hubs keep their own slates. */
 export function loungeSportsSlateGames(games, filter, now = Date.now()) {
   const list = slateGamesUnsorted(games, filter, now)
-  return String(filter || '').includes('ncaaf') ? sortCfbGamesTop25First(list) : sortLoungeSportsGamesByKickoffRank(list)
+  const key = String(filter || '').trim()
+  if (key.includes('ncaaf')) return sortCfbGamesTop25First(list)
+  const byKickoff = sortLoungeSportsGamesByKickoffRank(list)
+  // All Sports Hub: popularity of sport first (pros up, MLS last), then kickoff within sport.
+  if (!key || key === 'all') {
+    return [...byKickoff].sort((a, b) => {
+      const ra = loungeSportsHubSportPopularityRank(a?.sport_key)
+      const rb = loungeSportsHubSportPopularityRank(b?.sport_key)
+      if (ra !== rb) return ra - rb
+      const aFinal = a?.status === 'post' ? 1 : 0
+      const bFinal = b?.status === 'post' ? 1 : 0
+      if (aFinal !== bFinal) return aFinal - bFinal
+      return commenceMs(a) - commenceMs(b)
+    })
+  }
+  return byKickoff
 }
 
 function slateGamesUnsorted(games, filter, now) {

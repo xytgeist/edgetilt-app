@@ -18,6 +18,7 @@ import {
   LOUNGE_SPORTS_HUB_FILTER_NHL,
   LOUNGE_SPORTS_HUB_FILTER_NFL,
   LOUNGE_SPORTS_HUB_FILTER_PGA,
+  loungeSportsHubSportPopularityRank,
 } from './loungeSportsHubNav.js'
 import { isPgaGame, loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
 import { probeLogoWashTreatment, resolveNflPillWashes } from './loungeSportsMatch.js'
@@ -65,13 +66,14 @@ function preloadSlatePillAssets(games) {
   return Promise.allSettled(jobs)
 }
 
+/** Pros first (MLS last); CFB after the big four + golf. */
 const SPORTS_HUB_LEAGUES = [
   { id: 'nfl', label: 'NFL', icon: '🏈', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_NFL },
-  { id: 'cfb', label: 'CFB', icon: '🏟️', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_CFB },
   { id: 'nba', label: 'NBA', icon: '🏀', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_NBA },
   { id: 'mlb', label: 'MLB', icon: '⚾', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_MLB },
   { id: 'nhl', label: 'NHL', icon: '🏒', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_NHL },
   { id: 'pga', label: 'Golf', icon: '⛳', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_PGA },
+  { id: 'cfb', label: 'CFB', icon: '🏟️', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_CFB },
   { id: 'mls', label: 'MLS', icon: '⚽', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_MLS },
 ]
 
@@ -275,11 +277,18 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
       if (!bySport.has(key)) bySport.set(key, [])
       bySport.get(key).push(game)
     }
-    return [...bySport.entries()].map(([key, list]) => ({
-      key,
-      label: sportSectionLabel(key),
-      games: list,
-    }))
+    return [...bySport.entries()]
+      .map(([key, list]) => ({
+        key,
+        label: sportSectionLabel(key),
+        games: list,
+      }))
+      .sort((a, b) => {
+        const ra = loungeSportsHubSportPopularityRank(a.key)
+        const rb = loungeSportsHubSportPopularityRank(b.key)
+        if (ra !== rb) return ra - rb
+        return String(a.label).localeCompare(String(b.label))
+      })
   }, [cfbHub, filter, games, mlbHub, mlsHub, nbaHub, nflHub, nhlHub, pgaHub])
 
   if (!open || typeof document === 'undefined') return null

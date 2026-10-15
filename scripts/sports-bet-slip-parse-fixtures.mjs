@@ -1130,6 +1130,45 @@ try {
   console.error(`FAIL Settled loss OCR: ${err.message}`)
 }
 
+// "3 Leg Parlay +584" is combined odds chrome … never a leg (cleared stolen-odds path)
+try {
+  const chrome = `3 Leg Parlay +584
+Denver Broncos -8 -110
+Washington Commanders -110
+New York Giants +10.5 -114
+Wager $5.00
+To win $29.21
+`
+  const d = parseSportsBetSlipText(chrome)[0]
+  assert(d, 'chrome parlay parse missing draft')
+  assert(Number(d.odds) === 584 || d.odds === '+584', `chrome odds want +584 got ${d.odds}`)
+  assert(d.legs?.length === 3, `chrome legs want 3 got ${d.legs?.length}`)
+  assert(
+    !(d.legs || []).some((l) => /leg\s+parlay/i.test(String(l.selection_label || ''))),
+    'chrome must not keep "3 Leg Parlay" as a leg',
+  )
+  assert(Number(d.stake_dollars) === 5, `chrome stake want 5 got ${d.stake_dollars}`)
+  // Edge-style junk leg must be stripped and odds kept
+  const dirty = hydrateParlayLegsForDraft({
+    market: 'parlay',
+    odds: '+584',
+    stake_dollars: '5',
+    to_win_dollars: '29.21',
+    legs: [
+      { selection_label: 'Denver Broncos -8', odds: '-110', market: 'spread' },
+      { selection_label: 'Washington Commanders', odds: '-110', market: 'spread' },
+      { selection_label: 'New York Giants +10.5', odds: '-114', market: 'spread' },
+      { selection_label: '3 Leg Parlay', odds: '+584', market: 'h2h' },
+    ],
+  }, chrome)
+  assert(dirty.legs?.length === 3, `hydrate strip want 3 got ${dirty.legs?.length}`)
+  assert(String(dirty.odds) === '+584' || Number(dirty.odds) === 584, `hydrate keep odds got ${dirty.odds}`)
+  console.log('ok  3 Leg Parlay chrome → combined odds (not a leg)')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL 3 Leg Parlay chrome: ${err.message}`)
+}
+
 /** Real Vision OCR dumps from Ryan's batch (2026-10-14). */
 const ocrBatch = [
   {
@@ -1155,6 +1194,20 @@ const ocrBatch = [
   {
     file: 'fd-open-spreads-4.ocr.txt',
     expect: { legs: 4, odds: 1252, stake_dollars: 100, leg_odds: [-110, -109, -107, -112], leg0: 'Browns' },
+  },
+  {
+    // Ryan 2026-10-14: "3 Leg Parlay +584" is ticket chrome, not a 4th leg
+    file: 'fd-open-spreads-3.ocr.txt',
+    expect: {
+      legs: 3,
+      odds: 584,
+      stake_dollars: 5,
+      to_win_dollars: 29.21,
+      to_collect_dollars: 34.21,
+      leg0: 'Broncos',
+      leg_last: 'Giants',
+      no_junk_sels: true,
+    },
   },
   {
     file: 'circa-d-5team.ocr.txt',
@@ -1447,7 +1500,7 @@ for (const row of ocrBatch) {
   }
 }
 
-const total = fixtures.length + 10 + ocrCount
+const total = fixtures.length + 11 + ocrCount
 if (failed) {
   console.error(`\n${failed}/${total} failed`)
   process.exit(1)

@@ -17,6 +17,7 @@ import {
 import { decimalToAmerican } from './sportsBetCalcMath.js'
 import {
   combinedOddsFromLegs,
+  isParlayTicketChromeSelection,
   normalizeParlayLegs,
   parlaySelectionLabel,
 } from './sportsBetParlay.js'
@@ -927,8 +928,10 @@ function extractPayoutDollars(text) {
 }
 
 function isParlayLegJunkLine(line) {
+  const s = String(line || '')
+  if (isParlayTicketChromeSelection(s)) return true
   return /must\s*start|plate\s*appearance|bet\s*with\s*friends|keep\s*picks|terms\s+and|download\s+the|sign\s*up|mobile\s*wagering|clear\s*betslip|help\s*center|place\s*bet|round\s*robin|stake\s*all|quick\s*sgp|log\s*in/i.test(
-    String(line || ''),
+    s,
   )
 }
 
@@ -1338,6 +1341,8 @@ export function legSelectionLooksJunk(sel) {
   const s = String(sel || '').trim()
   if (!s) return true
   if (/ticket\s*cost|to\s*win|to\s*collect|you\s*won|max\s*payout|max\s*win/i.test(s)) return true
+  // Open betslip footer chrome mistaken for a pick: "3 Leg Parlay" / "3 Leg Parlay +584"
+  if (isParlayTicketChromeSelection(s)) return true
   if (/^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(s) && /\d{4}/.test(s)) return true
   // "[109] BILLS Jan 11 2026 - NFL PLAYOFF" / ">25] LAKERS an 12 2026 - NBA"
   if (/[\[\]>]\s*\d*\]/.test(s) && /(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\bnba\b|\bnfl\b|playoff)/i.test(s)) {
@@ -2100,6 +2105,18 @@ function extractTotalParlayOdds(text) {
       const a = americanOrNull(boost[1])
       const b = americanOrNull(boost[2])
       if (a != null && b != null) return Math.abs(b) >= Math.abs(a) ? b : a
+    }
+  }
+  // FanDuel open betslip: "3 Leg Parlay +584" on one line (ticket total, not a leg)
+  {
+    const same = (
+      /(?:^|\n)\s*\d+\s*-?\s*leg\s+pa[ry]lay\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
+      || /(?:^|\n)\s*\d+\s*pick\s+pa[ry]lay\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
+      || /(?:^|\n)\s*\d+\s*-?\s*leg\s+pa[ry]lay\s*\n\s*([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
+    )
+    if (same) {
+      const n = americanOrNull(same[1])
+      if (n != null) return n
     }
   }
   const m = /total\s*odds\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
@@ -3239,7 +3256,12 @@ function parlayLegsNeedHydrate(legs) {
 function repairParlayTicketOdds(draft, ocrText = '') {
   if (!draft || typeof draft !== 'object') return draft
   let next = attachTicketMoney(draft, ocrText)
-  const legs = Array.isArray(next.legs) ? next.legs : []
+  // Drop "3 Leg Parlay +584" chrome that OCR/Edge stuffed into legs[]
+  const legs = (Array.isArray(next.legs) ? next.legs : [])
+    .filter((l) => !isParlayTicketChromeSelection(l?.selection_label))
+  if (legs.length !== (next.legs?.length || 0)) {
+    next = { ...next, legs }
+  }
   if (legs.length < 2) return next
 
   const current = americanOrNull(next.odds)
@@ -3252,9 +3274,10 @@ function repairParlayTicketOdds(draft, ocrText = '') {
   const stolen = legOdds.has(current)
   const legProductOnly = fromLegs != null
     && Math.abs(current - fromLegs) <= Math.max(5, Math.abs(fromLegs) * 0.02)
-  // Printed ticket totals are usually labeled; if OCR had a real Total Odds line,
-  // extractTotalParlayOdds already set it and it will not match a single leg / product.
-  if (stolen || legProductOnly) {
+  // Keep labeled ticket totals ("3 Leg Parlay +584") even when they ≈ leg product.
+  const printed = ocrText ? extractTotalParlayOdds(ocrText) : null
+  const keepPrinted = printed != null && printed === current
+  if (!keepPrinted && (stolen || legProductOnly)) {
     next = { ...next, odds: '' }
   }
   return next

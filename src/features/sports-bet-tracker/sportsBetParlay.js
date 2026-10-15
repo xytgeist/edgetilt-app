@@ -20,9 +20,20 @@ function cleanRetailMoneyLineSelection(sel) {
   return `${titled} ML`
 }
 
+/** Open betslip ticket chrome … never a real pick ("3 Leg Parlay", "Parlay (4)"). */
+export function isParlayTicketChromeSelection(sel) {
+  const s = String(sel || '').trim()
+  if (!s) return false
+  if (/^\d+\s*-?\s*(?:leg|pick)\s+pa[ry]lay\b/i.test(s)) return true
+  if (/^parlay\s*\(\s*\d+/i.test(s)) return true
+  if (/^pa[ry]lay\s*$/i.test(s)) return true
+  return false
+}
+
 export function normalizeParlayLegs(legs) {
   const list = Array.isArray(legs) ? legs : []
   return list
+    .filter((leg) => !isParlayTicketChromeSelection(leg?.selection_label))
     .map((leg, i) => ({
       leg_index: Number.isFinite(Number(leg?.leg_index)) ? Number(leg.leg_index) : i,
       event_id: leg?.event_id ? String(leg.event_id) : '',

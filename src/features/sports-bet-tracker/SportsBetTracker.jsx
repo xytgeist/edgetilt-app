@@ -1827,7 +1827,7 @@ export default function SportsBetTracker({
                     inputMode="numeric"
                     value={draft.odds}
                     onChange={(e) => setDraft((d) => ({ ...d, odds: e.target.value }))}
-                    placeholder="Only if on ticket"
+                    placeholder="Not Found"
                   />
                 </label>
               ) : null}

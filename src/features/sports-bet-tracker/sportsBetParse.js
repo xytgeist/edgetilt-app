@@ -28,6 +28,9 @@ const BOOK_PATTERNS = [
   { re: /\bbarstool\b/i, name: 'Barstool' },
   { re: /\bcirca\s*(?:resort|&|\band\b)?\s*(?:casino)?\b/i, name: 'Circa' },
   { re: /\bmirage\b/i, name: 'Mirage' },
+  { re: /\bwynn\b/i, name: 'Wynn' },
+  { re: /\brampart\b/i, name: 'Rampart' },
+  { re: /\bhollywood\b/i, name: 'Hollywood' },
   { re: /\bfliff\b/i, name: 'Fliff' },
   { re: /\bhard\s*rock\b/i, name: 'Hard Rock' },
   { re: /\bdraft\s*kings\b|\bdraftkings\b|\bdk\b/i, name: 'DraftKings' },
@@ -490,6 +493,26 @@ function extractStakeDollars(text) {
     }
   }
 
+  // DraftKings betslip OCR: "$" then "10.00" under "3 Pick Parlay"
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^\$\s*$/.test(lines[i])) continue
+    const m = /^([0-9]+(?:\.[0-9]{1,2})?)\s*$/.exec(lines[i + 1] || '')
+    if (!m) continue
+    const n = parseMoneyAmount(m[1])
+    if (n != null && n > 0) return n
+  }
+
+  // "Wager" / "Wager Amount:" then amount on next line (or first bare $ soon after)
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^wager(?:\s*amount)?\s*:?\s*$/i.test(lines[i])) continue
+    for (let j = i + 1; j < Math.min(i + 6, lines.length); j += 1) {
+      const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(lines[j])
+      if (!m) continue
+      const n = parseMoneyAmount(m[1])
+      if (n != null && n > 0) return n
+    }
+  }
+
   // "$500,000.00 Straight" / "$6,500.00 Straight Bet"
   for (const line of lines) {
     if (PAYOUT_LINE_RE.test(line)) continue
@@ -528,7 +551,7 @@ function extractPayoutDollars(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
 
   const tryRes = [
-    /(?:potential\s*payout|max\s*payout|to\s*collect)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+    /(?:potential\s*payout|max\s*payout|max\s*pay|to\s*collect)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /(?:payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
   ]
   for (const re of tryRes) {
@@ -538,6 +561,20 @@ function extractPayoutDollars(text) {
       const n = parseMoneyAmount(m[1])
       if (n != null && n > 0) return n
     }
+  }
+
+  // Casino OCR: "TO COLLECT:" then "$9,735.00" on the next line
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^(?:to\s*collect|max\s*payout|potential\s*payout|to\s*win)\s*:?\s*$/i.test(lines[i])) continue
+    const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(lines[i + 1] || '')
+    if (!m) continue
+    const n = parseMoneyAmount(m[1])
+    if (n == null || n <= 0) continue
+    if (/^to\s*win\b/i.test(lines[i])) {
+      const stake = extractStakeDollars(text)
+      if (stake != null && stake > 0) return n + stake
+    }
+    return n
   }
 
   // "$611.82" above "WON ON FANDUEL"
@@ -576,31 +613,122 @@ function extractPayoutDollars(text) {
     if (hi > lo * 1.5) return hi
   }
 
+  // "$1,514.01 ($299.81 Boost)" on a messy OCR line
+  for (const line of lines) {
+    const m = /\$\s*([0-9,]+\.?\d*)\s*\([^)]*boost/i.exec(line)
+    if (!m) continue
+    const n = parseMoneyAmount(m[1])
+    if (n != null && n > 0) return n
+  }
+
   return null
 }
 
 function isParlayLegJunkLine(line) {
-  return /must\s*start|plate\s*appearance|bet\s*with\s*friends|keep\s*picks|terms\s+and|download\s+the|sign\s*up|mobile\s*wagering/i.test(
+  return /must\s*start|plate\s*appearance|bet\s*with\s*friends|keep\s*picks|terms\s+and|download\s+the|sign\s*up|mobile\s*wagering|clear\s*betslip|help\s*center|place\s*bet|round\s*robin|stake\s*all|quick\s*sgp|log\s*in/i.test(
     String(line || ''),
   )
 }
 
+/** Casino OCR often prints ½ instead of .5 */
+function normalizeSlipOcrText(text) {
+  return String(text || '')
+    .replace(/\u00bd/g, '.5')
+    .replace(/(\d)\s*1\/2\b/g, '$1.5')
+}
+
 /**
- * DraftKings / app props: "Over 0.5 (Matt Olson)" + "MATT OLSON HOME RUNS" + matchup + "+360"
+ * Vision OCR often dumps all juices after the picks. Zip bare American odds onto
+ * incomplete legs (skip ticket combined odds when present).
+ */
+function zipBunchedAmericanOdds(legs, text, { skipTicketTotal = true } = {}) {
+  const list = Array.isArray(legs) ? legs.map((l) => ({ ...l })) : []
+  const needIdx = list.map((l, i) => (!l.odds ? i : -1)).filter((i) => i >= 0)
+  const need = needIdx.length
+  if (!need) return list
+  const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
+  const ticket = skipTicketTotal ? extractTotalParlayOdds(text) : null
+  const pool = []
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    if (!/^[+-]\d{3,5}$/.test(line)) continue
+    const prev = lines[i - 1] || ''
+    const next = lines[i + 1] || ''
+    if (/^odds$/i.test(line)) continue
+    const am = americanOrNull(line)
+    // Drop known ticket combined price; keep leg juices even when listed under "Parlay (4 Picks)"
+    if (ticket != null && am === ticket) continue
+    // Lone total under "3 Pick Parlay" with no following bare odds
+    if (
+      skipTicketTotal
+      && /pick\s+parlay|\bparlay\s*\(/i.test(prev)
+      && !/^[+-]\d{3,5}$/.test(next)
+      && (ticket == null || am === ticket || Math.abs(am) > 500)
+    ) {
+      continue
+    }
+    pool.push(americanOddsInputString(line))
+  }
+  let oddsPool = pool
+  if (pool.length === need + 1) {
+    // Ticket total first (+8076, +360…) or last (…, +1252)
+    const first = americanOrNull(pool[0])
+    const last = americanOrNull(pool[pool.length - 1])
+    if (ticket != null && first === ticket) oddsPool = pool.slice(1)
+    else if (ticket != null && last === ticket) oddsPool = pool.slice(0, -1)
+    else if (Math.abs(first) > 1000 && Math.abs(first) > Math.abs(americanOrNull(pool[1]) || 0) * 2) {
+      oddsPool = pool.slice(1)
+    } else {
+      oddsPool = pool.slice(0, -1)
+    }
+  } else if (pool.length > need) {
+    const last = americanOrNull(pool[pool.length - 1])
+    if (ticket != null && last === ticket) oddsPool = pool.slice(0, need)
+    else oddsPool = pool.slice(0, need)
+  }
+  let oi = 0
+  for (const i of needIdx) {
+    if (oi >= oddsPool.length) break
+    list[i].odds = oddsPool[oi]
+    oi += 1
+  }
+  return list.filter((l) => l.odds || l.selection_label)
+}
+
+/**
+ * DraftKings / app props:
+ * - "Over 0.5 (Matt Olson)" + HOME RUNS + matchup + odds
+ * - "100+ (Ja'Marr Chase)" + ALTERNATE RECEIVING YARDS (OCR may bunch odds at end)
  */
 function extractAppPlayerPropLegs(text) {
-  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
-  const legs = []
+  const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
   const seen = new Set()
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]
-    const m = /^(over|under)\s+(\d+(?:\.\d+)?)\s*\(([^)]+)\)\s*$/i.exec(line)
-      || /^(over|under)\s+(\d+(?:\.\d+)?)\s+([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s*$/i.exec(line)
-    if (!m) continue
-    const side = m[1].toLowerCase() === 'under' ? 'under' : 'over'
-    const lineNum = Number(m[2])
-    const player = titleCaseWords(m[3].trim())
+    // 100+ (Player) / 125+ (Player) … alt milestone props
+    const plus = /^(\d+(?:\.\d+)?)\+\s*\(([^)]+)\)\s*$/i.exec(line)
+    const m = plus
+      ? null
+      : (
+        /^(over|under)\s+(\d+(?:\.\d+)?)\s*\(([^)]+)\)\s*$/i.exec(line)
+        || /^(over|under)\s+(\d+(?:\.\d+)?)\s+([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s*$/i.exec(line)
+      )
+    let side = 'over'
+    let lineNum = NaN
+    let player = ''
+    if (plus) {
+      lineNum = Number(plus[1])
+      player = titleCaseWords(plus[2].trim())
+      side = 'over'
+    } else if (m) {
+      side = m[1].toLowerCase() === 'under' ? 'under' : 'over'
+      lineNum = Number(m[2])
+      player = titleCaseWords(m[3].trim())
+    } else {
+      continue
+    }
     if (!player || !Number.isFinite(lineNum)) continue
     if (/^(point|total|team|game|the)$/i.test(player)) continue
 
@@ -611,34 +739,39 @@ function extractAppPlayerPropLegs(text) {
     let odds = ''
     for (let j = i + 1; j < Math.min(i + 8, lines.length); j += 1) {
       const next = lines[j]
-      if (/^(over|under)\s+\d/i.test(next)) break
+      if (/^(over|under)\s+\d/i.test(next) || /^\d+\+\s*\(/i.test(next)) break
       if (isParlayLegJunkLine(next)) continue
       if (/^[+-]\d{3,5}$/.test(next)) {
+        // Bunched trail (+360/+295/+350) … leave empty for zip. Interleaved single odds … take it.
+        const after = lines.slice(j + 1).find((l) => l && !isParlayLegJunkLine(l))
+        if (after && /^[+-]\d{3,5}$/.test(after)) break
         odds = americanOddsInputString(next)
         break
       }
-      if (!stat && /home\s*runs?|passing|rushing|receiving|points|rebounds|assists|strikeouts|hits|bases|yards|touchdowns?/i.test(next)) {
+      if (
+        !stat
+        && /home\s*runs?|passing|rushing|receiving|points|rebounds|assists|strikeouts|hits|bases|yards|touchdowns?|alternate/i.test(next)
+      ) {
         const stripped = next.replace(new RegExp(player.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '').trim()
         stat = titleCaseWords(stripped || next)
         continue
       }
       if (!event_label && /(?:@|\bat\b)/i.test(next) && !/\$/.test(next)) {
-        const ev = parseEventMatchup(next)
+        const ev = parseEventMatchup(next.replace(/\s*\(Today[^)]*\)/i, '').trim())
         event_label = ev.event || next
         away_team = ev.away_team || ''
         home_team = ev.home_team || ''
       }
     }
-    if (!odds) continue
 
     const ou = side === 'under' ? 'Under' : 'Over'
     const selection_label = [player, ou, String(lineNum), stat].filter(Boolean).join(' ')
-    const key = `${normalizeNameKey(selection_label)}|${odds}`
+    const key = normalizeNameKey(selection_label)
     if (seen.has(key)) continue
     seen.add(key)
 
-    const sport = extractSport([selection_label, stat, event_label, 'MLB'].filter(Boolean).join(' '))
-    legs.push({
+    const sport = extractSport([selection_label, stat, event_label].filter(Boolean).join(' '))
+    pending.push({
       market: 'prop',
       side,
       line: String(lineNum),
@@ -655,7 +788,9 @@ function extractAppPlayerPropLegs(text) {
       event_id: '',
     })
   }
-  return legs
+
+  const zipped = zipBunchedAmericanOdds(pending, text)
+  return zipped.filter((l) => l.odds)
 }
 
 function sportHintFromLine(line) {
@@ -674,10 +809,10 @@ function sportHintFromLine(line) {
  * @returns {{ market: string, side: string, line: string, odds: string } | null}
  */
 function parseCasinoJuiceToken(raw) {
-  const s = String(raw || '').trim().replace(/^\(|\)$/g, '').replace(/\s+/g, ' ')
+  const s = normalizeSlipOcrText(raw).trim().replace(/^\(|\)$/g, '').replace(/\s+/g, ' ')
   if (!s) return null
 
-  // Totals: UN 54-110 / UN 54 -110
+  // Totals: UN 54-110 / OV 57.5-110 / UN 54 -110
   const tot = /^(OV|UN|OVER|UNDER)\s+(\d+(?:\.\d+)?)([+-]\d{3,5})$/i.exec(s)
     || /^(OV|UN|OVER|UNDER)\s+(\d+(?:\.\d+)?)\s+([+-]\d{3,5})$/i.exec(s)
   if (tot) {
@@ -768,16 +903,16 @@ function casinoLegFromPickAndJuice(pickRaw, juice, sportHint) {
 }
 
 /**
- * Circa / the D casino legs. Real OCR is usually:
- *   [518] MAGIC
- *   +2-110
- * (not parenthesized). Also accepts "[518] MAGIC (+2 -110)" / same-line glued.
+ * Circa / the D / Wynn casino legs.
+ * Prefer zip-by-order: Vision OCR often lists all [rot] picks then all juices.
+ * Same-line / parenthesized forms still win immediately.
  */
 function extractCasinoBracketLegs(text) {
-  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
   const legs = []
   const seen = new Set()
   let sportHint = ''
+  const picks = []
 
   const push = (stub) => {
     if (!stub) return
@@ -791,33 +926,44 @@ function extractCasinoBracketLegs(text) {
     const line = lines[i]
     const hint = sportHintFromLine(line)
     if (hint) sportHint = hint
+    if (/\bcollege\s*fb\b|\bpro\s*basketball\b|\bpro\s*football\b/i.test(line)) {
+      if (/basketball/i.test(line)) sportHint = 'NBA'
+      else if (/football|fb/i.test(line)) sportHint = /college/i.test(line) ? 'CFB' : 'NFL'
+    }
 
-    // Parenthesized classic: [518] MAGIC (+2 -110)
     const paren = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s+\(([^)]+)\)\s*$/i.exec(line)
     if (paren) {
       push(casinoLegFromPickAndJuice(paren[2], paren[3], sportHint))
       continue
     }
 
-    // Same line glued/spaced: [518] MAGIC +2-110  /  [529] HORNETS +348
     const same = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s+((?:OV|UN|OVER|UNDER)\s+\d+(?:\.\d+)?[+\-\s]*\d{3,5}|[+-]\d+(?:\.\d+)?[+\-\s]*\d{3,5}|[+-]\d{3,5})\s*$/i.exec(line)
     if (same) {
       push(casinoLegFromPickAndJuice(same[2], same[3], sportHint))
       continue
     }
 
-    // Split: [518] MAGIC   then   +2-110
     const head = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s*$/i.exec(line)
     if (!head) continue
     const pickRaw = head[2].trim()
     if (!pickRaw || /^(ticket|parlay|straight|bet)/i.test(pickRaw)) continue
-    const next = lines[i + 1] || ''
-    if (!next || /^\[/.test(next) || sportHintFromLine(next)) continue
-    if (parseCasinoJuiceToken(next)) {
-      push(casinoLegFromPickAndJuice(pickRaw, next, sportHint))
-      i += 1
+    picks.push({ pickRaw, sportHint })
+  }
+
+  // Always zip picks → juice lines in document order (handles bunched OCR).
+  if (picks.length >= 2) {
+    const juices = []
+    for (const line of lines) {
+      if (/^\[/.test(line)) continue
+      if (/ticket\s*cost|to\s*win|to\s*collect|^\$|parlay\s*\(|bet\(s\)/i.test(line)) continue
+      if (parseCasinoJuiceToken(line)) juices.push(line)
+    }
+    const n = Math.min(picks.length, juices.length)
+    for (let i = 0; i < n; i += 1) {
+      push(casinoLegFromPickAndJuice(picks[i].pickRaw, juices[i], picks[i].sportHint))
     }
   }
+
   return legs
 }
 
@@ -1451,11 +1597,27 @@ function looksLikeParlayText(text) {
 }
 
 function extractTotalParlayOdds(text) {
-  const raw = String(text || '')
+  const raw = normalizeSlipOcrText(text)
+  // Boosted: "+7994 +9993" / OCR "B0OST" → take the last (boosted) price first
+  if (/boost|b0ost/i.test(raw)) {
+    const boost = /([+-]\d{3,5})\s+([+-]\d{3,5})/.exec(raw)
+    if (boost) {
+      const a = americanOrNull(boost[1])
+      const b = americanOrNull(boost[2])
+      if (a != null && b != null) return Math.abs(b) >= Math.abs(a) ? b : a
+    }
+  }
   const m = /total\s*odds\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
     || /combined\s*(?:odds|price)\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
     || /parlay\s*odds\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
-  return m ? americanOrNull(m[1]) : null
+    || /parlay\s*\(\d+\)\s*@\s*([+-]\d{3,5})/i.exec(raw)
+    || /(\d+)\s*pick\s+parlay[\s\S]{0,80}?([+-]\d{3,5})/i.exec(raw)
+  if (m) {
+    const oddsTok = m[2] && /^[+-]/.test(m[2]) ? m[2] : m[1]
+    const n = americanOrNull(oddsTok)
+    if (n != null) return n
+  }
+  return null
 }
 
 function legStubFromSelection(sel, odds, rawSport, { allowMissingOdds = false } = {}) {
@@ -1551,17 +1713,277 @@ function extractPropLegsWithoutOdds(text, rawSport) {
   return legs
 }
 
+/**
+ * Open betslip spreads/totals: "CLE Browns -3" / "Point Spread" / matchup (+ odds bunched).
+ */
+function extractAppSpreadTotalLegs(text) {
+  const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    const next = lines[i + 1] || ''
+    const marketLine = /^(point\s*spread|spread|total\s*points|moneyline|ml)\b/i.test(next)
+    if (!marketLine) continue
+
+    const under = /^(over|under)\s+(\d+(?:\.\d+)?)\s*$/i.exec(line)
+    const spread = /^(.+?)\s+([+-]\d+(?:\.\d+)?)\s*$/.exec(line)
+    let stub = null
+    if (under) {
+      const side = under[1].toLowerCase() === 'under' ? 'under' : 'over'
+      const lineNum = Number(under[2])
+      stub = {
+        market: 'total',
+        side,
+        line: String(lineNum),
+        odds: '',
+        selection_label: `${side === 'under' ? 'Under' : 'Over'} ${lineNum}`,
+        player_name: '',
+        prop_stat: '',
+        home_team: '',
+        away_team: '',
+        event_label: '',
+        sport_key: '',
+        sport_label: '',
+        commence_time: '',
+        event_id: '',
+      }
+    } else if (spread && !/^(over|under)$/i.test(spread[1])) {
+      const team = spread[1].replace(/^[×xX]\s*/, '').trim()
+      if (/parlay|wager|odds|singles|clear/i.test(team)) continue
+      const lineNum = Number(spread[2])
+      if (!Number.isFinite(lineNum) || Math.abs(lineNum) >= 100) continue
+      const signed = lineNum > 0 ? `+${lineNum}` : String(lineNum)
+      const isMl = /^moneyline|^ml\b/i.test(next)
+      stub = {
+        market: isMl ? 'h2h' : 'spread',
+        side: '',
+        line: isMl ? '' : String(lineNum),
+        odds: '',
+        selection_label: isMl ? `${titleCaseWords(team)} ML` : `${titleCaseWords(team)} ${signed}`,
+        player_name: '',
+        prop_stat: '',
+        home_team: '',
+        away_team: '',
+        event_label: '',
+        sport_key: '',
+        sport_label: '',
+        commence_time: '',
+        event_id: '',
+      }
+    }
+    if (!stub) continue
+
+    const matchupLine = lines[i + 2] || ''
+    if (/(?:@|\bat\b)/i.test(matchupLine)) {
+      const ev = parseEventMatchup(matchupLine.replace(/[©]/g, '@').replace(/\s+/g, ' '))
+      stub.event_label = ev.event || matchupLine
+      stub.away_team = ev.away_team || ''
+      stub.home_team = ev.home_team || ''
+      const sport = extractSport(matchupLine)
+      stub.sport_key = sport.key || ''
+      stub.sport_label = sport.label || ''
+    }
+
+    const key = normalizeNameKey(stub.selection_label)
+    if (seen.has(key)) continue
+    seen.add(key)
+    pending.push(stub)
+  }
+
+  return zipBunchedAmericanOdds(pending, text).filter((l) => l.odds || l.market === 'spread' || l.market === 'total')
+}
+
+/**
+ * DraftKings open betslip moneylines:
+ * "× TOR Blue Jays" / Moneyline / "TOR @ CIN" / -165
+ */
+function extractAppMoneylineBetslipLegs(text) {
+  const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
+  const legs = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    if (!/^moneyline$/i.test(lines[i + 1] || '')) continue
+    const team = line.replace(/^[×xX$]\s*/, '').trim()
+    if (!team || team.length > 40 || /singles|parlay|stake|clear/i.test(team)) continue
+    let event_label = ''
+    let away_team = ''
+    let home_team = ''
+    let odds = ''
+    for (let j = i + 2; j < Math.min(i + 6, lines.length); j += 1) {
+      const next = lines[j]
+      if (/^moneyline$/i.test(next) || /^[×xX]/.test(next)) break
+      if (/^[+-]\d{3,5}$/.test(next)) {
+        odds = americanOddsInputString(next)
+        break
+      }
+      if (/(?:@|\bat\b)/i.test(next)) {
+        const ev = parseEventMatchup(next)
+        event_label = ev.event || next
+        away_team = ev.away_team || ''
+        home_team = ev.home_team || ''
+      }
+    }
+    if (!odds) continue
+    const selection_label = `${titleCaseWords(team)} ML`
+    const key = `${normalizeNameKey(selection_label)}|${odds}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const sport = extractSport([selection_label, event_label, 'MLB'].join(' '))
+    legs.push({
+      market: 'h2h',
+      side: '',
+      line: '',
+      odds,
+      selection_label,
+      player_name: '',
+      prop_stat: '',
+      home_team,
+      away_team,
+      event_label,
+      sport_key: sport.key || 'baseball_mlb',
+      sport_label: sport.label || 'MLB',
+      commence_time: '',
+      event_id: '',
+    })
+  }
+  return legs
+}
+
+/** Futures: "ATL Braves (Winner)" + odds (Hollywood / championship slips). */
+function extractFuturesWinnerLegs(text) {
+  const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+  for (let i = 0; i < lines.length; i += 1) {
+    const m = /^(.+?)\s*\((winner)\)\s*$/i.exec(lines[i])
+    if (!m) continue
+    const team = titleCaseWords(m[1].trim())
+    if (!team || team.length > 48) continue
+    let odds = ''
+    for (let j = i + 1; j < Math.min(i + 6, lines.length); j += 1) {
+      if (/\(winner\)/i.test(lines[j])) break
+      if (/^[+-]\d{3,5}$/.test(lines[j])) {
+        odds = americanOddsInputString(lines[j])
+        break
+      }
+    }
+    const key = normalizeNameKey(team)
+    if (seen.has(key)) continue
+    seen.add(key)
+    pending.push({
+      market: 'other',
+      side: '',
+      line: '',
+      odds,
+      selection_label: `${team} Winner`,
+      player_name: '',
+      prop_stat: 'Winner',
+      home_team: '',
+      away_team: '',
+      event_label: '',
+      sport_key: '',
+      sport_label: '',
+      commence_time: '',
+      event_id: '',
+    })
+  }
+  return zipBunchedAmericanOdds(pending, text, { skipTicketTotal: false }).filter((l) => l.odds)
+}
+
+/** Rampart-style half-point card: "87 EAGLES -0.5" (may be split across lines). */
+function extractHalfPointCardLegs(text) {
+  const raw = normalizeSlipOcrText(text)
+  if (!/parlay\s*card|half\s*point\s*card/i.test(raw)) return []
+  const legs = []
+  const seen = new Set()
+
+  const push = (team, lineNum) => {
+    if (!team || !Number.isFinite(lineNum)) return
+    const signed = lineNum > 0 ? `+${lineNum}` : String(lineNum)
+    const selection_label = `${titleCaseWords(team)} ${signed}`
+    const key = normalizeNameKey(selection_label)
+    if (seen.has(key)) return
+    seen.add(key)
+    const sport = extractSport(team)
+    legs.push({
+      market: 'spread',
+      side: '',
+      line: String(lineNum),
+      odds: '',
+      selection_label,
+      player_name: '',
+      prop_stat: '',
+      home_team: '',
+      away_team: '',
+      event_label: '',
+      sport_key: sport.key || 'americanfootball_nfl',
+      sport_label: sport.label || 'NFL',
+      commence_time: '',
+      event_id: '',
+    })
+  }
+
+  // Flatten OCR into tokens then pair "NN TEAM" with following ±line
+  const flat = raw.replace(/\n/g, ' ').replace(/\s+/g, ' ')
+  const re = /(\d{1,3})\s+([A-Z]{3,}[A-Z']*)\s+([+-]\d+(?:\.\d+)?)/g
+  let m
+  while ((m = re.exec(flat))) {
+    push(m[2], Number(m[3]))
+  }
+  const flatCount = legs.length
+
+  // Split / two-column OCR: "87 EAGLES" + "-0.5 91 PACKERS" — zip teams↔spreads
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+  const teams = []
+  const spreads = []
+  for (const line of lines) {
+    const head = /^(\d{1,3})\s+([A-Za-z][A-Za-z.']+)\s*$/.exec(line)
+    if (head) {
+      teams.push(head[2])
+      continue
+    }
+    const ju = /^([+-]\d+(?:\.\d+)?)\s*(?:(\d{1,3})\s+([A-Za-z][A-Za-z.']+))?$/.exec(line)
+    if (ju) {
+      spreads.push(Number(ju[1]))
+      if (ju[2] && ju[3]) teams.push(ju[3])
+    }
+  }
+  if (Math.min(teams.length, spreads.length) > flatCount) {
+    legs.length = 0
+    seen.clear()
+    const n = Math.min(teams.length, spreads.length)
+    for (let i = 0; i < n; i += 1) push(teams[i], spreads[i])
+  }
+  return legs
+}
+
 /** Extract ≥2 legs from a parlay slip. */
 export function extractParlayLegs(text) {
-  // Circa / the D rotation legs first … naive "sel +odds" steals HORNETS/+348 as a 1-leg miss.
+  // Circa / the D / Wynn rotation legs first … naive "sel +odds" steals HORNETS/+348 as a 1-leg miss.
   const casino = extractCasinoBracketLegs(text)
   if (casino.length >= 2) return casino
 
-  // DraftKings "Over 0.5 (Player)" props before disclaimer/+odds pairing invents junk legs.
+  // DraftKings "Over 0.5 (Player)" / "100+ (Player)" props before disclaimer/+odds pairing invents junk legs.
   const appProps = extractAppPlayerPropLegs(text)
   if (appProps.length >= 2) return appProps
 
-  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  const mlLegs = extractAppMoneylineBetslipLegs(text)
+  if (mlLegs.length >= 2) return mlLegs
+
+  const spreadTot = extractAppSpreadTotalLegs(text)
+  if (spreadTot.length >= 2) return spreadTot
+
+  const futures = extractFuturesWinnerLegs(text)
+  if (futures.length >= 2) return futures
+
+  const halfCard = extractHalfPointCardLegs(text)
+  if (halfCard.length >= 2) return halfCard
+
+  const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
   const sport = extractSport(text)
   const legs = []
   const seen = new Set()

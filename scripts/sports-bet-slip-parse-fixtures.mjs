@@ -1,11 +1,20 @@
 /**
  * Heuristic slip-parse fixtures (Ryan's example tickets).
  * Run: node scripts/sports-bet-slip-parse-fixtures.mjs
+ *
+ * Vision-OCR batch texts live in scripts/fixtures/sports-bet-slips/*.ocr.txt
+ * … re-run after each parser change so prior slips stay green.
  */
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import {
   hydrateParlayLegsForDraft,
   parseSportsBetSlipText,
 } from '../src/features/sports-bet-tracker/sportsBetParse.js'
+
+const HERE = path.dirname(fileURLToPath(import.meta.url))
+const OCR_DIR = path.join(HERE, 'fixtures/sports-bet-slips')
 
 const fixtures = [
   {
@@ -546,6 +555,67 @@ DraftKings
     },
   },
   {
+    name: 'Hollywood futures 4-leg (cleaned)',
+    text: `
+HOLLYWOOD CASINO AT CHARLES TOWN RACES
+Parlay (4 Picks)
+Wager $400.00
+Potential Payout $171,360.00
+National League East 2020
+ATL Braves (Winner)
++100
+NFL Championship 2020/2021
+KC Chiefs (Winner)
++600
+NHL Championship 2019/2020
+TB Lightning (Winner)
++800
+WNBA 2020
+SEA Storm (Winner)
++240
+`,
+    expect: {
+      market: 'parlay',
+      book: 'Hollywood',
+      stake_dollars: 400,
+      legs: 4,
+      leg0_includes: 'Braves',
+    },
+  },
+  {
+    name: 'Wynn 5-team casino (cleaned fractions)',
+    text: `
+WYNN LAS VEGAS
+PARLAY (5 TEAMS)
+1 BET(S) @ $300.00
+Jan 07 2019 COLLEGE FB
+[151] CLEMSON
++195
+Jan 07 2019 COLLEGE FB
+[151/152] CLEMSON/ALABAMA
+OV 57.5-110
+Jan 07 2019 PRO BASKETBALL
+[582] BUCKS
+-5.5-110
+Jan 07 2019 PRO BASKETBALL
+[578] CELTICS
+-10.5-110
+Jan 07 2019 PRO BASKETBALL
+[583/584] NUGGETS/ROCKETS
+OV 215-110
+TICKET COST: $300.00
+TO WIN: $9,435.00
+TO COLLECT: $9,735.00
+`,
+    expect: {
+      market: 'parlay',
+      book: 'Wynn',
+      stake_dollars: 300,
+      legs: 5,
+      leg0_includes: 'Clemson',
+    },
+  },
+  {
     name: 'Parlay Card 10 spreads',
     text: `
 Parlay Card
@@ -759,7 +829,94 @@ try {
   console.error(`FAIL AI notes → parlay legs hydrate: ${err.message}`)
 }
 
-const total = fixtures.length + 1
+/** Real Vision OCR dumps from Ryan's batch (2026-10-14). */
+const ocrBatch = [
+  {
+    file: 'dk-hr-3pick.ocr.txt',
+    expect: { legs: 3, odds: 8076, stake_dollars: 5, leg_odds: [360, 295, 350], leg0: 'Olson' },
+  },
+  {
+    file: 'dk-alt-yards-boost.ocr.txt',
+    expect: { legs: 4, odds: 9993, stake_dollars: 15, leg_odds: [155, 220, 220, 210], leg0: 'Chase' },
+  },
+  {
+    file: 'dk-mlb-ml-betslip.ocr.txt',
+    expect: { legs: 3, odds: 312, stake_dollars: 10, leg0: 'Jays' },
+  },
+  {
+    file: 'fd-open-spreads-4.ocr.txt',
+    expect: { legs: 4, odds: 1252, stake_dollars: 100, leg_odds: [-110, -109, -107, -112], leg0: 'Browns' },
+  },
+  {
+    file: 'circa-d-5team.ocr.txt',
+    expect: { legs: 5, stake_dollars: 10, odds: 5276, leg0: 'Magic', leg_last: 'Hornets' },
+  },
+  {
+    file: 'wynn-5team.ocr.txt',
+    expect: { legs: 5, stake_dollars: 300, leg0: 'Clemson' },
+  },
+  {
+    file: 'rampart-5card.ocr.txt',
+    expect: { legs: 5, stake_dollars: 80, leg0: 'Eagles', leg_last: 'Bills' },
+  },
+  {
+    file: 'parlay-card-10.ocr.txt',
+    expect: { legs: 10, stake_dollars: 2, leg0: 'Michigan' },
+  },
+  {
+    file: 'hollywood-futures-4.ocr.txt',
+    // Vision OCR missed Chiefs … keep ≥3 winners + stake until photo OCR improves
+    expect: { legs_min: 3, stake_dollars: 400, book: 'Hollywood', leg0: 'Braves' },
+  },
+]
+
+let ocrCount = 0
+for (const row of ocrBatch) {
+  ocrCount += 1
+  const name = `OCR ${row.file}`
+  try {
+    const text = fs.readFileSync(path.join(OCR_DIR, row.file), 'utf8')
+    const drafts = parseSportsBetSlipText(text)
+    const d = drafts[0]
+    assert(d, `${name}: no draft`)
+    assert(d.market === 'parlay', `${name}: market ${d.market}`)
+    const legs = Array.isArray(d.legs) ? d.legs : []
+    const e = row.expect
+    if (e.legs != null) assert(legs.length === e.legs, `${name}: legs ${legs.length}!=${e.legs}`)
+    if (e.legs_min != null) assert(legs.length >= e.legs_min, `${name}: legs ${legs.length}<${e.legs_min}`)
+    if (e.odds != null) assert(Math.abs(Number(d.odds)) === e.odds, `${name}: odds ${d.odds}`)
+    if (e.stake_dollars != null) {
+      assert(Number(d.stake_dollars) === e.stake_dollars, `${name}: stake ${d.stake_dollars}`)
+    }
+    if (e.book) assert(d.book === e.book, `${name}: book ${d.book}`)
+    if (e.leg0) {
+      assert(
+        String(legs[0]?.selection_label || '').toLowerCase().includes(e.leg0.toLowerCase()),
+        `${name}: leg0 ${legs[0]?.selection_label}`,
+      )
+    }
+    if (e.leg_last) {
+      const last = legs[legs.length - 1]
+      assert(
+        String(last?.selection_label || '').toLowerCase().includes(e.leg_last.toLowerCase()),
+        `${name}: leg_last ${last?.selection_label}`,
+      )
+    }
+    if (e.leg_odds) {
+      const got = legs.map((l) => Number(l.odds))
+      assert(
+        JSON.stringify(got) === JSON.stringify(e.leg_odds),
+        `${name}: leg_odds ${got}!=${e.leg_odds}`,
+      )
+    }
+    console.log(`ok  ${name}`)
+  } catch (err) {
+    failed += 1
+    console.error(`FAIL ${name}: ${err.message}`)
+  }
+}
+
+const total = fixtures.length + 1 + ocrCount
 if (failed) {
   console.error(`\n${failed}/${total} failed`)
   process.exit(1)

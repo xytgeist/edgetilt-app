@@ -9,6 +9,17 @@ export function isParlayDraft(draft) {
   return String(draft?.market || '') === 'parlay'
 }
 
+function cleanRetailMoneyLineSelection(sel) {
+  const s = String(sel || '').trim()
+  const m = /^(?:\d{3,5}\s+)?(.+?)\s+money\s*line(?:\s*ft)?\s*$/i.exec(s)
+  if (!m) return s
+  const team = m[1].trim().replace(/\s+/g, ' ')
+  if (!team) return s
+  // Title-ish: keep simple … "Creighton Bluejays Money Line Ft" → "Creighton Bluejays ML"
+  const titled = team.replace(/\b\w/g, (ch) => ch.toUpperCase())
+  return `${titled} ML`
+}
+
 export function normalizeParlayLegs(legs) {
   const list = Array.isArray(legs) ? legs : []
   return list
@@ -22,7 +33,9 @@ export function normalizeParlayLegs(legs) {
       commence_time: leg?.commence_time ? String(leg.commence_time) : '',
       market: leg?.market ? String(leg.market) : 'h2h',
       side: leg?.side ? String(leg.side) : '',
-      selection_label: String(leg?.selection_label || '').trim() || `Leg ${i + 1}`,
+      selection_label: cleanRetailMoneyLineSelection(
+        String(leg?.selection_label || '').trim() || `Leg ${i + 1}`,
+      ),
       line: leg?.line != null && leg.line !== '' ? String(leg.line) : '',
       odds: leg?.odds != null && leg.odds !== ''
         ? (americanOddsInputString(leg.odds) || String(leg.odds))

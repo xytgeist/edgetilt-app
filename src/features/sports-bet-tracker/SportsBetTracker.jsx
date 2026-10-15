@@ -871,7 +871,7 @@ export default function SportsBetTracker({
           })
           const parsed = parseSportsBetIntake(ocrText).filter(Boolean)
           const candidate = parsed[0] || null
-          if (candidate && !isWeakSportsBetDraft(candidate)) {
+          if (candidate && !isWeakSportsBetDraft(candidate, ocrText)) {
             draft = candidate
           } else {
             failReason = candidate
@@ -905,10 +905,10 @@ export default function SportsBetTracker({
               ocrText,
             )
             partial = mergeSportsBetPartialDrafts(partial, cleaned)
-            if (!isWeakSportsBetDraft(cleaned) && !llm.partial) {
+            if (!isWeakSportsBetDraft(cleaned, ocrText) && !llm.partial) {
               draft = cleaned
               failReason = ''
-            } else if (!isWeakSportsBetDraft(cleaned) && llm.partial) {
+            } else if (!isWeakSportsBetDraft(cleaned, ocrText) && llm.partial) {
               // Usable enough despite soft error
               draft = cleaned
               failReason = ''

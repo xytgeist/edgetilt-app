@@ -9,7 +9,9 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import {
+  declaredParlayLegCount,
   hydrateParlayLegsForDraft,
+  isWeakSportsBetDraft,
   parseSportsBetSlipText,
 } from '../src/features/sports-bet-tracker/sportsBetParse.js'
 
@@ -837,6 +839,37 @@ try {
 } catch (err) {
   failed += 1
   console.error(`FAIL AI notes → parlay legs hydrate: ${err.message}`)
+}
+
+// GN AC "Parlay 5 bets" … Edge drops Duke → hydrate from OCR restores 5
+try {
+  const gnOcr = fs.readFileSync(path.join(OCR_DIR, 'gn-ac-cbb-ml-5.ocr.txt'), 'utf8')
+  assert(declaredParlayLegCount(gnOcr) === 5, 'GN AC declared count want 5')
+  const full = parseSportsBetSlipText(gnOcr)[0]
+  assert(full?.legs?.length === 5, 'GN AC full parse want 5')
+  const short = {
+    market: 'parlay',
+    odds: '+219',
+    stake_dollars: '25',
+    selection_label: 'Parlay (4 legs)',
+    notes: 'Parlay 5 bets',
+    legs: (full.legs || []).filter((l) => !/duke/i.test(l.selection_label)).map((l) => ({
+      ...l,
+      selection_label: String(l.selection_label).replace(/ ML$/i, ' Money Line Ft'),
+    })),
+  }
+  assert(short.legs.length === 4, 'GN AC short want 4')
+  assert(isWeakSportsBetDraft(short, gnOcr) === true, 'GN AC short should be weak')
+  const restored = hydrateParlayLegsForDraft(short, gnOcr)
+  assert(restored.legs?.length === 5, `GN AC hydrate want 5 got ${restored.legs?.length}`)
+  assert(
+    restored.legs.some((l) => /duke/i.test(l.selection_label)),
+    'GN AC hydrate should restore Duke',
+  )
+  console.log('ok  GN AC Parlay 5 bets under-count → hydrate Duke')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL GN AC under-count hydrate: ${err.message}`)
 }
 
 /** Real Vision OCR dumps from Ryan's batch (2026-10-14). */

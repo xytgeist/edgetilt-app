@@ -2119,27 +2119,61 @@ function extractAppMoneylineBetslipLegs(text) {
 }
 
 /**
+ * Declared leg count from slip headers: "Parlay 5 bets", "5-Leg Parlay", "PARLAY (5 TEAMS)".
+ * @returns {number|null}
+ */
+export function declaredParlayLegCount(text) {
+  const raw = String(text || '')
+  const m = /parlay\s+(\d+)\s*bets?\b/i.exec(raw)
+    || /(\d+)\s*-?\s*leg\s+pa[ryi]lay/i.exec(raw)
+    || /parlay\s*\(\s*(\d+)\s*teams?\s*\)/i.exec(raw)
+    || /(\d+)\s*(?:pick\s+)?pa[ry]lay/i.exec(raw)
+  if (!m) return null
+  const n = Number(m[1])
+  return Number.isFinite(n) && n >= 2 && n <= 40 ? n : null
+}
+
+/** Strip retail "Money Line FT" noise from a selection label → "Team ML". */
+function cleanRetailMoneyLineSelection(sel) {
+  const s = String(sel || '').trim()
+  const m = /^(?:\d{3,5}\s+)?(.+?)\s+money\s*line(?:\s*ft)?\s*$/i.exec(s)
+  if (m) return `${titleCaseWords(m[1].trim())} ML`
+  return s
+}
+
+/**
  * Golden Nugget AC / retail: "3585 Creighton Bluejays Money Line FT" + bunched odds.
  */
 function extractNumberedMoneyLineFtLegs(text) {
   const raw = normalizeSlipOcrText(text)
-  if (!/money\s*line\s*ft/i.test(raw)) return []
+  // FT may OCR as Ft / F1; also allow bare "Money Line" on numbered retail parlays
+  if (!/money\s*line/i.test(raw)) return []
+  if (!/money\s*line\s*ft|parlay\s+\d+\s*bets|golden\s*nugget/i.test(raw)) return []
   const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
   const pending = []
   const seen = new Set()
 
   for (let i = 0; i < lines.length; i += 1) {
-    const m = /^(\d{3,5})\s+(.+?)\s+money\s*line\s*ft\s*$/i.exec(lines[i])
+    const line = lines[i]
+    let m = /^(\d{3,5})\s+(.+?)\s+money\s*line(?:\s*ft|\s*f1)?\s*$/i.exec(line)
+    // Split OCR: "4427 Duke Blue Devils" / "Money Line FT"
+    if (!m && /^(?:money\s*line)(?:\s*ft|\s*f1)?\s*$/i.test(line)) {
+      const prev = lines[i - 1] || ''
+      m = /^(\d{3,5})\s+(.+?)\s*$/i.exec(prev)
+    }
     if (!m) continue
-    const team = titleCaseWords(m[2].trim())
+    let team = titleCaseWords(m[2].trim().replace(/\s+money\s*line.*$/i, ''))
     if (!team || team.length > 48) continue
+    if (/^(ticket|parlay|total|number)/i.test(team)) continue
     let event_label = ''
     let away_team = ''
     let home_team = ''
     const next = lines[i + 1] || ''
-    if (/(?:@|\bat\b)/i.test(next)) {
-      const ev = parseEventMatchup(next.replace(/\s+/g, ' '))
-      event_label = ev.event || next
+    const next2 = lines[i + 2] || ''
+    const matchupLine = /(?:@|\bat\b)/i.test(next) ? next : (/(?:@|\bat\b)/i.test(next2) ? next2 : '')
+    if (matchupLine) {
+      const ev = parseEventMatchup(matchupLine.replace(/\s+/g, ' '))
+      event_label = ev.event || matchupLine
       away_team = ev.away_team || ''
       home_team = ev.home_team || ''
     }
@@ -2696,7 +2730,7 @@ function looksLikeTerminalMatchup(away, home, eventLabel) {
  * True when a heuristic draft is junk / too thin to trust (e.g. terminal id as event).
  * Batch intake treats these as fails → LLM retry → Failed pill.
  */
-export function isWeakSportsBetDraft(draft) {
+export function isWeakSportsBetDraft(draft, ocrText = '') {
   if (!draft || typeof draft !== 'object') return true
   const odds = String(draft.odds || '').trim()
   if (!odds || !/^[+-]?\d{2,5}$/.test(odds)) return true
@@ -2713,6 +2747,14 @@ export function isWeakSportsBetDraft(draft) {
     if (!sel || sel === matchup || sel.startsWith(matchup)) return true
   }
   if ((market === 'spread' || market === 'h2h') && !away && !home && !sel) return true
+  // "Parlay 5 bets" but only 4 legs → weak so Edge / hydrate can recover the miss
+  if (market === 'parlay') {
+    const declared = declaredParlayLegCount(ocrText)
+      || declaredParlayLegCount(draft.notes)
+      || declaredParlayLegCount(sel)
+    const n = countUsableParlayLegs(draft.legs)
+    if (declared != null && n > 0 && n < declared) return true
+  }
   return false
 }
 
@@ -2793,15 +2835,36 @@ export function hydrateParlayLegsForDraft(draft, ocrText = '') {
   const current = (Array.isArray(draft.legs) ? draft.legs : []).filter((leg) => {
     const sel = String(leg?.selection_label || '').trim()
     return sel && !/^leg\s*\d+$/i.test(sel)
-  })
-  const fromText = ocrText ? extractParlayLegs(ocrText) : []
-  const fromNotes = legsFromParlayNotes(draft.notes)
+  }).map((leg) => ({
+    ...leg,
+    selection_label: cleanRetailMoneyLineSelection(leg.selection_label),
+  }))
+  const fromText = (ocrText ? extractParlayLegs(ocrText) : []).map((leg) => ({
+    ...leg,
+    selection_label: cleanRetailMoneyLineSelection(leg.selection_label),
+  }))
+  const fromNotes = legsFromParlayNotes(draft.notes).map((leg) => ({
+    ...leg,
+    selection_label: cleanRetailMoneyLineSelection(leg.selection_label),
+  }))
+
+  const declared = declaredParlayLegCount(ocrText)
+    || declaredParlayLegCount(draft.notes)
+    || declaredParlayLegCount(draft.selection_label)
 
   const candidates = [
     { legs: current, n: countUsableParlayLegs(current) },
     { legs: fromText, n: countUsableParlayLegs(fromText) },
     { legs: fromNotes, n: countUsableParlayLegs(fromNotes) },
   ]
+  // Prefer a source that hits the slip's declared leg count ("Parlay 5 bets")
+  if (declared != null) {
+    const exact = candidates.filter((c) => c.n === declared)
+    if (exact.length) {
+      exact.sort((a, b) => b.n - a.n)
+      return { ...draft, legs: exact[0].legs }
+    }
+  }
   candidates.sort((a, b) => b.n - a.n)
   const best = candidates[0]
   if (best.n >= 2) return { ...draft, legs: best.legs }

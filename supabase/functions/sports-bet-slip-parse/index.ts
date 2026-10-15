@@ -274,6 +274,7 @@ Rules:
 - Ignore ticket barcodes, teller ids, terminal codes (e.g. CGT@MRH is NOT the event)
 - Matchup lines like "467 COLTS/468 JAGUARS" → away Colts, home Jaguars (rotation numbers dropped)
 - PARLAYS: market=parlay, odds=combined ticket odds, and legs=[...] with one object per leg (market, side, line, odds, selection_label, player_name, prop_stat, home_team, away_team, event_label). Do NOT put legs only in notes.
+- If the slip says "Parlay 5 bets", "5-Leg Parlay", "PARLAY (5 TEAMS)", or "N Pick Parlay", legs[] MUST have exactly that many entries. Count every Money Line / pick row on the ticket (including middle legs like Duke between FSU and Kansas). Do not drop a leg.
 - Player props like "Over 0.5 (Matt Olson) / MATT OLSON HOME RUNS / +360" → leg market=prop, side=over, line=0.5, player_name, prop_stat=Home Runs, odds=+360
 - If unsure, still fill best effort; use market=other and side="" rather than inventing a fighter/team side`
 

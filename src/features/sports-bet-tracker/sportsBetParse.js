@@ -496,14 +496,20 @@ function extractStakeDollars(text) {
       const n = tryLine(line, re)
       if (n != null && n > 0) return n
     }
+    // Vision often glues "$70.00 TOTAL WAGER" (amount before label)
+    const glued = /^\$?\s*([0-9,]+\.?\d*)\s+(?:total\s*wager|wager(?:\s*amount)?|ticket\s*cost|risk)\b/i.exec(line)
+    if (glued) {
+      const n = parseMoneyAmount(glued[1])
+      if (n != null && n > 0) return n
+    }
   }
 
-  // FanDuel settled: "$5.00" on the line above "TOTAL WAGER"
+  // FanDuel settled: "$5.00" on the line above OR below "TOTAL WAGER"
   for (let i = 0; i < lines.length; i += 1) {
     if (!/^total\s*wager\b/i.test(lines[i])) continue
-    const prev = lines[i - 1] || ''
-    const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(prev)
-    if (m) {
+    for (const candidate of [lines[i - 1] || '', lines[i + 1] || '']) {
+      const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
+      if (!m) continue
       const n = parseMoneyAmount(m[1])
       if (n != null && n > 0) return n
     }
@@ -674,6 +680,26 @@ export function ticketMoneyFromText(text, draft = null) {
   if (toCollect == null && toWin != null && stake != null) {
     toCollect = Math.round((toWin + stake) * 100) / 100
   }
+  // If WON ON sat under TOTAL WAGER $, collect may equal stake … prefer a larger bare $
+  if (
+    stake != null
+    && toCollect != null
+    && Math.abs(toCollect - stake) < 0.009
+    && raw
+  ) {
+    const bare = []
+    for (const line of raw.split('\n').map((l) => l.trim()).filter(Boolean)) {
+      const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(line)
+        || /^\$?\s*([0-9,]+\.?\d*)\s+(?:won\s+on|you\s*won|to\s*collect|payout)\b/i.exec(line)
+      if (!m) continue
+      const n = parseMoneyAmount(m[1])
+      if (n != null && n > stake * 1.05) bare.push(n)
+    }
+    if (bare.length) {
+      toCollect = Math.max(...bare)
+      toWin = Math.round((toCollect - stake) * 100) / 100
+    }
+  }
   // BetRivers: "Win" / "+2620" then bare "2620.25" profit (no $)
   if (toWin == null && raw) {
     const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
@@ -800,9 +826,13 @@ function attachTicketMoney(draft, text = '') {
 /** Payout that includes stake (for americanFromStakeAndPayout). Prefer collect/max over to-win. */
 function extractPayoutDollars(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  const stakeHint = extractStakeDollars(text)
 
   const tryRes = [
-    /(?:potential\s*payout|max\s*payout|max\s*pay|to\s*collect|you\s*won|est\.?\s*\/?\s*payout|total\s*payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+    // "WON ON FANDUEL $207.85" … book name may sit between label and $
+    /\bwon\s+on\b(?:\s+[A-Za-z.]+)*\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+    /\b(?:you\s*won|total\s*won)\b(?:\s+[A-Za-z.]+)*\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+    /(?:potential\s*payout|max\s*payout|max\s*pay|to\s*collect|est\.?\s*\/?\s*payout|total\s*payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /(?:payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
   ]
   for (const re of tryRes) {
@@ -814,16 +844,26 @@ function extractPayoutDollars(text) {
     }
   }
 
+  // Vision glue: "$207.85 WON ON FANDUEL" / "$832.44 You Won"
+  for (const line of lines) {
+    const glued = (
+      /^\$?\s*([0-9,]+\.?\d*)\s+(?:won\s+on|you\s*won|total\s*won)\b/i.exec(line)
+      || /^\$?\s*([0-9,]+\.?\d*)\s+(?:to\s*collect|max\s*payout|potential\s*payout|total\s*payout)\b/i.exec(line)
+    )
+    if (!glued) continue
+    const n = parseMoneyAmount(glued[1])
+    if (n != null && n > 0) return n
+  }
+
   // Casino OCR: "TO COLLECT:" then "$9,735.00" on the next line
   for (let i = 0; i < lines.length; i += 1) {
-    if (!/^(?:to\s*collect|max\s*payout|potential\s*payout|to\s*win|you\s*won|win|total\s*payout)\s*:?\s*$/i.test(lines[i])) continue
+    if (!/^(?:to\s*collect|max\s*payout|potential\s*payout|to\s*win|you\s*won|win|total\s*payout|won\s+on|total\s*won)\s*:?\s*$/i.test(lines[i])) continue
     const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(lines[i + 1] || '')
     if (!m) continue
     const n = parseMoneyAmount(m[1])
     if (n == null || n <= 0) continue
     if (/^(?:to\s*win|win)\b/i.test(lines[i])) {
-      const stake = extractStakeDollars(text)
-      if (stake != null && stake > 0) return n + stake
+      if (stakeHint != null && stakeHint > 0) return n + stakeHint
     }
     return n
   }
@@ -832,15 +872,22 @@ function extractPayoutDollars(text) {
   const footer = extractCasinoFooterMoney(text)
   if (footer?.collect != null && footer.collect > 0) return footer.collect
 
-  // "$611.82" above "WON ON FANDUEL"
+  // "$611.82" above OR below "WON ON FANDUEL" … never steal TOTAL WAGER $ as the win
   for (let i = 0; i < lines.length; i += 1) {
-    if (!/^won\s+on\b/i.test(lines[i])) continue
-    const prev = lines[i - 1] || ''
-    const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(prev)
-    if (m) {
+    if (!/^(?:won\s+on|you\s*won|total\s*won)\b/i.test(lines[i])) continue
+    const neighbors = []
+    for (const candidate of [lines[i - 1] || '', lines[i + 1] || '']) {
+      const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
+      if (!m) continue
       const n = parseMoneyAmount(m[1])
-      if (n != null && n > 0) return n
+      if (n != null && n > 0) neighbors.push(n)
     }
+    const notStake = neighbors.filter((n) => (
+      stakeHint == null || Math.abs(n - stakeHint) > 0.009
+    ))
+    if (notStake.length) return Math.max(...notStake)
+    // Prefer next-line when both equal stake (rare) or only stake-sized neighbor
+    if (neighbors.length >= 2) return Math.max(...neighbors)
   }
 
   // Last resort: TO WIN is profit-only … add stake when we have it

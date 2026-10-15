@@ -305,8 +305,8 @@ Rules:
 - side: home | away | over | under | draw | "" (empty when N/A … distance/method/round props)
 - odds: American with sign (+120 / -110) ONLY when the ticket prints a combined / total odds figure. Leave "" if the slip only shows Ticket Cost + To Win / To Collect. NEVER copy a single leg's juice. NEVER invent odds by multiplying leg juices or from stake/payout math.
 - Always fill stake_dollars + to_win_dollars + to_collect_dollars when those $ amounts appear (TO WIN / TO COLLECT / YOU WON / Max Payout / TOTAL WAGER / WON ON). These matter more than combined odds on casino tickets.
-- stake_dollars: number only (no $). Map TAKE / Wager / Risk / Ticket Cost / TOTAL WAGER → stake (never invent from a default unit size).
-- to_collect_dollars: TO COLLECT / YOU WON / WON ON / Max Payout (includes stake). to_win_dollars: TO WIN profit only (or collect − stake).
+- stake_dollars: number only (no $). Map TAKE / Wager / Risk / Ticket Cost / TOTAL WAGER → stake (never invent from a default unit size). OCR may glue "$70.00 TOTAL WAGER" or put $ on the line above/below the label … still map it.
+- to_collect_dollars: TO COLLECT / YOU WON / WON ON / Max Payout (includes stake). to_win_dollars: TO WIN profit only (or collect − stake). OCR may glue "$207.85 WON ON FANDUEL" or put $ above/below WON ON … do not use the TOTAL WAGER amount as the win.
 - status: "won" when WON ON / YOU WON / Total Won. "lost" when LOST / LOST ON / Did not win / $0.00 payout on a settled My Bets receipt (Finished + TOTAL WAGER, no PLACE BET). Otherwise "open". Never mark an open betslip (PLACE BET) as lost.
 - commence_time: ISO 8601 if event date/time known
 - sport_label: NFL | CFB | NBA | MLB | NHL | UFC | Boxing | Golf | MLS | Other

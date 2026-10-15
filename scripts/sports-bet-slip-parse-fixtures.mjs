@@ -16,6 +16,7 @@ import {
   isWeakSportsBetDraft,
   legSelectionLooksJunk,
   parseSportsBetSlipText,
+  ticketMoneyFromText,
 } from '../src/features/sports-bet-tracker/sportsBetParse.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -1066,6 +1067,43 @@ try {
   console.error(`FAIL FanDuel settled money/status: ${err.message}`)
 }
 
+// Wager / Won $ layouts Vision often produces (glued + amount below label)
+try {
+  const glued = `$70.00 TOTAL WAGER
+$207.85 WON ON FANDUEL`
+  const below = `My Bets
+Settled
+Minnesota Twins +3.5
+ALTERNATE RUN LINES
+TOTAL WAGER
+$70.00
+WON ON FANDUEL
+$207.85`
+  const sameWon = `TOTAL WAGER $70.00
+WON ON FANDUEL $207.85`
+  for (const [name, text] of [
+    ['glued', glued],
+    ['below', below],
+    ['sameWon', sameWon],
+  ]) {
+    const m = ticketMoneyFromText(text)
+    assert(Number(m.stake_dollars) === 70, `${name} stake want 70 got ${m.stake_dollars}`)
+    assert(Math.abs(Number(m.to_collect_dollars) - 207.85) < 0.02, `${name} collect got ${m.to_collect_dollars}`)
+  }
+  // Amount below TOTAL WAGER must not become the Won $ when a larger $ follows WON ON
+  const steal = `TOTAL WAGER
+$1,250.00
+WON ON FANDUEL
+$13,096.50`
+  const stolen = ticketMoneyFromText(steal)
+  assert(Number(stolen.stake_dollars) === 1250, `steal stake want 1250 got ${stolen.stake_dollars}`)
+  assert(Math.abs(Number(stolen.to_collect_dollars) - 13096.5) < 0.02, `steal collect got ${stolen.to_collect_dollars}`)
+  console.log('ok  Wager/Won glued + below-label money')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL Wager/Won money layouts: ${err.message}`)
+}
+
 // Settled loss OCR … LOST badge / Did not win / $0.00 (not open PLACE BET)
 try {
   const fdLost = fs.readFileSync(path.join(OCR_DIR, 'fd-lost-alt-3.ocr.txt'), 'utf8')
@@ -1409,7 +1447,7 @@ for (const row of ocrBatch) {
   }
 }
 
-const total = fixtures.length + 9 + ocrCount
+const total = fixtures.length + 10 + ocrCount
 if (failed) {
   console.error(`\n${failed}/${total} failed`)
   process.exit(1)

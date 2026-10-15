@@ -706,15 +706,59 @@ export function ticketMoneyFromText(text, draft = null) {
 
 /**
  * Settled receipt vs open betslip.
- * won: WON ON / YOU WON / Total Won; lost: LOST ON / clear loss footer.
+ * won: WON ON / YOU WON / Total Won
+ * lost: LOST badge / LOST ON / did not win / $0 return on a settled receipt
+ * Never treat an open PLACE BET slip as lost (nav "Settled" tab alone is not enough).
  */
 export function detectSlipResult(text) {
   const raw = String(text || '')
   if (!raw.trim()) return 'open'
+
+  // Cashed tickets first … never reclassify as lost
   if (/\b(?:won\s+on\b|you\s*won\b|total\s*won\b)/i.test(raw)) return 'won'
-  if (/\b(?:lost\s+on\b|you\s*lost\b|total\s*lost\b)\b/i.test(raw)) return 'lost'
-  // FanDuel Settled tab + all legs Finished + a payout $ above WON is handled above.
-  // Settled + $0 / no win line with Finished legs → still open unless lost cues exist.
+
+  // Explicit loss copy (FanDuel / DK / Caesars / etc.)
+  if (/\b(?:lost\s+on\b|you\s*lost\b|total\s*lost\b)/i.test(raw)) return 'lost'
+  if (/\b(?:did\s*not\s*win|didn'?t\s*win|not\s*a\s*winner)\b/i.test(raw)) return 'lost'
+  if (/\b(?:bet\s*lost|ticket\s*lost|wager\s*lost)\b/i.test(raw)) return 'lost'
+  // Standalone LOST / Loss badge on its own line (My Bets settled)
+  if (/(?:^|\n)\s*(?:lost|loss)\s*(?:\n|$)/i.test(raw)) return 'lost'
+
+  // Open betslip chrome … do not infer loss from nav "Settled" alone
+  if (/\b(?:place\s*bet|review\s*line\s*changes|keep\s*picks|add\s*(?:to\s*)?(?:bet)?slip|clear\s*betslip)\b/i.test(raw)) {
+    return 'open'
+  }
+
+  // $0.00 return / payout / to collect / won on a settled receipt (no WON ON above)
+  const zeroReturn = (
+    /\$\s*0(?:\.00)?\s*(?:payout|return|to\s*collect|won|winnings)?\b/i.test(raw)
+    || /(?:payout|return|to\s*collect|max\s*payout|won)\s*[:=]?\s*\$?\s*0(?:\.00)?\b/i.test(raw)
+    || /(?:^|\n)\s*\$\s*0(?:\.00)?\s*(?:\n|$)/i.test(raw)
+  )
+  const settledReceipt = (
+    /\btotal\s*wager\b/i.test(raw)
+    && (/\bfinished\b/i.test(raw) || /\bmy\s*bets\b/i.test(raw))
+    && !/\b(?:to\s*win|potential\s*payout)\s*[:=]?\s*\$?\s*[1-9]/i.test(raw)
+  )
+  if (zeroReturn && settledReceipt) return 'lost'
+
+  // Settled My Bets: Finished legs + TOTAL WAGER + no win payout and no positive TO WIN
+  // (FanDuel losses often omit LOST copy but never show WON ON FANDUEL)
+  const finishedN = (raw.match(/\bfinished\b/gi) || []).length
+  const hasWager = /\btotal\s*wager\b/i.test(raw)
+  const hasWinPayout = /\b(?:won\s+on\b|you\s*won\b|total\s*won\b)/i.test(raw)
+  const hasOpenToWin = /\b(?:to\s*win|potential\s*payout)\s*[:=]?\s*\$?\s*[1-9]/i.test(raw)
+  if (
+    finishedN >= 2
+    && hasWager
+    && !hasWinPayout
+    && !hasOpenToWin
+    && /\b(?:settled|my\s*bets)\b/i.test(raw)
+  ) {
+    // Require a $0 line or a clear Lost-ish zero collect nearby to avoid open history slips
+    if (zeroReturn || /\$\s*0(?:\.00)?\b/.test(raw)) return 'lost'
+  }
+
   return 'open'
 }
 
@@ -740,6 +784,11 @@ export function applyTicketMoneyFromOcr(draft, text = '', { overwriteStake = tru
     next.status = result
   } else if (!next.status) {
     next.status = 'open'
+  }
+  // Lost tickets … no collect / to-win; UI shows Lost ($) = stake
+  if (result === 'lost') {
+    next.to_win_dollars = '0'
+    next.to_collect_dollars = '0'
   }
   return next
 }
@@ -2365,7 +2414,16 @@ function extractAppMoneylineBetslipLegs(text) {
   if (pending.length >= 2 && extractTotalParlayOdds(text) != null) {
     return zipped.length >= 2 ? zipped : pending
   }
-  return zipped.filter((l) => l.odds)
+  const withOdds = zipped.filter((l) => l.odds)
+  if (withOdds.length >= 2) return withOdds
+  // Settled My Bets ML parlays (Lost / Did not win / TOTAL WAGER) often omit per-leg juice
+  const settledNoBetslip = (
+    pending.length >= 2
+    && !/\bplace\s*bet\b/i.test(String(text || ''))
+    && /\b(?:total\s*wager|did\s*not\s*win|won\s+on|you\s*won|my\s*bets)\b/i.test(String(text || ''))
+  )
+  if (settledNoBetslip) return pending
+  return withOdds
 }
 
 /**

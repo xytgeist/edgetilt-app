@@ -1066,6 +1066,32 @@ try {
   console.error(`FAIL FanDuel settled money/status: ${err.message}`)
 }
 
+// Settled loss OCR … LOST badge / Did not win / $0.00 (not open PLACE BET)
+try {
+  const fdLost = fs.readFileSync(path.join(OCR_DIR, 'fd-lost-alt-3.ocr.txt'), 'utf8')
+  const dkLost = fs.readFileSync(path.join(OCR_DIR, 'dk-lost-ml-2.ocr.txt'), 'utf8')
+  assert(detectSlipResult(fdLost) === 'lost', `FD lost detect want lost got ${detectSlipResult(fdLost)}`)
+  assert(detectSlipResult(dkLost) === 'lost', `DK lost detect want lost got ${detectSlipResult(dkLost)}`)
+  const fd = parseSportsBetSlipText(fdLost)[0]
+  assert(fd?.status === 'lost', `FD lost parse status got ${fd?.status}`)
+  assert(Number(fd.stake_dollars) === 25, `FD lost stake want 25 got ${fd.stake_dollars}`)
+  assert(Number(fd.to_collect_dollars) === 0, `FD lost collect want 0 got ${fd.to_collect_dollars}`)
+  assert(fd.legs?.length === 3, `FD lost legs want 3 got ${fd.legs?.length}`)
+  const dk = parseSportsBetSlipText(dkLost)[0]
+  assert(dk?.status === 'lost', `DK lost parse status got ${dk?.status}`)
+  assert(Number(dk.stake_dollars) === 20, `DK lost stake want 20 got ${dk.stake_dollars}`)
+  // Open FanDuel betslip with Settled nav tab must stay open
+  const openFd = fs.readFileSync(path.join(OCR_DIR, 'fd-sgp-open-steelers-3.ocr.txt'), 'utf8')
+  assert(detectSlipResult(openFd) === 'open', `open SGP must not be lost got ${detectSlipResult(openFd)}`)
+  // Won receipt still won
+  const wonFd = fs.readFileSync(path.join(OCR_DIR, 'fd-alt-lines-5.ocr.txt'), 'utf8')
+  assert(detectSlipResult(wonFd) === 'won', `won alt must stay won got ${detectSlipResult(wonFd)}`)
+  console.log('ok  Settled loss OCR + open/won guards')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL Settled loss OCR: ${err.message}`)
+}
+
 /** Real Vision OCR dumps from Ryan's batch (2026-10-14). */
 const ocrBatch = [
   {
@@ -1291,6 +1317,30 @@ const ocrBatch = [
     file: 'dk-alt-yards-boost-2.ocr.txt',
     expect: { legs: 4, odds: 9993, stake_dollars: 15, leg_odds: [155, 220, 220, 210], leg0: 'Chase' },
   },
+  {
+    file: 'fd-lost-alt-3.ocr.txt',
+    expect: {
+      legs: 3,
+      stake_dollars: 25,
+      status: 'lost',
+      to_collect_dollars: 0,
+      to_win_dollars: 0,
+      leg0: 'Twins',
+      leg_last: 'Stars',
+      no_junk_sels: true,
+    },
+  },
+  {
+    file: 'dk-lost-ml-2.ocr.txt',
+    expect: {
+      legs: 2,
+      stake_dollars: 20,
+      status: 'lost',
+      to_collect_dollars: 0,
+      leg0: 'Bills',
+      leg_last: 'Chiefs',
+    },
+  },
 ]
 
 let ocrCount = 0
@@ -1359,7 +1409,7 @@ for (const row of ocrBatch) {
   }
 }
 
-const total = fixtures.length + 8 + ocrCount
+const total = fixtures.length + 9 + ocrCount
 if (failed) {
   console.error(`\n${failed}/${total} failed`)
   process.exit(1)

@@ -996,6 +996,47 @@ try {
   console.error(`FAIL Caesars Edge money path: ${err.message}`)
 }
 
+// FanDuel settled alt lines … Edge took opponent scoreboard rows (4 junk) → OCR restores 5
+try {
+  const fdOcr = fs.readFileSync(path.join(OCR_DIR, 'fd-alt-lines-5.ocr.txt'), 'utf8')
+  assert(declaredParlayLegCount(fdOcr) === 5, `FD alt declared want 5 got ${declaredParlayLegCount(fdOcr)}`)
+  const junkEdge = {
+    market: 'parlay',
+    odds: '',
+    stake_dollars: '70',
+    to_collect_dollars: '207.85',
+    to_win_dollars: '137.85',
+    selection_label: 'Parlay (4 legs)',
+    legs: [
+      { selection_label: 'Toronto Blue Jays 012032200 10', market: 'h2h', odds: '-500' },
+      { selection_label: 'Dallas Mavericks 26 25 31 23 105 Finish', market: 'h2h', odds: '-385' },
+      { selection_label: 'Carolina Hurricanes 3014 Finished', market: 'h2h', odds: '-430' },
+      { selection_label: 'Cleveland Cavaliers 28 20 21 24 93 Finis', market: 'h2h', odds: '-335' },
+    ],
+  }
+  assert(
+    junkEdge.legs.every((l) => legSelectionLooksJunk(l.selection_label)),
+    'FD alt scoreboard rows should look junk',
+  )
+  assert(isWeakSportsBetDraft(junkEdge, fdOcr), 'FD alt Edge junk should be weak')
+  const restored = hydrateParlayLegsForDraft(junkEdge, fdOcr)
+  assert(restored.legs?.length === 5, `FD alt hydrate want 5 got ${restored.legs?.length}`)
+  assert(
+    restored.legs.every((l) => !legSelectionLooksJunk(l.selection_label)),
+    `FD alt hydrate still junk: ${restored.legs.map((l) => l.selection_label).join(' | ')}`,
+  )
+  assert(/twins/i.test(restored.legs[0]?.selection_label || ''), `FD alt leg0 ${restored.legs[0]?.selection_label}`)
+  assert(/stars/i.test(restored.legs[4]?.selection_label || ''), `FD alt leg4 ${restored.legs[4]?.selection_label}`)
+  assert(
+    restored.legs.every((l) => l.market === 'spread'),
+    'FD alt hydrate markets should be spread',
+  )
+  console.log('ok  FanDuel alt-lines Edge scoreboard junk → 5 clean spreads')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL FanDuel alt-lines junk hydrate: ${err.message}`)
+}
+
 /** Real Vision OCR dumps from Ryan's batch (2026-10-14). */
 const ocrBatch = [
   {
@@ -1131,9 +1172,13 @@ const ocrBatch = [
       legs: 5,
       stake_dollars: 70,
       book: 'FanDuel',
+      odds_blank: true,
+      to_collect_dollars: 207.85,
+      to_win_dollars: 137.85,
       leg_odds: [-500, -385, -430, -335, -440],
       leg0: 'Twins',
       leg_last: 'Stars',
+      no_junk_sels: true,
     },
   },
   {
@@ -1249,6 +1294,12 @@ for (const row of ocrBatch) {
         `${name}: to_collect ${d.to_collect_dollars}`,
       )
     }
+    if (e.no_junk_sels) {
+      assert(
+        legs.every((l) => !legSelectionLooksJunk(l.selection_label)),
+        `${name}: junk sels ${legs.map((l) => l.selection_label).join(' | ')}`,
+      )
+    }
     if (e.book) assert(d.book === e.book, `${name}: book ${d.book}`)
     if (e.leg0) {
       assert(
@@ -1277,7 +1328,7 @@ for (const row of ocrBatch) {
   }
 }
 
-const total = fixtures.length + 6 + ocrCount
+const total = fixtures.length + 7 + ocrCount
 if (failed) {
   console.error(`\n${failed}/${total} failed`)
   process.exit(1)

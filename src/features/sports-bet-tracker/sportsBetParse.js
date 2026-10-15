@@ -1220,6 +1220,12 @@ export function legSelectionLooksJunk(sel) {
     return true
   }
   if (/\d{4}\s*[-–•]\s*(?:nba|nfl|mlb|nhl|cfb|playoff)/i.test(s)) return true
+  // FanDuel settled scoreboard glued into selection (opponent periods + Finished)
+  if (/\bfinish(?:ed)?\b/i.test(s)) return true
+  // "26 25 31 23 105" / "28 20 21 24 93" quarter/period tallies
+  if (/(?:\b\d{1,3}\b[\s,]+){3,}\d{1,3}\b/.test(s)) return true
+  // "012032200 10" / "3014" inning or period digit runs after a team name
+  if (/[A-Za-z]{3,}.*\d{4,}/.test(s) && !/[+-]\d+(?:\.\d+)?/.test(s)) return true
   return false
 }
 
@@ -2344,9 +2350,14 @@ export function declaredParlayLegCount(text) {
     || /(\d+)\s*-?\s*leg\s+pa[ryi]lay/i.exec(raw)
     || /parlay\s*\(\s*(\d+)\s*teams?\s*\)/i.exec(raw)
     || /(\d+)\s*(?:pick\s+)?pa[ry]lay/i.exec(raw)
-  if (!m) return null
-  const n = Number(m[1])
-  return Number.isFinite(n) && n >= 2 && n <= 40 ? n : null
+  if (m) {
+    const n = Number(m[1])
+    if (Number.isFinite(n) && n >= 2 && n <= 40) return n
+  }
+  // FanDuel settled alt lines: one ALTERNATE RUN LINES / SPREAD / PUCK LINE per leg
+  const altN = (raw.match(/\balternate\s*(?:run\s*lines?|spread|puck\s*line)\b/gi) || []).length
+  if (altN >= 2 && altN <= 40) return altN
+  return null
 }
 
 /** Strip retail "Money Line FT" noise from a selection label → "Team ML". */
@@ -2476,16 +2487,52 @@ function extractDkMlTotalComboLegs(text) {
 
 /**
  * FanDuel My Bets settled: selection then MONEYLINE / 1ST HALF … odds bunched at end.
+ * Alt lines: bold "Team +3.5" directly above ALTERNATE RUN LINES / SPREAD / PUCK LINE
+ * (scoreboard rows under the pick are junk … never use those as selection).
  */
 function extractFanDuelMyBetsLegs(text) {
   const raw = normalizeSlipOcrText(text)
-  // Only My Bets / settled receipts … not open FanDuel betslips (those use spread/ML extractors)
-  if (!/(?:my\s*bets|won\s+on\s+fanduel|total\s*wager)/i.test(raw)) return []
+  const altMarketHits = (raw.match(/\balternate\s*(?:run\s*lines?|spread|puck\s*line)\b/gi) || []).length
+  // Only My Bets / settled receipts … or alt-line slips (≥2 ALTERNATE markets)
+  if (!/(?:my\s*bets|won\s+on\s+fanduel|total\s*wager)/i.test(raw) && altMarketHits < 2) {
+    return []
+  }
   const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
   const pending = []
   const marketRe = /^(moneyline|half-?time\s*result|1st\s*half\s*over\/under|spread\s*betting|total\s*points|total\s*match\s*points|spread|alternate\s*(?:run\s*lines?|spread|puck\s*line)|any\s*time\s*touchdown)/i
   // OCR: "1ST HALE OVERJUNDER D.5 GOLLS"
   const marketFuzzy = /moneyline|half-?time|over\s*\/?\s*under|hale\s*over|gol|spread|puck|alternate|touchdown|receiving|total/i
+  const altPickRe = /^(.+?)\s+([+-]\d+(?:\.\d+)?)\s*$/
+
+  // Prefer clean "Team +line" rows immediately above ALTERNATE … beats scoreboard noise
+  if (altMarketHits >= 2) {
+    for (let i = 0; i < lines.length; i += 1) {
+      if (!/^alternate\s*(?:run\s*lines?|spread|puck\s*line)\b/i.test(lines[i])) continue
+      const sel = lines[i - 1] || ''
+      const spreadSel = altPickRe.exec(sel)
+      if (!spreadSel) continue
+      if (legSelectionLooksJunk(sel)) continue
+      const team = spreadSel[1].trim()
+      if (team.length < 3 || team.length > 40) continue
+      const lineNum = Number(spreadSel[2])
+      if (!Number.isFinite(lineNum)) continue
+      const signed = lineNum > 0 ? `+${lineNum}` : String(lineNum)
+      pending.push(emptyLegStub({
+        market: 'spread',
+        side: '',
+        line: String(lineNum),
+        selection_label: `${titleCaseWords(team)} ${signed}`,
+      }))
+    }
+    if (pending.length >= 2) {
+      const zipped = zipBunchedAmericanOdds(pending, text)
+      const out = zipped.filter((l) => l.odds)
+      if (out.length >= 2) return out
+      // Settled alt slips sometimes OCR juices as "-500 Finished" … still return picks
+      if (pending.length >= altMarketHits) return pending
+      return out.length ? out : pending
+    }
+  }
 
   for (let i = 0; i < lines.length; i += 1) {
     const market = lines[i + 1] || ''
@@ -2494,10 +2541,11 @@ function extractFanDuelMyBetsLegs(text) {
     if (/^(my\s*bets|active|settled|saved|fanduel|panduel|draw\s*moneyline|\d+\s*leg|sgp|same\s*game)/i.test(sel)) continue
     if (bareAmericanOddsLine(sel) || /^finished$|^live$/i.test(sel)) continue
     if (/^\d/.test(sel) && !/^(1st|2nd|\d+\+)/i.test(sel)) continue
+    if (legSelectionLooksJunk(sel)) continue
 
     const ou = /^(?:1st\s*half\s+)?(over|under)\s+(\d+(?:\.\d+)?)\s*goals?\s*$/i.exec(sel)
       || /^(?:1st\s*half\s+)?(over|under)\s+(\d+(?:\.\d+)?)\s*$/i.exec(sel)
-    const spreadSel = /^(.+?)\s+([+-]\d+(?:\.\d+)?)\s*$/.exec(sel)
+    const spreadSel = altPickRe.exec(sel)
     const marketOk = marketRe.test(market) || ((ou || spreadSel) && marketFuzzy.test(market))
     if (!marketOk) continue
 

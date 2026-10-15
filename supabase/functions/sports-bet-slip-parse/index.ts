@@ -311,6 +311,7 @@ Rules:
 - PARLAYS: market=parlay, odds=combined ticket odds, and legs=[...] with one object per leg (market, side, line, odds, selection_label, player_name, prop_stat, home_team, away_team, event_label). Do NOT put legs only in notes.
 - If the slip says "Parlay 5 bets", "5-Leg Parlay", "PARLAY (5 TEAMS)", or "N Pick Parlay", legs[] MUST have exactly that many entries. Count every Money Line / pick row on the ticket (including middle legs like Duke between FSU and Kansas). Do not drop a leg.
 - Casino slips with "[101] RAVENS" / "[522] KNICKS": each leg selection_label is the team only (e.g. "Ravens ML"). Never use date lines ("Jan 11 2026 - NFL PLAYOFFS"), rotation brackets in the label, or footer text (TICKET COST / TO WIN / TO COLLECT / YOU WON) as a leg.
+- FanDuel settled My Bets alt lines: selection_label is the bold pick above ALTERNATE RUN LINES / ALTERNATE SPREAD / ALTERNATE PUCK LINE (e.g. "Minnesota Twins +3.5"). Never use opponent names, period/inning scores, "Finished", or digit runs ("26 25 31 23 105") as a leg. Count every ALTERNATE market row.
 - Player props like "Over 0.5 (Matt Olson) / MATT OLSON HOME RUNS / +360" → leg market=prop, side=over, line=0.5, player_name, prop_stat=Home Runs, odds=+360
 - If unsure, still fill best effort; use market=other and side="" rather than inventing a fighter/team side`
 

@@ -546,11 +546,15 @@ function extractStakeDollars(text) {
   }
 
   // Fliff / ESPN BET style: "ODDS PRICE BET AMOUNT TOTAL PAYOUT" / "… MAX WIN"
-  // then "+481 $25.00 $145.16" (stake is first $ after American odds)
+  // then "+481 $25.00 $145.16" (stake is first $ after American odds).
+  // Vision sometimes garbles the odds token ("epleill | $25.00 $327.76") … still take dual $.
   for (let i = 0; i < lines.length; i += 1) {
     if (!/\bbet\s*amount\b/i.test(lines[i])) continue
     const next = lines[i + 1] || ''
-    const m = /^[+-]\d{3,8}\s+\$?\s*([0-9,]+\.?\d*)(?:\s+\$?\s*[0-9,]+\.?\d*)?/.exec(next)
+    const m = (
+      /^[+-]\d{3,8}\s+\$?\s*([0-9,]+\.?\d*)(?:\s+\$?\s*[0-9,]+\.?\d*)?/.exec(next)
+      || /\$\s*([0-9,]+\.?\d*)\s+\$\s*([0-9,]+\.?\d*)/.exec(next)
+    )
     if (!m) continue
     const n = parseMoneyAmount(m[1])
     if (n != null && n > 0) return n
@@ -986,12 +990,16 @@ function extractPayoutDollars(text) {
   }
 
   // Fliff / ESPN BET: "ODDS PRICE BET AMOUNT TOTAL PAYOUT" / "… MAX WIN"
-  // then "+481 $25.00 $145.16" … right $ is collect / max win
+  // then "+481 $25.00 $145.16" … right $ is collect / max win.
+  // Also "epleill | $25.00 $327.76" when Vision garbles the odds token.
   for (let i = 0; i < lines.length; i += 1) {
     if (!/\bbet\s*amount\b/i.test(lines[i])) continue
     if (!/\b(?:total\s*payout|max\s*win|payout)\b/i.test(lines[i])) continue
     const next = lines[i + 1] || ''
-    const m = /^[+-]\d{3,8}\s+\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)/.exec(next)
+    const m = (
+      /^[+-]\d{3,8}\s+\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)/.exec(next)
+      || /\$\s*([0-9,]+\.?\d*)\s+\$\s*([0-9,]+\.?\d*)/.exec(next)
+    )
     if (!m) continue
     const n = parseMoneyAmount(m[2])
     if (n != null && n > 0) return n
@@ -1902,6 +1910,10 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
   if (/\bmls\b/i.test(s)) return resolveSportsBetSport('soccer_usa_mls', 'MLS')
   // FIFA / World Cup group winners (Fanatics futures) … not MLS
   if (/\bfifa\b|\bworld\s*cup\b|\bgroup\s+[a-z]\s+winner\b/i.test(s)) {
+    return { key: 'other', label: 'Soccer' }
+  }
+  // Fliff/ESPN "Match Betting" (soccer ML) + Soccer Profit Boost chrome
+  if (/\bmatch\s*betting\b|\bsoccer\s*profit\s*boost\b/i.test(s)) {
     return { key: 'other', label: 'Soccer' }
   }
   // Bout Betting (Fliff / ESPN BET UFC) before person-vs → Table Tennis
@@ -3293,6 +3305,75 @@ function extractFanDuelMyBetsLegs(text) {
 
 /** BetRivers / SugarHouse UFC multiples: fighter + "A vs B" + bunched odds. */
 /**
+ * Fliff / ESPN BET soccer: "Portugal vs Spain" / "@ Spain Won | -109 |" / "Match Betting"
+ * Combined odds + money sit on "ODDS PRICE BET AMOUNT MAX WIN" footer.
+ */
+function extractMatchBettingLegs(text) {
+  const raw = normalizeSlipOcrText(text)
+  if (!/\bmatch\s*betting\b/i.test(raw)) return []
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const matchup = lines[i]
+    if (!/\bvs\.?\b/i.test(matchup)) continue
+    if (/parlay|odds\s*price|bet\s*amount|slip\s*id|total\s*payout|max\s*win/i.test(matchup)) continue
+    let pickLine = ''
+    let marketAt = -1
+    for (let j = i + 1; j < Math.min(i + 5, lines.length); j += 1) {
+      if (/^match\s*betting\b/i.test(lines[j])) {
+        marketAt = j
+        break
+      }
+      if (/\bvs\.?\b/i.test(lines[j])) break
+      if (!pickLine && /[A-Za-z]/.test(lines[j])) pickLine = lines[j]
+    }
+    if (marketAt < 0 || !pickLine) continue
+    let status = 'open'
+    if (/\bwon\b/i.test(pickLine)) status = 'won'
+    else if (/\blost\b/i.test(pickLine)) status = 'lost'
+    const oddsM = /([+-]\d{3,5})/.exec(pickLine)
+    const odds = oddsM ? americanOddsInputString(oddsM[1]) : ''
+    let team = pickLine
+      .replace(/^[@©®™*&$~\s]+/, '')
+      .replace(/^[a-z][a-zA-Z]{0,2}\)\s*/, '')
+      .replace(/^[a-z][a-zA-Z]{0,2}\s+(?=[A-Z])/, '')
+      .replace(/\b(?:won|lost|open)\b/gi, '')
+      .replace(/\s*[|\[\]].*$/, '')
+      .replace(/\s+[+-]\d{3,5}\s*$/, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    if (!team || team.length > 48 || !/^[A-Za-z]/.test(team)) continue
+    if (/^(match|betting|parlay|odds|price|amount|payout|slip|max)\b/i.test(team)) continue
+    const tKey = normalizeNameKey(team)
+    const mKey = normalizeNameKey(matchup)
+    const last = tKey.split(' ').pop() || tKey
+    // USA / short codes: allow 2+ char token match
+    if (last.length >= 2 && !mKey.includes(last)) continue
+    if (seen.has(tKey)) continue
+    seen.add(tKey)
+    // Keep short codes (USA / UAE) uppercase … titleCase would make "Usa"
+    const teamLabel = (team.length <= 3 && /^[A-Za-z]+$/.test(team))
+      ? team.toUpperCase()
+      : titleCaseWords(team)
+    pending.push({
+      ...emptyLegStub({
+        market: 'h2h',
+        odds,
+        selection_label: `${teamLabel} ML`,
+        event_label: matchup.replace(/\s+/g, ' ').trim(),
+        sport_key: 'other',
+        sport_label: 'Soccer',
+      }),
+      status,
+    })
+  }
+  const zipped = zipBunchedAmericanOdds(pending, text)
+  return zipped.length >= 2 ? zipped : (pending.length >= 2 ? pending : [])
+}
+
+/**
  * Fliff / ESPN BET: "Fighter A vs Fighter B" / "@ Pick Won" / "Bout Betting"
  * Combined odds + money sit on "ODDS PRICE BET AMOUNT TOTAL PAYOUT" footer.
  */
@@ -4040,6 +4121,10 @@ export function extractParlayLegs(text) {
 
   const fdMine = extractFanDuelMyBetsLegs(text)
   if (fdMine.length >= 2) return fdMine
+
+  // Match Betting (Fliff/ESPN soccer) before Bout Betting / person-vs Table Tennis
+  const matchBet = extractMatchBettingLegs(text)
+  if (matchBet.length >= 2) return matchBet
 
   // Bout Betting (Fliff / ESPN BET) before BetRivers Multiples UFC shape
   const bout = extractBoutBettingLegs(text)

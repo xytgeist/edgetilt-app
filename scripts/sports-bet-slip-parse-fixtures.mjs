@@ -1490,6 +1490,22 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 24 (Ryan yes): Fliff/ESPN Soccer Match Betting open 4-leg … MAX WIN + national MLs
+    file: 'fliff-open-match-betting-4.ocr.txt',
+    expect: {
+      legs: 4,
+      odds: 1311,
+      stake_dollars: 25,
+      to_collect_dollars: 327.76,
+      to_win_dollars: 302.76,
+      status: 'open',
+      sport_label: 'Soccer',
+      leg0: 'Spain',
+      leg_last: 'Colombia',
+      no_junk_sels: true,
+    },
+  },
+  {
     // Candidate 23 (Ryan yes): Fliff/ESPN MLB Money Line open 5-leg … MAX WIN, strip a/nD OCR crumbs
     file: 'fliff-open-mlb-ml-5.ocr.txt',
     expect: {

@@ -204,7 +204,7 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 **Web `1.4.1158`.** DraftKings `Over 0.5 (Matt Olson)` + HOME RUNS + odds → prop legs (was 2 blank Leg placeholders). Bare $stake/$payout. Skip plate-appearance disclaimers. Fixture. **Promoted** `test` → `main` (`6dfe5d54`). No Edge.
 
 ### Mac Theo 2026-10-14 ... Bet Tracker AI notes → parlay legs
-**Web `1.4.1159`.** LLM often writes `Parlay legs: …` into notes with empty/placeholder legs[] (Ryan DK HR 3-pick). Client hydrates legs from notes/OCR (prefer richest count); Edge `sports-bet-slip-parse` asks for `legs[]`. Fixture. **Redeploy Edge on test** (and prod when promoting).
+**Web `1.4.1159`.** LLM often writes `Parlay legs: …` into notes with empty/placeholder legs[] (Ryan DK HR 3-pick). Client hydrates legs from notes/OCR (prefer richest count); Edge `sports-bet-slip-parse` asks for `legs[]`. Fixture. **Promoted** `test` → `main` (`ba949dde`). Edge **`sports-bet-slip-parse`** redeployed **test + prod**.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.

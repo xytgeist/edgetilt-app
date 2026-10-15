@@ -1276,6 +1276,24 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 5 (Ryan yes): FanDuel won SGP Ohtani props + Dodgers ML
+    file: 'fd-won-ohtani-sgp-4.ocr.txt',
+    expect: {
+      legs: 4,
+      odds: 3134,
+      stake_dollars: 5,
+      to_collect_dollars: 156.7,
+      to_win_dollars: 151.7,
+      status: 'won',
+      book: 'FanDuel',
+      sport_label: 'MLB',
+      sport_key: 'baseball_mlb',
+      leg0: 'Ohtani',
+      leg_last: 'Dodgers',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

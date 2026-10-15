@@ -889,8 +889,9 @@ function extractPayoutDollars(text) {
   if (footer?.collect != null && footer.collect > 0) return footer.collect
 
   // FanDuel open My Bets: "$10.00 $2,129.55" / "TOTAL WAGER TOTAL PAYOUT" (payout is right $)
+  // Settled: "$5.00 $156.70" / "TOTAL WAGER WON ON FANDUEL"
   for (let i = 0; i < lines.length; i += 1) {
-    if (!/\btotal\s*payout\b/i.test(lines[i])) continue
+    if (!/\btotal\s*payout\b|\bwon\s+on\b/i.test(lines[i])) continue
     for (const candidate of [lines[i - 1] || '', lines[i + 1] || '']) {
       const dual = /^\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
       if (dual) {
@@ -901,15 +902,26 @@ function extractPayoutDollars(text) {
       const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
       if (!m) continue
       const n = parseMoneyAmount(m[1])
-      if (n != null && n > 0) return n
+      if (n != null && n > 0) {
+        if (stakeHint != null && Math.abs(n - stakeHint) < 0.009) continue
+        return n
+      }
     }
   }
 
   // "$611.82" above OR below "WON ON FANDUEL" … never steal TOTAL WAGER $ as the win
+  // Line may be bare "WON ON FANDUEL" or glued "TOTAL WAGER WON ON FANDUEL"
   for (let i = 0; i < lines.length; i += 1) {
-    if (!/^(?:won\s+on|you\s*won|total\s*won)\b/i.test(lines[i])) continue
+    if (!/\b(?:won\s+on|you\s*won|total\s*won)\b/i.test(lines[i])) continue
     const neighbors = []
     for (const candidate of [lines[i - 1] || '', lines[i + 1] || '']) {
+      const dual = /^\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
+      if (dual) {
+        const a = parseMoneyAmount(dual[1])
+        const b = parseMoneyAmount(dual[2])
+        if (a != null && a > 0 && b != null && b > 0) neighbors.push(Math.max(a, b))
+        continue
+      }
       const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
       if (!m) continue
       const n = parseMoneyAmount(m[1])
@@ -2187,6 +2199,9 @@ function extractTotalParlayOdds(text) {
       /(?:^|\n)\s*\d+\s*-?\s*leg\s+pa[ry]lay\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
       || /(?:^|\n)\s*\d+\s*pick\s+pa[ry]lay\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
       || /(?:^|\n)\s*\d+\s*-?\s*leg\s+pa[ry]lay\s*\n\s*([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
+      // Settled / open SGP header: "Same Game Parlay™ +3134" / "SGP Same Game Parlay +3134"
+      || /(?:^|\n)\s*(?:sgp\s+)?same\s*game\s*parlay\S*\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
+      || /(?:^|\n)\s*sgp\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
     )
     if (same) {
       const n = americanOrNull(same[1])
@@ -2733,9 +2748,11 @@ function extractFanDuelMyBetsLegs(text) {
   }
   const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
   const pending = []
+  // Settled SGP props: "TO HIT A HOME RUN" / "TO RECORD A STOLEN BASE" / "TO RECORD 2+ RBIS"
+  const propMarketRe = /^(?:to\s+hit\s+a\s+home\s+run|to\s+record\s+(?:a\s+)?stolen\s+base|to\s+record\s+(\d+)\+?\s*rbis?|to\s+score\s+(\d+)\+?\s*touchdowns?|any\s*time\s*touchdown)/i
   const marketRe = /^(moneyline|half-?time\s*result|1st\s*half\s*over\/under|spread\s*betting|total\s*points|total\s*match\s*points|spread|alternate\s*(?:run\s*lines?|spread|puck\s*line)|any\s*time\s*touchdown)/i
   // OCR: "1ST HALE OVERJUNDER D.5 GOLLS"
-  const marketFuzzy = /moneyline|half-?time|over\s*\/?\s*under|hale\s*over|gol|spread|puck|alternate|touchdown|receiving|total/i
+  const marketFuzzy = /moneyline|half-?time|over\s*\/?\s*under|hale\s*over|gol|spread|puck|alternate|touchdown|receiving|total|home\s*run|stolen\s*base|\brbis?\b/i
   const altPickRe = /^(.+?)\s+([+-]\d+(?:\.\d+)?)\s*$/
 
   // Prefer clean "Team +line" rows immediately above ALTERNATE … beats scoreboard noise
@@ -2785,14 +2802,20 @@ function extractFanDuelMyBetsLegs(text) {
     const ou = /^(?:1st\s*half\s+)?(over|under)\s+(\d+(?:\.\d+)?)\s*goals?\s*$/i.exec(sel)
       || /^(?:1st\s*half\s+)?(over|under)\s+(\d+(?:\.\d+)?)\s*$/i.exec(sel)
     const spreadSel = altPickRe.exec(sel)
-    const marketOk = marketRe.test(market) || ((ou || spreadSel) && marketFuzzy.test(marketRaw))
+    const propM = propMarketRe.exec(market)
+    const marketOk = marketRe.test(market) || Boolean(propM)
+      || ((ou || spreadSel) && marketFuzzy.test(marketRaw))
     if (!marketOk) continue
+    // Player/team name only … skip when the "selection" is itself a market label
+    if (propMarketRe.test(sel) || marketRe.test(sel)) continue
 
     let marketKind = 'h2h'
     let side = ''
     let line = ''
     let odds = ''
     let selection_label = titleCaseWords(sel)
+    let player_name = ''
+    let prop_stat = ''
     if (ou) {
       marketKind = 'total'
       side = ou[1].toLowerCase() === 'under' ? 'under' : 'over'
@@ -2814,9 +2837,33 @@ function extractFanDuelMyBetsLegs(text) {
     } else if (/half-?time\s*result/i.test(market)) {
       marketKind = 'other'
       selection_label = `${titleCaseWords(sel)} HT`
-    } else if (/touchdown/i.test(market)) {
+    } else if (propM || /touchdown|home\s*run|stolen\s*base|\brbis?\b/i.test(market)) {
       marketKind = 'prop'
-      selection_label = `${titleCaseWords(sel)} ATD`
+      player_name = titleCaseWords(sel)
+      side = 'over'
+      if (/home\s*run/i.test(market)) {
+        prop_stat = 'Home Run'
+        line = '1'
+        selection_label = `${player_name} Home Run`
+      } else if (/stolen\s*base/i.test(market)) {
+        prop_stat = 'Stolen Base'
+        line = '1'
+        selection_label = `${player_name} Stolen Base`
+      } else if (/rbis?/i.test(market)) {
+        const n = Number(propM?.[1] || /\b(\d+)\+?\s*rbis?\b/i.exec(market)?.[1] || 1)
+        prop_stat = 'RBIs'
+        line = String(Number.isFinite(n) ? n : 1)
+        selection_label = `${player_name} ${line}+ RBIs`
+      } else if (/touchdown/i.test(market)) {
+        const n = Number(propM?.[2] || /\b(\d+)\+?\s*touchdowns?\b/i.exec(market)?.[1] || 1)
+        prop_stat = Number.isFinite(n) && n > 1 ? `${n}+ Touchdowns` : 'Anytime TD'
+        line = String(Number.isFinite(n) ? n : 1)
+        selection_label = Number.isFinite(n) && n > 1
+          ? `${player_name} ${n}+ TDs`
+          : `${player_name} ATD`
+      } else {
+        selection_label = `${player_name} ${titleCaseWords(market)}`
+      }
     } else if (/moneyline/i.test(market)) {
       marketKind = 'h2h'
       // Open My Bets: "Chicago Cubs -120" / MONEYLINE (juice on the pick line)
@@ -2838,12 +2885,16 @@ function extractFanDuelMyBetsLegs(text) {
       line,
       odds,
       selection_label,
+      player_name,
+      prop_stat,
     }))
   }
 
   const zipped = zipBunchedAmericanOdds(pending, text)
-  // Settled dual-SGP often omits per-leg juice … keep legs when ticket odds exist
-  if (pending.length >= 2 && extractTotalParlayOdds(text) != null) {
+  // Settled dual-SGP / My Bets often omit per-leg juice … keep legs when ticket
+  // odds exist OR this is a settled wager/won receipt (props + ML with no juices)
+  const settledMyBets = /\b(?:won\s+on|total\s*wager|my\s*bets)\b/i.test(raw)
+  if (pending.length >= 2 && (extractTotalParlayOdds(text) != null || settledMyBets)) {
     return zipped.length >= 2 ? zipped : pending
   }
   return zipped.filter((l) => l.odds)

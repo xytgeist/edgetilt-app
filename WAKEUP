@@ -209,6 +209,9 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 ### Mac Theo 2026-10-14 ... Bet Tracker batch OCR harden (9 slips)
 **Web `1.4.1160`.** Vision-OCR batch: DK HR / alt yards+boost / ML betslip, FD open spreads, Circa bunched juice, Wynn ½ fractions, Rampart half-point card, Parlay Card, Hollywood futures. Zip bunched odds; fixtures in `scripts/fixtures/sports-bet-slips/` + `sports-bet-slip-parse-fixtures.mjs` (35/35).
 
+### Mac Theo 2026-10-14 ... Bet Tracker batch OCR harden #2
+**Web `1.4.1161`.** Second Vision batch: DK ML/Total combo + NFL/MLB ML betslips, FD soccer/NBA My Bets, Fanatics, BetRivers UFC, LIGA365 decimal, DK CFB 2. Prior OCR fixtures still green (**45/45**).
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.
 

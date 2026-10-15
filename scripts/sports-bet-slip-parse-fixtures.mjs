@@ -583,6 +583,16 @@ SEA Storm (Winner)
     },
   },
   {
+    name: 'FanDuel CBB 8-leg open (cleaned)',
+    text: fs.readFileSync(path.join(OCR_DIR, 'fd-cbb-8-cleaned.txt'), 'utf8'),
+    expect: {
+      market: 'parlay',
+      odds: 9588,
+      legs: 8,
+      leg0_includes: 'Connecticut',
+    },
+  },
+  {
     name: 'Wynn 5-team casino (cleaned fractions)',
     text: `
 WYNN LAS VEGAS
@@ -867,6 +877,42 @@ const ocrBatch = [
     file: 'hollywood-futures-4.ocr.txt',
     // Vision OCR missed Chiefs … keep ≥3 winners + stake until photo OCR improves
     expect: { legs_min: 3, stake_dollars: 400, book: 'Hollywood', leg0: 'Braves' },
+  },
+  {
+    file: 'dk-ml-total-combo-4.ocr.txt',
+    expect: { legs: 4, odds: 4964, stake_dollars: 10, leg0: 'Red Sox' },
+  },
+  {
+    file: 'fd-soccer-6.ocr.txt',
+    expect: { legs: 6, odds: 56898, stake_dollars: 5, book: 'FanDuel', leg0: 'Draw' },
+  },
+  {
+    file: 'dk-mlb-ml-open-3.ocr.txt',
+    expect: { legs: 3, odds: 590, stake_dollars: 100, leg0: 'Rays' },
+  },
+  {
+    file: 'dk-nfl-ml-5.ocr.txt',
+    expect: { legs: 5, stake_dollars: 100, leg0: 'Packers', leg_last: 'Bills' },
+  },
+  {
+    file: 'fd-nba-ml-6.ocr.txt',
+    expect: { legs: 6, stake_dollars: 5, book: 'FanDuel', leg0: 'Celtics', leg_last: 'Clippers' },
+  },
+  {
+    file: 'liga365-decimal-5.ocr.txt',
+    expect: { legs: 5, stake_dollars: 10, book: 'LIGA365', odds: 1829, leg0: 'Over' },
+  },
+  {
+    file: 'fanatics-nfl-3.ocr.txt',
+    expect: { legs: 3, odds: 466, stake_dollars: 10, book: 'Fanatics', leg0: 'Patriots' },
+  },
+  {
+    file: 'dk-cfb-2.ocr.txt',
+    expect: { legs: 2, odds: 253, stake_dollars: 100, leg0: 'Under' },
+  },
+  {
+    file: 'betrivers-ufc-3.ocr.txt',
+    expect: { legs: 3, odds: 2620, stake_dollars: 100, leg0: 'Chikadze', leg_last: 'Muhammad' },
   },
 ]
 

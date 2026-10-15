@@ -188,6 +188,9 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 ### Mac Theo 2026-10-14 ... Bet Tracker settled card drop Payout
 **Web `1.4.1153`.** Settled cards no longer show **Payout** (unit P&L already on the card). Tools sheet still has the calculator. **Promoted** `test` → `main` (`34ce114c`). No Edge.
 
+### Mac Theo 2026-10-14 ... Bet Tracker FanDuel ALT prop parlays
+**Web `1.4.1154`.** Settled FanDuel multi-prop slips (no “Parlay” word, no per-leg odds, TOTAL WAGER + WON ON) → prop legs + stake + implied ticket odds + book. BetMGM team parlays unchanged. Fixtures. No Edge.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.
 

@@ -384,6 +384,61 @@ Football / NFL
       legs: 2,
     },
   },
+  {
+    name: 'BetMGM team parlay',
+    text: `
+BET SLIP
+Parlay
+Houston Texans +3.5                    -115
+Spread
+Houston Texans at Cleveland Browns
+Los Angeles Chargers +2.5              -106
+Spread
+Los Angeles Chargers at Miami Dolphins
+Vikings                                -154
+Money Line
+Minnesota Vikings at Chicago Bears
+Stake 50
+Total Odds +502
+Potential Payout (inc Stake) 300.84 USD
+`,
+    expect: {
+      market: 'parlay',
+      stake_dollars: 50,
+      odds: 502,
+      selection_includes: 'Parlay',
+      legs: 3,
+    },
+  },
+  {
+    name: 'FanDuel settled ALT prop parlay',
+    text: `
+DeMar DeRozan Over 23.5
+DEMAR DEROZAN - ALT POINTS
+Mo Bamba Over 5.5
+MO BAMBA - ALT REBOUNDS
+Cole Anthony Over 5.5
+COLE ANTHONY - ALT ASSISTS
+Anthony Edwards Over 26.5
+ANTHONY EDWARDS - ALT POINTS
+Jalen Suggs Over 4.5
+JALEN SUGGS - ALT ASSISTS
+$5.00
+TOTAL WAGER
+$611.82
+WON ON FANDUEL
+`,
+    expect: {
+      market: 'parlay',
+      book: 'FanDuel',
+      stake_dollars: 5,
+      odds: 12136,
+      selection_includes: 'Parlay',
+      legs: 5,
+      leg0_includes: 'DeRozan',
+      leg0_stat_includes: 'Points',
+    },
+  },
 ]
 
 function assert(cond, msg) {
@@ -469,6 +524,20 @@ for (const fx of fixtures) {
     if (e.legs != null) {
       const n = Array.isArray(d.legs) ? d.legs.length : 0
       assert(n === e.legs, `${fx.name}: legs want ${e.legs} got ${n}`)
+    }
+    if (e.leg0_includes) {
+      const leg0 = Array.isArray(d.legs) ? d.legs[0] : null
+      assert(
+        String(leg0?.selection_label || '').toLowerCase().includes(e.leg0_includes.toLowerCase()),
+        `${fx.name}: leg0 missing ${e.leg0_includes}: ${leg0?.selection_label}`,
+      )
+    }
+    if (e.leg0_stat_includes) {
+      const leg0 = Array.isArray(d.legs) ? d.legs[0] : null
+      assert(
+        String(leg0?.prop_stat || '').toLowerCase().includes(e.leg0_stat_includes.toLowerCase()),
+        `${fx.name}: leg0 prop_stat missing ${e.leg0_stat_includes}: ${leg0?.prop_stat}`,
+      )
     }
     if (e.commence_date) {
       const [y, mo, day] = e.commence_date.split('-').map(Number)

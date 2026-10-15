@@ -44,6 +44,21 @@ export function americanFromImplied(prob) {
   return Math.round(100 * (1 - p) / p)
 }
 
+/**
+ * Stake + payout (includes stake) → American odds.
+ * FanDuel settled slips often omit ticket odds but show TOTAL WAGER + WON.
+ */
+export function americanFromStakeAndPayout(stake, payoutInclusive) {
+  const s = Number(stake)
+  const p = Number(payoutInclusive)
+  if (!Number.isFinite(s) || s <= 0 || !Number.isFinite(p) || p <= 0) return null
+  const profit = p - s
+  if (Math.abs(profit) < 1e-9) return null
+  if (profit > 0) return Math.round((profit / s) * 100)
+  // Favorite: stake returns less profit than even money
+  return Math.round(-100 * s / profit)
+}
+
 export function formatLine(line, market) {
   if (line == null || line === '') return ''
   const n = Number(line)

@@ -9,7 +9,12 @@ import {
   SPORTS_BET_SPORT_UFC,
   sportByKey,
 } from './sportsBetSports.js'
-import { americanOddsInputString, buildBetSummaryLabel, pickSeedFromLabel } from './sportsBetMath.js'
+import {
+  americanFromStakeAndPayout,
+  americanOddsInputString,
+  buildBetSummaryLabel,
+  pickSeedFromLabel,
+} from './sportsBetMath.js'
 import {
   combinedOddsFromLegs,
   normalizeParlayLegs,
@@ -41,7 +46,11 @@ const NFL_TEAM_HINT =
   /\b(49ers|chiefs|bills|raiders|patriots|cowboys|packers|eagles|steelers|ravens|bengals|browns|titans|colts|jaguars|texans|broncos|chargers|raiders|chiefs|rams|seahawks|cardinals|saints|falcons|panthers|buccaneers|bucs|dolphins|jets|giants|commanders|washington|detroit|lions|bears|vikings|nfl)\b/i
 
 const PAYOUT_LINE_RE =
-  /\b(max\s*payout|to\s*win|to\s*collect|potential\s*payout|payout|win\s+\$)/i
+  /\b(max\s*payout|to\s*win|to\s*collect|potential\s*payout|payout|win\s+\$|won\s+on)\b/i
+
+/** FanDuel-style: "DeMar DeRozan Over 23.5" (odds often omitted on settled slips). */
+const PLAYER_PROP_OU_LINE_RE =
+  /^([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s+(over|under)\s+([0-9]+(?:\.[0-9]+)?)\s*$/i
 
 const FIGHT_METHOD_TOKEN_RE =
   /ko\s*\/\s*tko|tko\s*\/\s*ko|knockout|technical\s*knockout|\btko\b|\bko\b|submission|unanimous\s*decision|split\s*decision|majority\s*decision|technical\s*decision|\bdecision\b|disqualification|\bdq\b/i
@@ -453,6 +462,7 @@ function extractStakeDollars(text) {
   const labeled = [
     /ticket\s*cost\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /\brisk\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+    /\btotal\s*wager\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /\bwager\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /\bstake\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /\btake\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
@@ -465,6 +475,17 @@ function extractStakeDollars(text) {
     }
     for (const re of labeled) {
       const n = tryLine(line, re)
+      if (n != null && n > 0) return n
+    }
+  }
+
+  // FanDuel settled: "$5.00" on the line above "TOTAL WAGER"
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^total\s*wager\b/i.test(lines[i])) continue
+    const prev = lines[i - 1] || ''
+    const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(prev)
+    if (m) {
+      const n = parseMoneyAmount(m[1])
       if (n != null && n > 0) return n
     }
   }
@@ -486,6 +507,42 @@ function extractStakeDollars(text) {
   }
 
   return null
+}
+
+/** To-win / won amount (often includes stake on FanDuel "WON ON …"). */
+function extractPayoutDollars(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+
+  for (const line of lines) {
+    const m = /(?:potential\s*payout|max\s*payout|to\s*(?:win|collect)|payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i.exec(line)
+    if (m) {
+      const n = parseMoneyAmount(m[1])
+      if (n != null && n > 0) return n
+    }
+  }
+
+  // "$611.82" above "WON ON FANDUEL"
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^won\s+on\b/i.test(lines[i])) continue
+    const prev = lines[i - 1] || ''
+    const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(prev)
+    if (m) {
+      const n = parseMoneyAmount(m[1])
+      if (n != null && n > 0) return n
+    }
+  }
+
+  return null
+}
+
+/** "DEMAR DEROZAN - ALT POINTS" → "Alt Points" */
+function extractAltPropStatLine(line) {
+  const s = String(line || '').trim()
+  if (!s) return ''
+  const dashed = /^[A-Za-z][A-Za-z0-9.'\s]*?\s*[-–—]\s*(ALT\s+.+)$/i.exec(s)
+  if (dashed) return titleCaseWords(dashed[1].replace(/\s+/g, ' '))
+  if (/^ALT\s+/i.test(s) && s.length <= 48) return titleCaseWords(s)
+  return ''
 }
 
 function cleanEventCandidateLine(line) {
@@ -780,7 +837,10 @@ function extractMarketDetails(text, oddsLine) {
       const lineNum = Number(prop[3])
       let stat = ''
       const next = lines[i + 1] || ''
-      if (
+      const altStat = extractAltPropStatLine(next)
+      if (altStat) {
+        stat = altStat
+      } else if (
         next
         && !/(?:@|\bvs\.?\b)/i.test(next)
         && !/[+-]\d{3,5}/.test(next)
@@ -1017,10 +1077,26 @@ function draftFromBits({
   }
 }
 
+function countPlayerPropOuLines(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  let n = 0
+  for (const line of lines) {
+    const m = PLAYER_PROP_OU_LINE_RE.exec(line)
+    if (!m) continue
+    if (/^(point|total|team|game|the)$/i.test(m[1])) continue
+    n += 1
+  }
+  return n
+}
+
 function looksLikeParlayText(text) {
-  return /\bparlay\b|\bsgp\b|same\s*game\s*parlay|\d+\s*-\s*leg\b|\d+\s+legs?\b/i.test(
-    String(text || ''),
-  )
+  const raw = String(text || '')
+  if (/\bparlay\b|\bsgp\b|same\s*game\s*parlay|\d+\s*-\s*leg\b|\d+\s+legs?\b/i.test(raw)) {
+    return true
+  }
+  // FanDuel settled multi-prop: no "Parlay" word, just stacked Over/Under legs + TOTAL WAGER
+  if (countPlayerPropOuLines(raw) >= 2) return true
+  return false
 }
 
 function extractTotalParlayOdds(text) {
@@ -1031,12 +1107,17 @@ function extractTotalParlayOdds(text) {
   return m ? americanOrNull(m[1]) : null
 }
 
-function legStubFromSelection(sel, odds, rawSport) {
+function legStubFromSelection(sel, odds, rawSport, { allowMissingOdds = false } = {}) {
   const selection = String(sel || '').trim()
   if (!selection || selection.length > 100) return null
   if (/^(total|parlay|straight|single|wager|risk|payout|ticket)/i.test(selection)) return null
   if (/\bodds\b/i.test(selection) && selection.length < 24) return null
-  const details = extractMarketDetails(selection, `${selection} ${odds}`)
+  const american = odds == null || odds === '' ? null : americanOrNull(odds)
+  if (american == null && !allowMissingOdds) return null
+  const details = extractMarketDetails(
+    selection,
+    american != null ? `${selection} ${american}` : selection,
+  )
   const eventBits = parseEventMatchup(selection)
   const sport = rawSport || extractSport(selection, {
     casinoMlbIsMoneyline: Boolean(details.casinoMlbIsMoneyline),
@@ -1048,7 +1129,7 @@ function legStubFromSelection(sel, odds, rawSport) {
     market,
     side: details.side || '',
     line: details.line != null && details.line !== '' ? String(details.line) : '',
-    odds: americanOddsInputString(odds),
+    odds: american != null ? americanOddsInputString(american) : '',
     selection_label: details.selection_label || selection,
     player_name: details.player_name || '',
     prop_stat: details.prop_stat || '',
@@ -1062,6 +1143,63 @@ function legStubFromSelection(sel, odds, rawSport) {
   }
 }
 
+/**
+ * FanDuel-style prop legs without per-leg juice:
+ * "DeMar DeRozan Over 23.5" / "DEMAR DEROZAN - ALT POINTS"
+ */
+function extractPropLegsWithoutOdds(text, rawSport) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  const legs = []
+  const seen = new Set()
+  for (let i = 0; i < lines.length; i += 1) {
+    const m = PLAYER_PROP_OU_LINE_RE.exec(lines[i])
+    if (!m) continue
+    const player = m[1].trim()
+    if (/^(point|total|team|game|the)$/i.test(player)) continue
+    const side = m[2].toLowerCase() === 'under' ? 'under' : 'over'
+    const lineNum = Number(m[3])
+    let stat = extractAltPropStatLine(lines[i + 1] || '')
+    if (!stat) {
+      const next = lines[i + 1] || ''
+      if (
+        next
+        && !PLAYER_PROP_OU_LINE_RE.test(next)
+        && !/(?:@|\bvs\.?\b)/i.test(next)
+        && !/[+-]\d{3,5}/.test(next)
+        && (
+          /^[A-Z0-9][A-Z0-9\s/&-]{2,48}$/.test(next)
+          || /touchdown|passing|rushing|receiving|yards|points|assists|rebounds|strikeout/i.test(next)
+        )
+      ) {
+        stat = titleCaseWords(next)
+      }
+    }
+    const ou = side === 'under' ? 'Under' : 'Over'
+    const selection_label = [player, ou, String(lineNum), stat].filter(Boolean).join(' ')
+    const key = normalizeNameKey(selection_label)
+    if (seen.has(key)) continue
+    seen.add(key)
+    const sport = rawSport || extractSport(`${selection_label} ${stat}`)
+    legs.push({
+      market: 'prop',
+      side,
+      line: String(lineNum),
+      odds: '',
+      selection_label,
+      player_name: player,
+      prop_stat: stat,
+      home_team: '',
+      away_team: '',
+      event_label: '',
+      sport_key: sport.key || '',
+      sport_label: sport.label || '',
+      commence_time: '',
+      event_id: '',
+    })
+  }
+  return legs
+}
+
 /** Extract ≥2 legs from a parlay slip. */
 export function extractParlayLegs(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
@@ -1069,12 +1207,10 @@ export function extractParlayLegs(text) {
   const legs = []
   const seen = new Set()
 
-  const pushLeg = (sel, odds) => {
-    const american = americanOrNull(odds)
-    if (american == null) return
-    const stub = legStubFromSelection(sel, american, sport)
+  const pushLeg = (sel, odds, opts) => {
+    const stub = legStubFromSelection(sel, odds, sport, opts)
     if (!stub) return
-    const key = `${normalizeNameKey(stub.selection_label)}|${stub.odds}`
+    const key = `${normalizeNameKey(stub.selection_label)}|${stub.odds || 'na'}`
     if (seen.has(key)) return
     seen.add(key)
     legs.push(stub)
@@ -1083,7 +1219,7 @@ export function extractParlayLegs(text) {
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]
     if (
-      /total\s*odds|potential\s*payout|ticket\s*cost|to\s*win|to\s*collect|max\s*payout|printed|transaction|betslip|terms and conditions/i.test(line)
+      /total\s*odds|potential\s*payout|ticket\s*cost|to\s*win|to\s*collect|max\s*payout|total\s*wager|won\s+on|printed|transaction|betslip|terms and conditions/i.test(line)
     ) {
       continue
     }
@@ -1104,6 +1240,16 @@ export function extractParlayLegs(text) {
     }
   }
 
+  // Settled FanDuel props: no per-leg odds … fill from Over/Under + ALT lines
+  if (legs.length < 2) {
+    for (const stub of extractPropLegsWithoutOdds(text, sport)) {
+      const key = `${normalizeNameKey(stub.selection_label)}|${stub.odds || 'na'}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      legs.push(stub)
+    }
+  }
+
   return legs
 }
 
@@ -1116,11 +1262,13 @@ export function parseParlaySlipText(text) {
 
   const totalOdds = extractTotalParlayOdds(raw)
   const fromLegs = combinedOddsFromLegs(legs)
-  const odds = totalOdds ?? fromLegs
+  const stakeDollars = extractStakeDollars(raw)
+  const payoutDollars = extractPayoutDollars(raw)
+  const fromPayout = americanFromStakeAndPayout(stakeDollars, payoutDollars)
+  const odds = totalOdds ?? fromLegs ?? fromPayout
   if (odds == null) return null
 
   const book = extractBook(raw)
-  const stakeDollars = extractStakeDollars(raw)
   const commence_time = extractCommenceTime(raw)
   const sport = extractSport(raw)
   const normalized = normalizeParlayLegs(legs)

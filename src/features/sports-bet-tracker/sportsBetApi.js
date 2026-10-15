@@ -1,4 +1,4 @@
-import { buildBetSummaryLabel, profitUnitsForStatus } from './sportsBetMath.js'
+import { buildBetSummaryLabel, profitUnitsForBet, profitUnitsForStatus } from './sportsBetMath.js'
 import { normalizeSportsBetSource } from './sportsBetSources.js'
 import { resolveSportsBetSport } from './sportsBetSports.js'
 import {
@@ -10,6 +10,7 @@ import {
 const SELECT = `
   id, user_id, event_id, sport_key, sport_label, home_team, away_team, commence_time,
   book, market, side, selection_label, line, odds, stake_units, stake_dollars, unit_size_dollars,
+  to_win_dollars, to_collect_dollars,
   status, result_at, profit_units, close_line, close_odds, clv_pts, clv_graded_at,
   notes, tags, source, confirmed, player_name, prop_stat, created_at, updated_at
 `.replace(/\s+/g, ' ').trim()
@@ -20,12 +21,23 @@ const LEG_SELECT = `
   created_at, updated_at
 `.replace(/\s+/g, ' ').trim()
 
+function moneyOrNull(value) {
+  if (value == null || value === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
 function draftToRow(userId, draft) {
   const market = String(draft.market || 'spread')
   const side = draft.side ? String(draft.side) : null
-  const odds = Number(draft.odds)
+  const oddsRaw = draft.odds == null || draft.odds === '' ? null : Number(draft.odds)
+  const odds = Number.isFinite(oddsRaw) && oddsRaw !== 0 ? Math.round(oddsRaw) : null
+  const to_win_dollars = moneyOrNull(draft.to_win_dollars)
+  const to_collect_dollars = moneyOrNull(draft.to_collect_dollars)
   const stakeUnits = Number(draft.stake_units ?? 1)
-  if (!Number.isFinite(odds) || odds === 0) return { error: 'Odds required' }
+  if (odds == null && to_win_dollars == null && to_collect_dollars == null) {
+    return { error: 'Odds or To win / To collect required' }
+  }
   if (!Number.isFinite(stakeUnits) || stakeUnits <= 0) return { error: 'Stake units required' }
   const sport = resolveSportsBetSport(draft.sport_key, draft.sport_label)
   const legs = market === 'parlay' ? normalizeParlayLegs(draft.legs || draft.sports_bet_legs) : []
@@ -70,10 +82,12 @@ function draftToRow(userId, draft) {
       line: market === 'parlay' || draft.line == null || draft.line === ''
         ? null
         : Number(draft.line),
-      odds: Math.round(odds),
+      odds,
       stake_units: stakeUnits,
       stake_dollars,
       unit_size_dollars: Number.isFinite(unitSize) ? unitSize : null,
+      to_win_dollars,
+      to_collect_dollars,
       notes: draft.notes ? String(draft.notes).trim() : null,
       tags: Array.isArray(draft.tags) ? draft.tags : [],
       source: normalizeSportsBetSource(draft.source, 'manual'),
@@ -224,7 +238,7 @@ export async function settleSportsBet(supabaseClient, betId, status) {
 
   const { data: existing, error: readErr } = await supabaseClient
     .from('sports_bets')
-    .select('id, stake_units, odds, status')
+    .select('id, stake_units, odds, status, to_win_dollars, to_collect_dollars, unit_size_dollars, stake_dollars')
     .eq('id', betId)
     .maybeSingle()
   if (readErr) return { bet: null, error: readErr.message }
@@ -232,7 +246,8 @@ export async function settleSportsBet(supabaseClient, betId, status) {
 
   const profit_units = next === 'open'
     ? null
-    : profitUnitsForStatus(next, existing.stake_units, existing.odds)
+    : profitUnitsForBet({ ...existing, status: next })
+      ?? profitUnitsForStatus(next, existing.stake_units, existing.odds)
 
   const { data, error } = await supabaseClient
     .from('sports_bets')

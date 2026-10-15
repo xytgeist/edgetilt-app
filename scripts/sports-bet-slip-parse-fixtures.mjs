@@ -447,7 +447,9 @@ WON ON FANDUEL
       market: 'parlay',
       book: 'FanDuel',
       stake_dollars: 5,
-      odds: 12136,
+      odds_blank: true,
+      to_collect_dollars: 611.82,
+      to_win_dollars: 606.82,
       selection_includes: 'Parlay',
       legs: 5,
       leg0_includes: 'DeRozan',
@@ -489,7 +491,9 @@ Circa Sports
       market: 'parlay',
       book: 'Circa',
       stake_dollars: 10,
-      odds: 5276,
+      odds_blank: true,
+      to_win_dollars: 527.6,
+      to_collect_dollars: 537.6,
       selection_includes: 'Parlay',
       legs: 5,
       leg0_includes: 'Magic',
@@ -514,7 +518,9 @@ Circa Sports
       market: 'parlay',
       book: 'Circa',
       stake_dollars: 10,
-      odds: 5276,
+      odds_blank: true,
+      to_collect_dollars: 537.6,
+      to_win_dollars: 527.6,
       selection_includes: 'Parlay',
       legs: 5,
       leg0_includes: 'Magic',
@@ -669,7 +675,9 @@ Ticket Cost $2.00
     expect: {
       market: 'parlay',
       stake_dollars: 2,
-      odds: 79900,
+      odds_blank: true,
+      to_collect_dollars: 1600,
+      to_win_dollars: 1598,
       selection_includes: 'Parlay',
       legs: 10,
       leg0_includes: 'Michigan',
@@ -695,11 +703,24 @@ for (const fx of fixtures) {
       assert(Number(d.stake_dollars) === e.stake_dollars, `${fx.name}: stake want ${e.stake_dollars} got ${d.stake_dollars}`)
     }
     if (e.market) assert(d.market === e.market, `${fx.name}: market want ${e.market} got ${d.market}`)
-    if (e.odds != null) assert(Number(d.odds) === e.odds, `${fx.name}: odds want ${e.odds} got ${d.odds}`)
+    if (e.odds_blank) assert(!d.odds, `${fx.name}: odds want blank got ${d.odds}`)
+    else if (e.odds != null) assert(Number(d.odds) === e.odds, `${fx.name}: odds want ${e.odds} got ${d.odds}`)
     if (e.odds_string != null) {
       assert(
         String(d.odds) === e.odds_string,
         `${fx.name}: odds string want ${e.odds_string} got ${d.odds}`,
+      )
+    }
+    if (e.to_win_dollars != null) {
+      assert(
+        Math.abs(Number(d.to_win_dollars) - e.to_win_dollars) < 0.02,
+        `${fx.name}: to_win want ${e.to_win_dollars} got ${d.to_win_dollars}`,
+      )
+    }
+    if (e.to_collect_dollars != null) {
+      assert(
+        Math.abs(Number(d.to_collect_dollars) - e.to_collect_dollars) < 0.02,
+        `${fx.name}: to_collect want ${e.to_collect_dollars} got ${d.to_collect_dollars}`,
       )
     }
     if (e.selection_includes) {
@@ -913,7 +934,21 @@ try {
   console.error(`FAIL Caesars casino junk hydrate: ${err.message}`)
 }
 
-// Caesars casino … Edge steals last leg juice (-190) as ticket odds → repair from payout
+// Caesars casino … no printed American total → blank odds + To win / To collect
+try {
+  const czOcr = fs.readFileSync(path.join(OCR_DIR, 'caesars-casino-5.ocr.txt'), 'utf8')
+  const clean = parseSportsBetSlipText(czOcr)[0]
+  assert(!clean.odds, `Caesars parse odds want blank got ${clean.odds}`)
+  assert(Number(clean.stake_dollars) === 25, `Caesars stake want 25 got ${clean.stake_dollars}`)
+  assert(Math.abs(Number(clean.to_win_dollars) - 13071.25) < 0.02, `Caesars to_win got ${clean.to_win_dollars}`)
+  assert(Math.abs(Number(clean.to_collect_dollars) - 13096.25) < 0.02, `Caesars to_collect got ${clean.to_collect_dollars}`)
+  console.log('ok  Caesars casino blank odds + to_win/to_collect')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL Caesars blank odds + money: ${err.message}`)
+}
+
+// Caesars … Edge steals last leg juice (-190) → clear odds; keep money
 try {
   const czOcr = fs.readFileSync(path.join(OCR_DIR, 'caesars-casino-5.ocr.txt'), 'utf8')
   const clean = parseSportsBetSlipText(czOcr)[0]
@@ -926,37 +961,15 @@ try {
     legs: clean.legs,
   }
   const fixed = hydrateParlayLegsForDraft(stolen, czOcr)
-  assert(Math.abs(Number(fixed.odds)) === 52285, `Caesars ticket odds want +52285 got ${fixed.odds}`)
-  assert(
-    !clean.legs.some((l) => Number(l.odds) === Number(fixed.odds)),
-    'Caesars ticket odds must not equal a leg juice',
-  )
-  console.log('ok  Caesars casino stolen ticket odds -190 → +52285')
+  assert(!fixed.odds, `Caesars stolen juice → blank odds got ${fixed.odds}`)
+  assert(Math.abs(Number(fixed.to_collect_dollars) - 13096.25) < 0.02, `Caesars hydrate collect got ${fixed.to_collect_dollars}`)
+  console.log('ok  Caesars stolen -190 cleared; to_collect filled')
 } catch (err) {
   failed += 1
   console.error(`FAIL Caesars stolen ticket odds: ${err.message}`)
 }
 
-// Caesars … Edge/heuristic used leg-product +1195; TO COLLECT money → +52285
-try {
-  const czOcr = fs.readFileSync(path.join(OCR_DIR, 'caesars-casino-5.ocr.txt'), 'utf8')
-  const clean = parseSportsBetSlipText(czOcr)[0]
-  const legProduct = {
-    market: 'parlay',
-    odds: '+1195',
-    stake_dollars: '25',
-    selection_label: 'Parlay (5 legs)',
-    legs: clean.legs,
-  }
-  const fixed = hydrateParlayLegsForDraft(legProduct, czOcr)
-  assert(Math.abs(Number(fixed.odds)) === 52285, `Caesars leg-product repair want +52285 got ${fixed.odds}`)
-  console.log('ok  Caesars casino leg-product +1195 → +52285 from TO COLLECT')
-} catch (err) {
-  failed += 1
-  console.error(`FAIL Caesars leg-product ticket odds: ${err.message}`)
-}
-
-// Caesars … OCR missed $ lines but Edge returned to_collect_dollars
+// Caesars … Edge invented leg-product +1195 → clear; Edge money kept
 try {
   const czOcr = fs.readFileSync(path.join(OCR_DIR, 'caesars-casino-5.ocr.txt'), 'utf8')
   const clean = parseSportsBetSlipText(czOcr)[0]
@@ -974,18 +987,28 @@ try {
     legs: clean.legs,
   }
   const fixed = hydrateParlayLegsForDraft(fromEdge, thinOcr)
-  assert(Math.abs(Number(fixed.odds)) === 52285, `Caesars Edge to_collect want +52285 got ${fixed.odds}`)
-  console.log('ok  Caesars Edge to_collect_dollars → +52285 (thin OCR)')
+  assert(!fixed.odds, `Caesars leg-product → blank odds got ${fixed.odds}`)
+  assert(Math.abs(Number(fixed.to_win_dollars) - 13071.25) < 0.02, `Caesars Edge to_win got ${fixed.to_win_dollars}`)
+  assert(Math.abs(Number(fixed.to_collect_dollars) - 13096.25) < 0.02, `Caesars Edge to_collect got ${fixed.to_collect_dollars}`)
+  console.log('ok  Caesars Edge +1195 cleared; money kept')
 } catch (err) {
   failed += 1
-  console.error(`FAIL Caesars Edge to_collect: ${err.message}`)
+  console.error(`FAIL Caesars Edge money path: ${err.message}`)
 }
 
 /** Real Vision OCR dumps from Ryan's batch (2026-10-14). */
 const ocrBatch = [
   {
     file: 'dk-hr-3pick.ocr.txt',
-    expect: { legs: 3, odds: 8076, stake_dollars: 5, leg_odds: [360, 295, 350], leg0: 'Olson' },
+    expect: {
+      legs: 3,
+      odds_blank: true,
+      stake_dollars: 5,
+      to_collect_dollars: 408.82,
+      to_win_dollars: 403.82,
+      leg_odds: [360, 295, 350],
+      leg0: 'Olson',
+    },
   },
   {
     file: 'dk-alt-yards-boost.ocr.txt',
@@ -1001,7 +1024,15 @@ const ocrBatch = [
   },
   {
     file: 'circa-d-5team.ocr.txt',
-    expect: { legs: 5, stake_dollars: 10, odds: 5276, leg0: 'Magic', leg_last: 'Hornets' },
+    expect: {
+      legs: 5,
+      stake_dollars: 10,
+      odds_blank: true,
+      to_win_dollars: 527.6,
+      to_collect_dollars: 537.6,
+      leg0: 'Magic',
+      leg_last: 'Hornets',
+    },
   },
   {
     file: 'wynn-5team.ocr.txt',
@@ -1050,11 +1081,26 @@ const ocrBatch = [
   },
   {
     file: 'dk-cfb-2.ocr.txt',
-    expect: { legs: 2, odds: 253, stake_dollars: 100, leg0: 'Under' },
+    expect: {
+      legs: 2,
+      odds_blank: true,
+      stake_dollars: 100,
+      to_win_dollars: 253.43,
+      to_collect_dollars: 353.43,
+      leg0: 'Under',
+    },
   },
   {
     file: 'betrivers-ufc-3.ocr.txt',
-    expect: { legs: 3, odds: 2620, stake_dollars: 100, leg0: 'Chikadze', leg_last: 'Muhammad' },
+    expect: {
+      legs: 3,
+      odds: 2620,
+      stake_dollars: 100,
+      to_win_dollars: 2620.25,
+      to_collect_dollars: 2720.25,
+      leg0: 'Chikadze',
+      leg_last: 'Muhammad',
+    },
   },
   // Batch #3 (2026-10-14) … DK N+ props, FD SGP open/settled, alt lines, spreads, × ML strip
   {
@@ -1157,6 +1203,9 @@ const ocrBatch = [
     expect: {
       legs: 5,
       stake_dollars: 25,
+      odds_blank: true,
+      to_win_dollars: 13071.25,
+      to_collect_dollars: 13096.25,
       book: 'Caesars',
       leg_odds: [-110, 125, -170, -410, -190],
       leg0: 'Ravens',
@@ -1183,9 +1232,22 @@ for (const row of ocrBatch) {
     const e = row.expect
     if (e.legs != null) assert(legs.length === e.legs, `${name}: legs ${legs.length}!=${e.legs}`)
     if (e.legs_min != null) assert(legs.length >= e.legs_min, `${name}: legs ${legs.length}<${e.legs_min}`)
-    if (e.odds != null) assert(Math.abs(Number(d.odds)) === e.odds, `${name}: odds ${d.odds}`)
+    if (e.odds_blank) assert(!d.odds, `${name}: odds want blank got ${d.odds}`)
+    else if (e.odds != null) assert(Math.abs(Number(d.odds)) === e.odds, `${name}: odds ${d.odds}`)
     if (e.stake_dollars != null) {
       assert(Number(d.stake_dollars) === e.stake_dollars, `${name}: stake ${d.stake_dollars}`)
+    }
+    if (e.to_win_dollars != null) {
+      assert(
+        Math.abs(Number(d.to_win_dollars) - e.to_win_dollars) < 0.02,
+        `${name}: to_win ${d.to_win_dollars}`,
+      )
+    }
+    if (e.to_collect_dollars != null) {
+      assert(
+        Math.abs(Number(d.to_collect_dollars) - e.to_collect_dollars) < 0.02,
+        `${name}: to_collect ${d.to_collect_dollars}`,
+      )
     }
     if (e.book) assert(d.book === e.book, `${name}: book ${d.book}`)
     if (e.leg0) {

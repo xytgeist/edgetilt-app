@@ -143,7 +143,7 @@ export function summarizeBets(bets) {
   }
 }
 
-/** Realized $ P&L for a settled bet. Open → null. */
+/** Realized $ P&L for a settled bet. Open → null. Prefer ticket To win / To collect. */
 export function profitDollarsForBet(bet, fallbackUnitSize) {
   if (!bet) return null
   const status = String(bet.status || 'open')
@@ -165,7 +165,39 @@ export function profitDollarsForBet(bet, fallbackUnitSize) {
         ? units * size
         : null
   if (stake == null) return null
+  if (status === 'push' || status === 'void') return 0
+  if (status === 'lost') return -stake
+  if (status === 'won') {
+    const toWin = Number(bet.to_win_dollars)
+    if (Number.isFinite(toWin) && toWin >= 0) return toWin
+    const toCollect = Number(bet.to_collect_dollars)
+    if (Number.isFinite(toCollect) && toCollect > 0) {
+      return Math.round((toCollect - stake) * 100) / 100
+    }
+  }
   return profitUnitsForStatus(status, stake, bet.odds)
+}
+
+/** Profit in units; uses To win / unit size when American odds are blank. */
+export function profitUnitsForBet(bet) {
+  if (!bet) return null
+  const status = String(bet.status || 'open')
+  const stakeUnits = Number(bet.stake_units)
+  if (status === 'open') return null
+  if (status === 'push' || status === 'void') return 0
+  if (status === 'lost') {
+    return Number.isFinite(stakeUnits) && stakeUnits > 0 ? -stakeUnits : null
+  }
+  if (status === 'won') {
+    const fromOdds = profitUnitsForStatus(status, stakeUnits, bet.odds)
+    if (fromOdds != null) return fromOdds
+    const toWin = Number(bet.to_win_dollars)
+    const unit = Number(bet.unit_size_dollars)
+    if (Number.isFinite(toWin) && toWin >= 0 && Number.isFinite(unit) && unit > 0) {
+      return toWin / unit
+    }
+  }
+  return profitUnitsForStatus(status, stakeUnits, bet.odds)
 }
 
 export function currentSportsBankroll(bankrollStart, bets, fallbackUnitSize) {

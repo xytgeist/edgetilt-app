@@ -10,7 +10,6 @@ import {
   sportByKey,
 } from './sportsBetSports.js'
 import {
-  americanFromStakeAndPayout,
   americanOddsInputString,
   buildBetSummaryLabel,
   pickSeedFromLabel,
@@ -624,6 +623,101 @@ function extractCasinoFooterMoney(text) {
   }
   if (collect > 0) return { stake: null, toWin: null, collect }
   return null
+}
+
+/** TO WIN / profit only (excludes stake). Does not treat YOU WON / TO COLLECT as win. */
+function extractToWinDollars(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  for (const line of lines) {
+    const m = /\bto\s*win\b\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i.exec(line)
+    if (!m) continue
+    const n = parseMoneyAmount(m[1])
+    if (n != null && n > 0) return n
+  }
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^to\s*win\s*:?\s*$/i.test(lines[i])) continue
+    for (let j = i + 1; j < Math.min(i + 20, lines.length); j += 1) {
+      if (/^[+-]\d{3,6}$/.test(lines[j])) continue
+      if (/^(?:ticket\s*cost|to\s*collect|you\s*won)\b/i.test(lines[j])) continue
+      const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(lines[j])
+      if (!m) continue
+      const n = parseMoneyAmount(m[1])
+      // Skip stake-sized first hit when a larger amount follows in the footer bunch
+      if (n == null || n <= 0) continue
+      const footer = extractCasinoFooterMoney(text)
+      if (footer?.toWin != null) return footer.toWin
+      return n
+    }
+  }
+  const footer = extractCasinoFooterMoney(text)
+  return footer?.toWin ?? null
+}
+
+/** Stake + TO WIN / TO COLLECT from OCR (and optional draft hints). */
+export function ticketMoneyFromText(text, draft = null) {
+  const raw = String(text || '')
+  const footer = raw ? extractCasinoFooterMoney(raw) : null
+  let stake = (raw ? extractStakeDollars(raw) : null)
+    ?? footer?.stake
+    ?? parseMoneyAmount(draft?.stake_dollars)
+  let toCollect = parseMoneyAmount(draft?.to_collect_dollars ?? draft?.to_collect)
+    ?? (raw ? extractPayoutDollars(raw) : null)
+    ?? footer?.collect
+    ?? null
+  let toWin = parseMoneyAmount(draft?.to_win_dollars ?? draft?.to_win)
+    ?? (raw ? extractToWinDollars(raw) : null)
+    ?? footer?.toWin
+    ?? null
+  if (toWin == null && toCollect != null && stake != null && toCollect > stake) {
+    toWin = Math.round((toCollect - stake) * 100) / 100
+  }
+  if (toCollect == null && toWin != null && stake != null) {
+    toCollect = Math.round((toWin + stake) * 100) / 100
+  }
+  // BetRivers: "Win" / "+2620" then bare "2620.25" profit (no $)
+  if (toWin == null && raw) {
+    const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+    let afterWin = false
+    for (const line of lines) {
+      if (/^to\s*win\b/i.test(line)) continue
+      if (/^win\b/i.test(line) || /^[+-]\d{2,6}$/.test(line)) {
+        afterWin = true
+        continue
+      }
+      if (!afterWin) continue
+      const m = /^([0-9]+(?:\.\d{2})?)$/.exec(line)
+      if (!m) continue
+      const n = Number(m[1])
+      if (Number.isFinite(n) && n > 0 && (stake == null || n !== stake)) {
+        toWin = n
+        break
+      }
+    }
+    if (toCollect == null && toWin != null && stake != null) {
+      toCollect = Math.round((toWin + stake) * 100) / 100
+    }
+  }
+  return {
+    stake_dollars: stake,
+    to_win_dollars: toWin,
+    to_collect_dollars: toCollect,
+  }
+}
+
+function attachTicketMoney(draft, text = '') {
+  if (!draft || typeof draft !== 'object') return draft
+  const money = ticketMoneyFromText(text, draft)
+  const next = { ...draft }
+  if (money.stake_dollars != null && !String(next.stake_dollars || '').trim()) {
+    next.stake_dollars = String(money.stake_dollars)
+  }
+  if (money.to_win_dollars != null) {
+    next.to_win_dollars = String(money.to_win_dollars)
+  }
+  if (money.to_collect_dollars != null) {
+    next.to_collect_dollars = String(money.to_collect_dollars)
+  }
+  return next
 }
 
 /** Payout that includes stake (for americanFromStakeAndPayout). Prefer collect/max over to-win. */
@@ -1755,9 +1849,12 @@ function draftFromBits({
   home_team,
   away_team,
   commence_time,
+  allowMissingOdds = false,
+  toWinDollars = null,
+  toCollectDollars = null,
 }) {
-  const american = americanOrNull(odds)
-  if (american == null) return null
+  const american = odds === '' || odds == null ? null : americanOrNull(odds)
+  if (american == null && !allowMissingOdds) return null
 
   const eventBits = parseEventMatchup(event)
   const away = away_team || eventBits.away_team || ''
@@ -1801,9 +1898,13 @@ function draftFromBits({
     market: marketFinal,
     side: marketFinal === 'parlay' ? '' : (sd != null && sd !== '' ? sd : sideDefault),
     line: ln != null && ln !== '' ? String(ln) : '',
-    odds: americanOddsInputString(american),
+    odds: american != null ? americanOddsInputString(american) : '',
     stake_units: units != null ? String(units) : '',
     stake_dollars: dollars != null ? String(dollars) : '',
+    to_win_dollars: toWinDollars != null && Number(toWinDollars) > 0 ? String(toWinDollars) : '',
+    to_collect_dollars: toCollectDollars != null && Number(toCollectDollars) > 0
+      ? String(toCollectDollars)
+      : '',
     selection_label: label,
     notes: '',
     home_team: home,
@@ -1916,6 +2017,23 @@ function extractTotalParlayOdds(text) {
     if (bare.length === 1) return bare[0]
     const pos = bare.filter((n) => n > 0)
     if (pos.length) return Math.max(...pos)
+  }
+  // BetRivers: "Win" / "Win +2620" as the printed ticket American (not TO WIN $)
+  {
+    const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i]
+      if (/^to\s*win\b/i.test(line)) continue
+      const inline = /^(?:win|total\s*odds|combined(?:\s*odds)?)\s*[:=]?\s*([+-]\d{2,6})\s*$/i.exec(line)
+      if (inline) {
+        const n = americanOrNull(inline[1])
+        if (n != null) return n
+      }
+      if (!/^(?:win|total\s*odds|combined(?:\s*odds)?)\s*:?\s*$/i.test(line)) continue
+      const next = bareAmericanOddsLine(lines[i + 1] || '') || String(lines[i + 1] || '').trim()
+      const n = americanOrNull(next)
+      if (n != null) return n
+    }
   }
   return null
 }
@@ -2766,14 +2884,11 @@ export function parseParlaySlipText(text) {
   const legs = extractParlayLegs(raw)
   if (legs.length < 2) return null
 
+  // Only fill combined odds when the ticket prints an American/decimal total.
+  // Do NOT invent from leg product or stake→payout (those go in To win / To collect).
   const totalOdds = extractTotalParlayOdds(raw)
-  const fromLegs = combinedOddsFromLegs(legs)
-  const stakeDollars = extractStakeDollars(raw)
-  const payoutDollars = extractPayoutDollars(raw)
-  const fromPayout = americanFromStakeAndPayout(stakeDollars, payoutDollars)
-  // Printed ticket price (Total Odds / TO COLLECT / Max Payout) beats recomputed leg juice.
-  const odds = totalOdds ?? fromPayout ?? fromLegs
-  if (odds == null) return null
+  const money = ticketMoneyFromText(raw)
+  const stakeDollars = money.stake_dollars ?? extractStakeDollars(raw)
 
   const book = extractBook(raw)
   const commence_time = extractCommenceTime(raw)
@@ -2782,7 +2897,7 @@ export function parseParlaySlipText(text) {
 
   const draft = draftFromBits({
     selection: parlaySelectionLabel(normalized),
-    odds,
+    odds: totalOdds,
     stakeDollars,
     book,
     event: '',
@@ -2796,6 +2911,9 @@ export function parseParlaySlipText(text) {
     home_team: '',
     away_team: '',
     commence_time,
+    allowMissingOdds: true,
+    toWinDollars: money.to_win_dollars,
+    toCollectDollars: money.to_collect_dollars,
   })
   if (!draft) return null
   draft.legs = normalized
@@ -2809,7 +2927,7 @@ export function parseParlaySlipText(text) {
     selection_label: parlaySelectionLabel(normalized),
     legs: normalized,
   })
-  return draft
+  return attachTicketMoney(draft, raw)
 }
 
 function looksLikeTerminalMatchup(away, home, eventLabel) {
@@ -2831,13 +2949,20 @@ function looksLikeTerminalMatchup(away, home, eventLabel) {
 export function isWeakSportsBetDraft(draft, ocrText = '') {
   if (!draft || typeof draft !== 'object') return true
   const odds = String(draft.odds || '').trim()
-  if (!odds || !/^[+-]?\d{2,6}$/.test(odds)) return true
+  const hasOdds = Boolean(odds && /^[+-]?\d{2,6}$/.test(odds))
+  const hasMoney = (
+    parseMoneyAmount(draft.to_collect_dollars) != null
+    || parseMoneyAmount(draft.to_win_dollars) != null
+  )
+  const market = String(draft.market || '')
+  const parlayLegsOk = market === 'parlay' && countUsableParlayLegs(draft.legs) >= 2
+  // Casino parlays often omit printed American totals … money or legs are enough
+  if (!hasOdds && !hasMoney && !parlayLegsOk) return true
   const event = String(draft.event_label || '').trim()
   const away = String(draft.away_team || '').trim()
   const home = String(draft.home_team || '').trim()
   const matchup = event || [away, home].filter(Boolean).join(' @ ')
   if (looksLikeTerminalMatchup(away, home, event)) return true
-  const market = String(draft.market || '')
   const sel = String(draft.selection_label || '')
   const stake = String(draft.stake_dollars || '').trim()
   if (market === 'other' && !stake && !/distance|method|round|knock/i.test(sel)) {
@@ -2925,57 +3050,31 @@ function parlayLegsNeedHydrate(legs) {
 }
 
 /**
- * When Edge/OCR puts a single leg juice (-190) or leg-product (+1195) in the ticket
- * odds field, replace with stake→payout American when TO COLLECT / YOU WON exists.
+ * Clear invented combined odds (stolen leg juice / leg product). Fill To win /
+ * To collect from OCR or Edge money fields. Do not derive American from $.
  */
 function repairParlayTicketOdds(draft, ocrText = '') {
   if (!draft || typeof draft !== 'object') return draft
-  const legs = Array.isArray(draft.legs) ? draft.legs : []
-  if (legs.length < 2) return draft
+  let next = attachTicketMoney(draft, ocrText)
+  const legs = Array.isArray(next.legs) ? next.legs : []
+  if (legs.length < 2) return next
+
+  const current = americanOrNull(next.odds)
+  if (current == null) return next
 
   const fromLegs = combinedOddsFromLegs(legs)
-  const footer = ocrText ? extractCasinoFooterMoney(ocrText) : null
-  const stake = (
-    (ocrText ? extractStakeDollars(ocrText) : null)
-    ?? footer?.stake
-    ?? parseMoneyAmount(draft.stake_dollars)
-  )
-  const payout = (
-    parseMoneyAmount(draft.to_collect_dollars ?? draft.to_collect)
-    ?? (ocrText ? extractPayoutDollars(ocrText) : null)
-    ?? footer?.collect
-  )
-  let fromPay = null
-  if (stake != null && payout != null) {
-    fromPay = americanFromStakeAndPayout(stake, payout)
-  } else if (stake != null && footer?.toWin != null) {
-    fromPay = americanFromStakeAndPayout(stake, stake + footer.toWin)
-  }
-
-  // Ticket money always beats recomputed leg juice (boosted / alt casino prices)
-  const best = fromPay ?? fromLegs
-  if (best == null) return draft
-
-  const current = americanOrNull(draft.odds)
   const legOdds = new Set(
     legs.map((l) => americanOrNull(l.odds)).filter((n) => n != null),
   )
-  // Ticket field equals one leg's juice (classic AI steal of last line -190)
-  const stolen = current != null && legOdds.has(current)
-  const missing = current == null
-  // Ticket odds far too small vs payout/leg product (e.g. -190 vs +52285)
-  const tooSmall = current != null
-    && Math.abs(best) >= 500
-    && Math.abs(current) < Math.abs(best) * 0.25
-  // Edge/heuristic used leg product (+1195) while TO COLLECT implies +52285
-  const legProductOnly = fromPay != null
-    && fromLegs != null
-    && current != null
+  const stolen = legOdds.has(current)
+  const legProductOnly = fromLegs != null
     && Math.abs(current - fromLegs) <= Math.max(5, Math.abs(fromLegs) * 0.02)
-    && Math.abs(fromPay - fromLegs) > Math.abs(fromLegs) * 0.25
-
-  if (!stolen && !missing && !tooSmall && !legProductOnly) return draft
-  return { ...draft, odds: americanOddsInputString(best) }
+  // Printed ticket totals are usually labeled; if OCR had a real Total Odds line,
+  // extractTotalParlayOdds already set it and it will not match a single leg / product.
+  if (stolen || legProductOnly) {
+    next = { ...next, odds: '' }
+  }
+  return next
 }
 
 /**

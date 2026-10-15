@@ -121,20 +121,6 @@ function normalizeMoney(value: unknown): string {
   return Number.isFinite(n) && n >= 0 ? String(n) : ''
 }
 
-/** Stake + payout-inclusive → American (same math as client). */
-function americanFromStakeAndPayout(stakeRaw: string, payoutRaw: string): string {
-  const s = Number(stakeRaw)
-  const p = Number(payoutRaw)
-  if (!Number.isFinite(s) || s <= 0 || !Number.isFinite(p) || p <= 0) return ''
-  const profit = p - s
-  if (Math.abs(profit) < 1e-9) return ''
-  if (profit > 0) {
-    const n = Math.round((profit / s) * 100)
-    return n > 0 ? `+${n}` : String(n)
-  }
-  return String(Math.round((-100 * s) / Math.abs(profit)))
-}
-
 function normalizeMarket(value: unknown): string {
   const m = textOrEmpty(value).toLowerCase()
   if (m === 'spread' || m === 'h2h' || m === 'total' || m === 'prop' || m === 'parlay' || m === 'other') {
@@ -252,19 +238,19 @@ function normalizeDraft(raw: Record<string, unknown>): SlipDraft {
     const n = Number(collect) - Number(stake_dollars)
     if (Number.isFinite(n) && n > 0) to_win_dollars = String(n)
   }
+  // Only keep printed American totals. Never invent from stake→collect or leg product.
   let odds = normalizeOdds(nested.odds)
-  // Prefer stake→collect American over a missing / leg-juice guess
-  const fromPay = collect && stake_dollars
-    ? americanFromStakeAndPayout(stake_dollars, collect)
-    : ''
-  if (fromPay) {
+  if (odds) {
+    // Drop obvious stolen last-leg juices when money fields exist (client also clears these)
     const cur = Number(String(odds).replace(/^\+/, ''))
-    const payN = Number(String(fromPay).replace(/^\+/, ''))
-    const missing = !odds
-    const tiny = Number.isFinite(cur) && Number.isFinite(payN)
-      && Math.abs(payN) >= 500
-      && Math.abs(cur) < Math.abs(payN) * 0.25
-    if (missing || tiny) odds = fromPay
+    if (
+      collect && stake_dollars
+      && Number.isFinite(cur)
+      && Math.abs(cur) < 500
+      && Number(collect) > Number(stake_dollars) * 10
+    ) {
+      odds = ''
+    }
   }
   return {
     book: textOrEmpty(nested.book),
@@ -311,8 +297,8 @@ player_name, prop_stat, notes, legs (array), confidence (0-1).
 Rules:
 - market: spread | h2h | total | prop | parlay | other
 - side: home | away | over | under | draw | "" (empty when N/A … distance/method/round props)
-- odds: American with sign (+120 / -110). For parlays use the ticket combined odds (Total Odds / Combined). NEVER copy a single leg's juice (e.g. last-line -190) into the parlay odds. NEVER invent odds by multiplying leg juices when TO COLLECT / YOU WON / TO WIN is visible.
-- When Ticket Cost + To Win / To Collect (or YOU WON) are on the slip, fill stake_dollars + to_collect_dollars (and to_win_dollars if shown). Odds may be omitted … the server derives American from stake and collect (e.g. $25 → collect $13096 ≈ +52285, not the ~+1195 leg product).
+- odds: American with sign (+120 / -110) ONLY when the ticket prints a combined / total odds figure. Leave "" if the slip only shows Ticket Cost + To Win / To Collect. NEVER copy a single leg's juice. NEVER invent odds by multiplying leg juices or from stake/payout math.
+- Always fill stake_dollars + to_win_dollars + to_collect_dollars when those $ amounts appear (TO WIN / TO COLLECT / YOU WON / Max Payout). These matter more than combined odds on casino tickets.
 - stake_dollars: number only (no $). Map TAKE / Wager / Risk / Ticket Cost → stake.
 - to_collect_dollars: TO COLLECT / YOU WON / Max Payout (includes stake). to_win_dollars: TO WIN profit only.
 - commence_time: ISO 8601 if event date/time known

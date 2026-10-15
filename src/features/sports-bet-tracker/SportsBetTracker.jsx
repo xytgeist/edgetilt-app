@@ -92,6 +92,8 @@ function emptyDraft(unitSize = readUnitSizeDollars()) {
     stake_units: units,
     stake_dollars: stakeDollarsFromUnits(units, unitSize),
     unit_size_dollars: unitSize,
+    to_win_dollars: '',
+    to_collect_dollars: '',
     selection_label: '',
     notes: '',
     home_team: '',
@@ -237,7 +239,7 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     line: prefill.line != null && prefill.line !== '' ? String(prefill.line) : '',
     odds: prefill.odds != null && prefill.odds !== ''
       ? (americanOddsInputString(prefill.odds) || String(prefill.odds))
-      : '-110',
+      : (prefill.source === 'slip' || prefill.source === 'csv' ? '' : '-110'),
     stake_units: units,
     stake_dollars: dollars,
     unit_size_dollars: unitSize,
@@ -265,11 +267,16 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
   }
   if (next.market === 'parlay') {
     // AI often only puts legs in notes … hydrate before blank placeholders.
-    // Also repairs ticket odds when AI stole a leg juice (-190) or leg-product (+1195)
-    // into COMBINED ODDS while TO COLLECT implies ~+52285.
+    // Clears stolen/invented combined odds; fills To win / To collect from OCR.
     const hydrated = hydrateParlayLegsForDraft(next, prefill.ocrText || prefill.ocr_text || '')
     next.legs = normalizeParlayLegs(hydrated.legs || [])
-    if (hydrated.odds) next.odds = String(hydrated.odds)
+    next.odds = hydrated.odds != null ? String(hydrated.odds) : ''
+    if (hydrated.to_win_dollars != null && String(hydrated.to_win_dollars) !== '') {
+      next.to_win_dollars = String(hydrated.to_win_dollars)
+    }
+    if (hydrated.to_collect_dollars != null && String(hydrated.to_collect_dollars) !== '') {
+      next.to_collect_dollars = String(hydrated.to_collect_dollars)
+    }
     if (next.legs.length < 2) next.legs = blankParlayLegs()
     next.side = ''
     next.home_team = ''
@@ -1231,9 +1238,11 @@ export default function SportsBetTracker({
                       {[
                         bet.market === 'parlay' ? 'Parlay' : (bet.sport_label || bet.sport_key),
                         bet.book,
-                        formatAmericanOdds(bet.odds),
+                        bet.odds != null ? formatAmericanOdds(bet.odds) : null,
                         `${bet.stake_units}u`,
                         bet.stake_dollars != null ? formatUsd(bet.stake_dollars) : null,
+                        bet.to_win_dollars != null ? `Win ${formatUsd(bet.to_win_dollars)}` : null,
+                        bet.to_collect_dollars != null ? `Collect ${formatUsd(bet.to_collect_dollars)}` : null,
                         sportsBetSourceLabel(bet.source),
                       ]
                         .filter(Boolean)
@@ -1473,8 +1482,10 @@ export default function SportsBetTracker({
                           ? (item.failReason || 'Fill the form from the photo')
                           : [
                             d.market === 'parlay' ? 'Parlay' : (d.sport_label || d.market),
-                            formatAmericanOdds(d.odds),
+                            d.odds ? formatAmericanOdds(d.odds) : null,
                             d.stake_dollars ? formatUsd(d.stake_dollars) : null,
+                            d.to_win_dollars ? `Win ${formatUsd(d.to_win_dollars)}` : null,
+                            d.to_collect_dollars ? `Collect ${formatUsd(d.to_collect_dollars)}` : null,
                             d.book,
                           ].filter(Boolean).join(' · ')}
                       </div>
@@ -1816,7 +1827,7 @@ export default function SportsBetTracker({
                     inputMode="numeric"
                     value={draft.odds}
                     onChange={(e) => setDraft((d) => ({ ...d, odds: e.target.value }))}
-                    placeholder="+450"
+                    placeholder="Only if on ticket"
                   />
                 </label>
               ) : null}
@@ -1846,13 +1857,75 @@ export default function SportsBetTracker({
                     onChange={(e) => {
                       const stake_dollars = e.target.value
                       const fromUsd = stakeUnitsFromDollars(stake_dollars, unitSize)
-                      setDraft((d) => ({
-                        ...d,
-                        stake_dollars,
-                        stake_units: fromUsd || d.stake_units,
-                      }))
+                      setDraft((d) => {
+                        const stakeN = Number(stake_dollars)
+                        const winN = Number(d.to_win_dollars)
+                        let to_collect_dollars = d.to_collect_dollars
+                        if (
+                          Number.isFinite(stakeN) && stakeN > 0
+                          && Number.isFinite(winN) && winN >= 0
+                        ) {
+                          to_collect_dollars = String(Math.round((stakeN + winN) * 100) / 100)
+                        }
+                        return {
+                          ...d,
+                          stake_dollars,
+                          stake_units: fromUsd || d.stake_units,
+                          to_collect_dollars,
+                        }
+                      })
                     }}
                     placeholder={stakeDollarsFromUnits(1, unitSize) || '100'}
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  To win ($)
+                  <input
+                    className={`${inputClass} mt-1`}
+                    inputMode="decimal"
+                    value={draft.to_win_dollars || ''}
+                    onChange={(e) => {
+                      const to_win_dollars = e.target.value
+                      setDraft((d) => {
+                        const stakeN = Number(d.stake_dollars)
+                        const winN = Number(to_win_dollars)
+                        let to_collect_dollars = d.to_collect_dollars
+                        if (
+                          Number.isFinite(stakeN) && stakeN > 0
+                          && Number.isFinite(winN) && winN >= 0
+                        ) {
+                          to_collect_dollars = String(Math.round((stakeN + winN) * 100) / 100)
+                        }
+                        return { ...d, to_win_dollars, to_collect_dollars }
+                      })
+                    }}
+                    placeholder="13071.25"
+                  />
+                </label>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  To collect ($)
+                  <input
+                    className={`${inputClass} mt-1`}
+                    inputMode="decimal"
+                    value={draft.to_collect_dollars || ''}
+                    onChange={(e) => {
+                      const to_collect_dollars = e.target.value
+                      setDraft((d) => {
+                        const stakeN = Number(d.stake_dollars)
+                        const collectN = Number(to_collect_dollars)
+                        let to_win_dollars = d.to_win_dollars
+                        if (
+                          Number.isFinite(stakeN) && stakeN > 0
+                          && Number.isFinite(collectN) && collectN > stakeN
+                        ) {
+                          to_win_dollars = String(Math.round((collectN - stakeN) * 100) / 100)
+                        }
+                        return { ...d, to_collect_dollars, to_win_dollars }
+                      })
+                    }}
+                    placeholder="13096.25"
                   />
                 </label>
               </div>

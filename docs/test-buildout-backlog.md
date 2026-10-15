@@ -61,6 +61,46 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [ ] **Accessibility (soft).** ASC does not claim Accessibility. No full WCAG 2.1 AA program. Revisit when Ryan wants a pass (alt text, labels, keyboard, contrast) … not panic, industry-wide risk.
 - [ ] **Age gate (optional).** Product is adult gambling social + store 18+; no DOB at signup. Only add a hard age gate if counsel wants affirmative collection beyond “not directed under 18.”
 
+Related platform-ops list (abuse, money webhooks, mod queue, attribution, vendor discipline): **Planned (Platform ops — Denk iceberg)** below.
+
+---
+
+## Planned (Platform ops — Denk iceberg)
+
+**Source:** Tyler Denk / beehiiv X post ([status/2110371582153748942](https://x.com/denk_tweets/status/2110371582153748942)) … weekend-clone backlog as a warning, not a feature list. Ryan ask 2026-10-15: park EdgeTilt follow-ups. Pair with **Planned (Legal / compliance — Limestone audit)** above. **Not a beehiiv clone.** Do not build an ESP, ad network, podcast host, webinar stack, or recommendation marketplace.
+
+**Already good (do not reopen unless something regresses):**
+
+- Live-site shell (web ships without a store binary)
+- Vendors on purpose: Vercel, Supabase + RLS, Stripe / IAP, R2 / Stream, Cloudflare, Resend **transactional only**
+- Counsel Terms / Privacy / Guidelines + 18+ store; no session replay / Meta pixels
+- Dual-machine + prod-is-prod + secrets hygiene + R2 dumps
+- Lounge / chat / CallKit / LiveKit / APNs as real native, not weekend `getUserMedia`
+- Staff pin / delete / role UI exists; DB moderator `UPDATE` is ready (no dedicated queue yet)
+
+**Do not build (explicit skip):**
+
+- [-] Newsletter platform / IP warming / Gmail complaint loops / Outlook HTML renderer
+- [-] Second ESP, second auth vendor, or a new analytics pixel “because we can vibe it”
+
+### Must address
+
+- [ ] **DMCA designated agent.** Same item as Limestone (priority). Lounge UGC without a Copyright Office agent + public contact has no safe harbor.
+- [ ] **Keep marketing email dark.** Same item as Limestone CAN-SPAM. Resend stays billing / poker / affiliate. No “quick newsletter” without unsubscribe + postal + 10-day opt-out.
+- [ ] **Digiverse tax / payout identity.** Apple Finance W-9 still open (EIN already on leftover Individual vendor). Mercury bank Processing. Do not invent TIN. Do not attach leftover USAA. Store review is not blocked; payouts are.
+- [x] **UGC mod hub (2026-10-15, test).** Staff inbox **`/?tab=mod`** (`LoungeModQueueScreen`) + Monitor → Product embeds the same panel. Warn / hide / delete / dismiss. Silent Edge **`lounge-report-triage`** auto-dismisses obvious spam only. SQL **`20261015220000`**. Ban / strikes + a clocked SLA still open (next).
+- [ ] **Gambling-adjacent rails.** Keep 18+ and App Store 2.3.6 notes honest. Do not scrape books or publisher sites we already flagged (sports ToS, news ToS). One legal letter kills a feature.
+- [ ] **Vendor forever-bill discipline.** The real monthly cost is Vercel + Supabase + Stripe + R2 + Stream + APNs + LiveKit + Cloudflare. Adding a twin of any of those is a decision, not a weekend default.
+
+### Should improve
+
+- [ ] **Abuse / bots.** Signup + Lounge + invites + affiliates: disposable emails, rate limits, honeypots as volume grows. Fake accounts become a money problem.
+- [ ] **Money webhook integrity.** Stripe / IAP / Connect / affiliate: signed payloads, retries, attempt log, disable-without-delete. Clawback path when payouts are wrong.
+- [ ] **Observability / pager.** Ops dashboard is not on-call. Need a wake-up when Stream, APNs, or a cron dies at 3am.
+- [ ] **Acquisition source on every account.** UTM / `?ref=` / promo as a first-class field (affiliates already have pieces). Pays off the first time we spend on ads.
+- [ ] **Ban / revoke immediately.** Kill session + tokens + Connect access when someone is banned or leaves. “Remove role” is not full revoke.
+- [ ] **Accessibility / media.** Same soft Limestone item (alt text, labels, image resize). Not panic; do not claim ASC Accessibility until a real pass.
+
 ---
 
 ## Planned (Fantasy suite)
@@ -226,11 +266,11 @@ Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.js
 - [x] **App Links (APK 1.3.6+):** manifest `autoVerify` VIEW filters (flavor host + www); `public/.well-known/assetlinks.json` (Play signing SHA included) + Vercel JSON header; `EdgeLinks` allowlist + IPA-parity rewrite of `/lounge/p|g` / `/u/` → SPA query. Site file live on **edgetilt.com** + **lvslotpro.com**. **Ryan smoke PASSED 2026-10-12** (`/lounge/p/…` → Edge SPA).
 - [x] **EdgeTilt Google OAuth Custom Tabs (APK 1.3.7 + web 1.4.1119):** `EdgeWebAuth` / `EdgeAndroid.startWebAuthSession` → `edgetilt://auth-callback` → PKCE exchange in WebView. `prompt=select_account` for account list. Bet-sheet Polymarket Google stays `presentAsChrome`. Fantasy Yahoo on Android shares the same Custom Tabs helper. **Ryan smoke PASSED 2026-10-12** (Play internal **11**).
 - [x] **Native share sheet** (Android WebView has no `navigator.share`): `EdgeAndroid.share`, APK 1.1.0, web 1.4.954. Emulator verified text + image share (Sep 30).
-- [x] **ML Kit document scanner + on-device text recognition (APK 1.3.20 / vc 24 + web `1.4.1132`):** `EdgeAndroid.scanDocument` (Play Document Scanner) + `recognizeText` (bundled Latin OCR). Web `canScanEdgeDocument` / `canRecognizeEdgeText` route on EdgeAndroid. W-2G Take photo, Offers mailer, bet-slip OCR. **W-2G Take photo Ryan PASSED 2026-10-15.** Offers calendar/mailer Take photo … smoking. Bet-slip OCR still owed.
+- [x] **ML Kit document scanner + on-device text recognition (APK 1.3.20 / vc 24 + web `1.4.1132`):** `EdgeAndroid.scanDocument` (Play Document Scanner) + `recognizeText` (bundled Latin OCR). Web `canScanEdgeDocument` / `canRecognizeEdgeText` route on EdgeAndroid. W-2G Take photo, Offers mailer, bet-slip OCR. **Device smoke COMPLETE Ryan PASSED 2026-10-15** (W-2G + Offers mailer + bet-slip OCR on APK **1.3.20** / vc **24**).
 - [x] **System photo picker** (multi-select, no storage permission): image / video-only file inputs open `ACTION_PICK_IMAGES` on Android 13+ inside the shell's file chooser, no web change. APK 1.1.0, emulator verified pick → `File` on the input (Sep 30).
 - [x] **Haptics + composer orientation lock:** `EdgeAndroid.haptic` / `setOrientationLock`, APK 1.1.0, web 1.4.954 (tap haptics, W-2G success, composer portrait lock; rotate hint + keyboard block stay off in the APK). Emulator verified lock → portrait, release → back to landscape with auto-rotate on (Sep 30). Real-device feel check owed.
 - [x] **Call speaker / earpiece routing (APK 1.3.5):** `EdgeAndroid.setAudioRoute` + web `chatCallAudioOutput.js` on every Speaker tap.
-- [ ] **Android-only:** app shortcuts (long-press icon: Start session / Lounge / Log a win) and a home-screen bankroll / live-session widget.
+- [x] **Android-only:** app shortcuts (long-press icon: Start session / Lounge / Log a win) and a home-screen bankroll / live-session widget. **APK 1.3.21 / vc 25 + web `1.4.1201`:** static shortcuts via `edgetilt://open?tab=…`; `EdgeLiveSessionWidget` mirrors `syncLiveBankrollActivity`; `?tab=bankroll&startSession=1` opens the start sheet. Smoke owed (long-press + widget add + live session update).
 - Skip: Sign in with Apple, service-worker bust (iOS-only needs). Play Billing stays the policy item above.
 
 ---
@@ -946,6 +986,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - [x] **`lounge-sports-scoreboard`** (Lounge in-post game pill + live hub). TheRundown slate + `live_game_state` / plays / player stats when the key allows. Odds API multi-book lines on hub open. JWT. Source: `supabase/functions/lounge-sports-scoreboard/README.md`. On **test** since **`1.4.376`**. On **prod** (`jtjgtucumuoswnbauxry`) **2026-09-21** with **`1.4.401`**. CFB ESPN PBP fallback on test+prod since **`1.4.659`**. **1.4.856** (Sep 27, test + prod): per-isolate caches, TheRundown/ESPN play merge, NFL ESPN on test, odds cache 20s.
 - [x] **`sports-bets-grade`** (Bet Tracker auto-settle open spread / ML / total vs ESPN). JWT. Also runs from **`lounge-odds-poll` `grade_picks`**. On **test + prod** with **`1.4.1103`**. Source: `supabase/functions/sports-bets-grade/README.md`.
 - [x] **`sports-bet-slip-parse`** (Bet Tracker LLM fallback when OCR/heuristic fails). JWT + `OPENAI_API_KEY`. On **test** with **`1.4.1148`** (prod on promote). Source: `supabase/functions/sports-bet-slip-parse/README.md`.
+- [x] **`lounge-report-triage`** (silent Lounge report classifier). User JWT or service role; writes via service role. Auto-dismiss obvious spam only. Never auto-hide. Legal/safety always `needs_human`. SQL **`20261015220000`** on **test**. Deployed **test** with **`1.4.1202`**. Do not deploy prod until Ryan asks. Source: `supabase/functions/lounge-report-triage/README.md`.
 - [x] **`lounge-live-activity-token` / `lounge-live-activity-push`** (watched-game Island APNs). SQL `20261005040000` on **test + prod**. Edge deployed test + prod 2026-10-04. Prod IPA **1.4.95 (20261005022834)** TestFlight-only.
 - [x] **`lounge-cfb-game-players`** (CFB hub Players roster from **`cfb_players`**). JWT. Deployed **test** with **`1.4.659`**; **prod** with **`1.4.661`** promote. Source: `supabase/functions/lounge-cfb-game-players/README.md`.
 - [x] **`lounge-game-news`** (football hub News tab: ESPN injuries, preview/recap, Rotowire notes, matchup-only team stories). JWT checked in code (`verify_jwt = false`, like `lounge-cfb-game-players`). No secrets. On **test** since **`1.4.910`**; on **prod** 2026-09-29 with **`1.4.910`**.
@@ -1215,6 +1256,10 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-15:** **Lounge Mod hub + silent report triage (`1.4.1202`).** Staff **`/?tab=mod`** (admin + moderator): Needs human inbox, preview, Open post, Reviewing / Warn / Hide / Delete / Dismiss. In-app `lounge_staff_notices` banner (not a new activity_events type). Edge **`lounge-report-triage`** on test (`OPENAI_API_KEY`, `gpt-6-luna`); auto-dismiss spam only. SQL **`20261015220000`** on test (`needs_human`, `lounge_mod_actions`, `lounge_staff_notices`). Monitor → Product reuses the same panel. Ban / SLA clock still open. Do not apply SQL or Edge on prod yet.
+- **2026-10-15:** **Platform ops todos (Denk / beehiiv iceberg).** Scored EdgeTilt against Tyler Denk’s “weekend clone” backlog. Not a newsletter build. Parked under **Planned (Platform ops — Denk iceberg)**. Must: DMCA + CAN-SPAM (same as Limestone), Digiverse W-9, UGC takedown queue, gambling rails, no second ESP. Improve: bots, money webhooks, pager, acquisition source, ban-revoke, a11y. No code.
+- **2026-10-15:** **Android shortcuts + live-session widget (`1.3.21` / vc **25** + web `1.4.1201`).** Long-press: Lounge / Start session / Log a win. Home widget mirrors live bankroll notif. `startSession=1` deep link. Smoke owed. (Windows lane; Mac notified on theo.)
+- **2026-10-15:** **Android ML Kit scan/OCR device smoke COMPLETE (Ryan PASSED).** APK **1.3.20** / vc **24**. W-2G Take photo + Offers calendar/mailer Take photo + bet-slip OCR. Follow-on Edge harden during smoke: mailer year inference + discrete session-day expand (`process-offer-uploads`).
 - **2026-10-15:** **Promoted `1.4.1200`** (hamburger tap-through guard). Frontend **`test` → `main`** (`01ed93ceb`). No SQL / Edge.
 - **2026-10-15:** **Hamburger tap-through guard (`1.4.1200`).** After menu nav, ~400ms full-document ghost swallow (Sports Hub→MLB / wrong dest) then dock-only Home shield for the rest of 1200ms. Keeps intentional hub-tool taps after the short window.
 - **2026-10-15:** **Promoted `1.4.1199`** (Offers mailer photo lightbox). Frontend **`test` → `main`** (`575da72a7`). No SQL / Edge.
@@ -1223,7 +1268,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - **2026-10-15:** **Offers mailer expand discrete session days (`process-offer-uploads`).** "Dec 10 & 11" / short timed tournament ranges → one event per day (fixes Android dropping Dec 11 while iOS got all three). Redeploy Edge test + prod.
 - **2026-10-15:** **Promoted `1.4.1197`** (Offers year inference + Bet Tracker OCR batch). Frontend **`test` → `main`** (`7e50f352e`). Edge **`process-offer-uploads`** + **`sports-bet-slip-parse`** redeployed **test + prod**. No new SQL.
 - **2026-10-15:** **Offers mailer year inference (`process-offer-uploads`).** Flyers with month/day but no year: prompt must still emit `start_at`; server picks nearest upcoming year (this year if that M/D is today-or-later, else next… Nov→Jan). Redeploy Edge on the env you smoke. Not a client bump.
-- **2026-10-15:** **Android ML Kit W-2G Take photo PASSED (Ryan).** APK **1.3.20** / vc **24**. Offers calendar/mailer Take photo in progress; bet-slip OCR still owed.
+- **2026-10-15:** **Android ML Kit W-2G Take photo PASSED (Ryan).** APK **1.3.20** / vc **24**. (Superseded same day by full ML Kit device smoke COMPLETE … W-2G + Offers + bet-slip.)
 - **2026-10-15:** **Android Play internal 13 (1.3.9) End Call + live-session chip COMPLETE (Ryan PASSED).** (1) Android End Call ends the iPhone call; (2) start live bankroll/poker session → status-bar notif/chip → tap opens bankroll. (Kill→tap after process death was a later **1.3.10–1.3.12** chase … not this sign-off.)
 - **2026-10-14:** **Promoted `1.4.1158`** (DK Over 0.5 Player prop parlays). Frontend **`test` → `main`** (`6dfe5d54`). No Edge.
 - **2026-10-14:** **Bet Tracker DK Over 0.5 (Player) parlays (`1.4.1158`).** App prop legs + bare $stake/$payout; skip must-start disclaimers. No Edge.
@@ -4543,4 +4588,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-10-13:** **Swipe-delete polish (slots bankroll + chat + poker bankroll).** Full swipe-away anim then confirm before delete (`BankrollSessionHistoryRow` / chat `ChatRoomListRow`). Poker history cards get swipe-right delete. Chat Android: biased axis lock keeps pan-y momentum; chat iOS: `touch-action: none` + manual scrollTop (WebKit was stealing the gesture). Promoted `test` → `main` through `9b959dc5`. **Ryan sign-off PASSED** (Android + iOS).
 - **2026-10-14:** **Agent rule: map impact before impl.** Always-apply **`.cursor/rules/map-impact-before-impl.mdc`** (`AGENT_RULE_MAP_IMPACT_BEFORE_IMPL`): before fixes/features, grep shared symbols/flags/bridge twins and tell Ryan every other surface that could break (e.g. Lounge + Chat sharing `canPickEdgeVideo`). Tightens blast-radius language in **`AGENTS.md`** + audit template. No app version bump.
 - **2026-10-14:** **OpenAI GPT-4 series → `gpt-6-luna`.** OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Edge defaults now `gpt-6-luna` with reasoning effort `none` (`_shared/openaiModelDefaults.ts`): `process-offer-uploads`, `w2g-vision-extract`, syndicate vision, lounge news synopsis, X rewrite. Redeploy those functions after secrets: clear or set `OPENAI_VISION_MODEL` / `OPENAI_CHAT_MODEL` away from `gpt-4o-mini`.
-- **2026-10-15:** **X bot `@handle pulse:` + truncated rewrites.** After Luna cutover, Chat Completions still sent deprecated `max_tokens` → OpenAI **400** (`use max_completion_tokens`) → silent fallback in `rewriteTweetForBot` minted captions like `vitalik pulse:` / `burry pulse:`. Fixed: `openaiChatMaxCompletionTokens()` in `_shared/openaiModelDefaults.ts`; X rewrite, news synopsis, report triage. Dropped the pulse branding from fallback. **Redeploy** `lounge-x-ingest`, `lounge-news-poll`, `lounge-report-triage` (test + prod). Soft-delete any live pulse posts separately.
+- **2026-10-15:** **X bot `@handle pulse:` + truncated rewrites.** After Luna cutover, Chat Completions still sent deprecated `max_tokens` → OpenAI **400** (`use max_completion_tokens`) → silent fallback in `rewriteTweetForBot` minted captions like `vitalik pulse:` / `burry pulse:`. Fixed: `openaiChatMaxCompletionTokens()` in `_shared/openaiModelDefaults.ts`; X rewrite, news synopsis, report triage. Dropped the pulse branding from fallback. **Git promoted** to **`main`** @ **`b30b938c8`** (bot fix only … Mod hub / `lounge-report-triage` stayed off main). **Still need Edge redeploy** `lounge-x-ingest` + `lounge-news-poll` on **test + prod** (and `lounge-report-triage` on **test** only until Mod hub promotes). Soft-delete any live pulse posts separately.

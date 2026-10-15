@@ -34,6 +34,8 @@ The agent should treat the following as **standing instructions for this session
 
 **App Store (2026-10-15):** live **1.4.96** (`20261008181941`). **1.4.97** (`20261015175413`) is **Waiting for Review**. Do not attach Cloud **242** / **243** (Test Fast). Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*. W-9 still with Apple Finance.
 
+**Platform ops todos (2026-10-15):** Denk / beehiiv iceberg parked in backlog **Planned (Platform ops — Denk iceberg)** (pairs with Limestone). Not a newsletter clone. Must: DMCA, no marketing email, Digiverse W-9, UGC queue (hub shipped test `1.4.1202` … SLA clock + ban still open), gambling rails, no second ESP.
+
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
 **Branch:** `test` (match `origin/test` before edits). `main` web **1.4.1098** (`80550189`). iOS marketing **1.4.97** on `test`. Dual-machine. Physical iOS 27 → **Xcode 27 beta**. Do not upload Play until Ryan says the APK is ready.
@@ -125,11 +127,20 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 ### Windows Theo ACTIVE TRACK 2026-10-13 ... Prod DB dumps → private R2
 **I am Windows Theo.** Offsite `pg_dump` → private R2 for **production only** (`docs/db-r2-backups.md`). Test keeps Supabase daily backups. Script `scripts/db-dump-to-r2.mjs`, 14-day prune, Windows task daily 3:15 AM. Needs Ryan: create private bucket + `DB_BACKUP_R2_*` in `.env.master`, install `pg_dump`, first `npm run db:dump:r2:production` to size egress, then `npm run db:dump:r2:install-windows-task`. Before scary prod SQL: `--tag=pre-migrate`.
 
+### Mac Theo ACTIVE TRACK 2026-10-15 ... Lounge Mod hub + report triage
+**I am Mac Theo.** Ryan asked for the staff inbox + silent classifier. **`/?tab=mod`** (`1.4.1202`) for admin + moderator: Needs human, Warn / Hide / Delete / Dismiss. Edge **`lounge-report-triage`** on test only (auto-dismiss spam). SQL **`20261015220000`** on test. Ban / SLA clock still open. Do not apply SQL or Edge on prod. Do not bump iOS **1.4.97**.
+
+### Mac Theo ACTIVE TRACK 2026-10-15 ... Platform ops todos (Denk iceberg)
+**I am Mac Theo.** Ryan asked to park the beehiiv-post follow-ups. Canonical list: backlog **Planned (Platform ops — Denk iceberg)**. Do **not** build an ESP / newsletter stack. Next real items when Ryan picks one: DMCA agent (Limestone), UGC SLA clock + ban (hub is on test), Digiverse W-9 / Apple Finance.
+
 ### Mac Theo ACTIVE TRACK 2026-10-15 ... App Store 1.4.97
 **I am Mac Theo.** **1.4.97** (`20261015175413`) is **Waiting for Review**. Export compliance cleared (HTTPS / none of the listed algorithms). Apple warned Cloud **243** was newer; we kept Prod DTG, not Test Fast. Do **not** attach **242** / **243**. First DTG `20261015162433` Failed ITMS-90683 (purpose strings restored `061da8ba`). Live store stays **1.4.96**. W-9 still with Apple Finance. **Play APK stays parked.** Windows leftover still AASA `/lounge/g/*` + `?game=`.
 
+### Windows Theo 2026-10-15 ... Android SDK + Play Internal 25
+**I am Windows Theo.** Windows Android toolchain live (Scoop Temurin 17 + `android-clt`, platform 36). Keystore on PC. **Play Internal 25 (1.3.21)** published 2026-10-15 (shortcuts + live-session widget). AAB path stays `android/app/build/outputs/bundle/prodRelease/app-prod-release.aab` (do not copy to Downloads). Mac optional for Play assemble/upload.
+
 ### Mac Theo ACTIVE TRACK 2026-10-14 ... Android ML Kit scan + OCR
-**I am Mac Theo.** APK **1.3.20** / vc **24** + web **`1.4.1132`:** `EdgeAndroid.scanDocument` + `recognizeText`. Upload Play **24**. **W-2G Take photo Ryan PASSED 2026-10-15.** Offers calendar/mailer Take photo … smoking. Bet-slip OCR still owed. **WinTheo 2026-10-15:** `process-offer-uploads` nearest-upcoming year when flyer omits year (prompt + server). Redeploy Edge on smoke env. **Prior:** native video **Ryan PASSED** (`2787d380` / 1.3.19). **Play internal 13 (1.3.9) Ryan PASSED 2026-10-15:** End Call both-sides + live-session chip. **Next native:** shortcuts + widget.
+**I am Mac Theo.** APK **1.3.20** / vc **24** + web **`1.4.1132`:** `EdgeAndroid.scanDocument` + `recognizeText`. Upload Play **24**. **ML Kit device smoke COMPLETE Ryan PASSED 2026-10-15**. **WinTheo 2026-10-15:** shortcuts + live-session widget on `test` (APK **1.3.21** / vc **25** + web **`1.4.1201`**). **Play Internal 25 published from Windows** same day. **Prior:** native video **Ryan PASSED** (`2787d380` / 1.3.19). **Play internal 13 (1.3.9) Ryan PASSED 2026-10-15:** End Call both-sides + live-session chip. **Native parity checklist:** complete pending smoke on shortcuts/widget.
 
 ### Mac Theo 2026-10-14 ... Bet Tracker Photo → library
 **Web `1.4.1134`.** Bet Tracker **Photo** opens the OS image picker (`accept=image/*`, no `capture`) so Take photo + library are one sheet. Dropped the in-app double chooser from `1.4.1133`.
@@ -141,7 +152,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code defaults now **`gpt-6-luna`** + reasoning effort **`none`** (`_shared/openaiModelDefaults.ts`). Covers offers mailer, W-2G vision, syndicate vision, lounge news synopsis, X rewrite. Secrets + Edges redeployed test + prod.
 
 ### Cloud Theo 2026-10-15 ... X bot pulse captions (Luna max_tokens)
-**Symptom:** bots posting `vitalik pulse:` / `burry pulse:` (and looking truncated). **Cause:** Chat Completions still sent deprecated `max_tokens`; `gpt-6-luna` returns **400** → silent `@handle pulse:` fallback in `loungeBotXRewrite.ts`. **Fix:** `openaiChatMaxCompletionTokens()`; rewrite / news synopsis / report triage. Dropped pulse branding from fallback. **Needs Edge redeploy** `lounge-x-ingest` + `lounge-news-poll` + `lounge-report-triage` on test + prod before live traffic is clean. Soft-delete existing pulse posts separately.
+**Symptom:** bots posting `vitalik pulse:` / `burry pulse:` (and looking truncated). **Cause:** Chat Completions still sent deprecated `max_tokens`; `gpt-6-luna` returns **400** → silent `@handle pulse:` fallback in `loungeBotXRewrite.ts`. **Fix:** `openaiChatMaxCompletionTokens()`; rewrite / news synopsis / report triage. Dropped pulse branding from fallback. **Git `main`:** **`b30b938c8`** (cherry-pick of bot fix only … Mod hub not promoted). **Blocked here:** no `SUPABASE_ACCESS_TOKEN` … **Mac/Windows must redeploy** `lounge-x-ingest` + `lounge-news-poll` on **test + prod** (and `lounge-report-triage` on **test**). Soft-delete existing pulse posts separately.
 
 ### Mac Theo 2026-10-14 ... Bet Tracker slip photo on Log a bet
 **Web `1.4.1136`.** Photo OCR opens composer with the slip image attached (blob preview) so fields can be checked against the ticket. Session-only … not saved to DB.

@@ -704,12 +704,30 @@ export function ticketMoneyFromText(text, draft = null) {
   }
 }
 
-function attachTicketMoney(draft, text = '') {
+/**
+ * Settled receipt vs open betslip.
+ * won: WON ON / YOU WON / Total Won; lost: LOST ON / clear loss footer.
+ */
+export function detectSlipResult(text) {
+  const raw = String(text || '')
+  if (!raw.trim()) return 'open'
+  if (/\b(?:won\s+on\b|you\s*won\b|total\s*won\b)/i.test(raw)) return 'won'
+  if (/\b(?:lost\s+on\b|you\s*lost\b|total\s*lost\b)\b/i.test(raw)) return 'lost'
+  // FanDuel Settled tab + all legs Finished + a payout $ above WON is handled above.
+  // Settled + $0 / no win line with Finished legs → still open unless lost cues exist.
+  return 'open'
+}
+
+/** Apply OCR ticket stake / to-win / to-collect. Prefer OCR over unit-size defaults. */
+export function applyTicketMoneyFromOcr(draft, text = '', { overwriteStake = true } = {}) {
   if (!draft || typeof draft !== 'object') return draft
   const money = ticketMoneyFromText(text, draft)
   const next = { ...draft }
-  if (money.stake_dollars != null && !String(next.stake_dollars || '').trim()) {
-    next.stake_dollars = String(money.stake_dollars)
+  if (money.stake_dollars != null) {
+    const prev = String(next.stake_dollars || '').trim()
+    if (overwriteStake || !prev) {
+      next.stake_dollars = String(money.stake_dollars)
+    }
   }
   if (money.to_win_dollars != null) {
     next.to_win_dollars = String(money.to_win_dollars)
@@ -717,7 +735,17 @@ function attachTicketMoney(draft, text = '') {
   if (money.to_collect_dollars != null) {
     next.to_collect_dollars = String(money.to_collect_dollars)
   }
+  const result = detectSlipResult(text)
+  if (result === 'won' || result === 'lost') {
+    next.status = result
+  } else if (!next.status) {
+    next.status = 'open'
+  }
   return next
+}
+
+function attachTicketMoney(draft, text = '') {
+  return applyTicketMoneyFromOcr(draft, text, { overwriteStake: true })
 }
 
 /** Payout that includes stake (for americanFromStakeAndPayout). Prefer collect/max over to-win. */
@@ -2975,7 +3003,9 @@ export function parseParlaySlipText(text) {
     selection_label: parlaySelectionLabel(normalized),
     legs: normalized,
   })
-  return attachTicketMoney(draft, raw)
+  const withMoney = attachTicketMoney(draft, raw)
+  withMoney.status = detectSlipResult(raw)
+  return withMoney
 }
 
 function looksLikeTerminalMatchup(away, home, eventLabel) {

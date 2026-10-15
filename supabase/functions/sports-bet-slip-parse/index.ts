@@ -47,6 +47,7 @@ type SlipDraft = {
   stake_dollars: string
   to_collect_dollars: string
   to_win_dollars: string
+  status: string
   selection_label: string
   home_team: string
   away_team: string
@@ -252,6 +253,10 @@ function normalizeDraft(raw: Record<string, unknown>): SlipDraft {
       odds = ''
     }
   }
+  const statusRaw = textOrEmpty(nested.status).toLowerCase()
+  const status = ['won', 'lost', 'push', 'void', 'open'].includes(statusRaw)
+    ? statusRaw
+    : 'open'
   return {
     book: textOrEmpty(nested.book),
     market,
@@ -261,6 +266,7 @@ function normalizeDraft(raw: Record<string, unknown>): SlipDraft {
     stake_dollars,
     to_collect_dollars: collect,
     to_win_dollars,
+    status,
     selection_label: textOrEmpty(nested.selection_label ?? nested.selectionLabel ?? nested.selection),
     home_team: home,
     away_team: away,
@@ -290,7 +296,7 @@ function draftLooksUsable(d: SlipDraft): boolean {
 
 const SYSTEM = `You extract one sportsbook bet slip into JSON for a bet tracker.
 Return ONLY a JSON object with keys:
-book, market, side, line, odds, stake_dollars, to_collect_dollars, to_win_dollars, selection_label,
+book, market, side, line, odds, stake_dollars, to_collect_dollars, to_win_dollars, status, selection_label,
 home_team, away_team, event_label, sport_key, sport_label, commence_time,
 player_name, prop_stat, notes, legs (array), confidence (0-1).
 
@@ -298,9 +304,10 @@ Rules:
 - market: spread | h2h | total | prop | parlay | other
 - side: home | away | over | under | draw | "" (empty when N/A … distance/method/round props)
 - odds: American with sign (+120 / -110) ONLY when the ticket prints a combined / total odds figure. Leave "" if the slip only shows Ticket Cost + To Win / To Collect. NEVER copy a single leg's juice. NEVER invent odds by multiplying leg juices or from stake/payout math.
-- Always fill stake_dollars + to_win_dollars + to_collect_dollars when those $ amounts appear (TO WIN / TO COLLECT / YOU WON / Max Payout). These matter more than combined odds on casino tickets.
-- stake_dollars: number only (no $). Map TAKE / Wager / Risk / Ticket Cost → stake.
-- to_collect_dollars: TO COLLECT / YOU WON / Max Payout (includes stake). to_win_dollars: TO WIN profit only.
+- Always fill stake_dollars + to_win_dollars + to_collect_dollars when those $ amounts appear (TO WIN / TO COLLECT / YOU WON / Max Payout / TOTAL WAGER / WON ON). These matter more than combined odds on casino tickets.
+- stake_dollars: number only (no $). Map TAKE / Wager / Risk / Ticket Cost / TOTAL WAGER → stake (never invent from a default unit size).
+- to_collect_dollars: TO COLLECT / YOU WON / WON ON / Max Payout (includes stake). to_win_dollars: TO WIN profit only (or collect − stake).
+- status: "won" when WON ON / YOU WON / Total Won; "lost" when LOST ON / You Lost; otherwise "open".
 - commence_time: ISO 8601 if event date/time known
 - sport_label: NFL | CFB | NBA | MLB | NHL | UFC | Boxing | Golf | MLS | Other
 - sport_key when known: americanfootball_nfl, americanfootball_ncaaf, basketball_nba, baseball_mlb, icehockey_nhl, mma_mixed_martial_arts, boxing_boxing

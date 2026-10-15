@@ -9,7 +9,9 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import {
+  applyTicketMoneyFromOcr,
   declaredParlayLegCount,
+  detectSlipResult,
   hydrateParlayLegsForDraft,
   isWeakSportsBetDraft,
   legSelectionLooksJunk,
@@ -1037,6 +1039,33 @@ try {
   console.error(`FAIL FanDuel alt-lines junk hydrate: ${err.message}`)
 }
 
+// FanDuel settled … stake from TOTAL WAGER (overwrite unit default); status won; Won $ = collect
+try {
+  const fdOcr = fs.readFileSync(path.join(OCR_DIR, 'fd-alt-lines-5.ocr.txt'), 'utf8')
+  assert(detectSlipResult(fdOcr) === 'won', `FD settled detect want won got ${detectSlipResult(fdOcr)}`)
+  const d = parseSportsBetSlipText(fdOcr)[0]
+  assert(d.status === 'won', `FD parse status want won got ${d.status}`)
+  assert(Number(d.stake_dollars) === 70, `FD stake want 70 got ${d.stake_dollars}`)
+  assert(Math.abs(Number(d.to_collect_dollars) - 207.85) < 0.02, `FD collect got ${d.to_collect_dollars}`)
+  const unitDefault = {
+    market: 'parlay',
+    stake_dollars: '100',
+    stake_units: '1',
+    to_win_dollars: '',
+    to_collect_dollars: '',
+    status: 'open',
+    legs: d.legs,
+  }
+  const paid = applyTicketMoneyFromOcr(unitDefault, fdOcr, { overwriteStake: true })
+  assert(Number(paid.stake_dollars) === 70, `FD overwrite stake want 70 got ${paid.stake_dollars}`)
+  assert(paid.status === 'won', `FD apply status want won got ${paid.status}`)
+  assert(Math.abs(Number(paid.to_collect_dollars) - 207.85) < 0.02, `FD apply collect got ${paid.to_collect_dollars}`)
+  console.log('ok  FanDuel settled stake overwrite + status won')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL FanDuel settled money/status: ${err.message}`)
+}
+
 /** Real Vision OCR dumps from Ryan's batch (2026-10-14). */
 const ocrBatch = [
   {
@@ -1179,6 +1208,7 @@ const ocrBatch = [
       leg0: 'Twins',
       leg_last: 'Stars',
       no_junk_sels: true,
+      status: 'won',
     },
   },
   {
@@ -1300,6 +1330,7 @@ for (const row of ocrBatch) {
         `${name}: junk sels ${legs.map((l) => l.selection_label).join(' | ')}`,
       )
     }
+    if (e.status) assert(d.status === e.status, `${name}: status want ${e.status} got ${d.status}`)
     if (e.book) assert(d.book === e.book, `${name}: book ${d.book}`)
     if (e.leg0) {
       assert(
@@ -1328,7 +1359,7 @@ for (const row of ocrBatch) {
   }
 }
 
-const total = fixtures.length + 7 + ocrCount
+const total = fixtures.length + 8 + ocrCount
 if (failed) {
   console.error(`\n${failed}/${total} failed`)
   process.exit(1)

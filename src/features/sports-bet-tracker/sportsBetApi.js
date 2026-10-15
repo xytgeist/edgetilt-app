@@ -1,4 +1,8 @@
-import { buildBetSummaryLabel, profitUnitsForBet, profitUnitsForStatus } from './sportsBetMath.js'
+import {
+  buildBetSummaryLabel,
+  profitUnitsForBet,
+  profitUnitsForStatus,
+} from './sportsBetMath.js'
 import { normalizeSportsBetSource } from './sportsBetSources.js'
 import { resolveSportsBetSport } from './sportsBetSports.js'
 import {
@@ -162,7 +166,19 @@ export async function insertSportsBet(supabaseClient, userId, draft) {
   if (!supabaseClient || !userId) return { bet: null, error: 'Not signed in' }
   const built = draftToRow(userId, draft)
   if (built.error) return { bet: null, error: built.error }
-  const row = { ...built.row, status: 'open' }
+  const slipStatus = ['won', 'lost', 'push', 'void'].includes(String(draft.status || ''))
+    ? String(draft.status)
+    : 'open'
+  const row = {
+    ...built.row,
+    status: slipStatus,
+    ...(slipStatus !== 'open'
+      ? {
+        result_at: new Date().toISOString(),
+        profit_units: profitUnitsForBet({ ...built.row, status: slipStatus }),
+      }
+      : {}),
+  }
   const { data, error } = await supabaseClient
     .from('sports_bets')
     .insert(row)
@@ -171,7 +187,10 @@ export async function insertSportsBet(supabaseClient, userId, draft) {
   if (error) return { bet: null, error: error.message }
   let bet = sortLegsOnBet({ ...data, sports_bet_legs: [] })
   if (isParlayDraft(draft) && built.legs.length) {
-    const legErr = await replaceLegs(supabaseClient, userId, data.id, built.legs)
+    const legsForInsert = slipStatus === 'won'
+      ? built.legs.map((l) => ({ ...l, status: 'won' }))
+      : built.legs
+    const legErr = await replaceLegs(supabaseClient, userId, data.id, legsForInsert)
     if (legErr) {
       await supabaseClient.from('sports_bets').delete().eq('id', data.id)
       return { bet: null, error: legErr }

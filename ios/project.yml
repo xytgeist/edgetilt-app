@@ -22,6 +22,11 @@ settings:
     GENERATE_INFOPLIST_FILE: YES
     INFOPLIST_FILE: EdgeTilt/Info.plist
     INFOPLIST_KEY_CFBundleDisplayName: Edge
+    INFOPLIST_KEY_NSCameraUsageDescription: Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.
+    INFOPLIST_KEY_NSMicrophoneUsageDescription: Edge uses the microphone for voice and video calls and for videos you record in Lounge or Chat.
+    INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Edge accesses your photo library so you can attach images and videos in Lounge and Chat.
+    INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: Edge can save images you capture or download to your photo library when you choose.
+    INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.
     INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.social-networking
     INFOPLIST_KEY_UILaunchScreen_Generation: YES
     INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"

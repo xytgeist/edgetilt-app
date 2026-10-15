@@ -2,7 +2,10 @@
  * Heuristic slip-parse fixtures (Ryan's example tickets).
  * Run: node scripts/sports-bet-slip-parse-fixtures.mjs
  */
-import { parseSportsBetSlipText } from '../src/features/sports-bet-tracker/sportsBetParse.js'
+import {
+  hydrateParlayLegsForDraft,
+  parseSportsBetSlipText,
+} from '../src/features/sports-bet-tracker/sportsBetParse.js'
 
 const fixtures = [
   {
@@ -709,8 +712,56 @@ for (const fx of fixtures) {
   }
 }
 
+// AI often dumps legs into notes with empty/placeholder legs[] … composer must hydrate.
+try {
+  const notes =
+    'Parlay legs: Matt Olson over 0.5 HR (+360), Yordan Alvarez over 0.5 HR (+295), '
+    + 'Shohei Ohtani over 0.5 HR (+350). Receipt shows total payout $408.82. '
+    + 'Event time inferred from receipt timestamp; individual game start times not shown.'
+  const hydrated = hydrateParlayLegsForDraft(
+    {
+      market: 'parlay',
+      notes,
+      odds: '+8076',
+      stake_dollars: '5',
+      legs: [
+        { market: 'h2h', selection_label: 'Leg 1', odds: '-110' },
+        { market: 'h2h', selection_label: 'Leg 2', odds: '-110' },
+      ],
+    },
+    '',
+  )
+  assert(Array.isArray(hydrated.legs) && hydrated.legs.length === 3, 'notes hydrate: want 3 legs')
+  assert(
+    String(hydrated.legs[0]?.selection_label || '').includes('Olson'),
+    `notes hydrate leg0: ${hydrated.legs[0]?.selection_label}`,
+  )
+  assert(
+    String(hydrated.legs[2]?.selection_label || '').includes('Ohtani'),
+    `notes hydrate leg2: ${hydrated.legs[2]?.selection_label}`,
+  )
+  // Richer notes beat a short OCR/heuristic leg list
+  const preferNotes = hydrateParlayLegsForDraft(
+    {
+      market: 'parlay',
+      notes,
+      legs: [
+        { market: 'prop', selection_label: 'Matt Olson Over 0.5 Home Runs', odds: '+360' },
+        { market: 'prop', selection_label: 'Yordan Alvarez Over 0.5 Home Runs', odds: '+295' },
+      ],
+    },
+    '',
+  )
+  assert(preferNotes.legs.length === 3, 'notes hydrate: prefer 3-note legs over 2 structured')
+  console.log('ok  AI notes → parlay legs hydrate')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL AI notes → parlay legs hydrate: ${err.message}`)
+}
+
+const total = fixtures.length + 1
 if (failed) {
-  console.error(`\n${failed}/${fixtures.length} failed`)
+  console.error(`\n${failed}/${total} failed`)
   process.exit(1)
 }
-console.log(`\n${fixtures.length}/${fixtures.length} passed`)
+console.log(`\n${total}/${total} passed`)

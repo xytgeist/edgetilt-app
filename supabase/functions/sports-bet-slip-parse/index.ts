@@ -23,6 +23,21 @@ const CORS = {
 const MAX_BYTES = 4_500_000
 const MAX_TEXT = 12_000
 
+type SlipLeg = {
+  market: string
+  side: string
+  line: string
+  odds: string
+  selection_label: string
+  player_name: string
+  prop_stat: string
+  home_team: string
+  away_team: string
+  event_label: string
+  sport_key: string
+  sport_label: string
+}
+
 type SlipDraft = {
   book: string
   market: string
@@ -40,6 +55,7 @@ type SlipDraft = {
   player_name: string
   prop_stat: string
   notes: string
+  legs: SlipLeg[]
 }
 
 function json(status: number, body: Record<string, unknown>) {
@@ -162,6 +178,39 @@ function normalizeCommence(value: unknown): string {
   return ''
 }
 
+function normalizeLegs(value: unknown): SlipLeg[] {
+  if (!Array.isArray(value)) return []
+  const out: SlipLeg[] = []
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') continue
+    const leg = raw as Record<string, unknown>
+    const market = normalizeMarket(leg.market) || 'h2h'
+    const home = textOrEmpty(leg.home_team ?? leg.homeTeam)
+    const away = textOrEmpty(leg.away_team ?? leg.awayTeam)
+    const eventLabel = textOrEmpty(leg.event_label ?? leg.eventLabel)
+      || (away && home ? `${away} @ ${home}` : '')
+    const selection = textOrEmpty(leg.selection_label ?? leg.selectionLabel ?? leg.selection)
+    const odds = normalizeOdds(leg.odds)
+    if (!selection && !odds) continue
+    const sport = normalizeSport(leg.sport_key ?? leg.sportKey, leg.sport_label ?? leg.sportLabel)
+    out.push({
+      market,
+      side: normalizeSide(leg.side, market),
+      line: textOrEmpty(leg.line),
+      odds,
+      selection_label: selection,
+      player_name: textOrEmpty(leg.player_name ?? leg.playerName),
+      prop_stat: textOrEmpty(leg.prop_stat ?? leg.propStat),
+      home_team: home,
+      away_team: away,
+      event_label: eventLabel,
+      sport_key: sport.sport_key,
+      sport_label: sport.sport_label,
+    })
+  }
+  return out
+}
+
 function normalizeDraft(raw: Record<string, unknown>): SlipDraft {
   const nested =
     raw.draft && typeof raw.draft === 'object'
@@ -190,11 +239,15 @@ function normalizeDraft(raw: Record<string, unknown>): SlipDraft {
     player_name: textOrEmpty(nested.player_name ?? nested.playerName),
     prop_stat: textOrEmpty(nested.prop_stat ?? nested.propStat),
     notes: textOrEmpty(nested.notes),
+    legs: normalizeLegs(nested.legs),
   }
 }
 
 function draftLooksUsable(d: SlipDraft): boolean {
   if (!d.odds) return false
+  if (d.market === 'parlay') {
+    return d.legs.length >= 2 || Boolean(d.selection_label) || Boolean(d.notes)
+  }
   if (d.market === 'spread' && !d.line) return false
   if (d.market === 'h2h' || d.market === 'spread' || d.market === 'total') {
     return Boolean(d.home_team && d.away_team) || Boolean(d.selection_label)
@@ -206,12 +259,12 @@ const SYSTEM = `You extract one sportsbook bet slip into JSON for a bet tracker.
 Return ONLY a JSON object with keys:
 book, market, side, line, odds, stake_dollars, selection_label,
 home_team, away_team, event_label, sport_key, sport_label, commence_time,
-player_name, prop_stat, notes, confidence (0-1).
+player_name, prop_stat, notes, legs (array), confidence (0-1).
 
 Rules:
 - market: spread | h2h | total | prop | parlay | other
 - side: home | away | over | under | draw | "" (empty when N/A … distance/method/round props)
-- odds: American with sign (+120 / -110)
+- odds: American with sign (+120 / -110). For parlays use the ticket combined odds.
 - stake_dollars: number only (no $). Map TAKE / Wager / Risk / Ticket Cost → stake.
 - commence_time: ISO 8601 if event date/time known
 - sport_label: NFL | CFB | NBA | MLB | NHL | UFC | Boxing | Golf | MLS | Other
@@ -220,6 +273,8 @@ Rules:
 - Casino codes like PLB before a spread mean point spread
 - Ignore ticket barcodes, teller ids, terminal codes (e.g. CGT@MRH is NOT the event)
 - Matchup lines like "467 COLTS/468 JAGUARS" → away Colts, home Jaguars (rotation numbers dropped)
+- PARLAYS: market=parlay, odds=combined ticket odds, and legs=[...] with one object per leg (market, side, line, odds, selection_label, player_name, prop_stat, home_team, away_team, event_label). Do NOT put legs only in notes.
+- Player props like "Over 0.5 (Matt Olson) / MATT OLSON HOME RUNS / +360" → leg market=prop, side=over, line=0.5, player_name, prop_stat=Home Runs, odds=+360
 - If unsure, still fill best effort; use market=other and side="" rather than inventing a fighter/team side`
 
 async function callOpenAi(opts: {

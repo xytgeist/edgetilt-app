@@ -1716,11 +1716,106 @@ export function isWeakSportsBetDraft(draft) {
 }
 
 /**
+ * AI often dumps "Parlay legs: A over 0.5 HR (+360), B …" into notes with no legs[].
+ * @returns {Array<object>}
+ */
+export function legsFromParlayNotes(notes) {
+  const s = String(notes || '')
+  const block = /parlay\s*legs?\s*:\s*([^\n]+)/i.exec(s)
+  if (!block) return []
+  let chunk = block[1].trim()
+  const stop = chunk.search(/\.\s+(Receipt|Event|Ticket|Total|Individual)/i)
+  if (stop > 0) chunk = chunk.slice(0, stop)
+  chunk = chunk.replace(/\.\s*$/, '').trim()
+  // Split on "), " between legs
+  const parts = chunk
+    .split(/\)\s*,\s*/)
+    .map((p, i, arr) => (i < arr.length - 1 && !p.endsWith(')') ? `${p})` : p))
+    .map((p) => p.trim())
+    .filter(Boolean)
+
+  const legs = []
+  for (const part of parts) {
+    const m = /^(.+?)\s+(over|under)\s+(\d+(?:\.\d+)?)\s*(.*?)\s*\(([+-]\d{3,5})\)\s*$/i.exec(part)
+    if (!m) continue
+    const player = titleCaseWords(m[1])
+    const side = m[2].toLowerCase() === 'under' ? 'under' : 'over'
+    const lineNum = Number(m[3])
+    let statRaw = String(m[4] || '').trim()
+    if (/^hr\.?$/i.test(statRaw)) statRaw = 'Home Runs'
+    else if (statRaw) statRaw = titleCaseWords(statRaw)
+    const odds = americanOddsInputString(m[5])
+    const ou = side === 'under' ? 'Under' : 'Over'
+    const selection_label = [player, ou, String(lineNum), statRaw].filter(Boolean).join(' ')
+    legs.push({
+      market: 'prop',
+      side,
+      line: String(lineNum),
+      odds,
+      selection_label,
+      player_name: player,
+      prop_stat: statRaw,
+      home_team: '',
+      away_team: '',
+      event_label: '',
+      sport_key: /home\s*runs?|^hr$/i.test(statRaw) ? 'baseball_mlb' : '',
+      sport_label: /home\s*runs?|^hr$/i.test(statRaw) ? 'MLB' : '',
+      commence_time: '',
+      event_id: '',
+    })
+  }
+  return legs
+}
+
+/** Count legs that look like real picks (not blank "Leg 1" placeholders). */
+function countUsableParlayLegs(legs) {
+  const list = Array.isArray(legs) ? legs : []
+  return list.filter((leg) => {
+    const sel = String(leg?.selection_label || '').trim()
+    return sel && !/^leg\s*\d+$/i.test(sel)
+  }).length
+}
+
+/** True when legs are missing or only blank "Leg 1" placeholders. */
+function parlayLegsNeedHydrate(legs) {
+  return countUsableParlayLegs(legs) < 2
+}
+
+/**
+ * Fill parlay.legs from OCR text or AI notes when the structured array is empty/placeholder.
+ * Prefer the richest source (notes often list all legs when OCR only got 2).
+ */
+export function hydrateParlayLegsForDraft(draft, ocrText = '') {
+  if (!draft || typeof draft !== 'object') return draft
+  if (String(draft.market || '') !== 'parlay') return draft
+
+  const current = (Array.isArray(draft.legs) ? draft.legs : []).filter((leg) => {
+    const sel = String(leg?.selection_label || '').trim()
+    return sel && !/^leg\s*\d+$/i.test(sel)
+  })
+  const fromText = ocrText ? extractParlayLegs(ocrText) : []
+  const fromNotes = legsFromParlayNotes(draft.notes)
+
+  const candidates = [
+    { legs: current, n: countUsableParlayLegs(current) },
+    { legs: fromText, n: countUsableParlayLegs(fromText) },
+    { legs: fromNotes, n: countUsableParlayLegs(fromNotes) },
+  ]
+  candidates.sort((a, b) => b.n - a.n)
+  const best = candidates[0]
+  if (best.n >= 2) return { ...draft, legs: best.legs }
+  if (!parlayLegsNeedHydrate(draft.legs) && current.length) {
+    return { ...draft, legs: current }
+  }
+  return draft
+}
+
+/**
  * Drop terminal-id "events" and other poison so a Failed Fill still gets usable fields.
  */
 export function sanitizeSportsBetPartialDraft(draft) {
   if (!draft || typeof draft !== 'object') return null
-  const next = { ...draft }
+  let next = { ...draft }
   if (looksLikeTerminalMatchup(next.away_team, next.home_team, next.event_label)) {
     next.away_team = ''
     next.home_team = ''
@@ -1730,17 +1825,23 @@ export function sanitizeSportsBetPartialDraft(draft) {
       next.selection_label = ''
     }
   }
+  next = hydrateParlayLegsForDraft(next)
   return next
 }
 
-/** Merge partials left→right; later non-empty strings win. Arrays: prefer non-empty legs. */
+/** Merge partials left→right; later non-empty strings win. Legs: prefer more usable picks. */
 export function mergeSportsBetPartialDrafts(...parts) {
   const out = {}
   for (const part of parts) {
     if (!part || typeof part !== 'object') continue
     for (const [key, value] of Object.entries(part)) {
       if (key === 'legs') {
-        if (Array.isArray(value) && value.length) out.legs = value
+        if (!Array.isArray(value) || !value.length) continue
+        const nextN = countUsableParlayLegs(value)
+        const prevN = countUsableParlayLegs(out.legs)
+        if (nextN > prevN || (nextN === prevN && value.length >= (out.legs?.length || 0))) {
+          out.legs = value
+        }
         continue
       }
       if (value == null) continue

@@ -1225,6 +1225,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - **2026-10-14:** **Sports Hub pills by popularity (`1.4.1155`).** All slate sections + league buttons ordered NFL → NBA → MLB → NHL → Golf → CFB → MLS. No Edge.
 - **2026-10-14:** **Promoted `1.4.1154`** (FanDuel ALT prop parlays). Frontend **`test` → `main`** (`48e5a3e6`). No Edge.
 - **2026-10-14:** **Bet Tracker FanDuel ALT prop parlays (`1.4.1154`).** Settled multi-prop slips without per-leg odds / “Parlay” word → legs + TOTAL WAGER + odds from stake/payout + FanDuel book. BetMGM team parlays still pass. No Edge.
+- **2026-10-14:** **Bet Tracker AI notes → parlay legs (`1.4.1159`).** LLM `Parlay legs: …` in notes hydrates composer legs (prefer richest count vs OCR). Edge **`sports-bet-slip-parse`** schema/prompt for `legs[]` … **redeploy test**. Fixtures.
 - **2026-10-14:** **Promoted `1.4.1152`–`1.4.1153`** (label pick+odds spacing + settled drop Payout). Frontend **`test` → `main`** (`34ce114c`). No Edge.
 - **2026-10-14:** **Bet Tracker settled card drop Payout (`1.4.1153`).** Settled rows: Edit / Reopen / Delete only. Payout calculator stays under Tools. No Edge.
 - **2026-10-14:** **Bet Tracker label pick+odds spacing (`1.4.1152`).** Space between pick and odds; middot before stake/date. Soft-normalize older labels on display. No Edge.

@@ -37,6 +37,7 @@ import {
   extractSportsBetPartialFields,
   isWeakSportsBetDraft,
   looksLikeSideLessBet,
+  hydrateParlayLegsForDraft,
   mergeSportsBetPartialDrafts,
   parseEventMatchup,
   parseSportsBetCsv,
@@ -257,6 +258,9 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     label_manual: prefill.label_manual === true,
   }
   if (next.market === 'parlay') {
+    // AI often only puts legs in notes … hydrate before blank placeholders.
+    const hydrated = hydrateParlayLegsForDraft(next, prefill.ocrText || prefill.ocr_text || '')
+    next.legs = normalizeParlayLegs(hydrated.legs || [])
     if (next.legs.length < 2) next.legs = blankParlayLegs()
     next.side = ''
     next.home_team = ''
@@ -896,7 +900,10 @@ export default function SportsBetTracker({
             mimeType,
           })
           if (llm.draft) {
-            const cleaned = sanitizeSportsBetPartialDraft(llm.draft)
+            const cleaned = hydrateParlayLegsForDraft(
+              sanitizeSportsBetPartialDraft(llm.draft),
+              ocrText,
+            )
             partial = mergeSportsBetPartialDrafts(partial, cleaned)
             if (!isWeakSportsBetDraft(cleaned) && !llm.partial) {
               draft = cleaned
@@ -924,7 +931,7 @@ export default function SportsBetTracker({
             failReason: '',
             ocrText,
             draft: draftFromPrefill(
-              { ...draft, slip_preview_url: previewUrl, source: 'slip' },
+              { ...draft, ocrText, slip_preview_url: previewUrl, source: 'slip' },
               unitSize,
             ),
           })

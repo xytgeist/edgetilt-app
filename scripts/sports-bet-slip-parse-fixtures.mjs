@@ -1490,6 +1490,23 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 19 (Ryan yes): Fliff/ESPN Bout Betting UFC won … ODDS PRICE BET AMOUNT TOTAL PAYOUT
+    file: 'fliff-won-bout-betting-3.ocr.txt',
+    expect: {
+      legs: 3,
+      odds: 481,
+      stake_dollars: 25,
+      to_collect_dollars: 145.16,
+      to_win_dollars: 120.16,
+      status: 'won',
+      sport_label: 'UFC',
+      sport_key: 'mma_mixed_martial_arts',
+      leg0: 'Ridder',
+      leg_last: 'Rodrigues',
+      no_junk_sels: true,
+    },
+  },
+  {
     // Candidate 18 (Ryan yes): Fanatics WC Group Winner open … Wager/Payout/FCash, ignore Cash out
     file: 'fanatics-wc-group-11.ocr.txt',
     expect: {

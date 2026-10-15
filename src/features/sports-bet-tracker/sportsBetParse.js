@@ -545,6 +545,17 @@ function extractStakeDollars(text) {
     }
   }
 
+  // Fliff / ESPN BET style: "ODDS PRICE BET AMOUNT TOTAL PAYOUT" / "… MAX WIN"
+  // then "+481 $25.00 $145.16" (stake is first $ after American odds)
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/\bbet\s*amount\b/i.test(lines[i])) continue
+    const next = lines[i + 1] || ''
+    const m = /^[+-]\d{3,8}\s+\$?\s*([0-9,]+\.?\d*)(?:\s+\$?\s*[0-9,]+\.?\d*)?/.exec(next)
+    if (!m) continue
+    const n = parseMoneyAmount(m[1])
+    if (n != null && n > 0) return n
+  }
+
   // FanDuel settled: "$5.00" on the line above OR below "TOTAL WAGER"
   // Open My Bets footer: "$10.00 $2,129.55" then "TOTAL WAGER TOTAL PAYOUT" (stake is left $)
   for (let i = 0; i < lines.length; i += 1) {
@@ -801,6 +812,19 @@ export function detectSlipResult(text) {
   // Cashed tickets first … never reclassify as lost
   if (/\b(?:won\s+on\b|you\s*won\b|total\s*won\b|cashed\s*out\b)/i.test(raw)) return 'won'
 
+  // Fliff / ESPN BET settled: TOTAL PAYOUT + positive $ (Bout Betting / Parlay: N Legs)
+  if (
+    /\btotal\s*payout\b/i.test(raw)
+    && /\$\s*[1-9]/.test(raw)
+    && (
+      /\bbout\s*betting\b/i.test(raw)
+      || /\bparlay\s*:\s*\d+\s*legs?\b/i.test(raw)
+      || ((raw.match(/\bwon\b/gi) || []).length >= 2 && /\bparlay\b/i.test(raw))
+    )
+  ) {
+    return 'won'
+  }
+
   // Explicit loss copy (FanDuel / DK / Caesars / BetMGM / etc.)
   if (/\b(?:lost\s+on\b|you\s*lost\b|total\s*lost\b)/i.test(raw)) return 'lost'
   if (/\b(?:did\s*not\s*win|didn'?t\s*win|not\s*a\s*winner)\b/i.test(raw)) return 'lost'
@@ -949,6 +973,18 @@ function extractPayoutDollars(text) {
       const b = parseMoneyAmount(dual[2])
       if (b != null && b > 0 && (a == null || Math.abs(b - a) > 0.009)) return b
     }
+  }
+
+  // Fliff / ESPN BET: "ODDS PRICE BET AMOUNT TOTAL PAYOUT" / "… MAX WIN"
+  // then "+481 $25.00 $145.16" … right $ is collect / max win
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/\bbet\s*amount\b/i.test(lines[i])) continue
+    if (!/\b(?:total\s*payout|max\s*win|payout)\b/i.test(lines[i])) continue
+    const next = lines[i + 1] || ''
+    const m = /^[+-]\d{3,8}\s+\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)/.exec(next)
+    if (!m) continue
+    const n = parseMoneyAmount(m[2])
+    if (n != null && n > 0) return n
   }
 
   // Casino OCR: "TO COLLECT:" then "$9,735.00" on the next line
@@ -1764,6 +1800,10 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
   if (/\bfifa\b|\bworld\s*cup\b|\bgroup\s+[a-z]\s+winner\b/i.test(s)) {
     return { key: 'other', label: 'Soccer' }
   }
+  // Bout Betting (Fliff / ESPN BET UFC) before person-vs → Table Tennis
+  if (/\bbout\s*betting\b/i.test(s)) {
+    return sportByKey(SPORTS_BET_SPORT_UFC) || { key: SPORTS_BET_SPORT_UFC, label: 'UFC' }
+  }
   if (
     /\bpga\b|\bgolfers?\b|\bgolf\b/i.test(s)
     || /\btop\s*\d+\s*live\s*betting\b/i.test(s)
@@ -1854,6 +1894,7 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
     const teamish = (
       NFL_TEAM_HINT.test(s)
       || /\b(?:nfl|nba|mlb|nhl|cfb|ncaaf|mls|ufc|mma|boxing)\b/i.test(s)
+      || /\bbout\s*betting\b/i.test(s)
     )
     if (personVs.length >= 2 && !teamish) {
       return sportByKey(SPORTS_BET_SPORT_TABLE_TENNIS)
@@ -2358,6 +2399,17 @@ function extractTotalParlayOdds(text) {
       if (n != null) return n
     }
   }
+  // Fliff / ESPN BET: "ODDS PRICE BET AMOUNT TOTAL PAYOUT" then "+481 $25.00 $145.16"
+  {
+    const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+    for (let i = 0; i < lines.length; i += 1) {
+      if (!/\bodds\s*price\b/i.test(lines[i]) && !/\bbet\s*amount\b/i.test(lines[i])) continue
+      const m = /^([+-]\d{3,8})\s+\$/.exec(lines[i + 1] || '')
+      if (!m) continue
+      const n = americanOrNull(m[1])
+      if (n != null) return n
+    }
+  }
   const m = /total\s*odds\s*[:=]?\s*([+-]\d{3,8})/i.exec(raw)
     || /combined\s*(?:odds|price)\s*[:=]?\s*([+-]\d{3,8})/i.exec(raw)
     || /parlay\s*odds\s*[:=]?\s*([+-]\d{3,8})/i.exec(raw)
@@ -2749,6 +2801,8 @@ export function declaredParlayLegCount(text) {
   const raw = String(text || '')
   const m = /parlay\s+(\d+)\s*bets?\b/i.exec(raw)
     || /(\d+)\s*-?\s*legs?\s+pa[ryi]lay/i.exec(raw)
+    // Fliff / ESPN BET: "Parlay: 3 Legs"
+    || /parlay\s*:\s*(\d+)\s*legs?\b/i.exec(raw)
     || /parlay\s*\(\s*(\d+)\s*teams?\s*\)/i.exec(raw)
     || /(\d+)\s*picks?\s+pa[ry]lay/i.exec(raw)
     || /(\d+)\s*(?:pick\s+)?pa[ry]lay/i.exec(raw)
@@ -3084,6 +3138,71 @@ function extractFanDuelMyBetsLegs(text) {
 }
 
 /** BetRivers / SugarHouse UFC multiples: fighter + "A vs B" + bunched odds. */
+/**
+ * Fliff / ESPN BET: "Fighter A vs Fighter B" / "@ Pick Won" / "Bout Betting"
+ * Combined odds + money sit on "ODDS PRICE BET AMOUNT TOTAL PAYOUT" footer.
+ */
+function extractBoutBettingLegs(text) {
+  const raw = normalizeSlipOcrText(text)
+  if (!/\bbout\s*betting\b/i.test(raw)) return []
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const matchup = lines[i]
+    if (!/\bvs\.?\b/i.test(matchup)) continue
+    if (/parlay|odds\s*price|bet\s*amount|slip\s*id|total\s*payout/i.test(matchup)) continue
+    let pickLine = ''
+    let marketAt = -1
+    for (let j = i + 1; j < Math.min(i + 5, lines.length); j += 1) {
+      if (/^bout\s*betting\b/i.test(lines[j])) {
+        marketAt = j
+        break
+      }
+      if (/\bvs\.?\b/i.test(lines[j])) break
+      if (!pickLine && /[A-Za-z]/.test(lines[j])) pickLine = lines[j]
+    }
+    if (marketAt < 0 || !pickLine) continue
+    let status = 'open'
+    if (/\bwon\b/i.test(pickLine)) status = 'won'
+    else if (/\blost\b/i.test(pickLine)) status = 'lost'
+    let fighter = pickLine
+      .replace(/^[@©®™*&$~\s]+/, '')
+      .replace(/\b(?:won|lost|open)\b/gi, '')
+      .replace(/\s+[+-]\d{3,5}\s*$/, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    const oddsM = /\s+([+-]\d{3,5})\s*$/.exec(
+      pickLine.replace(/\b(?:won|lost|open)\b/gi, '').trim(),
+    )
+    const odds = oddsM ? americanOddsInputString(oddsM[1]) : ''
+    if (!fighter || fighter.length > 48 || !/^[A-Za-z]/.test(fighter)) continue
+    if (/^(bout|betting|parlay|odds|price|amount|payout|slip)\b/i.test(fighter)) continue
+    // Pick should be one of the names in the matchup
+    const fKey = normalizeNameKey(fighter)
+    const mKey = normalizeNameKey(matchup)
+    const last = fKey.split(' ').pop() || fKey
+    if (last.length >= 3 && !mKey.includes(last)) continue
+    if (seen.has(fKey)) continue
+    seen.add(fKey)
+    pending.push({
+      ...emptyLegStub({
+        market: 'h2h',
+        odds,
+        selection_label: `${titleCaseWords(fighter)} ML`,
+        event_label: matchup.replace(/\s+/g, ' ').trim(),
+        sport_key: SPORTS_BET_SPORT_UFC,
+        sport_label: 'UFC',
+      }),
+      status,
+    })
+  }
+  // Settled Bout Betting often omits per-leg juice … keep legs without odds
+  const zipped = zipBunchedAmericanOdds(pending, text)
+  return zipped.length >= 2 ? zipped : (pending.length >= 2 ? pending : [])
+}
+
 function extractUfcFighterParlayLegs(text) {
   const raw = normalizeSlipOcrText(text)
   if (!/parlay\s*\(\d+\s*picks?\)|multiples/i.test(raw)) return []
@@ -3685,6 +3804,10 @@ export function extractParlayLegs(text) {
 
   const fdMine = extractFanDuelMyBetsLegs(text)
   if (fdMine.length >= 2) return fdMine
+
+  // Bout Betting (Fliff / ESPN BET) before BetRivers Multiples UFC shape
+  const bout = extractBoutBettingLegs(text)
+  if (bout.length >= 2) return bout
 
   const ufc = extractUfcFighterParlayLegs(text)
   if (ufc.length >= 2) return ufc

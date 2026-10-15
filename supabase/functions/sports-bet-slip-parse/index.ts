@@ -345,6 +345,7 @@ Rules:
 - FanDuel "Uruguay" + "MONEYLINE (3-WAY)" (or any national + 3-way): selection_label="Uruguay ML (3-way)". MLB club + soccer 3-way/national in one parlay → leave sport blank. "2 leg parlay +391" is combined odds. Extract ONLY the top ticket when a second WON ON card follows.
 - FanDuel dual "$5.00 $3.14" + "TOTAL WAGER CASHED OUT": left=stake, right=cashout (even when cashout < stake). status=won, to_win may be negative. ANY TIME TOUCHDOWN SCORER legs → ATD + NFL; Notes for declared N when crop is short.
 - Fanatics My Bets "Wager Payout FCash" then "$65.00 $4,899.35 $4.35": left=stake, middle=to_collect (ignore FCash and Cash out $). "Team ±odds" + "Group K Winner" / FIFA World Cup → legs like "Portugal Group K Winner", sport Soccer. Collapsed 11-leg: visible Group Winner legs + notes="Parlay picks (11): …"; do not invent missing groups.
+- Fliff/ESPN "Parlay: 3 Legs" + "Bout Betting" under fighter vs matchups: market=parlay, sport UFC (not Table Tennis). "ODDS PRICE BET AMOUNT TOTAL PAYOUT" then "+481 $25.00 $145.16" → odds/stake/to_collect, status=won. Legs like "Reinier De Ridder ML" from "@ Pick Won" rows.
 - Player props like "Over 0.5 (Matt Olson) / MATT OLSON HOME RUNS / +360" → leg market=prop, side=over, line=0.5, player_name, prop_stat=Home Runs, odds=+360
 - If unsure, still fill best effort; use market=other and side="" rather than inventing a fighter/team side`
 

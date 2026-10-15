@@ -810,7 +810,15 @@ export function detectSlipResult(text) {
   if (!raw.trim()) return 'open'
 
   // Cashed tickets first … never reclassify as lost
-  if (/\b(?:won\s+on\b|you\s*won\b|total\s*won\b|cashed\s*out\b)/i.test(raw)) return 'won'
+  // Ignore open-slip disclaimers: "If the bet is cashed out the boost will be canceled"
+  if (/\b(?:won\s+on\b|you\s*won\b|total\s*won\b)/i.test(raw)) return 'won'
+  if (
+    /\bcashed\s*out\b/i.test(raw)
+    && !/\bif\s+the\s+bet\s+is\s+cashed\s*out\b/i.test(raw)
+    && !/\bcash(?:ed)?\s*out\s+(?:the\s+)?boost\s+will\b/i.test(raw)
+  ) {
+    return 'won'
+  }
 
   // Fliff / ESPN BET settled: TOTAL PAYOUT + positive $ (Bout Betting / Parlay: N Legs)
   if (
@@ -933,6 +941,8 @@ function extractPayoutDollars(text) {
     /\b(?:you\s*won|total\s*won)\b(?:\s+[A-Za-z.]+)*\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     // DK My Bets: "Wager: $2.94 Paid: $3.45"
     /\bpaid\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+    // Open SGPx: "Wager: $25.00 | To Pay: $1,461.25"
+    /\bto\s*pay\s*[:=|]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /(?:potential\s*payout|max\s*payout|max\s*pay|to\s*collect|est\.?\s*\/?\s*payout|total\s*payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /(?:payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
   ]
@@ -1323,6 +1333,15 @@ function extractFanDuelSgpLegs(text) {
   if (!/\bsgp\b|same\s*game\s*parlay/i.test(raw)) return []
   // Settled dual-SGP / My Bets use extractFanDuelMyBetsLegs
   if (/(?:my\s*bets|won\s+on\s+fanduel|total\s*wager)/i.test(raw) && !/parlay\s*selections/i.test(raw)) {
+    return []
+  }
+  // DK open SGPx: nested "2 Pick SGP" + Anytime TD Scorer + To Pay … not FanDuel PARLAY SELECTIONS
+  // (otherwise Moneyline-only steals the ticket before extractNestedSgpAtdMlLegs)
+  if (
+    /\banytime\s*td\s*scorer\b/i.test(raw)
+    && /\d+\s*picks?\s*sgp\b/i.test(raw)
+    && !/parlay\s*selections/i.test(raw)
+  ) {
     return []
   }
   const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
@@ -2382,6 +2401,15 @@ function extractTotalParlayOdds(text) {
       const a = americanOrNull(boost[1])
       const b = americanOrNull(boost[2])
       if (a != null && b != null) return Math.abs(b) >= Math.abs(a) ? b : a
+    }
+  }
+  // SGPx header: "4 Pick Parlay | +2872 +5745 Open" (struck + boosted) … not nested "2 Pick SGP | +625"
+  {
+    const dual = /(?:^|\n)\s*\d+\s*picks?\s+pa[ry]lay[^\n]*?([+-]\d{3,5})\s+([+-]\d{3,5})\b/i.exec(raw)
+    if (dual) {
+      const a = americanOrNull(dual[1])
+      const b = americanOrNull(dual[2])
+      if (a != null && b != null && a > 0 && b > 0) return Math.max(a, b)
     }
   }
   // FanDuel open betslip: "3 Leg Parlay +584" on one line (ticket total, not a leg)
@@ -3568,6 +3596,84 @@ function extractParlayPickSummaryNotes(text) {
 }
 
 /**
+ * Open SGPx: nested "2 Pick SGP | +625" chrome + player / Anytime TD Scorer + team / Moneyline
+ * (no per-leg juice on open receipts).
+ */
+function extractNestedSgpAtdMlLegs(text) {
+  const raw = normalizeSlipOcrText(text)
+  if (!/\banytime\s*td\s*scorer\b|\bany\s*time\s*td\s*scorer\b/i.test(raw)) return []
+  if (!/\bmoneyline\b|\bmoney\s*line\b/i.test(raw)) return []
+  if (!/\b(?:\d+\s*picks?\s*sgp|sgpx|2\s*pick\s*sgp)\b/i.test(raw) && !/\bto\s*pay\b/i.test(raw)) {
+    return []
+  }
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    // Skip nested SGP chrome headers (not legs)
+    if (/^\d+\s*picks?\s*sgp\b/i.test(lines[i])) continue
+    if (/^sgpx?\b/i.test(lines[i])) continue
+
+    const marketLine = lines[i + 1] || ''
+    const nameLine = lines[i].replace(/^[\s(©®™*&$@~•·→|=<_Oo0]+/, '').trim()
+
+    if (/\banytime\s*td\s*scorer\b|\bany\s*time\s*td\s*scorer\b/i.test(marketLine)) {
+      const player = nameLine
+        .replace(/\s+[+-]\d{3,5}\s*$/, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+      if (!player || player.length > 40 || !/^[A-Za-z]/.test(player)) continue
+      if (/^(wager|paid|to\s*pay|parlay|pick|sgp|rams|patriots|moneyline)\b/i.test(player)) continue
+      const selection_label = `${titleCaseWords(player)} ATD`
+      const key = normalizeNameKey(selection_label)
+      if (seen.has(key)) continue
+      seen.add(key)
+      pending.push(emptyLegStub({
+        market: 'prop',
+        side: 'over',
+        line: '0.5',
+        selection_label,
+        player_name: titleCaseWords(player),
+        prop_stat: 'Anytime TD',
+        sport_key: 'americanfootball_nfl',
+        sport_label: 'NFL',
+      }))
+      continue
+    }
+
+    if (/^(?:moneyline|money\s*line)\b/i.test(marketLine) || /\bmoneyline\b/i.test(marketLine)) {
+      let team = nameLine
+        .replace(/^[\s(©®™*&$@~•·→|=<_Oo0]+/, '')
+        .replace(/^<?[a-z]{1,3}\s+/, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+      // Keep "LA Rams" / "NE Patriots"; drop OCR crumbs before the team
+      const teamish = /\b((?:[A-Z]{2,3}\s+)?[A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s*$/.exec(team)
+      if (teamish) team = teamish[1].trim()
+      if (!team || team.length > 40 || !/^[A-Za-z]/.test(team)) continue
+      if (/^(wager|paid|to\s*pay|parlay|pick|sgp|anytime|scorer|moneyline)\b/i.test(team)) continue
+      const abbr = /^(la|ne|kc|sf|tb|gb|lv|ny|no|se|den|lar|nea)\s+(.+)$/i.exec(team)
+      const teamLabel = abbr
+        ? `${abbr[1].toUpperCase()} ${titleCaseWords(abbr[2])}`
+        : titleCaseWords(team)
+      const selection_label = `${teamLabel} ML`
+      const key = normalizeNameKey(selection_label)
+      if (seen.has(key)) continue
+      seen.add(key)
+      pending.push(emptyLegStub({
+        market: 'h2h',
+        selection_label,
+        sport_key: 'americanfootball_nfl',
+        sport_label: 'NFL',
+      }))
+    }
+  }
+
+  return pending.length >= 2 ? pending : []
+}
+
+/**
  * DK Anytime TD Scorer: "JONATHAN TAYLOR -175" + "Anytime TD Scorer"
  */
 function extractDkAnytimeTdScorerLegs(text) {
@@ -3814,6 +3920,10 @@ export function extractParlayLegs(text) {
 
   const decimalLegs = extractDecimalOddsParlayLegs(text)
   if (decimalLegs.length >= 2) return decimalLegs
+
+  // Open SGPx ATD + Moneyline before generic ML-only (else Rams/Patriots steal the ticket)
+  const nestedSgp = extractNestedSgpAtdMlLegs(text)
+  if (nestedSgp.length >= 2) return nestedSgp
 
   // Caesars retail "Money Line" (two words) with juices between team+market … beat spreadTot.
   // Require the space so FanDuel/DK "Moneyline" open slips stay on spreadTot.

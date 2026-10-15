@@ -1490,6 +1490,22 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 20 (Ryan yes): open SGPx … Wager|To Pay, boosted dual odds, nested 2 Pick SGP ATD+ML
+    file: 'dk-open-sgpx-to-pay-4.ocr.txt',
+    expect: {
+      legs: 4,
+      odds: 5745,
+      stake_dollars: 25,
+      to_collect_dollars: 1461.25,
+      to_win_dollars: 1436.25,
+      status: 'open',
+      sport_label: 'NFL',
+      leg0: 'Parkinson',
+      leg_last: 'Patriots',
+      no_junk_sels: true,
+    },
+  },
+  {
     // Candidate 19 (Ryan yes): Fliff/ESPN Bout Betting UFC won … ODDS PRICE BET AMOUNT TOTAL PAYOUT
     file: 'fliff-won-bout-betting-3.ocr.txt',
     expect: {

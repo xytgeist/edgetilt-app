@@ -244,6 +244,8 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 
 **Web `1.4.1175`.** Hydrate backfills Combined odds from printed `N Leg Parlay +odds` (or chrome leg juice) when Edge leaves odds blank. Fixtures **71/71**. **Promoted** `main` @ `d4c2828d`.
 
+**Web `1.4.1176`.** Batch harden candidate 1: FanDuel My Bets open 9-leg MLB ML … dual `$stake $payout` / TOTAL WAGER TOTAL PAYOUT; pick-line juice `Team -120` + MONEYLINE; Reuse selections → book. Fixture **fd-open-mlb-ml-9**. Fixtures **72/72**. No promote this turn.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.
 

@@ -463,6 +463,8 @@ function extractBook(text) {
   for (const { re, name } of BOOK_PATTERNS) {
     if (re.test(s)) return name
   }
+  // FanDuel My Bets chrome when logo OCR is missing
+  if (/\breuse\s*selections\b/i.test(s) || /\bwon\s+on\s+fanduel\b/i.test(s)) return 'FanDuel'
   return ''
 }
 
@@ -506,9 +508,16 @@ function extractStakeDollars(text) {
   }
 
   // FanDuel settled: "$5.00" on the line above OR below "TOTAL WAGER"
+  // Open My Bets footer: "$10.00 $2,129.55" then "TOTAL WAGER TOTAL PAYOUT" (stake is left $)
   for (let i = 0; i < lines.length; i += 1) {
-    if (!/^total\s*wager\b/i.test(lines[i])) continue
+    if (!/\btotal\s*wager\b/i.test(lines[i])) continue
     for (const candidate of [lines[i - 1] || '', lines[i + 1] || '']) {
+      const dual = /^\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
+      if (dual) {
+        const a = parseMoneyAmount(dual[1])
+        const b = parseMoneyAmount(dual[2])
+        if (a != null && a > 0 && b != null && b > 0) return Math.min(a, b)
+      }
       const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
       if (!m) continue
       const n = parseMoneyAmount(m[1])
@@ -872,6 +881,23 @@ function extractPayoutDollars(text) {
   // Caesars: labels then dates/juices then bunched $ amounts … take max as collect
   const footer = extractCasinoFooterMoney(text)
   if (footer?.collect != null && footer.collect > 0) return footer.collect
+
+  // FanDuel open My Bets: "$10.00 $2,129.55" / "TOTAL WAGER TOTAL PAYOUT" (payout is right $)
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/\btotal\s*payout\b/i.test(lines[i])) continue
+    for (const candidate of [lines[i - 1] || '', lines[i + 1] || '']) {
+      const dual = /^\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
+      if (dual) {
+        const a = parseMoneyAmount(dual[1])
+        const b = parseMoneyAmount(dual[2])
+        if (a != null && a > 0 && b != null && b > 0) return Math.max(a, b)
+      }
+      const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
+      if (!m) continue
+      const n = parseMoneyAmount(m[1])
+      if (n != null && n > 0) return n
+    }
+  }
 
   // "$611.82" above OR below "WON ON FANDUEL" … never steal TOTAL WAGER $ as the win
   for (let i = 0; i < lines.length; i += 1) {
@@ -2685,10 +2711,15 @@ function extractFanDuelMyBetsLegs(text) {
   }
 
   for (let i = 0; i < lines.length; i += 1) {
-    const market = lines[i + 1] || ''
-    const sel = lines[i]
-    if (!sel || sel.length > 60) continue
+    const marketRaw = lines[i + 1] || ''
+    const market = marketRaw.replace(/^[^A-Za-z]+/, '').trim()
+    const selRaw = lines[i]
+    // Strip leading icon OCR junk: "(©)", "&", "$", "In "
+    const sel = String(selRaw || '').replace(/^[\s(©®™*&$@~•·→xX]+/, '').trim()
+    if (!sel || sel.length > 80) continue
     if (/^(my\s*bets|active|settled|saved|fanduel|panduel|draw\s*moneyline|\d+\s*leg|sgp|same\s*game)/i.test(sel)) continue
+    // Collapsed header: "Cubs Moneyline, Braves Moneyline, …"
+    if (/moneyline.*,.*moneyline/i.test(sel)) continue
     if (bareAmericanOddsLine(sel) || /^finished$|^live$/i.test(sel)) continue
     if (/^\d/.test(sel) && !/^(1st|2nd|\d+\+)/i.test(sel)) continue
     if (legSelectionLooksJunk(sel)) continue
@@ -2696,12 +2727,13 @@ function extractFanDuelMyBetsLegs(text) {
     const ou = /^(?:1st\s*half\s+)?(over|under)\s+(\d+(?:\.\d+)?)\s*goals?\s*$/i.exec(sel)
       || /^(?:1st\s*half\s+)?(over|under)\s+(\d+(?:\.\d+)?)\s*$/i.exec(sel)
     const spreadSel = altPickRe.exec(sel)
-    const marketOk = marketRe.test(market) || ((ou || spreadSel) && marketFuzzy.test(market))
+    const marketOk = marketRe.test(market) || ((ou || spreadSel) && marketFuzzy.test(marketRaw))
     if (!marketOk) continue
 
     let marketKind = 'h2h'
     let side = ''
     let line = ''
+    let odds = ''
     let selection_label = titleCaseWords(sel)
     if (ou) {
       marketKind = 'total'
@@ -2729,7 +2761,14 @@ function extractFanDuelMyBetsLegs(text) {
       selection_label = `${titleCaseWords(sel)} ATD`
     } else if (/moneyline/i.test(market)) {
       marketKind = 'h2h'
-      selection_label = `${titleCaseWords(sel)} ML`
+      // Open My Bets: "Chicago Cubs -120" / MONEYLINE (juice on the pick line)
+      const withJuice = /^(.+?)\s+([+-]\d{3,6})\s*$/.exec(sel)
+      if (withJuice && Math.abs(Number(withJuice[2])) >= 100) {
+        selection_label = `${titleCaseWords(withJuice[1].trim())} ML`
+        odds = americanOddsInputString(withJuice[2]) || withJuice[2]
+      } else {
+        selection_label = `${titleCaseWords(sel)} ML`
+      }
     } else if (/^spread$/i.test(market) && !/[+-]\d/.test(sel)) {
       marketKind = 'spread'
       selection_label = titleCaseWords(sel)
@@ -2739,6 +2778,7 @@ function extractFanDuelMyBetsLegs(text) {
       market: marketKind,
       side,
       line,
+      odds,
       selection_label,
     }))
   }

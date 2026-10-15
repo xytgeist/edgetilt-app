@@ -1224,6 +1224,23 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 1 (Ryan yes): FanDuel My Bets open 9-leg MLB ML
+    file: 'fd-open-mlb-ml-9.ocr.txt',
+    expect: {
+      legs: 9,
+      odds: 21195,
+      stake_dollars: 10,
+      to_win_dollars: 2119.55,
+      to_collect_dollars: 2129.55,
+      status: 'open',
+      book: 'FanDuel',
+      leg0: 'Cubs',
+      leg_last: 'Dodgers',
+      leg_odds: [-120, -172, 106, -194, -142, -102, -126, 112, -120],
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

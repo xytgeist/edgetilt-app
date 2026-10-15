@@ -1215,6 +1215,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-14:** **Promoted `1.4.1151`** (Bet Tracker delete progress). Frontend **`test` → `main`** (`7b813c2f`). No Edge.
 - **2026-10-14:** **Bet Tracker delete progress (`1.4.1151`).** Card-local spinner + “Deleting…” while delete is in flight. No Edge.
 - **2026-10-14:** **Promoted `1.4.1150`** (Bet Tracker auto-grade honesty + progress). Frontend **`test` → `main`** (`1d530787`). Edge **`sports-bets-grade`** + **`lounge-odds-poll`** on **prod**.
 - **2026-10-14:** **Bet Tracker auto-grade honesty + progress (`1.4.1150`).** Boxing not auto-gradeable; UFC/MMA h2h only. Stale open chip **No final matched yet**. Progress overlay on photo/save/import/grade. Edge **`sports-bets-grade`** helper aligned (redeploy test; prod on promote).

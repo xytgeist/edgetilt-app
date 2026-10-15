@@ -772,8 +772,10 @@ export function detectSlipResult(text) {
   if (/\b(?:lost\s+on\b|you\s*lost\b|total\s*lost\b)/i.test(raw)) return 'lost'
   if (/\b(?:did\s*not\s*win|didn'?t\s*win|not\s*a\s*winner)\b/i.test(raw)) return 'lost'
   if (/\b(?:bet\s*lost|ticket\s*lost|wager\s*lost)\b/i.test(raw)) return 'lost'
-  // BetMGM: "Multi Bet • 11 picks LOST" (badge glued to header)
+  // BetMGM: "Multi Bet • 11 picks LOST" / DK: "2 PICKS PARLAY +242 LOST" (badge glued)
   if (/\b(?:multi\s*bet|\d+\s*picks?)\b[^\n]*\blost\b/i.test(raw)) return 'lost'
+  if (/\b(?:\d+\s*picks?\s+parlay|sgp|same\s*game\s*parlay)\b[^\n]*\blost\b/i.test(raw)) return 'lost'
+  if (/\blost\b[^\n]*\b(?:\d+\s*picks?\s+parlay|wager\s*:)/i.test(raw)) return 'lost'
   // Standalone LOST / Loss badge on its own line (My Bets settled)
   if (/(?:^|\n)\s*(?:lost|loss)\s*(?:\n|$)/i.test(raw)) return 'lost'
   // Standalone WON badge, or glued "2 PICKS PARLAY +311 WON" (DK My Bets)
@@ -1715,6 +1717,19 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
     || (/\b[A-Z]\.\s*[A-Za-z]+\s+vs\.?\s+[A-Z]\.\s*[A-Za-z]+\b/.test(s) && !/\bufc\b|\bmma\b/i.test(s))
   ) {
     return sportByKey(SPORTS_BET_SPORT_BOXING) || { key: SPORTS_BET_SPORT_BOXING, label: 'Boxing' }
+  }
+  // DK My Bets: "Mario Barrios / Canelo Alvarez" + "Winner" markets (no Boxing keyword printed)
+  {
+    const winnerHits = (s.match(/(?:^|\n)\s*winner\s*(?:\n|$)/gi) || []).length
+    const teamish = (
+      NFL_TEAM_HINT.test(s)
+      || /\b(?:nfl|nba|mlb|nhl|cfb|ncaaf|mls|ufc|mma|golf|pga)\b/i.test(s)
+      || /\b(?:lakers|dodgers|yankees|chiefs|cowboys|celtics|braves|lightning)\b/i.test(s)
+      || /\([^\n]*winner\)/i.test(s) // Hollywood "ATL Braves (Winner)"
+    )
+    if (winnerHits >= 2 && !teamish && !/\bufc\b|\bmma\b/i.test(s)) {
+      return sportByKey(SPORTS_BET_SPORT_BOXING) || { key: SPORTS_BET_SPORT_BOXING, label: 'Boxing' }
+    }
   }
   if (/\btable\s*tennis\b|\bittf\b|\btt\s*elite\b|\bchallenger\s*tt\b/i.test(s)) {
     return sportByKey(SPORTS_BET_SPORT_TABLE_TENNIS)
@@ -3064,6 +3079,75 @@ function extractDecimalOddsParlayLegs(text) {
   return legs
 }
 
+/**
+ * DK My Bets boxing: "MARIO BARRIOS" / "+185" / "Winner" (or "CANELO ALVAREZ -500" + Winner).
+ * Not Hollywood "ATL Braves (Winner)" team futures.
+ */
+function extractDkFighterWinnerLegs(text) {
+  const raw = normalizeSlipOcrText(text)
+  if (!/\bwinner\b/i.test(raw)) return []
+  if (!/\d+\s*picks?\s+parlay|\bparlay\b/i.test(raw)) return []
+  // Team futures use "(Winner)" beside a club nickname
+  if (/\([^\n]*\bwinner\b[^\n]*\)/i.test(raw)) return []
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i].replace(/^[\s(©®™*&$@~•·→]+/, '').trim()
+    const inline = /^([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s+([+-]\d{3,5})\s*$/.exec(line)
+    const nameOnly = !inline
+      && /^([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s*$/.exec(line)
+    if (!inline && !nameOnly) continue
+    const fighter = titleCaseWords((inline || nameOnly)[1])
+    if (/^(wager|paid|result|hide|draft|my|open|settled|final|score|winner|loser)\b/i.test(fighter)) continue
+
+    let odds = inline ? (americanOddsInputString(inline[2]) || inline[2]) : ''
+    let hasWinner = false
+    for (let j = i + 1; j < Math.min(i + 4, lines.length); j += 1) {
+      const next = lines[j]
+      if (/^winner\s*$/i.test(next)) {
+        hasWinner = true
+        continue
+      }
+      if (!odds) {
+        const o = bareAmericanOddsLine(next)
+        if (o) {
+          odds = o
+          continue
+        }
+      }
+      if (/^(result|final\s*score|hide\s*legs|wager\s*:|paid\s*:)/i.test(next)) break
+      if (
+        /^[A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3}\s*$/.test(next)
+        && !/^winner$/i.test(next)
+      ) {
+        break
+      }
+    }
+    if (!hasWinner) continue
+    const key = normalizeNameKey(fighter)
+    if (seen.has(key)) continue
+    seen.add(key)
+    pending.push(emptyLegStub({
+      market: 'h2h',
+      odds,
+      selection_label: `${fighter} Winner`,
+      player_name: fighter,
+      prop_stat: 'Winner',
+      sport_key: SPORTS_BET_SPORT_BOXING,
+      sport_label: 'Boxing',
+    }))
+  }
+
+  if (pending.length < 2) return []
+  const zipped = zipBunchedAmericanOdds(pending, text, { skipTicketTotal: true })
+  if (extractTotalParlayOdds(text) != null) {
+    return zipped.length >= 2 ? zipped : pending
+  }
+  return zipped.filter((l) => l.odds)
+}
+
 /** Futures: "ATL Braves (Winner)" + odds (Hollywood / championship slips). */
 function extractFuturesWinnerLegs(text) {
   const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
@@ -3133,14 +3217,18 @@ function extractParlayPickSummaryNotes(text) {
     }
     // DK SGPx summary: "2 Picks SGP, 2 Picks SGP" … not a player name list
     if (/^(\d+\s*picks?\s*sgp\s*,?\s*)+$/i.test(line.trim())) continue
-    if (/^(wager|paid|risk|stake|total\s*wager|total\s*odds|hide\s*legs|show\s*legs|bet\s*id|reuse\s*selections|details)\b/i.test(line)) break
+    if (/^(wager|paid|risk|stake|total\s*wager|total\s*odds|hide\s*legs|show\s*legs|bet\s*id|reuse\s*selections|details|winner)\b/i.test(line)) break
     if (/^\$?\s*[\d,]+\.?\d*\s+[+-]\d{3,8}\b/.test(line)) break
     if (/^\$?\s*[\d,]+\.?\d*\s+\$?\s*[\d,]+\.?\d*\s*$/.test(line)) break
     if (/^[A-Za-z].+\s+[+-]\d{2,5}\s*$/.test(line)) break
     if (/anytime\s*td|spread|top\s*\d+/i.test(line) && !/,/.test(line) && !/\|/.test(line)) break
+    // After a comma name list, stop before expanded ALL-CAPS fighter/team rows
+    if (parts.length && /^[A-Z][A-Z.'\-]+(?:\s+[A-Z][A-Z.'\-]+){0,3}$/.test(line) && !/,/.test(line)) break
     // Collapsed FD list: "Lakers Moneyline, Dodgers…" / BetMGM: "T. Schoolkate | M. Purcell | …"
     if (/[A-Za-z]/.test(line) && (/,/.test(line) || /\|/.test(line) || /moneyline/i.test(line) || parts.length > 0)) {
       parts.push(line.replace(/,+\s*$/, '').replace(/\.\.\.$/, '').trim())
+      // One solid comma list is enough (DK "Mario Barrios, Canelo Alvarez")
+      if (/,/.test(line) && (line.match(/,/g) || []).length >= 1) break
       continue
     }
     if (parts.length) break
@@ -3435,6 +3523,10 @@ export function extractParlayLegs(text) {
 
   const golfTop = extractGolfTopFinishLegs(text)
   if (golfTop.length >= 2) return golfTop
+
+  // DK boxing fighter Winner before Hollywood team "(Winner)" futures
+  const fightWin = extractDkFighterWinnerLegs(text)
+  if (fightWin.length >= 2) return fightWin
 
   const futures = extractFuturesWinnerLegs(text)
   if (futures.length >= 2) return futures

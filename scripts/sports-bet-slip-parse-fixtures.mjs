@@ -1398,6 +1398,25 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 12 (Ryan yes): DK 2-pick boxing LOST … Winner legs + Boxing sport
+    file: 'dk-lost-boxing-2pick.ocr.txt',
+    expect: {
+      legs: 2,
+      odds: 242,
+      stake_dollars: 50,
+      to_collect_dollars: 0,
+      to_win_dollars: 0,
+      status: 'lost',
+      book: 'DraftKings',
+      sport_label: 'Boxing',
+      sport_key: 'boxing_boxing',
+      leg0: 'Barrios',
+      leg_last: 'Alvarez',
+      notes_includes: 'Parlay picks (2):',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

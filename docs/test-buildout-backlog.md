@@ -1215,6 +1215,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-15:** **Offers mailer expand discrete session days (`process-offer-uploads`).** "Dec 10 & 11" / short timed tournament ranges → one event per day (fixes Android dropping Dec 11 while iOS got all three). Redeploy Edge test + prod.
 - **2026-10-15:** **Promoted `1.4.1197`** (Offers year inference + Bet Tracker OCR batch). Frontend **`test` → `main`** (`7e50f352e`). Edge **`process-offer-uploads`** + **`sports-bet-slip-parse`** redeployed **test + prod**. No new SQL.
 - **2026-10-15:** **Offers mailer year inference (`process-offer-uploads`).** Flyers with month/day but no year: prompt must still emit `start_at`; server picks nearest upcoming year (this year if that M/D is today-or-later, else next… Nov→Jan). Redeploy Edge on the env you smoke. Not a client bump.
 - **2026-10-15:** **Android ML Kit W-2G Take photo PASSED (Ryan).** APK **1.3.20** / vc **24**. Offers calendar/mailer Take photo in progress; bet-slip OCR still owed.

@@ -8,6 +8,8 @@ Supabase Edge Function that processes queued image uploads, uses OpenAI vision t
 
 When a flyer shows month/day but no 4-digit year, the model should still emit `start_at`, and the function rewrites the year to the **nearest upcoming** occurrence (this year if that month/day is still today-or-later, otherwise next year… e.g. November → January). Explicit years on the flyer are left alone.
 
+Discrete same-session days (`DECEMBER 10 & 11`, short timed/tournament ranges) are expanded server-side into **one event per calendar day** so vision cannot quietly drop the middle day.
+
 ## Required secrets
 
 Set these in your Supabase project before deploying:

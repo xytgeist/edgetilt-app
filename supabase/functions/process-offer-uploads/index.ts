@@ -241,8 +241,9 @@ Return strict JSON (no markdown, no prose) with this shape:
 }
 
 Rules:
-- Return one event object per distinct offer/date range from the image.
-- For calendar-style mailers, expand repeated dates/ranges into separate event objects.
+- Return one event object per distinct offer session day from the image.
+- Discrete days for the same session (examples: "DECEMBER 10 & 11", "Dec 10 and 11", "Dec 10-11" with the same registration/start times each day) MUST be separate event objects — one per calendar day with the same times. Do not collapse those into a single multi-day start_at/end_at range, and do not skip the middle day.
+- Continuous hotel/stay ranges without per-day session times may stay as one event with start_at and end_at.
 - Use local date text from the flyer. When month and day are visible but no 4-digit year, still set start_at/end_at with a provisional ISO year (prefer the nearest upcoming occurrence of that month/day within about one year). Never leave start_at null only because the year is missing ... set has_explicit_year false and you may add a short warning.
 - Only leave start_at null when the flyer does not show a usable month/day (or clearer date). For other uncertain fields, keep them null and add a warning.
 - confidence should reflect how complete and reliable the extraction is.
@@ -447,6 +448,158 @@ function applyInferredUpcomingYear(offer: ParsedOffer): ParsedOffer {
   }
 }
 
+const MONTH_NAME_TO_NUM: Record<string, number> = {
+  jan: 1,
+  january: 1,
+  feb: 2,
+  february: 2,
+  mar: 3,
+  march: 3,
+  apr: 4,
+  april: 4,
+  may: 5,
+  jun: 6,
+  june: 6,
+  jul: 7,
+  july: 7,
+  aug: 8,
+  august: 8,
+  sep: 9,
+  sept: 9,
+  september: 9,
+  oct: 10,
+  october: 10,
+  nov: 11,
+  november: 11,
+  dec: 12,
+  december: 12
+}
+
+function utcDayStamp(date: Date): number {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+}
+
+function cloneOfferOnUtcDay(offer: ParsedOffer, year: number, month: number, day: number): ParsedOffer {
+  const start = offer.start_at ? new Date(offer.start_at) : new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+  const dayStart = new Date(start)
+  dayStart.setUTCFullYear(year, month - 1, day)
+  return {
+    ...offer,
+    start_at: dayStart.toISOString(),
+    end_at: null
+  }
+}
+
+/**
+ * "DECEMBER 10 & 11" (or "10 and 11") in title/notes with only one structured day → emit both days.
+ */
+function expandAmpersandListedDays(offer: ParsedOffer): ParsedOffer[] {
+  if (!offer.start_at) return [offer]
+  const blob = [offer.title, offer.notes].filter(Boolean).join(' ')
+  if (!blob) return [offer]
+  const match = blob.match(
+    /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})\s*(?:&|and)\s+(\d{1,2})\b/i
+  )
+  if (!match) return [offer]
+  const month = MONTH_NAME_TO_NUM[match[1].toLowerCase()]
+  const dayA = Number(match[2])
+  const dayB = Number(match[3])
+  if (!month || !Number.isFinite(dayA) || !Number.isFinite(dayB) || dayA === dayB) return [offer]
+  if (dayA < 1 || dayA > 31 || dayB < 1 || dayB > 31) return [offer]
+
+  const start = new Date(offer.start_at)
+  if (Number.isNaN(start.getTime())) return [offer]
+  const year = start.getUTCFullYear()
+  const startDay = start.getUTCDate()
+  const startMonth = start.getUTCMonth() + 1
+  // Only expand when the structured start is one of the listed days in that month.
+  if (startMonth !== month || (startDay !== dayA && startDay !== dayB)) return [offer]
+
+  const first = Math.min(dayA, dayB)
+  const second = Math.max(dayA, dayB)
+  // Guard: only adjacent or near pairs (same weekend block), not wild spans.
+  if (second - first > 3) return [offer]
+
+  const days: number[] = []
+  for (let d = first; d <= second; d++) days.push(d)
+  if (days.length < 2) return [offer]
+
+  return days.map((d, idx) => ({
+    ...cloneOfferOnUtcDay(offer, year, month, d),
+    warnings: [
+      ...((offer.warnings || []).filter((w) => !/expand/i.test(String(w)))),
+      ...(idx === 0 ? [`Expanded "${match[0]}" into one event per day.`] : [])
+    ]
+  }))
+}
+
+/**
+ * Model collapsed a short multi-day session into start_at..end_at → one event per calendar day.
+ * Timed sessions and tournament/drawing blocks only (hotel stays stay as ranges).
+ */
+function expandMultiDaySessionRange(offer: ParsedOffer): ParsedOffer[] {
+  if (!offer.start_at || !offer.end_at) return [offer]
+  const allow =
+    offer.has_specific_time === true || offer.offer_type === 'tournament' || offer.offer_type === 'drawing'
+  if (!allow) return [offer]
+
+  const start = new Date(offer.start_at)
+  const end = new Date(offer.end_at)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [offer]
+
+  const daySpan = Math.round((utcDayStamp(end) - utcDayStamp(start)) / 86400000) + 1
+  if (daySpan < 2 || daySpan > 4) return [offer]
+
+  const out: ParsedOffer[] = []
+  for (let i = 0; i < daySpan; i++) {
+    const dayStart = new Date(start)
+    dayStart.setUTCDate(start.getUTCDate() + i)
+    out.push({
+      ...offer,
+      start_at: dayStart.toISOString(),
+      end_at: null,
+      warnings: [
+        ...((offer.warnings || []).filter((w) => !/expand/i.test(String(w)))),
+        ...(i === 0 ? [`Expanded ${daySpan}-day session into one event per day.`] : [])
+      ]
+    })
+  }
+  return out
+}
+
+function expandSessionDays(offers: ParsedOffer[]): ParsedOffer[] {
+  const expanded: ParsedOffer[] = []
+  for (const offer of offers) {
+    const fromRange = expandMultiDaySessionRange(offer)
+    for (const piece of fromRange) {
+      expanded.push(...expandAmpersandListedDays(piece))
+    }
+  }
+  // Dedupe same casino+title+UTC day (expansion can double-hit).
+  const seen = new Set<string>()
+  const deduped: ParsedOffer[] = []
+  for (const offer of expanded) {
+    if (!offer.start_at) {
+      deduped.push(offer)
+      continue
+    }
+    const start = new Date(offer.start_at)
+    if (Number.isNaN(start.getTime())) {
+      deduped.push(offer)
+      continue
+    }
+    const key = [
+      normalizeText(offer.casino_name),
+      normalizeText(offer.title),
+      start.toISOString().slice(0, 10)
+    ].join('|')
+    if (seen.has(key)) continue
+    seen.add(key)
+    deduped.push(offer)
+  }
+  return deduped
+}
+
 function toDraftPayload(offer: ParsedOffer): Record<string, unknown> {
   return {
     has_specific_time: offer.has_specific_time === true,
@@ -593,12 +746,14 @@ Deno.serve(async (req) => {
         }
 
         const parsedRawList = await parseOffersFromImage(openaiApiKey, upload.mime_type || 'image/jpeg', new Uint8Array(await fileBlob.arrayBuffer()))
-        const parsedList = parsedRawList
-          .map((p) => applyInferredUpcomingYear(enforceOfferTypeConsistency(normalizeToAllDayIfNeeded(p, timezoneOffsetMinutes))))
-          .map((p) => {
-            if (!p.title || !p.title.trim()) p.title = defaultTitleForOfferType(p.offer_type)
-            return p
-          })
+        const parsedList = expandSessionDays(
+          parsedRawList
+            .map((p) => applyInferredUpcomingYear(enforceOfferTypeConsistency(normalizeToAllDayIfNeeded(p, timezoneOffsetMinutes))))
+            .map((p) => {
+              if (!p.title || !p.title.trim()) p.title = defaultTitleForOfferType(p.offer_type)
+              return p
+            })
+        )
 
         if (parsedList.length === 0) {
           const { error: reviewError } = await admin.from('offer_ai_review_items').insert({

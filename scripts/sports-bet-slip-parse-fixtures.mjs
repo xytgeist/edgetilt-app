@@ -1312,6 +1312,24 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 7 (Ryan yes): DK golf Top-N dead heat … Paid < stake, not NBA Heat
+    file: 'dk-won-golf-deadheat-2.ocr.txt',
+    expect: {
+      legs: 2,
+      odds: 311,
+      stake_dollars: 25,
+      to_collect_dollars: 17.13,
+      to_win_dollars: -7.87,
+      status: 'won',
+      book: 'DraftKings',
+      sport_label: 'Golf',
+      sport_key: 'golf_pga',
+      leg0: 'Thomas',
+      leg_last: 'Spieth',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

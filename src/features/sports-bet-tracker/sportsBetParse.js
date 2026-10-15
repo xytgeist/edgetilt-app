@@ -686,8 +686,11 @@ export function ticketMoneyFromText(text, draft = null) {
     ?? (raw ? extractToWinDollars(raw) : null)
     ?? footer?.toWin
     ?? null
-  if (toWin == null && toCollect != null && stake != null && toCollect > stake) {
-    toWin = Math.round((toCollect - stake) * 100) / 100
+  // Include dead-heat wins where Paid < stake (negative profit)
+  if (toWin == null && toCollect != null && stake != null) {
+    if (toCollect > stake || /\bdead\s*heat\b/i.test(raw)) {
+      toWin = Math.round((toCollect - stake) * 100) / 100
+    }
   }
   if (toCollect == null && toWin != null && stake != null) {
     toCollect = Math.round((toWin + stake) * 100) / 100
@@ -761,8 +764,10 @@ export function detectSlipResult(text) {
   if (/\b(?:bet\s*lost|ticket\s*lost|wager\s*lost)\b/i.test(raw)) return 'lost'
   // Standalone LOST / Loss badge on its own line (My Bets settled)
   if (/(?:^|\n)\s*(?:lost|loss)\s*(?:\n|$)/i.test(raw)) return 'lost'
-  // Standalone WON badge (DK My Bets … "WON ON" already handled above)
+  // Standalone WON badge, or glued "2 PICKS PARLAY +311 WON" (DK My Bets)
   if (/(?:^|\n)\s*won\s*(?:\n|$)/i.test(raw)) return 'won'
+  if (/\b(?:\d+\s*picks?\s+parlay|sgp|same\s*game\s*parlay)\b[^\n]*\bwon\b/i.test(raw)) return 'won'
+  if (/\bwon\b[^\n]*\b(?:\d+\s*picks?\s+parlay|wager\s*:)/i.test(raw)) return 'won'
 
   // Open betslip chrome … do not infer loss from nav "Settled" alone
   if (/\b(?:place\s*bet|review\s*line\s*changes|keep\s*picks|add\s*(?:to\s*)?(?:bet)?slip|clear\s*betslip)\b/i.test(raw)) {
@@ -1651,7 +1656,12 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
   if (/\bnba\b/i.test(s)) return resolveSportsBetSport('basketball_nba', 'NBA')
   if (/\bnhl\b/i.test(s)) return resolveSportsBetSport('icehockey_nhl', 'NHL')
   if (/\bmls\b/i.test(s)) return resolveSportsBetSport('soccer_usa_mls', 'MLS')
-  if (/\bpga\b|\bgolf\b/i.test(s)) return resolveSportsBetSport('golf_pga', 'Golf')
+  if (
+    /\bpga\b|\bgolfers?\b|\bgolf\b/i.test(s)
+    || /\btop\s*\d+\s*live\s*betting\b/i.test(s)
+  ) {
+    return resolveSportsBetSport('golf_pga', 'Golf')
+  }
   // Baseball only when clearly baseball (not casino "MLB" moneyline token)
   if (!casinoMlbIsMoneyline && /\bbaseball\b/i.test(s)) {
     return resolveSportsBetSport('baseball_mlb', 'MLB')
@@ -1685,8 +1695,9 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
   if (mlbClubHits >= 2) {
     return resolveSportsBetSport('baseball_mlb', 'MLB')
   }
-  // NBA nicknames before NFL … Lions/Giants-style collisions are rare here; Pacers/Nuggets unique
-  const nbaClubHits = (s.match(
+  // NBA nicknames before NFL … strip "Dead Heat" so golf tie-reduction does not match Heat
+  const nbaScan = s.replace(/\bdead\s*heat\b/gi, ' ')
+  const nbaClubHits = (nbaScan.match(
     /\b(?:pacers|nuggets|lakers|celtics|bulls|heat|knicks|nets|76ers|sixers|cavaliers|cavs|pistons|bucks|hawks|hornets|wizards|magic|thunder|blazers|trail\s*blazers|jazz|kings|suns|warriors|clippers|rockets|spurs|mavericks|mavs|grizzlies|pelicans|timberwolves|wolves)\b/gi,
   ) || []).length
   if (nbaClubHits >= 2) {
@@ -2196,9 +2207,9 @@ function extractTotalParlayOdds(text) {
   // FanDuel open betslip: "3 Leg Parlay +584" on one line (ticket total, not a leg)
   {
     const same = (
-      /(?:^|\n)\s*\d+\s*-?\s*leg\s+pa[ry]lay\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
-      || /(?:^|\n)\s*\d+\s*pick\s+pa[ry]lay\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
-      || /(?:^|\n)\s*\d+\s*-?\s*leg\s+pa[ry]lay\s*\n\s*([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
+      /(?:^|\n)\s*\d+\s*-?\s*legs?\s+pa[ry]lay\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
+      || /(?:^|\n)\s*\d+\s*picks?\s+pa[ry]lay\s+([+-]\d{3,6})\b/i.exec(raw)
+      || /(?:^|\n)\s*\d+\s*-?\s*legs?\s+pa[ry]lay\s*\n\s*([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
       // Settled / open SGP header: "Same Game Parlay™ +3134" / "SGP Same Game Parlay +3134"
       || /(?:^|\n)\s*(?:sgp\s+)?same\s*game\s*parlay\S*\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
       || /(?:^|\n)\s*sgp\s+([+-]\d{3,6})\s*(?:\n|$)/i.exec(raw)
@@ -3039,6 +3050,74 @@ function extractFuturesWinnerLegs(text) {
   return zipBunchedAmericanOdds(pending, text, { skipTicketTotal: false }).filter((l) => l.odds)
 }
 
+/**
+ * DK golf finish markets: "JUSTIN THOMAS -115" + "… Top 10 Live Betting"
+ * (OCR may drop the minus: "JUSTIN THOMAS 15")
+ */
+function extractGolfTopFinishLegs(text) {
+  const raw = normalizeSlipOcrText(text)
+  if (!/\btop\s*\d+\s*(?:live\s*)?betting\b/i.test(raw)) return []
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i].replace(/^[\s(©®™*&$@~•·→]+/, '').trim()
+    // Player + American odds (optional sign … OCR "THOMAS 15" for -115)
+    const m = /^([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s+([+-]?\d{2,5})\s*$/.exec(line)
+    if (!m) continue
+    const player = titleCaseWords(m[1])
+    if (/^(wager|paid|result|bet|hide|valspar|dead)\b/i.test(player)) continue
+    let oddsNum = Number(m[2])
+    if (!Number.isFinite(oddsNum)) continue
+    // Bare digits without sign: OCR often drops "-" ("THOMAS 115") or the leading 1 ("THOMAS 15" → -115)
+    if (!/^[+-]/.test(m[2])) {
+      if (oddsNum >= 100 && oddsNum <= 999) oddsNum = -Math.abs(oddsNum)
+      else if (oddsNum >= 10 && oddsNum <= 99) oddsNum = -Number(`1${String(Math.trunc(oddsNum)).padStart(2, '0')}`)
+    }
+    if (Math.abs(oddsNum) < 100) continue
+
+    let topN = null
+    let event_label = ''
+    for (let j = i + 1; j < Math.min(i + 6, lines.length); j += 1) {
+      const next = lines[j]
+      if (/^[A-Za-z].+\s+[+-]?\d{2,5}\s*$/.test(next) && /\btop\s*\d+/i.test(lines[j + 1] || '')) break
+      const top = /\btop\s*(\d+)\s*(?:live\s*)?betting\b/i.exec(next)
+      if (top) {
+        topN = Number(top[1])
+        const ev = next.replace(/\s*[-–—]\s*Top\s*\d+\s*(?:Live\s*)?Betting.*$/i, '').trim()
+        if (ev && ev.length < 80) event_label = ev
+        break
+      }
+      if (/^(wager|paid|hide\s*legs|\d+\s*picks?\s+parlay)/i.test(next)) break
+    }
+    if (!topN || !Number.isFinite(topN)) continue
+
+    const odds = americanOddsInputString(oddsNum) || String(oddsNum)
+    const selection_label = `${player} Top ${topN}`
+    const key = normalizeNameKey(selection_label)
+    if (seen.has(key)) continue
+    seen.add(key)
+    pending.push(emptyLegStub({
+      market: 'other',
+      odds,
+      selection_label,
+      player_name: player,
+      prop_stat: `Top ${topN}`,
+      event_label,
+      sport_key: 'golf_pga',
+      sport_label: 'Golf',
+    }))
+  }
+
+  if (pending.length < 2) return []
+  const zipped = zipBunchedAmericanOdds(pending, text)
+  if (extractTotalParlayOdds(text) != null) {
+    return zipped.length >= 2 ? zipped : pending
+  }
+  return zipped.filter((l) => l.odds)
+}
+
 /** Rampart-style half-point card: "87 EAGLES -0.5" (may be split across lines). */
 function extractHalfPointCardLegs(text) {
   const raw = normalizeSlipOcrText(text)
@@ -3152,6 +3231,9 @@ export function extractParlayLegs(text) {
 
   const mlLegs = extractAppMoneylineBetslipLegs(text)
   if (mlLegs.length >= 2) return mlLegs
+
+  const golfTop = extractGolfTopFinishLegs(text)
+  if (golfTop.length >= 2) return golfTop
 
   const futures = extractFuturesWinnerLegs(text)
   if (futures.length >= 2) return futures

@@ -24,7 +24,7 @@ function cleanRetailMoneyLineSelection(sel) {
 export function isParlayTicketChromeSelection(sel) {
   const s = String(sel || '').trim()
   if (!s) return false
-  if (/^\d+\s*-?\s*(?:leg|pick)\s+pa[ry]lay\b/i.test(s)) return true
+  if (/^\d+\s*-?\s*(?:legs?|picks?)\s+pa[ry]lay\b/i.test(s)) return true
   if (/^parlay\s*\(\s*\d+/i.test(s)) return true
   if (/^pa[ry]lay\s*$/i.test(s)) return true
   return false

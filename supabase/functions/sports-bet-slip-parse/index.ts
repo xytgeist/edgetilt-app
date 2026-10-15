@@ -333,6 +333,7 @@ Rules:
 - FanDuel settled My Bets alt lines: selection_label is the bold pick above ALTERNATE RUN LINES / ALTERNATE SPREAD / ALTERNATE PUCK LINE (e.g. "Minnesota Twins +3.5"). Never use opponent names, period/inning scores, "Finished", or digit runs ("26 25 31 23 105") as a leg. Count every ALTERNATE market row.
 - FanDuel settled SGP props: player name above "TO HIT A HOME RUN" / "TO RECORD A STOLEN BASE" / "TO RECORD 2+ RBIS" / "TO SCORE N+ TOUCHDOWNS", plus team MONEYLINE rows. "Same Game Parlay +3134" is combined odds. "$5.00 $156.70" then "TOTAL WAGER WON ON FANDUEL" → stake + to_collect.
 - If the image/OCR stacks two My Bets tickets (two BET ID lines), extract ONLY the first/top ticket. Do not mix legs or odds from the card below.
+- Golf Top N Live Betting (e.g. "Justin Thomas -115" + "Top 10 Live Betting"): market=other, selection like "Justin Thomas Top 10", sport Golf. Dead Heat Paid can be less than Wager … still status=won, to_collect=Paid, to_win may be negative. Do not set sport=NBA because of the words Dead Heat.
 - Player props like "Over 0.5 (Matt Olson) / MATT OLSON HOME RUNS / +360" → leg market=prop, side=over, line=0.5, player_name, prop_stat=Home Runs, odds=+360
 - If unsure, still fill best effort; use market=other and side="" rather than inventing a fighter/team side`
 

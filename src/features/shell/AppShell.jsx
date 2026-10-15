@@ -2548,8 +2548,9 @@ export default function AppShell({
           setMenuOpen(false)
           return
         }
-        // Leaving Lounge: menu unmounts under the finger. The click that follows
-        // lands on dock Home or the EDGE mark and snaps back to the feed.
+        // Menu unmounts under the finger. The synthetic click that follows can
+        // hit dock Home / EDGE (snap to Lounge) or hub chrome under the item
+        // (e.g. Sports Hub → MLB pill). Guard: short full-doc + longer dock-only.
         if (item.id !== 'home') {
           armShellNavGhostClickGuard()
         }

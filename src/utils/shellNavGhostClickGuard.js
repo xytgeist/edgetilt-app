@@ -1,12 +1,16 @@
 /**
  * After hamburger (or similar) navigation unmounts a menu/backdrop, mobile browsers
  * often synthesize a click on whatever is now under the finger — commonly the
- * portaled Lounge dock Home chip, which snaps the user back to Lounge.
+ * portaled Lounge dock Home chip, which snaps the user back to Lounge, or a Sports
+ * Hub league pill that sits under the menu item that was just tapped.
  *
  * Same capture pattern as LoungeDockArcCarouselPrototype pointer guard.
  *
- * Important: only shield dock/FAB chrome. A full-document swallow blocked the first
- * intentional tap on Slots/Poker hub tools for the whole guard window.
+ * Two phases:
+ * 1) Short full-document swallow (~400ms) … eats the retargeted click onto hub
+ *    content (MLB under Sports Hub, etc.). A long full-document window used to
+ *    block the first intentional hub-tool tap, so keep this brief.
+ * 2) Longer dock/FAB-only shield (~1200ms) … Home / EDGE mark snapback.
  */
 
 const CAPTURE_EVENTS = [
@@ -31,8 +35,15 @@ const DOCK_GHOST_TARGET_SELECTOR =
 /** Home dock / logo need a bit longer than in-menu wheel taps (matches dock AWAY_HOME). */
 export const SHELL_NAV_GHOST_CLICK_GUARD_MS = 1200
 
+/**
+ * Full-document window: long enough for the browser's retargeted click after the
+ * menu unmounts, short enough that a real hub-tool tap after nav still works.
+ */
+export const SHELL_NAV_GHOST_CLICK_FULL_MS = 400
+
 let cleanup = null
 let timerId = 0
+let fullUntil = 0
 /** performance.now() deadline — Lounge dock Home must ignore "away" navigations until then. */
 let suppressLoungeHomeUntil = 0
 
@@ -41,11 +52,20 @@ function isDockGhostTarget(e) {
   return Boolean(el?.closest?.(DOCK_GHOST_TARGET_SELECTOR))
 }
 
-function block(e) {
-  if (!isDockGhostTarget(e)) return
+function stopEvent(e) {
   e.preventDefault()
   e.stopPropagation()
   if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation()
+}
+
+function block(e) {
+  const now = typeof performance !== 'undefined' ? performance.now() : 0
+  if (now < fullUntil) {
+    stopEvent(e)
+    return
+  }
+  if (!isDockGhostTarget(e)) return
+  stopEvent(e)
 }
 
 function disarmShellNavGhostClickGuard() {
@@ -55,6 +75,7 @@ function disarmShellNavGhostClickGuard() {
   }
   cleanup?.()
   cleanup = null
+  fullUntil = 0
 }
 
 /**
@@ -67,16 +88,20 @@ export function isShellNavLoungeHomeSuppressed() {
 }
 
 /**
- * Swallow pointer/click events on dock/FAB chrome at document capture for `durationMs`.
+ * Swallow pointer/click events after hamburger nav:
+ * - ~400ms: all targets (retargeted click onto hub content under the menu)
+ * - remainder of `durationMs`: dock/FAB / EDGE-home only
  * Call immediately before setTab / setMenuOpen(false) when leaving Lounge via chrome.
- * Hub content taps stay live (Home still suppressed via isShellNavLoungeHomeSuppressed).
  */
 export function armShellNavGhostClickGuard(durationMs = SHELL_NAV_GHOST_CLICK_GUARD_MS) {
   if (typeof document === 'undefined') return
   disarmShellNavGhostClickGuard()
   const ms = Math.max(0, Number(durationMs) || SHELL_NAV_GHOST_CLICK_GUARD_MS)
+  const fullMs = Math.min(SHELL_NAV_GHOST_CLICK_FULL_MS, ms)
   if (typeof performance !== 'undefined') {
-    suppressLoungeHomeUntil = performance.now() + ms
+    const now = performance.now()
+    suppressLoungeHomeUntil = now + ms
+    fullUntil = now + fullMs
   }
   const onCapture = (e) => block(e)
   CAPTURE_EVENTS.forEach((type) => {

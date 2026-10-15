@@ -1355,14 +1355,6 @@ export default function SportsBetTracker({
                   <div className="mt-2 flex flex-wrap justify-end gap-1.5">
                     <button
                       type="button"
-                      onClick={() => openTools('payout', bet)}
-                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-zinc-400 active:bg-zinc-800"
-                    >
-                      <Calculator className="h-3 w-3" />
-                      Payout
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => openEdit(bet)}
                       className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-zinc-400 active:bg-zinc-800"
                     >

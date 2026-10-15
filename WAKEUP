@@ -230,6 +230,8 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 
 **Web `1.4.1168`.** Ryan: stop inventing combined odds … fill odds only when ticket prints them; always fill **To win** / **To collect** `$` (composer + DB). SQL **`20261015010000`** on **test + prod**. Edge **`sports-bet-slip-parse`** test + prod. Fixtures **63/63**. **Promoted** `main` @ `620b11d7`.
 
+**Web `1.4.1169`.** Combined odds placeholder → **Not Found**. **Promoted** `main` @ `745502b7`.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.
 

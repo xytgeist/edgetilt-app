@@ -12,6 +12,7 @@ import {
   LOUNGE_REPORT_NEVER_AUTO_REASONS,
 } from '../_shared/loungeReportTriage.ts'
 import {
+  openaiChatMaxCompletionTokens,
   openaiChatReasoningNone,
   resolveOpenAiChatModel,
 } from '../_shared/openaiModelDefaults.ts'
@@ -149,7 +150,7 @@ async function classifyOne(admin: ReturnType<typeof createClient>, report: Repor
         model,
         ...openaiChatReasoningNone(),
         temperature: 0,
-        max_tokens: 180,
+        ...openaiChatMaxCompletionTokens(180),
         response_format: { type: 'json_object' },
         messages: [
           {

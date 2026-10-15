@@ -9,6 +9,7 @@ import { isXTwitterHttpUrl, stripXTwitterUrlsFromText } from './loungeBotXTweetU
 import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
 import { sanitizeBotProse } from './wireBotProse.ts'
 import {
+  openaiChatMaxCompletionTokens,
   openaiChatReasoningNone,
   resolveOpenAiChatModel,
 } from './openaiModelDefaults.ts'
@@ -63,6 +64,12 @@ export function getUsMarketSessionContext(d = new Date()): { sessionName: string
   return { sessionName: 'Overnight Session', timeContext: 'Overnight session, US cash markets closed.' }
 }
 
+function finalizeCaption(text: string, outboundUrls: string[]): string {
+  return stripXTwitterUrlsFromText(
+    sanitizeBotProse(ensureCaptionKeepsUrls(text, outboundUrls, LOUNGE_BOT_CAPTION_MAX)),
+  )
+}
+
 export async function rewriteTweetForBot(opts: {
   sourceText: string
   xHandle: string
@@ -84,6 +91,7 @@ export async function rewriteTweetForBot(opts: {
         ? ` Non-X outbound links from the source may be kept when essential: ${outboundUrls.join(' ')}. Never add x.com, twitter.com, or t.co links.`
         : ' Do not include x.com, twitter.com, or t.co links in the caption. Do not invent links.'
 
+      const model = resolveOpenAiChatModel()
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -91,10 +99,10 @@ export async function rewriteTweetForBot(opts: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: resolveOpenAiChatModel(),
+          model,
           ...openaiChatReasoningNone(),
           temperature: 0.75,
-          max_tokens: 900,
+          ...openaiChatMaxCompletionTokens(900),
           messages: [
             {
               role: 'system',
@@ -122,26 +130,35 @@ export async function rewriteTweetForBot(opts: {
         const json = await res.json()
         const text = String(json?.choices?.[0]?.message?.content || '').trim()
         if (text) {
-          return stripXTwitterUrlsFromText(
-            sanitizeBotProse(ensureCaptionKeepsUrls(text, outboundUrls, LOUNGE_BOT_CAPTION_MAX)),
-          )
+          return finalizeCaption(text, outboundUrls)
         }
+        console.error(
+          'loungeBotXRewrite empty completion',
+          model,
+          json?.choices?.[0]?.finish_reason || '',
+        )
+      } else {
+        const errBody = await res.text().catch(() => '')
+        console.error(
+          'loungeBotXRewrite openai failed',
+          res.status,
+          model,
+          errBody.slice(0, 400),
+        )
       }
-    } catch {
-      /* fallback below */
+    } catch (err) {
+      console.error('loungeBotXRewrite openai exception', String(err || '').slice(0, 240))
     }
   }
 
-  // Fallback: keep links; trim body around them if needed.
+  // Fallback: cleaned source + outbound links. No "@handle pulse:" branding
+  // (that leaked into the live feed when Luna 400'd on deprecated max_tokens).
   const withoutUrls = raw
     .replace(/https?:\/\/[^\s<>"']+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-  const prefix = `@${opts.xHandle.replace(/^@/, '')} pulse: `
   const draft = outboundUrls.length
-    ? `${prefix}${withoutUrls}\n${outboundUrls.join('\n')}`
-    : `${prefix}${withoutUrls}`
-  return stripXTwitterUrlsFromText(
-    sanitizeBotProse(ensureCaptionKeepsUrls(draft, outboundUrls, LOUNGE_BOT_CAPTION_MAX)),
-  )
+    ? `${withoutUrls}\n${outboundUrls.join('\n')}`
+    : withoutUrls
+  return finalizeCaption(draft, outboundUrls)
 }

@@ -264,6 +264,7 @@ Legacy doc name **Edge Monitor → Lounge editorial** referred to early planning
 | --- | --- |
 | Schema | `supabase/migrations/` |
 | X ingest | `supabase/functions/lounge-x-ingest/` + `_shared/loungeBotXTweetFetch.ts` |
+| X rewrite (LLM) | `_shared/loungeBotXRewrite.ts` + `_shared/openaiModelDefaults.ts` (`gpt-6-luna`, **`max_completion_tokens`** not `max_tokens`) |
 | Publish due | `supabase/functions/lounge-bot-publish-due/` |
 | Per-bot voice | `config.voice_prompt` via portal Settings; **`loungeBotXVoice.ts`** |
 | Portal UI | `src/features/bots/BotManagementPortal.jsx`, `BotEditorialInbox.jsx`, `botPortalApi.js` |

@@ -1078,9 +1078,13 @@ function extractAppPlayerPropLegs(text) {
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]
     // 100+ (Player) … or DK "× 40+" then "Cade Cunningham Points + Rebounds"
+    // Settled DK Alt props: badge "2+" / OCR bare "2" / "© 2" above "Leody Taveras Alternate RBIs"
     const plusParen = /^[×xX]?\s*(\d+(?:\.\d+)?)\+\s*\(([^)]+)\)\s*$/i.exec(line)
-    const plusBare = /^[×xX]?\s*(\d+(?:\.\d+)?)\+\s*$/i.exec(line)
-    const m = plusParen || plusBare
+    const plusBare = /^[×xX©®*]?\s*(\d+(?:\.\d+)?)\+\s*$/i.exec(line)
+    const digitBadge = !plusBare && /^[©®*]?\s*(\d{1,2})\s*$/.exec(line)
+    // One line: "2+ Leody Taveras Alternate RBIs"
+    const plusInline = /^(\d+(?:\.\d+)?)\+\s+([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s+(Alternate\b.+|.+)$/i.exec(line)
+    const m = plusParen || plusBare || digitBadge || plusInline
       ? null
       : (
         /^(over|under)\s+(\d+(?:\.\d+)?)\s*\(([^)]+)\)\s*$/i.exec(line)
@@ -1093,15 +1097,27 @@ function extractAppPlayerPropLegs(text) {
     if (plusParen) {
       lineNum = Number(plusParen[1])
       player = titleCaseWords(plusParen[2].trim())
-    } else if (plusBare) {
-      lineNum = Number(plusBare[1])
-      // Next line(s): "Cade Cunningham Points + Rebounds" / "+ Assists"
+    } else if (plusInline) {
+      lineNum = Number(plusInline[1])
+      player = titleCaseWords(plusInline[2].trim())
+      stat = titleCaseWords(plusInline[3].trim())
+    } else if (plusBare || digitBadge) {
+      lineNum = Number((plusBare || digitBadge)[1])
+      // Bare digit badges are noisy … only continue when the next line looks like a player prop
+      if (digitBadge) {
+        const peek = lines[i + 1] || ''
+        if (!/\balternate\b|\brbis?\b|\byards\b|\bpoints\b|\brebounds\b|\bassists\b|\bhits\b|\bstrikeouts\b|\bhome\s*runs?\b/i.test(peek)) {
+          continue
+        }
+      }
+      // Next line(s): "Cade Cunningham Points + Rebounds" / "Leody Taveras Alternate RBIs"
       const detail = []
       for (let j = i + 1; j < Math.min(i + 4, lines.length); j += 1) {
         const next = lines[j]
-        if (/^[×xX]?\s*\d+\+/.test(next) || /^(over|under)\s+\d/i.test(next)) break
+        if (/^[×xX©®*]?\s*\d+\+?/.test(next) || /^(over|under)\s+\d/i.test(next)) break
         if (isParlayLegJunkLine(next)) break
-        if (/(?:@|\bat\b)/i.test(next) || bareAmericanOddsLine(next) || /^\$|stake|parlay|0\.00|wager\s*:|paid\s*:/i.test(next)) break
+        if (/^\d+\s*picks?\s*sgp\b/i.test(next)) break
+        if (/(?:@|\bat\b)/i.test(next) || bareAmericanOddsLine(next) || /^\$|stake|parlay|0\.00|wager\s*:|paid\s*:|final\s*score/i.test(next)) break
         detail.push(next.replace(/^\+\s*/, ''))
       }
       const blob = detail.join(' ').replace(/\s+/g, ' ').trim()
@@ -1170,8 +1186,8 @@ function extractAppPlayerPropLegs(text) {
       home_team,
       away_team,
       event_label,
-      sport_key: sport.key || (/\bhome\s*runs?\b/i.test(stat) ? 'baseball_mlb' : ''),
-      sport_label: sport.label || (/\bhome\s*runs?\b/i.test(stat) ? 'MLB' : ''),
+      sport_key: sport.key || (/\bhome\s*runs?\b|\brbis?\b|\balternate\b/i.test(stat) ? 'baseball_mlb' : ''),
+      sport_label: sport.label || (/\bhome\s*runs?\b|\brbis?\b|\balternate\b/i.test(stat) ? 'MLB' : ''),
       commence_time: '',
       event_id: '',
     })
@@ -1179,7 +1195,14 @@ function extractAppPlayerPropLegs(text) {
 
   const zipped = zipBunchedAmericanOdds(pending, text)
   // Keep all legs when ticket combined odds exist (partial zip OK … DK bunched odds miss some)
-  if (pending.length >= 2 && extractTotalParlayOdds(text) != null) {
+  // Settled DK Alt props often omit per-leg juice (nested SGP group odds are not leg juices)
+  if (
+    pending.length >= 2
+    && (
+      extractTotalParlayOdds(text) != null
+      || /\balternate\b/i.test(String(text || ''))
+    )
+  ) {
     return zipped.length >= 2 ? zipped : pending
   }
   return zipped.filter((l) => l.odds)
@@ -3108,6 +3131,8 @@ function extractParlayPickSummaryNotes(text) {
     if (/bonus\s*bet|free\s*bet|\$\d[\d,.]*\s*$/i.test(line) && !/,/.test(line) && !/\|/.test(line) && !/moneyline/i.test(line)) {
       continue
     }
+    // DK SGPx summary: "2 Picks SGP, 2 Picks SGP" … not a player name list
+    if (/^(\d+\s*picks?\s*sgp\s*,?\s*)+$/i.test(line.trim())) continue
     if (/^(wager|paid|risk|stake|total\s*wager|total\s*odds|hide\s*legs|show\s*legs|bet\s*id|reuse\s*selections|details)\b/i.test(line)) break
     if (/^\$?\s*[\d,]+\.?\d*\s+[+-]\d{3,8}\b/.test(line)) break
     if (/^\$?\s*[\d,]+\.?\d*\s+\$?\s*[\d,]+\.?\d*\s*$/.test(line)) break
@@ -3136,6 +3161,8 @@ function extractParlayPickSummaryNotes(text) {
     blob = blob.replace(/\s*,\s*,/g, ',').trim()
   }
   if (!blob || blob.length < 8) return ''
+  // Reject pure nested-SGP chrome masquerading as a name list
+  if (/^(\d+\s*picks?\s*sgp\s*,?\s*)+$/i.test(blob)) return ''
   // Need enough separators to look like a multi-name summary (not one event line)
   const seps = (blob.match(/,/g) || []).length
   if (seps < 1 && declared > 2) return ''
@@ -3614,7 +3641,25 @@ export function parseParlaySlipText(text) {
   const withMoney = attachTicketMoney(draft, raw)
   withMoney.status = detectSlipResult(raw)
   // Collapsed "N PICKS" / "N leg parlay" name list → Notes (not legs)
-  const pickNotes = pickNotesEarly || extractParlayPickSummaryNotes(raw)
+  let pickNotes = pickNotesEarly || extractParlayPickSummaryNotes(raw)
+  // DK SGPx: "2 Picks SGP, 2 Picks SGP" is chrome … rebuild from visible player legs when short
+  if (pickNotes && /^parlay\s*picks?\s*\(\s*\d+\s*\)\s*:\s*(\d+\s*picks?\s*sgp\s*,?\s*)+$/i.test(pickNotes)) {
+    pickNotes = ''
+  }
+  const declaredForNotes = declaredParlayLegCount(raw)
+  if (
+    !pickNotes
+    && declaredForNotes != null
+    && normalized.length > 0
+    && normalized.length < declaredForNotes
+  ) {
+    const names = normalized
+      .map((l) => String(l.player_name || l.selection_label || '').trim())
+      .filter(Boolean)
+    if (names.length) {
+      pickNotes = `Parlay picks (${declaredForNotes}): ${names.join(', ')}`
+    }
+  }
   if (pickNotes && !String(withMoney.notes || '').trim()) {
     withMoney.notes = pickNotes
   }

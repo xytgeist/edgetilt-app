@@ -1379,6 +1379,25 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 11 (Ryan yes): DK SGPx 4-pick WON … Alt RBI legs; skip nested 2PICKS SGP chrome
+    file: 'dk-won-sgpx-4pick-alt-rbi.ocr.txt',
+    expect: {
+      legs: 2,
+      odds: 174700,
+      stake_dollars: 5,
+      to_collect_dollars: 8740,
+      to_win_dollars: 8735,
+      status: 'won',
+      book: 'DraftKings',
+      sport_label: 'MLB',
+      sport_key: 'baseball_mlb',
+      leg0: 'Taveras',
+      leg_last: 'Neto',
+      notes_includes: 'Parlay picks (4):',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

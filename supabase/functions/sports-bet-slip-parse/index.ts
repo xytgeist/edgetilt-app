@@ -337,6 +337,7 @@ Rules:
 - Collapsed "9 PICKS PARLAY" with only a few expanded legs: fill Wager/Paid/odds/status/sport + the visible legs (e.g. Anytime TD Scorer). Put the comma player list in notes as "Parlay picks (9): …". Do NOT invent the missing legs from that name list.
 - "TOTAL WAGER CASHED OUT" with dual $ above → stake + to_collect, status=won (same as WON ON). Fully collapsed "19 leg parlay +odds" with only a name list: fill money/odds/notes, legs[] may be empty.
 - BetMGM "Multi Bet • N picks LOST" with pipe name list ("T. Schoolkate | M. Purcell | …") and "Stake / Total odds / Payout -": market=parlay, status=lost, stake + printed total odds, to_win/to_collect=0, sport Tennis when Initial. Surname pipes (no team leagues), notes="Parlay picks (N): …", legs[] may be empty. Do not invent legs from the name list.
+- DK SGPx "4 PICKS PARLAY +odds WON" with nested "2 PICKS SGP +4500" headers: those headers are NOT legs. Hydrate "2+ / Player Alternate RBIs" (and similar Alt props). Wager/Paid → stake + to_collect, status=won. notes="Parlay picks (N): …" from visible players when the crop cuts later legs. Do not invent missing SGP legs.
 - Player props like "Over 0.5 (Matt Olson) / MATT OLSON HOME RUNS / +360" → leg market=prop, side=over, line=0.5, player_name, prop_stat=Home Runs, odds=+360
 - If unsure, still fill best effort; use market=other and side="" rather than inventing a fighter/team side`
 

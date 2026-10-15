@@ -27,6 +27,9 @@ export function isParlayTicketChromeSelection(sel) {
   if (/^\d+\s*-?\s*(?:legs?|picks?)\s+pa[ry]lay\b/i.test(s)) return true
   if (/^parlay\s*\(\s*\d+/i.test(s)) return true
   if (/^pa[ry]lay\s*$/i.test(s)) return true
+  // DK nested SGPx group headers: "2 PICKS SGP" / "2PICKS SGP +4500"
+  if (/^\d+\s*picks?\s*sgp\b/i.test(s)) return true
+  if (/^sgpx?\b/i.test(s) && s.length < 24) return true
   return false
 }
 

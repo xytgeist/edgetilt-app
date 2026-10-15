@@ -509,6 +509,16 @@ function extractStakeDollars(text) {
     }
   }
 
+  // BetMGM My Bets: "Stake Total odds Payout (inc Stake)" then "$5.00 +12264 -"
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/\bstake\b/i.test(lines[i]) || !/\btotal\s*odds\b/i.test(lines[i])) continue
+    const next = lines[i + 1] || ''
+    const m = /^\$?\s*([0-9,]+\.?\d*)\s+[+-]\d{3,8}\b/.exec(next)
+    if (!m) continue
+    const n = parseMoneyAmount(m[1])
+    if (n != null && n > 0) return n
+  }
+
   // FanDuel settled: "$5.00" on the line above OR below "TOTAL WAGER"
   // Open My Bets footer: "$10.00 $2,129.55" then "TOTAL WAGER TOTAL PAYOUT" (stake is left $)
   for (let i = 0; i < lines.length; i += 1) {
@@ -758,10 +768,12 @@ export function detectSlipResult(text) {
   // Cashed tickets first … never reclassify as lost
   if (/\b(?:won\s+on\b|you\s*won\b|total\s*won\b|cashed\s*out\b)/i.test(raw)) return 'won'
 
-  // Explicit loss copy (FanDuel / DK / Caesars / etc.)
+  // Explicit loss copy (FanDuel / DK / Caesars / BetMGM / etc.)
   if (/\b(?:lost\s+on\b|you\s*lost\b|total\s*lost\b)/i.test(raw)) return 'lost'
   if (/\b(?:did\s*not\s*win|didn'?t\s*win|not\s*a\s*winner)\b/i.test(raw)) return 'lost'
   if (/\b(?:bet\s*lost|ticket\s*lost|wager\s*lost)\b/i.test(raw)) return 'lost'
+  // BetMGM: "Multi Bet • 11 picks LOST" (badge glued to header)
+  if (/\b(?:multi\s*bet|\d+\s*picks?)\b[^\n]*\blost\b/i.test(raw)) return 'lost'
   // Standalone LOST / Loss badge on its own line (My Bets settled)
   if (/(?:^|\n)\s*(?:lost|loss)\s*(?:\n|$)/i.test(raw)) return 'lost'
   // Standalone WON badge, or glued "2 PICKS PARLAY +311 WON" (DK My Bets)
@@ -1688,6 +1700,19 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
   if (/\btennis\b|\batp\b|\bwta\b/i.test(s)) {
     return sportByKey(SPORTS_BET_SPORT_TENNIS) || { key: SPORTS_BET_SPORT_TENNIS, label: 'Tennis' }
   }
+  // BetMGM collapsed Multi Bet: "T. Schoolkate | M. Purcell | …" (Initial. Surname pipes)
+  {
+    const pipeBlob = s.replace(/\n/g, ' ')
+    const pipeInitial = (pipeBlob.match(/\b[A-Z]\.\s*[A-Z][A-Za-z.'\-]+(?:\s+[A-Z][A-Za-z.'\-]+)?\s*\|/g) || []).length
+    const teamish = (
+      NFL_TEAM_HINT.test(s)
+      || /\b(?:nfl|nba|mlb|nhl|cfb|ncaaf|mls|ufc|mma|boxing|golf|pga)\b/i.test(s)
+      || /\b(?:lakers|dodgers|yankees|oilers|chiefs|cowboys|celtics|nuggets)\b/i.test(s)
+    )
+    if (pipeInitial >= 3 && !teamish) {
+      return sportByKey(SPORTS_BET_SPORT_TENNIS) || { key: SPORTS_BET_SPORT_TENNIS, label: 'Tennis' }
+    }
+  }
   // MLB club names before NFL nickname hints … Giants/Rangers/etc. collide
   const mlbClubHits = (s.match(
     /\b(?:cubs|braves|yankees|dodgers|giants|astros|orioles|reds|rays|twins|pirates|nationals|white\s*sox|cardinals|rangers|phillies|mets|red\s*sox|guardians|tigers|royals|mariners|athletics|angels|padres|rockies|diamondbacks|brewers|marlins)\b/gi,
@@ -2170,6 +2195,8 @@ function looksLikeParlayText(text) {
   if (/\bparlay\b|\bpa[yi]lay\b|\bsgp\b|same\s*game\s*parlay|\d+\s*-\s*leg\b|\d+\s+legs?\b|multiples/i.test(raw)) {
     return true
   }
+  // BetMGM: "Multi Bet • 11 picks" (no "parlay" word)
+  if (/\bmulti\s*bet\b/i.test(raw) && /\d+\s*picks?\b/i.test(raw)) return true
   // FanDuel settled multi-prop: no "Parlay" word, just stacked Over/Under legs + TOTAL WAGER
   if (countPlayerPropOuLines(raw) >= 2) return true
   // FanDuel My Bets alt lines / spreads … no "Parlay" word
@@ -2219,10 +2246,12 @@ function extractTotalParlayOdds(text) {
       if (n != null) return n
     }
   }
-  const m = /total\s*odds\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
-    || /combined\s*(?:odds|price)\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
-    || /parlay\s*odds\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
-    || /parlay\s*\(\d+\)\s*@\s*([+-]\d{3,5})/i.exec(raw)
+  const m = /total\s*odds\s*[:=]?\s*([+-]\d{3,8})/i.exec(raw)
+    || /combined\s*(?:odds|price)\s*[:=]?\s*([+-]\d{3,8})/i.exec(raw)
+    || /parlay\s*odds\s*[:=]?\s*([+-]\d{3,8})/i.exec(raw)
+    || /parlay\s*\(\d+\)\s*@\s*([+-]\d{3,8})/i.exec(raw)
+    // BetMGM: "Stake Total odds Payout …\n$5.00 +12264 -"
+    || /(?:^|\n)\s*stake\b[^\n]*\btotal\s*odds\b[^\n]*\n\s*\$?\s*[\d,.]+\s+([+-]\d{3,8})\b/i.exec(raw)
   if (m) {
     const oddsTok = m[2] && /^[+-]/.test(m[2]) ? m[2] : m[1]
     const n = americanOrNull(oddsTok)
@@ -2611,6 +2640,8 @@ export function declaredParlayLegCount(text) {
     || /parlay\s*\(\s*(\d+)\s*teams?\s*\)/i.exec(raw)
     || /(\d+)\s*picks?\s+pa[ry]lay/i.exec(raw)
     || /(\d+)\s*(?:pick\s+)?pa[ry]lay/i.exec(raw)
+    // BetMGM: "Multi Bet • 11 picks"
+    || /\bmulti\s*bet\b[^\n]*?(\d+)\s*picks?\b/i.exec(raw)
   if (m) {
     const n = Number(m[1])
     if (Number.isFinite(n) && n >= 2 && n <= 40) return n
@@ -3052,17 +3083,18 @@ function extractFuturesWinnerLegs(text) {
 }
 
 /**
- * Comma name list under "N PICKS PARLAY" when legs are collapsed … Notes only.
- * Do not turn this into legs[] (user fills missing markets).
+ * Comma / pipe name list under "N PICKS PARLAY" / "Multi Bet • N picks" when legs
+ * are collapsed … Notes only. Do not turn this into legs[] (user fills markets).
  */
 function extractParlayPickSummaryNotes(text) {
   const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
   let declared = null
   let start = -1
   for (let i = 0; i < lines.length; i += 1) {
-    // "9 PICKS PARLAY +40109" / "19 leg parlay +2983218"
+    // "9 PICKS PARLAY +40109" / "19 leg parlay +2983218" / "Multi Bet • 11 picks LOST"
     const m = /^(\d+)\s*picks?\s+pa[ry]lay\b/i.exec(lines[i])
       || /^(\d+)\s*-?\s*legs?\s+pa[ry]lay\b/i.exec(lines[i])
+      || /\bmulti\s*bet\b[^\n]*?(\d+)\s*picks?\b/i.exec(lines[i])
     if (!m) continue
     declared = Number(m[1])
     start = i + 1
@@ -3073,27 +3105,40 @@ function extractParlayPickSummaryNotes(text) {
   for (let i = start; i < Math.min(start + 14, lines.length); i += 1) {
     const line = lines[i]
     // Skip chrome between header and the collapsed name list (bonus pill, etc.)
-    if (/bonus\s*bet|free\s*bet|\$\d[\d,.]*\s*$/i.test(line) && !/,/.test(line) && !/moneyline/i.test(line)) {
+    if (/bonus\s*bet|free\s*bet|\$\d[\d,.]*\s*$/i.test(line) && !/,/.test(line) && !/\|/.test(line) && !/moneyline/i.test(line)) {
       continue
     }
-    if (/^(wager|paid|risk|total\s*wager|hide\s*legs|show\s*legs|bet\s*id|reuse\s*selections)/i.test(line)) break
+    if (/^(wager|paid|risk|stake|total\s*wager|total\s*odds|hide\s*legs|show\s*legs|bet\s*id|reuse\s*selections|details)\b/i.test(line)) break
+    if (/^\$?\s*[\d,]+\.?\d*\s+[+-]\d{3,8}\b/.test(line)) break
     if (/^\$?\s*[\d,]+\.?\d*\s+\$?\s*[\d,]+\.?\d*\s*$/.test(line)) break
     if (/^[A-Za-z].+\s+[+-]\d{2,5}\s*$/.test(line)) break
-    if (/anytime\s*td|spread|top\s*\d+/i.test(line) && !/,/.test(line)) break
-    // Collapsed FD list: "Lakers Moneyline, Dodgers Moneyline…" (Moneyline OK inside list)
-    if (/[A-Za-z]/.test(line) && (/,/.test(line) || /moneyline/i.test(line) || parts.length > 0)) {
+    if (/anytime\s*td|spread|top\s*\d+/i.test(line) && !/,/.test(line) && !/\|/.test(line)) break
+    // Collapsed FD list: "Lakers Moneyline, Dodgers…" / BetMGM: "T. Schoolkate | M. Purcell | …"
+    if (/[A-Za-z]/.test(line) && (/,/.test(line) || /\|/.test(line) || /moneyline/i.test(line) || parts.length > 0)) {
       parts.push(line.replace(/,+\s*$/, '').replace(/\.\.\.$/, '').trim())
       continue
     }
     if (parts.length) break
   }
-  let blob = parts.join(', ').replace(/\s*,\s*,/g, ',').replace(/\s+/g, ' ').trim()
+  let blob = parts.join(' ').replace(/\s+/g, ' ').trim()
+  // OCR wrap: "D. Schwartzman" split across lines → "D. Schwartzman"
+  blob = blob.replace(/([A-Z]\.)\s+([A-Z][A-Za-z.'\-]+)/g, '$1 $2')
   // OCR wrap: "Dodgers,\nMoneyline," → "Dodgers Moneyline,"
   blob = blob.replace(/,\s*(Moneyline)\b/gi, ' $1')
+  // Normalize pipe lists for Notes (keep pipes readable)
+  if (/\|/.test(blob)) {
+    blob = blob
+      .split(/\s*\|\s*/)
+      .map((p) => p.replace(/\.\.\.$/, '').trim())
+      .filter(Boolean)
+      .join(', ')
+  } else {
+    blob = blob.replace(/\s*,\s*,/g, ',').trim()
+  }
   if (!blob || blob.length < 8) return ''
-  // Need enough commas to look like a multi-name summary (not one event line)
-  const commas = (blob.match(/,/g) || []).length
-  if (commas < 1 && declared > 2) return ''
+  // Need enough separators to look like a multi-name summary (not one event line)
+  const seps = (blob.match(/,/g) || []).length
+  if (seps < 1 && declared > 2) return ''
   return `Parlay picks (${declared}): ${blob}`
 }
 
@@ -3478,10 +3523,16 @@ export function parseParlaySlipText(text) {
   const legs = extractParlayLegs(raw)
   const pickNotesEarly = extractParlayPickSummaryNotes(raw)
   const moneyEarly = ticketMoneyFromText(raw)
+  const slipStatusEarly = detectSlipResult(raw)
+  // Collapsed UI: money + declared N + name list. Lost tickets often print payout "-" (no $ collect).
   const collapsedMoneyOnly = (
     legs.length < 2
     && moneyEarly.stake_dollars != null
-    && moneyEarly.to_collect_dollars != null
+    && (
+      moneyEarly.to_collect_dollars != null
+      || slipStatusEarly === 'lost'
+      || slipStatusEarly === 'won'
+    )
     && declaredParlayLegCount(raw) != null
     && Boolean(pickNotesEarly)
   )
@@ -3495,8 +3546,20 @@ export function parseParlaySlipText(text) {
 
   const book = extractBook(raw)
   const commence_time = extractCommenceTime(raw)
-  // Collapsed multi-league cashout name lists (Lakers + Dodgers + Oilers…) → leave sport blank
-  let sport = collapsedMoneyOnly ? { key: '', label: '' } : extractSport(raw)
+  let sport = extractSport(raw)
+  // Collapsed multi-league cashout name lists (Lakers + Dodgers + Oilers…) → blank
+  // Keep Tennis / Golf / combat when the list clearly points there (BetMGM Multi Bet pipes).
+  if (collapsedMoneyOnly && sport.key) {
+    const keepSolo = (
+      sport.key === SPORTS_BET_SPORT_TENNIS
+      || sport.key === SPORTS_BET_SPORT_TABLE_TENNIS
+      || sport.key === 'golf_pga'
+      || sport.key === SPORTS_BET_SPORT_UFC
+      || sport.key === SPORTS_BET_SPORT_BOXING
+      || /^(tennis|table\s*tennis|golf|ufc|boxing)$/i.test(sport.label)
+    )
+    if (!keepSolo) sport = { key: '', label: '' }
+  }
   // Prefer a sport already on legs (e.g. person-vs-person → Table Tennis)
   if (!sport.key) {
     for (const leg of legs) {

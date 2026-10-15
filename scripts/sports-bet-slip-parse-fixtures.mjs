@@ -1363,6 +1363,22 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 10 (Ryan yes): BetMGM Multi Bet collapsed LOST … money + Tennis + Notes; 0 legs
+    file: 'betmgm-lost-multibet-11.ocr.txt',
+    expect: {
+      legs: 0,
+      odds: 12264,
+      stake_dollars: 5,
+      to_collect_dollars: 0,
+      to_win_dollars: 0,
+      status: 'lost',
+      sport_label: 'Tennis',
+      sport_key: 'tennis',
+      notes_includes: 'Parlay picks (11):',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

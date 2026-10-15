@@ -3224,8 +3224,44 @@ export function extractParlayLegs(text) {
   return legs
 }
 
+/**
+ * My Bets screenshots often stack two *tickets*. Prefer one card so legs/odds/money
+ * do not mix (e.g. won SGP above + lost parlay below).
+ * Do NOT cut a single dual-SGP ticket (multiple "Same Game Parlay" groups, one BET ID).
+ * Gate: ≥2 BET ID lines, or a 2nd ticket header that appears *after* the first
+ * BET ID / PLACED footer.
+ */
+export function slicePrimarySlipCard(text) {
+  const raw = String(text || '').replace(/\r/g, '')
+  if (!raw.trim()) return raw
+
+  const idMatches = [...raw.matchAll(/\bBET\s*ID\s*:/gi)]
+  if (idMatches.length >= 2) {
+    const firstIdx = idMatches[0].index
+    const after = raw.slice(firstIdx)
+    const end = /BET\s*ID\s*:[^\n]*(?:\n[^\n]*\bPLACED\s*:[^\n]*)?/i.exec(after)
+    if (end) return raw.slice(0, firstIdx + end.index + end[0].length).trim()
+  }
+
+  // One BET ID, then another ticket header below the footer (crop without 2nd ID)
+  if (idMatches.length === 1) {
+    const firstIdx = idMatches[0].index
+    const after = raw.slice(firstIdx)
+    const end = /BET\s*ID\s*:[^\n]*(?:\n[^\n]*\bPLACED\s*:[^\n]*)?/i.exec(after)
+    if (end) {
+      const cardEnd = firstIdx + end.index + end[0].length
+      const rest = raw.slice(cardEnd)
+      if (/(?:^|\n)\s*(?:(?:sgp\s+)?same\s*game\s*parlay|\d+\s*leg\s+parlay|\d+\s*pick\s+parlay)\b/i.test(rest)) {
+        return raw.slice(0, cardEnd).trim()
+      }
+    }
+  }
+
+  return raw.trim()
+}
+
 export function parseParlaySlipText(text) {
-  const raw = String(text || '').replace(/\r/g, '').trim()
+  const raw = slicePrimarySlipCard(String(text || '').replace(/\r/g, '')).trim()
   if (!raw || !looksLikeParlayText(raw)) return null
 
   const legs = extractParlayLegs(raw)
@@ -3619,7 +3655,8 @@ export function extractSportsBetPartialFields(text) {
 
 /** Free-text bet slip / share-sheet paste / OCR. */
 export function parseSportsBetSlipText(text) {
-  const raw = String(text || '').replace(/\r/g, '').trim()
+  // Slice before parlay + single paths so stacked My Bets cards do not mix
+  const raw = slicePrimarySlipCard(String(text || '').replace(/\r/g, '')).trim()
   if (!raw) return []
 
   const parlay = parseParlaySlipText(raw)

@@ -332,6 +332,7 @@ Rules:
 - Casino slips with "[101] RAVENS" / "[522] KNICKS": each leg selection_label is the team only (e.g. "Ravens ML"). Never use date lines ("Jan 11 2026 - NFL PLAYOFFS"), rotation brackets in the label, or footer text (TICKET COST / TO WIN / TO COLLECT / YOU WON) as a leg.
 - FanDuel settled My Bets alt lines: selection_label is the bold pick above ALTERNATE RUN LINES / ALTERNATE SPREAD / ALTERNATE PUCK LINE (e.g. "Minnesota Twins +3.5"). Never use opponent names, period/inning scores, "Finished", or digit runs ("26 25 31 23 105") as a leg. Count every ALTERNATE market row.
 - FanDuel settled SGP props: player name above "TO HIT A HOME RUN" / "TO RECORD A STOLEN BASE" / "TO RECORD 2+ RBIS" / "TO SCORE N+ TOUCHDOWNS", plus team MONEYLINE rows. "Same Game Parlay +3134" is combined odds. "$5.00 $156.70" then "TOTAL WAGER WON ON FANDUEL" → stake + to_collect.
+- If the image/OCR stacks two My Bets tickets (two BET ID lines), extract ONLY the first/top ticket. Do not mix legs or odds from the card below.
 - Player props like "Over 0.5 (Matt Olson) / MATT OLSON HOME RUNS / +360" → leg market=prop, side=over, line=0.5, player_name, prop_stat=Home Runs, odds=+360
 - If unsure, still fill best effort; use market=other and side="" rather than inventing a fighter/team side`
 

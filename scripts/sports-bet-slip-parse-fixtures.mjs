@@ -1294,6 +1294,24 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 6 (Ryan yes): dual My Bets crop … top won Hurts SGP; ignore bottom lost
+    file: 'fd-won-hurts-sgp-2.ocr.txt',
+    expect: {
+      legs: 2,
+      odds: 55997,
+      stake_dollars: 20,
+      to_collect_dollars: 11219.49,
+      to_win_dollars: 11199.49,
+      status: 'won',
+      book: 'FanDuel',
+      sport_label: 'NFL',
+      sport_key: 'americanfootball_nfl',
+      leg0: 'Hurts',
+      leg_last: 'Barkley',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

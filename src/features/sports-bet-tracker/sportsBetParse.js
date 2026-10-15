@@ -2830,8 +2830,9 @@ function extractFanDuelMyBetsLegs(text) {
   const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
   const pending = []
   // Settled SGP props: "TO HIT A HOME RUN" / "TO RECORD A STOLEN BASE" / "TO RECORD 2+ RBIS"
-  const propMarketRe = /^(?:to\s+hit\s+a\s+home\s+run|to\s+record\s+(?:a\s+)?stolen\s+base|to\s+record\s+(\d+)\+?\s*rbis?|to\s+score\s+(\d+)\+?\s*touchdowns?|any\s*time\s*touchdown)/i
-  const marketRe = /^(moneyline|half-?time\s*result|1st\s*half\s*over\/under|spread\s*betting|total\s*points|total\s*match\s*points|spread|alternate\s*(?:run\s*lines?|spread|puck\s*line)|any\s*time\s*touchdown)/i
+  // / "FIRST TOUCHDOWN SCORER" / "TO SCORE N+ TOUCHDOWNS"
+  const propMarketRe = /^(?:to\s+hit\s+a\s+home\s+run|to\s+record\s+(?:a\s+)?stolen\s+base|to\s+record\s+(\d+)\+?\s*rbis?|to\s+score\s+(\d+)\+?\s*touchdowns?|first\s*touchdown\s*scorer|any\s*time\s*touchdown)/i
+  const marketRe = /^(moneyline|half-?time\s*result|1st\s*half\s*over\/under|spread\s*betting|total\s*points|total\s*match\s*points|spread|alternate\s*(?:run\s*lines?|spread|puck\s*line)|first\s*touchdown\s*scorer|any\s*time\s*touchdown)/i
   // OCR: "1ST HALE OVERJUNDER D.5 GOLLS"
   const marketFuzzy = /moneyline|half-?time|over\s*\/?\s*under|hale\s*over|gol|spread|puck|alternate|touchdown|receiving|total|home\s*run|stolen\s*base|\brbis?\b/i
   const altPickRe = /^(.+?)\s+([+-]\d+(?:\.\d+)?)\s*$/
@@ -2870,12 +2871,16 @@ function extractFanDuelMyBetsLegs(text) {
     const marketRaw = lines[i + 1] || ''
     const market = marketRaw.replace(/^[^A-Za-z]+/, '').trim()
     const selRaw = lines[i]
-    // Strip leading icon OCR junk: "(©)", "&", "$", "In "
-    const sel = String(selRaw || '').replace(/^[\s(©®™*&$@~•·→xX]+/, '').trim()
+    // Strip leading icon OCR junk: "(©)", "&", "$", "In ", lone "S "/"G " badge letters
+    const sel = String(selRaw || '')
+      .replace(/^[\s(©®™*&$@~•·→xX]+/, '')
+      .replace(/^[A-Z]\s+(?=[A-Z][a-z])/, '')
+      .trim()
     if (!sel || sel.length > 80) continue
     if (/^(my\s*bets|active|settled|saved|fanduel|panduel|draw\s*moneyline|\d+\s*leg|sgp|same\s*game)/i.test(sel)) continue
-    // Collapsed header: "Cubs Moneyline, Braves Moneyline, …"
+    // Collapsed header: "Cubs Moneyline, Braves Moneyline, …" / "Mixon First TD…, Taylor…"
     if (/moneyline.*,.*moneyline/i.test(sel)) continue
+    if (/first\s*touchdown\s*scorer.*,.*first\s*touchdown/i.test(sel)) continue
     if (bareAmericanOddsLine(sel) || /^finished$|^live$/i.test(sel)) continue
     if (/^\d/.test(sel) && !/^(1st|2nd|\d+\+)/i.test(sel)) continue
     if (legSelectionLooksJunk(sel)) continue
@@ -2935,6 +2940,11 @@ function extractFanDuelMyBetsLegs(text) {
         prop_stat = 'RBIs'
         line = String(Number.isFinite(n) ? n : 1)
         selection_label = `${player_name} ${line}+ RBIs`
+      } else if (/first\s*touchdown\s*scorer/i.test(market)) {
+        prop_stat = 'First TD'
+        line = '1'
+        side = 'over'
+        selection_label = `${player_name} First TD`
       } else if (/touchdown/i.test(market)) {
         const n = Number(propM?.[2] || /\b(\d+)\+?\s*touchdowns?\b/i.exec(market)?.[1] || 1)
         prop_stat = Number.isFinite(n) && n > 1 ? `${n}+ Touchdowns` : 'Anytime TD'
@@ -2960,6 +2970,7 @@ function extractFanDuelMyBetsLegs(text) {
       selection_label = titleCaseWords(sel)
     }
 
+    const isFirstTd = /first\s*touchdown\s*scorer/i.test(market)
     pending.push(emptyLegStub({
       market: marketKind,
       side,
@@ -2968,6 +2979,8 @@ function extractFanDuelMyBetsLegs(text) {
       selection_label,
       player_name,
       prop_stat,
+      sport_key: isFirstTd ? 'americanfootball_nfl' : '',
+      sport_label: isFirstTd ? 'NFL' : '',
     }))
   }
 
@@ -3227,8 +3240,15 @@ function extractParlayPickSummaryNotes(text) {
     // Collapsed FD list: "Lakers Moneyline, Dodgers…" / BetMGM: "T. Schoolkate | M. Purcell | …"
     if (/[A-Za-z]/.test(line) && (/,/.test(line) || /\|/.test(line) || /moneyline/i.test(line) || parts.length > 0)) {
       parts.push(line.replace(/,+\s*$/, '').replace(/\.\.\.$/, '').trim())
-      // One solid comma list is enough (DK "Mario Barrios, Canelo Alvarez")
-      if (/,/.test(line) && (line.match(/,/g) || []).length >= 1) break
+      // One solid comma list is enough (DK "Mario Barrios, Canelo Alvarez") …
+      // unless the next line is an OCR wrap ("Scorer, Marvin Harrison…")
+      if (/,/.test(line) && (line.match(/,/g) || []).length >= 1) {
+        const nxt = lines[i + 1] || ''
+        if (/^(scorer|moneyline)\b/i.test(nxt) || /first\s*touchdown\s*scorer/i.test(nxt)) {
+          continue
+        }
+        break
+      }
       continue
     }
     if (parts.length) break

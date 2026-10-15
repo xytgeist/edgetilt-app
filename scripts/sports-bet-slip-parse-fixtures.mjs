@@ -1417,6 +1417,25 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 13 (Ryan yes): FD 4-leg First TD Scorer WON
+    file: 'fd-won-ftd-4.ocr.txt',
+    expect: {
+      legs: 4,
+      odds: 138090,
+      stake_dollars: 100,
+      to_collect_dollars: 138190.8,
+      to_win_dollars: 138090.8,
+      status: 'won',
+      book: 'FanDuel',
+      sport_label: 'NFL',
+      sport_key: 'americanfootball_nfl',
+      leg0: 'Mixon',
+      leg_last: 'Robinson',
+      notes_includes: 'Parlay picks (4):',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

@@ -13595,6 +13595,81 @@ html.light .edge-monitor-desktop-page .edge-monitor-desktop-bg {
   display: none;
 }
 
+/* Lounge Mod hub + staff notice — light mode. Dark default unchanged. */
+html.light [data-lounge-mod-queue] {
+  background-color: #f4f4f5 !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+html.light [data-lounge-mod-queue] .text-white:not([class*="bg-"]) {
+  color: #18181b !important;
+}
+html.light [data-lounge-mod-queue] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-lounge-mod-queue] .text-zinc-200 {
+  color: #27272a !important;
+}
+html.light [data-lounge-mod-queue] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-lounge-mod-queue] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-lounge-mod-queue] .text-zinc-500,
+html.light [data-lounge-mod-queue] .text-zinc-600 {
+  color: #71717a !important;
+}
+html.light [data-lounge-mod-queue] .border-zinc-800 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+html.light [data-lounge-mod-queue] .bg-zinc-950,
+html.light [data-lounge-mod-queue] article.bg-zinc-950 {
+  background-color: #ffffff !important;
+}
+html.light [data-lounge-mod-queue] .bg-zinc-900 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-lounge-mod-queue] .bg-zinc-800,
+html.light [data-lounge-mod-queue] .hover\:bg-zinc-700:hover {
+  background-color: #e4e4e7 !important;
+  color: #18181b !important;
+}
+html.light [data-lounge-mod-queue] .bg-zinc-100 {
+  background-color: #18181b !important;
+  color: #fafafa !important;
+}
+html.light [data-lounge-mod-queue] input {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light [data-lounge-mod-queue] input::placeholder {
+  color: #a1a1aa !important;
+}
+html.light [data-lounge-mod-queue] .text-rose-300,
+html.light [data-lounge-mod-queue] .text-rose-100 {
+  color: #9f1239 !important;
+}
+html.light [data-lounge-mod-queue] .bg-rose-900\/70,
+html.light [data-lounge-mod-queue] .bg-rose-950 {
+  background-color: #ffe4e6 !important;
+}
+html.light [data-lounge-mod-queue] .text-amber-100,
+html.light [data-lounge-mod-queue] .text-amber-300 {
+  color: #b45309 !important;
+}
+html.light [data-lounge-mod-queue] .bg-amber-900\/70 {
+  background-color: #fef3c7 !important;
+}
+html.light [data-lounge-staff-notice] {
+  background-color: #fffbeb !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+}
+html.light [data-lounge-staff-notice] button {
+  color: #b45309 !important;
+}
+
 /* Bot management portal — light mode (/?tab=bots). Dark default unchanged. */
 html.light [data-bot-portal] .text-white:not([class*="bg-"]):not([class*="from-"]) {
   color: #18181b !important;

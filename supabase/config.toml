@@ -98,6 +98,9 @@ verify_jwt = false
 [functions.lounge-bot-ingest]
 verify_jwt = false
 
+[functions.lounge-report-triage]
+verify_jwt = false
+
 # Stripe billing webhook (signed by Stripe, not Supabase JWT).
 [functions.affiliate-connect]
 verify_jwt = true

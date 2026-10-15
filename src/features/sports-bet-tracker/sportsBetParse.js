@@ -2858,6 +2858,43 @@ function parlayLegsNeedHydrate(legs) {
 }
 
 /**
+ * When Edge/OCR puts a single leg juice (-190) in the ticket odds field, replace with
+ * stake→payout American or the product of leg juices.
+ */
+function repairParlayTicketOdds(draft, ocrText = '') {
+  if (!draft || typeof draft !== 'object') return draft
+  const legs = Array.isArray(draft.legs) ? draft.legs : []
+  if (legs.length < 2) return draft
+
+  const fromLegs = combinedOddsFromLegs(legs)
+  let fromPay = null
+  if (ocrText) {
+    const stake = extractStakeDollars(ocrText)
+    const payout = extractPayoutDollars(ocrText)
+    if (stake != null && payout != null) {
+      fromPay = americanFromStakeAndPayout(stake, payout)
+    }
+  }
+  const best = fromPay ?? fromLegs
+  if (best == null) return draft
+
+  const current = americanOrNull(draft.odds)
+  const legOdds = new Set(
+    legs.map((l) => americanOrNull(l.odds)).filter((n) => n != null),
+  )
+  // Ticket field equals one leg's juice (classic AI steal of last line -190)
+  const stolen = current != null && legOdds.has(current)
+  const missing = current == null
+  // Ticket odds far too small vs payout/leg product (e.g. -190 vs +52285)
+  const tooSmall = current != null
+    && Math.abs(best) >= 500
+    && Math.abs(current) < Math.abs(best) * 0.25
+
+  if (!stolen && !missing && !tooSmall) return draft
+  return { ...draft, odds: americanOddsInputString(best) }
+}
+
+/**
  * Fill parlay.legs from OCR text or AI notes when the structured array is empty/placeholder.
  * Prefer the richest source (notes often list all legs when OCR only got 2).
  */
@@ -2896,21 +2933,23 @@ export function hydrateParlayLegsForDraft(draft, ocrText = '') {
     if (a.junk !== b.junk) return a.junk - b.junk
     return 0
   }
+  let next = draft
   // Prefer a source that hits the slip's declared leg count ("Parlay 5 bets")
   if (declared != null) {
     const exact = candidates.filter((c) => c.n === declared)
     if (exact.length) {
       exact.sort(byQuality)
-      return { ...draft, legs: exact[0].legs }
+      next = { ...draft, legs: exact[0].legs }
+      return repairParlayTicketOdds(next, ocrText)
     }
   }
   candidates.sort(byQuality)
   const best = candidates[0]
-  if (best.n >= 2) return { ...draft, legs: best.legs }
-  if (!parlayLegsNeedHydrate(draft.legs) && current.length) {
-    return { ...draft, legs: current }
+  if (best.n >= 2) next = { ...draft, legs: best.legs }
+  else if (!parlayLegsNeedHydrate(draft.legs) && current.length) {
+    next = { ...draft, legs: current }
   }
-  return draft
+  return repairParlayTicketOdds(next, ocrText)
 }
 
 /**

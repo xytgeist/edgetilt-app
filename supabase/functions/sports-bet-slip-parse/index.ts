@@ -264,7 +264,7 @@ player_name, prop_stat, notes, legs (array), confidence (0-1).
 Rules:
 - market: spread | h2h | total | prop | parlay | other
 - side: home | away | over | under | draw | "" (empty when N/A … distance/method/round props)
-- odds: American with sign (+120 / -110). For parlays use the ticket combined odds.
+- odds: American with sign (+120 / -110). For parlays use the ticket combined odds (Total Odds / Combined). NEVER copy a single leg's juice (e.g. last-line -190) into the parlay odds. If the slip only shows Ticket Cost + To Win / To Collect and no American total, omit odds or leave "".
 - stake_dollars: number only (no $). Map TAKE / Wager / Risk / Ticket Cost → stake.
 - commence_time: ISO 8601 if event date/time known
 - sport_label: NFL | CFB | NBA | MLB | NHL | UFC | Boxing | Golf | MLS | Other

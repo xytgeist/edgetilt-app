@@ -913,6 +913,30 @@ try {
   console.error(`FAIL Caesars casino junk hydrate: ${err.message}`)
 }
 
+// Caesars casino … Edge steals last leg juice (-190) as ticket odds → repair from payout
+try {
+  const czOcr = fs.readFileSync(path.join(OCR_DIR, 'caesars-casino-5.ocr.txt'), 'utf8')
+  const clean = parseSportsBetSlipText(czOcr)[0]
+  const stolen = {
+    market: 'parlay',
+    odds: '-190',
+    stake_dollars: '25',
+    selection_label: 'Parlay (5 legs)',
+    notes: 'PARLAY (5 TEAMS)',
+    legs: clean.legs,
+  }
+  const fixed = hydrateParlayLegsForDraft(stolen, czOcr)
+  assert(Math.abs(Number(fixed.odds)) === 52285, `Caesars ticket odds want +52285 got ${fixed.odds}`)
+  assert(
+    !clean.legs.some((l) => Number(l.odds) === Number(fixed.odds)),
+    'Caesars ticket odds must not equal a leg juice',
+  )
+  console.log('ok  Caesars casino stolen ticket odds -190 → +52285')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL Caesars stolen ticket odds: ${err.message}`)
+}
+
 /** Real Vision OCR dumps from Ryan's batch (2026-10-14). */
 const ocrBatch = [
   {
@@ -1147,7 +1171,7 @@ for (const row of ocrBatch) {
   }
 }
 
-const total = fixtures.length + 3 + ocrCount
+const total = fixtures.length + 4 + ocrCount
 if (failed) {
   console.error(`\n${failed}/${total} failed`)
   process.exit(1)

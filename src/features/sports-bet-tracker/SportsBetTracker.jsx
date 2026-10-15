@@ -259,8 +259,10 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
   }
   if (next.market === 'parlay') {
     // AI often only puts legs in notes … hydrate before blank placeholders.
+    // Also repairs ticket odds when AI stole a leg juice (-190) into COMBINED ODDS.
     const hydrated = hydrateParlayLegsForDraft(next, prefill.ocrText || prefill.ocr_text || '')
     next.legs = normalizeParlayLegs(hydrated.legs || [])
+    if (hydrated.odds) next.odds = String(hydrated.odds)
     if (next.legs.length < 2) next.legs = blankParlayLegs()
     next.side = ''
     next.home_team = ''

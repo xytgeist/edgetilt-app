@@ -333,6 +333,8 @@ export default function SportsBetTracker({
   const [saving, setSaving] = useState(false)
   /** { title, detail?, current?, total? } while reading slips / saving */
   const [progress, setProgress] = useState(null)
+  /** Card id while deleteSportsBet is in flight (card-local spinner). */
+  const [deletingId, setDeletingId] = useState(null)
   const [filter, setFilter] = useState('all')
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
@@ -730,12 +732,19 @@ export default function SportsBetTracker({
   }
 
   const onDelete = async (id) => {
-    const { error: delErr } = await deleteSportsBet(supabaseClient, id)
-    if (delErr) {
-      setError(delErr)
-      return
+    if (deletingId) return
+    setDeletingId(id)
+    setError('')
+    try {
+      const { error: delErr } = await deleteSportsBet(supabaseClient, id)
+      if (delErr) {
+        setError(delErr)
+        return
+      }
+      setBets((prev) => prev.filter((b) => b.id !== id))
+    } finally {
+      setDeletingId(null)
     }
-    setBets((prev) => prev.filter((b) => b.id !== id))
   }
 
   const onConfirm = async (id) => {
@@ -1182,11 +1191,15 @@ export default function SportsBetTracker({
                   : profit < 0
                     ? 'text-rose-300'
                     : 'text-zinc-300'
+            const isDeleting = deletingId === bet.id
             return (
               <li
                 key={bet.id}
                 data-sports-bet-card
-                className="rounded-2xl border border-zinc-800 bg-zinc-900/70 px-3 py-3"
+                className={`rounded-2xl border border-zinc-800 bg-zinc-900/70 px-3 py-3 transition-opacity ${
+                  isDeleting ? 'pointer-events-none opacity-60' : ''
+                }`}
+                aria-busy={isDeleting || undefined}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -1323,10 +1336,16 @@ export default function SportsBetTracker({
                     <button
                       type="button"
                       onClick={() => void onDelete(bet.id)}
-                      className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-rose-300 active:bg-rose-500/10"
+                      disabled={isDeleting || Boolean(deletingId)}
+                      aria-label={isDeleting ? 'Deleting bet' : 'Delete bet'}
+                      className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-rose-300 active:bg-rose-500/10 disabled:opacity-70"
                     >
-                      <Trash2 className="h-3 w-3" />
-                      Delete
+                      {isDeleting ? (
+                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
+                      {isDeleting ? 'Deleting…' : 'Delete'}
                     </button>
                   </div>
                 ) : (
@@ -1357,10 +1376,16 @@ export default function SportsBetTracker({
                     <button
                       type="button"
                       onClick={() => void onDelete(bet.id)}
-                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-rose-300 active:bg-rose-500/10"
+                      disabled={isDeleting || Boolean(deletingId)}
+                      aria-label={isDeleting ? 'Deleting bet' : 'Delete bet'}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-rose-300 active:bg-rose-500/10 disabled:opacity-70"
                     >
-                      <Trash2 className="h-3 w-3" />
-                      Delete
+                      {isDeleting ? (
+                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
+                      {isDeleting ? 'Deleting…' : 'Delete'}
                     </button>
                   </div>
                 )}

@@ -187,8 +187,13 @@ export async function insertSportsBet(supabaseClient, userId, draft) {
   if (error) return { bet: null, error: error.message }
   let bet = sortLegsOnBet({ ...data, sports_bet_legs: [] })
   if (isParlayDraft(draft) && built.legs.length) {
+    // Won ticket … mark open legs won, but keep Void/Push from OCR (e.g. postponed ML)
     const legsForInsert = slipStatus === 'won'
-      ? built.legs.map((l) => ({ ...l, status: 'won' }))
+      ? built.legs.map((l) => {
+        const s = String(l.status || 'open')
+        if (s === 'void' || s === 'push' || s === 'lost') return l
+        return { ...l, status: 'won' }
+      })
       : built.legs
     const legErr = await replaceLegs(supabaseClient, userId, data.id, legsForInsert)
     if (legErr) {

@@ -1453,6 +1453,25 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 15 (Ryan yes): FD MLB ML won with Void leg … clean Void status, not "Void ML"
+    file: 'fd-won-mlb-void.ocr.txt',
+    expect: {
+      legs: 5,
+      odds_blank: true,
+      stake_dollars: 10,
+      to_collect_dollars: 1610.46,
+      to_win_dollars: 1600.46,
+      status: 'won',
+      book: 'FanDuel',
+      sport_label: 'MLB',
+      sport_key: 'baseball_mlb',
+      leg0: 'Reds',
+      leg_last: 'Astros',
+      leg_void: 'Cardinals',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,
@@ -1726,6 +1745,18 @@ for (const row of ocrBatch) {
       assert(
         String(d.notes || '').includes(e.notes_includes),
         `${name}: notes want include ${JSON.stringify(e.notes_includes)} got ${JSON.stringify(d.notes)}`,
+      )
+    }
+    if (e.leg_void) {
+      const voidLeg = legs.find((l) => String(l.status || '') === 'void')
+      assert(voidLeg, `${name}: want a void leg`)
+      assert(
+        String(voidLeg.selection_label || '').toLowerCase().includes(String(e.leg_void).toLowerCase()),
+        `${name}: void leg ${voidLeg.selection_label}`,
+      )
+      assert(
+        !/\bvoid\b/i.test(String(voidLeg.selection_label || '')),
+        `${name}: void glued into selection ${voidLeg.selection_label}`,
       )
     }
     if (e.leg0) {

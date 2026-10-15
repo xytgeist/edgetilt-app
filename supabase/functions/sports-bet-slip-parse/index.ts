@@ -341,6 +341,7 @@ Rules:
 - DK "2 PICKS PARLAY +odds LOST" with fighter "Winner" markets (Mario Barrios / Canelo Alvarez): status=lost, sport Boxing (not UFC unless UFC/MMA printed), legs like "Mario Barrios Winner". Wager only + no Paid → to_win/to_collect=0.
 - FanDuel "FIRST TOUCHDOWN SCORER" under player name (multi-game 4-leg etc.): market=prop, selection "Player First TD", sport NFL. "$100 TOTAL WAGER" + "$… WON ON FANDUEL" → stake + to_collect, status=won. Zip bunched per-leg juices when printed.
 - FanDuel "TOTAL WAGER RETURNED" with "$stake $0.00" above → status=lost (not void), stake=non-zero $, to_win/to_collect=0. Collapsed "Same Game Parlay +odds" name list → notes="Parlay picks (N): …", legs[] may be empty. Extract ONLY the top ticket when stacked My Bets cards follow.
+- FanDuel "St. Louis Cardinals Void" + MONEYLINE (or any "Team Void" + MONEYLINE): selection_label="St. Louis Cardinals ML", leg status=void (do not put Void in the label). Parent WON ON FANDUEL still status=won; other legs won.
 - Player props like "Over 0.5 (Matt Olson) / MATT OLSON HOME RUNS / +360" → leg market=prop, side=over, line=0.5, player_name, prop_stat=Home Runs, odds=+360
 - If unsure, still fill best effort; use market=other and side="" rather than inventing a fighter/team side`
 

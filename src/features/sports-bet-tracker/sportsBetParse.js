@@ -2927,6 +2927,7 @@ function extractFanDuelMyBetsLegs(text) {
     let selection_label = titleCaseWords(sel)
     let player_name = ''
     let prop_stat = ''
+    let legStatus = ''
     if (ou) {
       marketKind = 'total'
       side = ou[1].toLowerCase() === 'under' ? 'under' : 'over'
@@ -2983,12 +2984,15 @@ function extractFanDuelMyBetsLegs(text) {
     } else if (/moneyline/i.test(market)) {
       marketKind = 'h2h'
       // Open My Bets: "Chicago Cubs -120" / MONEYLINE (juice on the pick line)
-      const withJuice = /^(.+?)\s+([+-]\d{3,6})\s*$/.exec(sel)
+      // Settled: "St. Louis Cardinals Void" / MONEYLINE (Void is leg status, not the team)
+      if (/\bvoid\b/i.test(sel)) legStatus = 'void'
+      const selClean = sel.replace(/\s*\bvoid\b\s*/i, ' ').replace(/\s+/g, ' ').trim()
+      const withJuice = /^(.+?)\s+([+-]\d{3,6})\s*$/.exec(selClean)
       if (withJuice && Math.abs(Number(withJuice[2])) >= 100) {
         selection_label = `${titleCaseWords(withJuice[1].trim())} ML`
         odds = americanOddsInputString(withJuice[2]) || withJuice[2]
       } else {
-        selection_label = `${titleCaseWords(sel)} ML`
+        selection_label = `${titleCaseWords(selClean || sel)} ML`
       }
     } else if (/^spread$/i.test(market) && !/[+-]\d/.test(sel)) {
       marketKind = 'spread'
@@ -3006,6 +3010,7 @@ function extractFanDuelMyBetsLegs(text) {
       prop_stat,
       sport_key: isFirstTd ? 'americanfootball_nfl' : '',
       sport_label: isFirstTd ? 'NFL' : '',
+      ...(legStatus ? { status: legStatus } : {}),
     }))
   }
 

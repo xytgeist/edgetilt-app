@@ -714,9 +714,10 @@ function extractAppPlayerPropLegs(text) {
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]
-    // 100+ (Player) / 125+ (Player) … alt milestone props
-    const plus = /^(\d+(?:\.\d+)?)\+\s*\(([^)]+)\)\s*$/i.exec(line)
-    const m = plus
+    // 100+ (Player) … or DK "× 40+" then "Cade Cunningham Points + Rebounds"
+    const plusParen = /^[×xX]?\s*(\d+(?:\.\d+)?)\+\s*\(([^)]+)\)\s*$/i.exec(line)
+    const plusBare = /^[×xX]?\s*(\d+(?:\.\d+)?)\+\s*$/i.exec(line)
+    const m = plusParen || plusBare
       ? null
       : (
         /^(over|under)\s+(\d+(?:\.\d+)?)\s*\(([^)]+)\)\s*$/i.exec(line)
@@ -725,10 +726,27 @@ function extractAppPlayerPropLegs(text) {
     let side = 'over'
     let lineNum = NaN
     let player = ''
-    if (plus) {
-      lineNum = Number(plus[1])
-      player = titleCaseWords(plus[2].trim())
-      side = 'over'
+    let stat = ''
+    if (plusParen) {
+      lineNum = Number(plusParen[1])
+      player = titleCaseWords(plusParen[2].trim())
+    } else if (plusBare) {
+      lineNum = Number(plusBare[1])
+      // Next line(s): "Cade Cunningham Points + Rebounds" / "+ Assists"
+      const detail = []
+      for (let j = i + 1; j < Math.min(i + 4, lines.length); j += 1) {
+        const next = lines[j]
+        if (/^[×xX]?\s*\d+\+/.test(next) || /^(over|under)\s+\d/i.test(next)) break
+        if (/(?:@|\bat\b)/i.test(next) || bareAmericanOddsLine(next) || /^\$|stake|parlay|0\.00/i.test(next)) break
+        detail.push(next.replace(/^\+\s*/, ''))
+      }
+      const blob = detail.join(' ').replace(/\s+/g, ' ').trim()
+      // First Last (+ optional Jr/III) then stat … do not swallow "Touchdowns Scored" into the name
+      const pm = /^([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,1}(?:\s+(?:jr|sr|ii|iii|iv)\.?)?)\s+(.+)$/i.exec(blob)
+      if (pm) {
+        player = titleCaseWords(pm[1])
+        stat = titleCaseWords(pm[2])
+      }
     } else if (m) {
       side = m[1].toLowerCase() === 'under' ? 'under' : 'over'
       lineNum = Number(m[2])
@@ -739,20 +757,19 @@ function extractAppPlayerPropLegs(text) {
     if (!player || !Number.isFinite(lineNum)) continue
     if (/^(point|total|team|game|the)$/i.test(player)) continue
 
-    let stat = ''
     let event_label = ''
     let away_team = ''
     let home_team = ''
     let odds = ''
-    for (let j = i + 1; j < Math.min(i + 8, lines.length); j += 1) {
+    for (let j = i + 1; j < Math.min(i + 10, lines.length); j += 1) {
       const next = lines[j]
-      if (/^(over|under)\s+\d/i.test(next) || /^\d+\+\s*\(/i.test(next)) break
+      if (/^(over|under)\s+\d/i.test(next) || /^[×xX]?\s*\d+\+\s*(\(|$)/i.test(next)) break
       if (isParlayLegJunkLine(next)) continue
-      if (/^[+-]\d{3,5}$/.test(next)) {
-        // Bunched trail (+360/+295/+350) … leave empty for zip. Interleaved single odds … take it.
-        const after = lines.slice(j + 1).find((l) => l && !isParlayLegJunkLine(l))
-        if (after && /^[+-]\d{3,5}$/.test(after)) break
-        odds = americanOddsInputString(next)
+      const oddsTok = bareAmericanOddsLine(next)
+      if (oddsTok) {
+        const after = lines.slice(j + 1).find((l) => l && !isParlayLegJunkLine(l) && l !== '0.00')
+        if (after && bareAmericanOddsLine(after)) break
+        odds = oddsTok
         break
       }
       if (
@@ -772,7 +789,7 @@ function extractAppPlayerPropLegs(text) {
     }
 
     const ou = side === 'under' ? 'Under' : 'Over'
-    const selection_label = [player, ou, String(lineNum), stat].filter(Boolean).join(' ')
+    const selection_label = [player, `${lineNum}+`, stat || ou].filter(Boolean).join(' ')
     const key = normalizeNameKey(selection_label)
     if (seen.has(key)) continue
     seen.add(key)
@@ -797,7 +814,115 @@ function extractAppPlayerPropLegs(text) {
   }
 
   const zipped = zipBunchedAmericanOdds(pending, text)
+  // Keep all legs when ticket combined odds exist (partial zip OK … DK bunched odds miss some)
+  if (pending.length >= 2 && extractTotalParlayOdds(text) != null) {
+    return zipped.length >= 2 ? zipped : pending
+  }
   return zipped.filter((l) => l.odds)
+}
+
+/**
+ * FanDuel open Same Game Parlay betslip:
+ * - "PARLAY SELECTIONS" / Team MONEYLINE / Player ANY TIME TD / "Over +41.5" + RECEIVING
+ * - Or mixed "X GB Packers" Moneyline + "× 1+" / "Jalen Hurts Touchdowns Scored"
+ */
+function extractFanDuelSgpLegs(text) {
+  const raw = normalizeSlipOcrText(text)
+  if (!/\bsgp\b|same\s*game\s*parlay/i.test(raw)) return []
+  // Settled dual-SGP / My Bets use extractFanDuelMyBetsLegs
+  if (/(?:my\s*bets|won\s+on\s+fanduel|total\s*wager)/i.test(raw) && !/parlay\s*selections/i.test(raw)) {
+    return []
+  }
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+
+  const push = (stub) => {
+    if (!stub?.selection_label) return
+    const key = normalizeNameKey(stub.selection_label)
+    if (seen.has(key)) return
+    seen.add(key)
+    pending.push(stub)
+  }
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    const next = lines[i + 1] || ''
+
+    // Team + MONEYLINE / SPREAD
+    if (/^(?:moneyline|money\s*line|spread)$/i.test(next)) {
+      const team = line.replace(/^[×xX]\s*/, '').trim()
+      if (team && team.length < 48 && !/parlay|straight|selection|wager|sgp|same\s*game|betslip/i.test(team)) {
+        const isMl = /money/i.test(next)
+        push(emptyLegStub({
+          market: isMl ? 'h2h' : 'spread',
+          selection_label: isMl ? `${titleCaseWords(team)} ML` : titleCaseWords(team),
+        }))
+        continue
+      }
+    }
+
+    // Player + ANY TIME TOUCHDOWN…
+    if (/any\s*time\s*touchdown/i.test(next)) {
+      const player = line.replace(/^[×xX]\s*/, '').trim()
+      if (player && /^[A-Za-z]/.test(player) && player.length < 40) {
+        push(emptyLegStub({
+          market: 'prop',
+          selection_label: `${titleCaseWords(player)} ATD`,
+          player_name: titleCaseWords(player),
+          prop_stat: 'Anytime Touchdown',
+        }))
+        continue
+      }
+    }
+
+    // "Chase Claypool Over +41.5" + "CHASE CLAYPOOL - RECEIVING YDS"
+    const ouPlayer = /^([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s+(over|under)\s+\+?(\d+(?:\.\d+)?)\s*$/i.exec(line)
+    if (ouPlayer) {
+      const player = titleCaseWords(ouPlayer[1])
+      const side = ouPlayer[2].toLowerCase() === 'under' ? 'under' : 'over'
+      const lineNum = Number(ouPlayer[3])
+      let stat = ''
+      if (/receiving|rushing|passing|yards|points|rebounds|assists|touchdown/i.test(next)) {
+        stat = titleCaseWords(next.replace(new RegExp(player.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '').replace(/^[\s\-–]+/, ''))
+      }
+      push(emptyLegStub({
+        market: 'prop',
+        side,
+        line: String(lineNum),
+        selection_label: [player, side === 'under' ? 'Under' : 'Over', String(lineNum), stat].filter(Boolean).join(' '),
+        player_name: player,
+        prop_stat: stat,
+      }))
+      continue
+    }
+
+    // "× 1+" / "Jalen Hurts Touchdowns Scored"
+    const plusBare = /^[×xX]?\s*(\d+(?:\.\d+)?)\+\s*$/i.exec(line)
+    if (plusBare && /^[A-Za-z]/.test(next) && !/(?:@|\bat\b)/i.test(next)) {
+      const lineNum = Number(plusBare[1])
+      const pm = /^([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,1}(?:\s+(?:jr|sr|ii|iii|iv)\.?)?)\s+(.+)$/i.exec(next)
+      if (pm) {
+        const player = titleCaseWords(pm[1])
+        const stat = titleCaseWords(pm[2])
+        push(emptyLegStub({
+          market: 'prop',
+          side: 'over',
+          line: String(lineNum),
+          selection_label: `${player} ${lineNum}+ ${stat}`,
+          player_name: player,
+          prop_stat: stat,
+        }))
+        continue
+      }
+    }
+
+  }
+
+  if (pending.length < 2) return []
+  // Open SGP: per-leg juices usually absent; do not zip stray straights ML (+112) onto leg 1
+  if (extractTotalParlayOdds(text) != null) return pending
+  return zipBunchedAmericanOdds(pending, text).filter((l) => l.odds)
 }
 
 function sportHintFromLine(line) {
@@ -1595,11 +1720,18 @@ function countPlayerPropOuLines(text) {
 
 function looksLikeParlayText(text) {
   const raw = String(text || '')
-  if (/\bparlay\b|\bsgp\b|same\s*game\s*parlay|\d+\s*-\s*leg\b|\d+\s+legs?\b|multiples/i.test(raw)) {
+  if (/\bparlay\b|\bpa[yi]lay\b|\bsgp\b|same\s*game\s*parlay|\d+\s*-\s*leg\b|\d+\s+legs?\b|multiples/i.test(raw)) {
     return true
   }
   // FanDuel settled multi-prop: no "Parlay" word, just stacked Over/Under legs + TOTAL WAGER
   if (countPlayerPropOuLines(raw) >= 2) return true
+  // FanDuel My Bets alt lines / spreads … no "Parlay" word
+  if (/(?:my\s*bets|won\s+on\s+fanduel|total\s*wager)/i.test(raw)) {
+    const markets = raw.match(
+      /\b(?:alternate\s*(?:run\s*lines?|spread|puck\s*line)|total\s*match\s*points|spread\s*betting|moneyline|half-?time\s*result)\b/gi,
+    ) || []
+    if (markets.length >= 2) return true
+  }
   // DK "SINGLES" stake-all / multi-ML betslip with no Parlay label
   const mlHits = raw.match(/\b(?:moneyline|money\s*line)\b/gi) || []
   if (mlHits.length >= 2 && /(?:bet\s*slip|place\s*bet|total\s*payout|total\s*wager)/i.test(raw)) {
@@ -1629,12 +1761,23 @@ function extractTotalParlayOdds(text) {
     || /combined\s*(?:odds|price)\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
     || /parlay\s*odds\s*[:=]?\s*([+-]\d{3,5})/i.exec(raw)
     || /parlay\s*\(\d+\)\s*@\s*([+-]\d{3,5})/i.exec(raw)
-    || /(\d+)\s*(?:pick\s+)?parlay[\s\S]{0,80}?([+-]\d{3,6})/i.exec(raw)
-    || /(\d+)\s*leg(?:\s+parlay)?[\s\S]{0,40}?([+-]\d{3,6})/i.exec(raw)
   if (m) {
     const oddsTok = m[2] && /^[+-]/.test(m[2]) ? m[2] : m[1]
     const n = americanOrNull(oddsTok)
     if (n != null) return n
+  }
+  // "4 Pick Parlay" / "3 Leg Parlay" … bunched leg juices then ticket plus … prefer fat +
+  {
+    const block = /(\d+)\s*(?:pick\s+)?pa[ry]lay([\s\S]{0,280})/i.exec(raw)
+      || /(\d+)\s*leg\s+pa[ryi]lay([\s\S]{0,280})/i.exec(raw)
+    if (block) {
+      const found = [...block[2].matchAll(/([+-]\d{3,6})/g)]
+        .map((x) => americanOrNull(x[1]))
+        .filter((n) => n != null)
+      const pos = found.filter((n) => n > 0)
+      if (pos.length) return Math.max(...pos)
+      if (found.length === 1) return found[0]
+    }
   }
   // Decimal combined odds (LIGA365): prefer the largest "Odds: X.XX" (ticket vs per-leg)
   let bestDec = null
@@ -1646,6 +1789,19 @@ function extractTotalParlayOdds(text) {
   if (bestDec != null) {
     const a = decimalToAmerican(bestDec)
     if (a != null) return a
+  }
+  // Open / settled SGP: ticket juice often alone on a line (+479 / +1859 / +1231)
+  if (/\bsgp\b|same\s*game\s*parlay|\bpa[yi]lay\b/i.test(raw)) {
+    const bare = []
+    for (const line of raw.split('\n')) {
+      const o = bareAmericanOddsLine(String(line || '').trim())
+      if (!o) continue
+      const n = americanOrNull(o)
+      if (n != null && Math.abs(n) >= 200) bare.push(n)
+    }
+    if (bare.length === 1) return bare[0]
+    const pos = bare.filter((n) => n > 0)
+    if (pos.length) return Math.max(...pos)
   }
   return null
 }
@@ -1802,14 +1958,28 @@ function extractAppSpreadTotalLegs(text) {
         line: isMl ? '' : String(lineNum),
         selection_label: isMl ? `${titleCaseWords(team)} ML` : `${titleCaseWords(team)} ${signed}`,
       })
-    } else if (isMl && /^[A-Za-z]/.test(line) && line.length < 48 && !/^(over|under|parlay)/i.test(line)) {
-      // "Los Angeles Rams" + Moneyline (no ± on selection line)
+    } else if (isMl) {
+      // "× GB Packers" / "Los Angeles Rams" + Moneyline (strip leading × before letter check)
+      const team = line.replace(/^[×xX$]\s*/, '').trim()
+      if (!/^[A-Za-z]/.test(team) || team.length > 48 || /^(over|under|parlay)/i.test(team)) {
+        /* skip */
+      } else if (/parlay|wager|odds|singles|clear|remove|straights|betslip/i.test(team)) {
+        /* skip */
+      } else {
+        stub = emptyLegStub({
+          market: 'h2h',
+          selection_label: `${titleCaseWords(team)} ML`,
+        })
+      }
+    } else if (/^spread$/i.test(next) && /^[A-Za-z]/.test(line.replace(/^[×xX]\s*/, '')) && !/[+-]\d/.test(line)) {
+      // FanDuel OCR drop: "Washington Commanders" + SPREAD (line missing)
       const team = line.replace(/^[×xX]\s*/, '').trim()
-      if (/parlay|wager|odds|singles|clear|remove|straights|betslip/i.test(team)) continue
-      stub = emptyLegStub({
-        market: 'h2h',
-        selection_label: `${titleCaseWords(team)} ML`,
-      })
+      if (team && team.length < 48 && !/wager|parlay|betslip/i.test(team)) {
+        stub = emptyLegStub({
+          market: 'spread',
+          selection_label: titleCaseWords(team),
+        })
+      }
     }
     if (!stub) continue
 
@@ -1835,7 +2005,11 @@ function extractAppSpreadTotalLegs(text) {
     pending.push(stub)
   }
 
-  return zipBunchedAmericanOdds(pending, text).filter((l) => l.odds)
+  const zipped = zipBunchedAmericanOdds(pending, text)
+  if (pending.length >= 2 && extractTotalParlayOdds(text) != null) {
+    return zipped.length >= 2 ? zipped : pending
+  }
+  return zipped.filter((l) => l.odds)
 }
 
 /**
@@ -1963,21 +2137,22 @@ function extractFanDuelMyBetsLegs(text) {
   if (!/(?:my\s*bets|won\s+on\s+fanduel|total\s*wager)/i.test(raw)) return []
   const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
   const pending = []
-  const marketRe = /^(moneyline|half-?time\s*result|1st\s*half\s*over\/under|spread\s*betting|total\s*points)\b/i
+  const marketRe = /^(moneyline|half-?time\s*result|1st\s*half\s*over\/under|spread\s*betting|total\s*points|total\s*match\s*points|spread|alternate\s*(?:run\s*lines?|spread|puck\s*line)|any\s*time\s*touchdown)/i
   // OCR: "1ST HALE OVERJUNDER D.5 GOLLS"
-  const marketFuzzy = /moneyline|half-?time|over\s*\/?\s*under|hale\s*over|gol/i
+  const marketFuzzy = /moneyline|half-?time|over\s*\/?\s*under|hale\s*over|gol|spread|puck|alternate|touchdown|receiving|total/i
 
   for (let i = 0; i < lines.length; i += 1) {
     const market = lines[i + 1] || ''
     const sel = lines[i]
     if (!sel || sel.length > 60) continue
-    if (/^(my\s*bets|active|settled|saved|fanduel|panduel|draw\s*moneyline|\d+\s*leg)/i.test(sel)) continue
+    if (/^(my\s*bets|active|settled|saved|fanduel|panduel|draw\s*moneyline|\d+\s*leg|sgp|same\s*game)/i.test(sel)) continue
     if (bareAmericanOddsLine(sel) || /^finished$|^live$/i.test(sel)) continue
-    if (/^\d/.test(sel) && !/^(1st|2nd)/i.test(sel)) continue
+    if (/^\d/.test(sel) && !/^(1st|2nd|\d+\+)/i.test(sel)) continue
 
     const ou = /^(?:1st\s*half\s+)?(over|under)\s+(\d+(?:\.\d+)?)\s*goals?\s*$/i.exec(sel)
       || /^(?:1st\s*half\s+)?(over|under)\s+(\d+(?:\.\d+)?)\s*$/i.exec(sel)
-    const marketOk = marketRe.test(market) || (ou && marketFuzzy.test(market))
+    const spreadSel = /^(.+?)\s+([+-]\d+(?:\.\d+)?)\s*$/.exec(sel)
+    const marketOk = marketRe.test(market) || ((ou || spreadSel) && marketFuzzy.test(market))
     if (!marketOk) continue
 
     let marketKind = 'h2h'
@@ -1988,19 +2163,34 @@ function extractFanDuelMyBetsLegs(text) {
       marketKind = 'total'
       side = ou[1].toLowerCase() === 'under' ? 'under' : 'over'
       line = String(Number(ou[2]))
-      selection_label = `1H ${side === 'under' ? 'Under' : 'Over'} ${line} Goals`
+      const is1h = /^1st\s*half/i.test(sel)
+      selection_label = is1h
+        ? `1H ${side === 'under' ? 'Under' : 'Over'} ${line} Goals`
+        : `${side === 'under' ? 'Under' : 'Over'} ${line}`
+    } else if (spreadSel && /spread|puck|run\s*line|alternate/i.test(market)) {
+      marketKind = 'spread'
+      const team = spreadSel[1].trim()
+      const lineNum = Number(spreadSel[2])
+      line = String(lineNum)
+      const signed = lineNum > 0 ? `+${lineNum}` : String(lineNum)
+      selection_label = `${titleCaseWords(team)} ${signed}`
     } else if (/^draw$/i.test(sel)) {
       marketKind = 'h2h'
       selection_label = 'Draw'
     } else if (/half-?time\s*result/i.test(market)) {
       marketKind = 'other'
       selection_label = `${titleCaseWords(sel)} HT`
+    } else if (/touchdown/i.test(market)) {
+      marketKind = 'prop'
+      selection_label = `${titleCaseWords(sel)} ATD`
     } else if (/moneyline/i.test(market)) {
       marketKind = 'h2h'
       selection_label = `${titleCaseWords(sel)} ML`
+    } else if (/^spread$/i.test(market) && !/[+-]\d/.test(sel)) {
+      marketKind = 'spread'
+      selection_label = titleCaseWords(sel)
     }
 
-    // Same market text can appear twice (two Under 0.5 legs) … keep both
     pending.push(emptyLegStub({
       market: marketKind,
       side,
@@ -2009,7 +2199,12 @@ function extractFanDuelMyBetsLegs(text) {
     }))
   }
 
-  return zipBunchedAmericanOdds(pending, text).filter((l) => l.odds)
+  const zipped = zipBunchedAmericanOdds(pending, text)
+  // Settled dual-SGP often omits per-leg juice … keep legs when ticket odds exist
+  if (pending.length >= 2 && extractTotalParlayOdds(text) != null) {
+    return zipped.length >= 2 ? zipped : pending
+  }
+  return zipped.filter((l) => l.odds)
 }
 
 /** BetRivers / SugarHouse UFC multiples: fighter + "A vs B" + bunched odds. */
@@ -2223,6 +2418,10 @@ export function extractParlayLegs(text) {
   // Circa / the D / Wynn rotation legs first … naive "sel +odds" steals HORNETS/+348 as a 1-leg miss.
   const casino = extractCasinoBracketLegs(text)
   if (casino.length >= 2) return casino
+
+  // FanDuel open SGP before generic props (props alone would drop the ML leg)
+  const fdSgp = extractFanDuelSgpLegs(text)
+  if (fdSgp.length >= 2) return fdSgp
 
   // DraftKings "Over 0.5 (Player)" / "100+ (Player)" props before disclaimer/+odds pairing invents junk legs.
   const appProps = extractAppPlayerPropLegs(text)

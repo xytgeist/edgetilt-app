@@ -1226,6 +1226,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - **2026-10-14:** **Promoted `1.4.1154`** (FanDuel ALT prop parlays). Frontend **`test` → `main`** (`48e5a3e6`). No Edge.
 - **2026-10-14:** **Bet Tracker FanDuel ALT prop parlays (`1.4.1154`).** Settled multi-prop slips without per-leg odds / “Parlay” word → legs + TOTAL WAGER + odds from stake/payout + FanDuel book. BetMGM team parlays still pass. No Edge.
 - **2026-10-14:** **Bet Tracker batch OCR harden #2 (`1.4.1161`).** DK ML/Total combo, FD soccer/NBA My Bets, Fanatics, BetRivers UFC, LIGA365 decimal, multi-ML betslips. Fixtures **45/45**. No Edge.
+- **2026-10-14:** **Bet Tracker batch OCR harden #3 (`1.4.1162`).** DK NBA `N+` props, FD open/settled SGP + dual-SGP, alt lines, spreads (missing line), DK NFL `×` ML strip. Fixtures **52/52**. No Edge / no promote.
 - **2026-10-14:** **Bet Tracker batch OCR harden (`1.4.1160`).** Nine Vision-OCR slips (DK/FD/Circa/Wynn/Rampart/Hollywood/Parlay Card) → zip bunched juices + new extractors. Fixtures `scripts/fixtures/sports-bet-slips/` (35/35). No Edge.
 - **2026-10-14:** **Promoted `1.4.1159`** (Bet Tracker AI notes → parlay legs). Frontend **`test` → `main`** (`ba949dde`). Edge **`sports-bet-slip-parse`** on **test + prod**.
 - **2026-10-14:** **Bet Tracker AI notes → parlay legs (`1.4.1159`).** LLM `Parlay legs: …` in notes hydrates composer legs (prefer richest count vs OCR). Edge **`sports-bet-slip-parse`** schema/prompt for `legs[]`. Fixtures.

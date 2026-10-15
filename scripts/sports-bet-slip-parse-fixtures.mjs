@@ -914,6 +914,55 @@ const ocrBatch = [
     file: 'betrivers-ufc-3.ocr.txt',
     expect: { legs: 3, odds: 2620, stake_dollars: 100, leg0: 'Chikadze', leg_last: 'Muhammad' },
   },
+  // Batch #3 (2026-10-14) … DK N+ props, FD SGP open/settled, alt lines, spreads, × ML strip
+  {
+    file: 'dk-nba-nplus-props-4-cleaned.txt',
+    expect: {
+      legs: 4,
+      odds: 256,
+      leg_odds: [-210, -475, -370, -175],
+      leg0: 'Cade',
+      leg_last: 'Booker',
+    },
+  },
+  {
+    file: 'fd-sgp-open-hurts-3.ocr.txt',
+    expect: { legs: 3, odds: 479, leg0: 'Packers', leg_last: 'Barkley' },
+  },
+  {
+    file: 'fd-sgp-open-steelers-3.ocr.txt',
+    expect: { legs: 3, odds: 1859, stake_dollars: 20, leg0: 'Steelers', leg_last: 'Claypool' },
+  },
+  {
+    file: 'fd-dual-sgp-4.ocr.txt',
+    expect: { legs: 4, odds: 1231, stake_dollars: 10, leg0: 'Raiders', leg_last: 'Over' },
+  },
+  {
+    file: 'fd-alt-lines-5.ocr.txt',
+    expect: {
+      legs: 5,
+      stake_dollars: 70,
+      book: 'FanDuel',
+      leg_odds: [-500, -385, -430, -335, -440],
+      leg0: 'Twins',
+      leg_last: 'Stars',
+    },
+  },
+  {
+    file: 'fd-spreads-3.ocr.txt',
+    expect: {
+      legs: 3,
+      odds: 584,
+      stake_dollars: 5,
+      leg_odds: [-110, -110, -114],
+      leg0: 'Broncos',
+      leg_last: 'Giants',
+    },
+  },
+  {
+    file: 'dk-nfl-ml-5-xstrip.ocr.txt',
+    expect: { legs: 5, stake_dollars: 100, leg0: 'Packers', leg_last: 'Bills' },
+  },
 ]
 
 let ocrCount = 0

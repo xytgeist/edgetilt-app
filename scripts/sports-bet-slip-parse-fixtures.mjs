@@ -1106,7 +1106,7 @@ for (const row of ocrBatch) {
   }
 }
 
-const total = fixtures.length + 1 + ocrCount
+const total = fixtures.length + 2 + ocrCount
 if (failed) {
   console.error(`\n${failed}/${total} failed`)
   process.exit(1)

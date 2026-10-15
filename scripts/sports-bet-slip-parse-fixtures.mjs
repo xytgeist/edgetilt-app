@@ -1436,6 +1436,23 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 14 (Ryan yes): FD SGP TOTAL WAGER RETURNED + $0 → lost; top card only
+    file: 'fd-lost-returned-sgp.ocr.txt',
+    expect: {
+      legs: 0,
+      odds: 1519,
+      stake_dollars: 3.09,
+      to_collect_dollars: 0,
+      to_win_dollars: 0,
+      status: 'lost',
+      book: 'FanDuel',
+      sport_label: 'NFL',
+      sport_key: 'americanfootball_nfl',
+      notes_includes: 'Parlay picks (3): Derrick Henry',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

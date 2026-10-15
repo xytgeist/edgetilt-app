@@ -271,6 +271,8 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 
 **Web `1.4.1187`.** Batch harden candidate 13: FanDuel **FIRST TOUCHDOWN SCORER** 4-leg WON … hydrate First TD legs + NFL + zip juices. Fixture **fd-won-ftd-4**. Fixtures **83/83**. No promote this turn.
 
+**Web `1.4.1188`.** Batch harden candidate 14: FanDuel **TOTAL WAGER RETURNED** + `$stake $0.00` → lost SGP; top-id My Bets slice (do not treat SGP body as ticket #2 after outer slice); dual `$` stake when right is $0; Notes wrap; 0 legs. Fixture **fd-lost-returned-sgp**. Fixtures **84/84**. No promote this turn.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.
 

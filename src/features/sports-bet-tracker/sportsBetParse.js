@@ -466,7 +466,13 @@ function extractBook(text) {
     if (re.test(s)) return name
   }
   // FanDuel My Bets chrome when logo OCR is missing
-  if (/\breuse\s*selections\b/i.test(s) || /\bwon\s+on\s+fanduel\b/i.test(s)) return 'FanDuel'
+  if (
+    /\breuse\s*selections\b/i.test(s)
+    || /\bwon\s+on\s+fanduel\b/i.test(s)
+    || /\btotal\s*wager\s*returned\b/i.test(s)
+  ) {
+    return 'FanDuel'
+  }
   return ''
 }
 
@@ -528,7 +534,10 @@ function extractStakeDollars(text) {
       if (dual) {
         const a = parseMoneyAmount(dual[1])
         const b = parseMoneyAmount(dual[2])
+        // "$5 $156" stake+payout … or "$3.09 $0.00" TOTAL WAGER RETURNED (stake is non-zero)
         if (a != null && a > 0 && b != null && b > 0) return Math.min(a, b)
+        if (a != null && a > 0 && b === 0) return a
+        if (b != null && b > 0 && a === 0) return b
       }
       const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
       if (!m) continue
@@ -772,6 +781,15 @@ export function detectSlipResult(text) {
   if (/\b(?:lost\s+on\b|you\s*lost\b|total\s*lost\b)/i.test(raw)) return 'lost'
   if (/\b(?:did\s*not\s*win|didn'?t\s*win|not\s*a\s*winner)\b/i.test(raw)) return 'lost'
   if (/\b(?:bet\s*lost|ticket\s*lost|wager\s*lost)\b/i.test(raw)) return 'lost'
+  // FanDuel settled loss column: "$3.09 $0.00" / "TOTAL WAGER RETURNED" (twin of WON ON)
+  if (
+    /\breturned\b/i.test(raw)
+    && /\btotal\s*wager\b/i.test(raw)
+    && /\$\s*0(?:\.00)?\b/.test(raw)
+    && !/\b(?:won\s+on|you\s*won|cashed\s*out)\b/i.test(raw)
+  ) {
+    return 'lost'
+  }
   // BetMGM: "Multi Bet • 11 picks LOST" / DK: "2 PICKS PARLAY +242 LOST" (badge glued)
   if (/\b(?:multi\s*bet|\d+\s*picks?)\b[^\n]*\blost\b/i.test(raw)) return 'lost'
   if (/\b(?:\d+\s*picks?\s+parlay|sgp|same\s*game\s*parlay)\b[^\n]*\blost\b/i.test(raw)) return 'lost'
@@ -2680,8 +2698,15 @@ export function declaredParlayLegCount(text) {
     || /(\d+)\s*(?:pick\s+)?pa[ry]lay/i.exec(raw)
     // BetMGM: "Multi Bet • 11 picks"
     || /\bmulti\s*bet\b[^\n]*?(\d+)\s*picks?\b/i.exec(raw)
+    || /(\d+)\s*leg\s+same\s*game\s*parlay/i.exec(raw)
   if (m) {
     const n = Number(m[1])
+    if (Number.isFinite(n) && n >= 2 && n <= 40) return n
+  }
+  // Collapsed My Bets SGP with a comma pick summary but no "N leg" print
+  if (/\bsame\s*game\s*parlay\b/i.test(raw) && /\bparlay\s*picks?\s*\(\s*(\d+)\s*\)\s*:/i.test(raw)) {
+    const fromNotes = /\bparlay\s*picks?\s*\(\s*(\d+)\s*\)\s*:/i.exec(raw)
+    const n = Number(fromNotes?.[1])
     if (Number.isFinite(n) && n >= 2 && n <= 40) return n
   }
   // FanDuel settled alt lines: one ALTERNATE RUN LINES / SPREAD / PUCK LINE per leg
@@ -3212,15 +3237,19 @@ function extractParlayPickSummaryNotes(text) {
   let start = -1
   for (let i = 0; i < lines.length; i += 1) {
     // "9 PICKS PARLAY +40109" / "19 leg parlay +2983218" / "Multi Bet • 11 picks LOST"
+    // / "Same Game Parlay +1519" (collapsed My Bets summary under header)
     const m = /^(\d+)\s*picks?\s+pa[ry]lay\b/i.exec(lines[i])
       || /^(\d+)\s*-?\s*legs?\s+pa[ry]lay\b/i.exec(lines[i])
       || /\bmulti\s*bet\b[^\n]*?(\d+)\s*picks?\b/i.exec(lines[i])
+      || /^(\d+)\s*leg\s+same\s*game\s*parlay/i.exec(lines[i])
+      || (/^(?:sgp\s+)?same\s*game\s*parlay\b/i.test(lines[i]) ? ['', ''] : null)
     if (!m) continue
-    declared = Number(m[1])
+    declared = m[1] !== '' && m[1] != null ? Number(m[1]) : null
     start = i + 1
     break
   }
-  if (start < 0 || !Number.isFinite(declared) || declared < 2) return ''
+  if (start < 0) return ''
+  // Bare SGP header … declared filled after we read the comma list
   const parts = []
   for (let i = start; i < Math.min(start + 14, lines.length); i += 1) {
     const line = lines[i]
@@ -3245,6 +3274,19 @@ function extractParlayPickSummaryNotes(text) {
       if (/,/.test(line) && (line.match(/,/g) || []).length >= 1) {
         const nxt = lines[i + 1] || ''
         if (/^(scorer|moneyline)\b/i.test(nxt) || /first\s*touchdown\s*scorer/i.test(nxt)) {
+          continue
+        }
+        // OCR wrap: "... Rushing Yds, J.K.\nDobbins Under 11.5 …, Justin Herbert..."
+        if (
+          /[A-Za-z]/.test(nxt)
+          && !/\b(?:total\s*wager|bet\s*id|reuse\s*selections|\$\s*\d)\b/i.test(nxt)
+          && !/\b(?:@|vs\.?|versus)\b/i.test(nxt)
+          && (
+            /,/.test(nxt)
+            || /\.\.\.$/.test(nxt)
+            || /\b(?:under|over|moneyline|yards|yds|rushing|passing|receiving|scorer)\b/i.test(nxt)
+          )
+        ) {
           continue
         }
         break
@@ -3273,6 +3315,10 @@ function extractParlayPickSummaryNotes(text) {
   if (/^(\d+\s*picks?\s*sgp\s*,?\s*)+$/i.test(blob)) return ''
   // Need enough separators to look like a multi-name summary (not one event line)
   const seps = (blob.match(/,/g) || []).length
+  if (declared == null || !Number.isFinite(declared)) {
+    declared = seps >= 1 ? seps + 1 : 0
+  }
+  if (!Number.isFinite(declared) || declared < 2) return ''
   if (seps < 1 && declared > 2) return ''
   return `Parlay picks (${declared}): ${blob}`
 }
@@ -3633,21 +3679,38 @@ export function slicePrimarySlipCard(text) {
   const idMatches = [...raw.matchAll(/\bBET\s*ID\s*:/gi)]
   if (idMatches.length >= 2) {
     const firstIdx = idMatches[0].index
-    const after = raw.slice(firstIdx)
-    const end = /BET\s*ID\s*:[^\n]*(?:\n[^\n]*\bPLACED\s*:[^\n]*)?/i.exec(after)
-    if (end) return raw.slice(0, firstIdx + end.index + end[0].length).trim()
+    const secondIdx = idMatches[1].index
+    const firstLine = /BET\s*ID\s*:[^\n]*(?:\n[^\n]*\bPLACED\s*:[^\n]*)?/i.exec(raw.slice(firstIdx))
+    const firstFooterEnd = firstIdx + (firstLine ? firstLine[0].length : 0)
+    const beforeFirst = raw.slice(0, firstIdx)
+    const afterFirstFooter = raw.slice(firstFooterEnd, secondIdx)
+    // Top-id My Bets list: BET ID/PLACED then ticket body then next BET ID
+    // (footer-id cards already have TOTAL WAGER / WON ON before the first BET ID)
+    const topIdList = (
+      !/\b(?:total\s*wager|won\s+on|cashed\s*out|returned)\b/i.test(beforeFirst)
+      && /\b(?:same\s*game\s*parlay|\d+\s*(?:leg|pick)\s+parlay|total\s*wager|won\s+on|returned)\b/i.test(afterFirstFooter)
+    )
+    if (topIdList) return raw.slice(0, secondIdx).trim()
+    // Bottom-id card: keep through first BET ID / PLACED footer only
+    if (firstLine) return raw.slice(0, firstFooterEnd).trim()
+    return raw.slice(0, secondIdx).trim()
   }
 
-  // One BET ID, then another ticket header below the footer (crop without 2nd ID)
+  // One BET ID at card *footer*, then another ticket header below (crop without 2nd ID).
+  // Top-id My Bets rows put BET ID first then SGP body … do not treat that body as ticket #2.
   if (idMatches.length === 1) {
     const firstIdx = idMatches[0].index
-    const after = raw.slice(firstIdx)
-    const end = /BET\s*ID\s*:[^\n]*(?:\n[^\n]*\bPLACED\s*:[^\n]*)?/i.exec(after)
-    if (end) {
-      const cardEnd = firstIdx + end.index + end[0].length
-      const rest = raw.slice(cardEnd)
-      if (/(?:^|\n)\s*(?:(?:sgp\s+)?same\s*game\s*parlay|\d+\s*leg\s+parlay|\d+\s*pick\s+parlay)\b/i.test(rest)) {
-        return raw.slice(0, cardEnd).trim()
+    const before = raw.slice(0, firstIdx)
+    const footerId = /\b(?:total\s*wager|won\s+on|cashed\s*out|returned)\b/i.test(before)
+    if (footerId) {
+      const after = raw.slice(firstIdx)
+      const end = /BET\s*ID\s*:[^\n]*(?:\n[^\n]*\bPLACED\s*:[^\n]*)?/i.exec(after)
+      if (end) {
+        const cardEnd = firstIdx + end.index + end[0].length
+        const rest = raw.slice(cardEnd)
+        if (/(?:^|\n)\s*(?:(?:sgp\s+)?same\s*game\s*parlay|\d+\s*leg\s+parlay|\d+\s*pick\s+parlay)\b/i.test(rest)) {
+          return raw.slice(0, cardEnd).trim()
+        }
       }
     }
   }
@@ -3663,7 +3726,14 @@ export function parseParlaySlipText(text) {
   const pickNotesEarly = extractParlayPickSummaryNotes(raw)
   const moneyEarly = ticketMoneyFromText(raw)
   const slipStatusEarly = detectSlipResult(raw)
+  const declaredFromNotes = (() => {
+    const m = /\bparlay\s*picks?\s*\(\s*(\d+)\s*\)\s*:/i.exec(pickNotesEarly || '')
+    const n = m ? Number(m[1]) : NaN
+    return Number.isFinite(n) && n >= 2 ? n : null
+  })()
+  const declaredEarly = declaredParlayLegCount(raw) ?? declaredFromNotes
   // Collapsed UI: money + declared N + name list. Lost tickets often print payout "-" (no $ collect).
+  // Bare "Same Game Parlay +odds" My Bets rows may only declare N via the Notes pick list.
   const collapsedMoneyOnly = (
     legs.length < 2
     && moneyEarly.stake_dollars != null
@@ -3672,7 +3742,10 @@ export function parseParlaySlipText(text) {
       || slipStatusEarly === 'lost'
       || slipStatusEarly === 'won'
     )
-    && declaredParlayLegCount(raw) != null
+    && (
+      declaredEarly != null
+      || (/\bsame\s*game\s*parlay\b/i.test(raw) && Boolean(pickNotesEarly))
+    )
     && Boolean(pickNotesEarly)
   )
   if (legs.length < 2 && !collapsedMoneyOnly) return null
@@ -3689,15 +3762,28 @@ export function parseParlaySlipText(text) {
   // Collapsed multi-league cashout name lists (Lakers + Dodgers + Oilers…) → blank
   // Keep Tennis / Golf / combat when the list clearly points there (BetMGM Multi Bet pipes).
   if (collapsedMoneyOnly && sport.key) {
+    // Keep single-sport collapsed tickets (NFL SGP, Tennis Multi Bet, …).
+    // Blank only when the name list clearly spans multiple leagues (cashout mix).
     const keepSolo = (
       sport.key === SPORTS_BET_SPORT_TENNIS
       || sport.key === SPORTS_BET_SPORT_TABLE_TENNIS
       || sport.key === 'golf_pga'
       || sport.key === SPORTS_BET_SPORT_UFC
       || sport.key === SPORTS_BET_SPORT_BOXING
-      || /^(tennis|table\s*tennis|golf|ufc|boxing)$/i.test(sport.label)
+      || sport.key === 'americanfootball_nfl'
+      || sport.key === 'americanfootball_ncaaf'
+      || /^(tennis|table\s*tennis|golf|ufc|boxing|nfl|cfb)$/i.test(sport.label)
     )
-    if (!keepSolo) sport = { key: '', label: '' }
+    const multiLeague = (
+      (/\b(?:lakers|celtics|nuggets|knicks)\b/i.test(raw) ? 1 : 0)
+      + (/\b(?:dodgers|yankees|cubs|astros|guardians|tigers)\b/i.test(raw) ? 1 : 0)
+      + (/\b(?:oilers|rangers|bruins|maple\s*leafs)\b/i.test(raw) ? 1 : 0)
+      + (NFL_TEAM_HINT.test(raw) ? 1 : 0)
+    ) >= 2
+    if (!keepSolo || multiLeague) {
+      if (multiLeague) sport = { key: '', label: '' }
+      else if (!keepSolo) sport = { key: '', label: '' }
+    }
   }
   // Prefer a sport already on legs (e.g. person-vs-person → Table Tennis)
   if (!sport.key) {
@@ -3716,6 +3802,10 @@ export function parseParlaySlipText(text) {
         ? leg
         : { ...leg, sport_key: sport.key, sport_label: sport.label }
     ))
+  }
+  // Collapsed My Bets summary … Notes hold the picks; drop chrome header legs (e.g. "Same Game Parlay")
+  if (collapsedMoneyOnly) {
+    normalized = []
   }
 
   const draft = draftFromBits({

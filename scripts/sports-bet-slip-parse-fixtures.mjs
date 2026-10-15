@@ -937,6 +937,50 @@ try {
   console.error(`FAIL Caesars stolen ticket odds: ${err.message}`)
 }
 
+// Caesars … Edge/heuristic used leg-product +1195; TO COLLECT money → +52285
+try {
+  const czOcr = fs.readFileSync(path.join(OCR_DIR, 'caesars-casino-5.ocr.txt'), 'utf8')
+  const clean = parseSportsBetSlipText(czOcr)[0]
+  const legProduct = {
+    market: 'parlay',
+    odds: '+1195',
+    stake_dollars: '25',
+    selection_label: 'Parlay (5 legs)',
+    legs: clean.legs,
+  }
+  const fixed = hydrateParlayLegsForDraft(legProduct, czOcr)
+  assert(Math.abs(Number(fixed.odds)) === 52285, `Caesars leg-product repair want +52285 got ${fixed.odds}`)
+  console.log('ok  Caesars casino leg-product +1195 → +52285 from TO COLLECT')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL Caesars leg-product ticket odds: ${err.message}`)
+}
+
+// Caesars … OCR missed $ lines but Edge returned to_collect_dollars
+try {
+  const czOcr = fs.readFileSync(path.join(OCR_DIR, 'caesars-casino-5.ocr.txt'), 'utf8')
+  const clean = parseSportsBetSlipText(czOcr)[0]
+  const thinOcr = czOcr
+    .split('\n')
+    .filter((l) => !/^\$/.test(l.trim()))
+    .join('\n')
+  const fromEdge = {
+    market: 'parlay',
+    odds: '+1195',
+    stake_dollars: '25',
+    to_collect_dollars: '13096.25',
+    to_win_dollars: '13071.25',
+    selection_label: 'Parlay (5 legs)',
+    legs: clean.legs,
+  }
+  const fixed = hydrateParlayLegsForDraft(fromEdge, thinOcr)
+  assert(Math.abs(Number(fixed.odds)) === 52285, `Caesars Edge to_collect want +52285 got ${fixed.odds}`)
+  console.log('ok  Caesars Edge to_collect_dollars → +52285 (thin OCR)')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL Caesars Edge to_collect: ${err.message}`)
+}
+
 /** Real Vision OCR dumps from Ryan's batch (2026-10-14). */
 const ocrBatch = [
   {
@@ -1171,7 +1215,7 @@ for (const row of ocrBatch) {
   }
 }
 
-const total = fixtures.length + 4 + ocrCount
+const total = fixtures.length + 6 + ocrCount
 if (failed) {
   console.error(`\n${failed}/${total} failed`)
   process.exit(1)

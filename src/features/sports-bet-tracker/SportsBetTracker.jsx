@@ -256,10 +256,17 @@ function draftFromPrefill(prefill, unitSize = readUnitSizeDollars()) {
     source: normalizeSportsBetSource(prefill.source, 'manual'),
     legs: normalizeParlayLegs(prefill.legs || prefill.sports_bet_legs || []),
     label_manual: prefill.label_manual === true,
+    to_collect_dollars: prefill.to_collect_dollars != null && String(prefill.to_collect_dollars) !== ''
+      ? String(prefill.to_collect_dollars)
+      : '',
+    to_win_dollars: prefill.to_win_dollars != null && String(prefill.to_win_dollars) !== ''
+      ? String(prefill.to_win_dollars)
+      : '',
   }
   if (next.market === 'parlay') {
     // AI often only puts legs in notes … hydrate before blank placeholders.
-    // Also repairs ticket odds when AI stole a leg juice (-190) into COMBINED ODDS.
+    // Also repairs ticket odds when AI stole a leg juice (-190) or leg-product (+1195)
+    // into COMBINED ODDS while TO COLLECT implies ~+52285.
     const hydrated = hydrateParlayLegsForDraft(next, prefill.ocrText || prefill.ocr_text || '')
     next.legs = normalizeParlayLegs(hydrated.legs || [])
     if (hydrated.odds) next.odds = String(hydrated.odds)

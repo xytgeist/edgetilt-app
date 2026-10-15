@@ -290,7 +290,8 @@ function parseMoneyAmount(raw) {
 
 function americanOrNull(v) {
   const s = String(v || '').trim()
-  const m = /^([+-]?\d{2,5})$/.exec(s)
+  // Up to 6 digits … fat casino parlays (+52285) and boost tickets
+  const m = /^([+-]?\d{2,6})$/.exec(s)
   if (!m) return null
   const n = Number(m[1])
   // American odds are typically ±100+; allow +120 style. Reject tiny spreads like +3.5 via non-integer path above.
@@ -563,12 +564,74 @@ function extractStakeDollars(text) {
   return null
 }
 
+/**
+ * Caesars / casino slips print TICKET COST / TO WIN / TO COLLECT labels, then
+ * dates / juices / ids, then bunched `$25` / `$13,071` / `$13,096`. Also YOU WON.
+ * Returns { stake, toWin, collect } when enough money is found.
+ */
+function extractCasinoFooterMoney(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  let footerStart = -1
+  for (let i = 0; i < lines.length; i += 1) {
+    if (/^(?:ticket\s*cost|to\s*win|to\s*collect|you\s*won)\b/i.test(lines[i])) {
+      footerStart = i
+      break
+    }
+  }
+
+  const amounts = []
+  const pushAmt = (raw) => {
+    const n = parseMoneyAmount(raw)
+    if (n != null && n > 0) amounts.push(n)
+  }
+
+  const scanFrom = footerStart >= 0 ? footerStart : 0
+  const scanTo = footerStart >= 0 ? Math.min(footerStart + 28, lines.length) : lines.length
+  for (let j = scanFrom; j < scanTo; j += 1) {
+    const line = lines[j]
+    // Skip American juices so look-ahead does not treat them as money
+    if (/^[+-]\d{3,6}$/.test(line)) continue
+    const inline = (
+      /(?:you\s*won|to\s*collect|to\s*win|ticket\s*cost|max\s*payout)\s*:?\s*\$?\s*([0-9,]+\.?\d*)/i.exec(line)
+      || /^(?:won)\s*:?\s*\$?\s*([0-9,]+\.?\d*)/i.exec(line)
+    )
+    if (inline) {
+      pushAmt(inline[1])
+      continue
+    }
+    if (footerStart < 0) continue
+    const bare = /^\$?\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\.\d{1,2})?|[0-9]+\.\d{1,2}|[0-9]{2,})\s*$/.exec(line)
+    if (bare) pushAmt(bare[1])
+  }
+
+  // Whole-text YOU WON / TO COLLECT when footer block missed
+  if (!amounts.length) {
+    const blob = String(text || '')
+    for (const re of [
+      /you\s*won\s*:?\s*\$?\s*([0-9,]+\.?\d*)/ig,
+      /to\s*collect\s*:?\s*\$?\s*([0-9,]+\.?\d*)/ig,
+    ]) {
+      let m
+      while ((m = re.exec(blob))) pushAmt(m[1])
+    }
+  }
+
+  if (!amounts.length) return null
+  const collect = Math.max(...amounts)
+  const stake = amounts.length >= 2 ? Math.min(...amounts) : null
+  if (stake != null && collect > stake * 1.05) {
+    return { stake, toWin: collect - stake, collect }
+  }
+  if (collect > 0) return { stake: null, toWin: null, collect }
+  return null
+}
+
 /** Payout that includes stake (for americanFromStakeAndPayout). Prefer collect/max over to-win. */
 function extractPayoutDollars(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
 
   const tryRes = [
-    /(?:potential\s*payout|max\s*payout|max\s*pay|to\s*collect|est\.?\s*\/?\s*payout|total\s*payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+    /(?:potential\s*payout|max\s*payout|max\s*pay|to\s*collect|you\s*won|est\.?\s*\/?\s*payout|total\s*payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
     /(?:payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
   ]
   for (const re of tryRes) {
@@ -582,7 +645,7 @@ function extractPayoutDollars(text) {
 
   // Casino OCR: "TO COLLECT:" then "$9,735.00" on the next line
   for (let i = 0; i < lines.length; i += 1) {
-    if (!/^(?:to\s*collect|max\s*payout|potential\s*payout|to\s*win|win|total\s*payout)\s*:?\s*$/i.test(lines[i])) continue
+    if (!/^(?:to\s*collect|max\s*payout|potential\s*payout|to\s*win|you\s*won|win|total\s*payout)\s*:?\s*$/i.test(lines[i])) continue
     const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(lines[i + 1] || '')
     if (!m) continue
     const n = parseMoneyAmount(m[1])
@@ -593,6 +656,10 @@ function extractPayoutDollars(text) {
     }
     return n
   }
+
+  // Caesars: labels then dates/juices then bunched $ amounts … take max as collect
+  const footer = extractCasinoFooterMoney(text)
+  if (footer?.collect != null && footer.collect > 0) return footer.collect
 
   // "$611.82" above "WON ON FANDUEL"
   for (let i = 0; i < lines.length; i += 1) {
@@ -2764,7 +2831,7 @@ function looksLikeTerminalMatchup(away, home, eventLabel) {
 export function isWeakSportsBetDraft(draft, ocrText = '') {
   if (!draft || typeof draft !== 'object') return true
   const odds = String(draft.odds || '').trim()
-  if (!odds || !/^[+-]?\d{2,5}$/.test(odds)) return true
+  if (!odds || !/^[+-]?\d{2,6}$/.test(odds)) return true
   const event = String(draft.event_label || '').trim()
   const away = String(draft.away_team || '').trim()
   const home = String(draft.home_team || '').trim()
@@ -2858,8 +2925,8 @@ function parlayLegsNeedHydrate(legs) {
 }
 
 /**
- * When Edge/OCR puts a single leg juice (-190) in the ticket odds field, replace with
- * stake→payout American or the product of leg juices.
+ * When Edge/OCR puts a single leg juice (-190) or leg-product (+1195) in the ticket
+ * odds field, replace with stake→payout American when TO COLLECT / YOU WON exists.
  */
 function repairParlayTicketOdds(draft, ocrText = '') {
   if (!draft || typeof draft !== 'object') return draft
@@ -2867,14 +2934,25 @@ function repairParlayTicketOdds(draft, ocrText = '') {
   if (legs.length < 2) return draft
 
   const fromLegs = combinedOddsFromLegs(legs)
+  const footer = ocrText ? extractCasinoFooterMoney(ocrText) : null
+  const stake = (
+    (ocrText ? extractStakeDollars(ocrText) : null)
+    ?? footer?.stake
+    ?? parseMoneyAmount(draft.stake_dollars)
+  )
+  const payout = (
+    parseMoneyAmount(draft.to_collect_dollars ?? draft.to_collect)
+    ?? (ocrText ? extractPayoutDollars(ocrText) : null)
+    ?? footer?.collect
+  )
   let fromPay = null
-  if (ocrText) {
-    const stake = extractStakeDollars(ocrText)
-    const payout = extractPayoutDollars(ocrText)
-    if (stake != null && payout != null) {
-      fromPay = americanFromStakeAndPayout(stake, payout)
-    }
+  if (stake != null && payout != null) {
+    fromPay = americanFromStakeAndPayout(stake, payout)
+  } else if (stake != null && footer?.toWin != null) {
+    fromPay = americanFromStakeAndPayout(stake, stake + footer.toWin)
   }
+
+  // Ticket money always beats recomputed leg juice (boosted / alt casino prices)
   const best = fromPay ?? fromLegs
   if (best == null) return draft
 
@@ -2889,8 +2967,14 @@ function repairParlayTicketOdds(draft, ocrText = '') {
   const tooSmall = current != null
     && Math.abs(best) >= 500
     && Math.abs(current) < Math.abs(best) * 0.25
+  // Edge/heuristic used leg product (+1195) while TO COLLECT implies +52285
+  const legProductOnly = fromPay != null
+    && fromLegs != null
+    && current != null
+    && Math.abs(current - fromLegs) <= Math.max(5, Math.abs(fromLegs) * 0.02)
+    && Math.abs(fromPay - fromLegs) > Math.abs(fromLegs) * 0.25
 
-  if (!stolen && !missing && !tooSmall) return draft
+  if (!stolen && !missing && !tooSmall && !legProductOnly) return draft
   return { ...draft, odds: americanOddsInputString(best) }
 }
 

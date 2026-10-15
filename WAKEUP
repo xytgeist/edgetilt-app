@@ -226,6 +226,8 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 
 **Web `1.4.1166`.** Caesars legs OK but combined odds `-190` (last leg). Hydrate repairs stolen ticket odds from stake→payout / leg product (~`+52285`). Edge prompt: never copy leg juice as ticket odds. Redeploy **`sports-bet-slip-parse`** test + prod. Fixtures **61/61**. **Promoted** `main` @ `fde42df0`.
 
+**Web `1.4.1167`.** Same Caesars slip then showed `+1195` (leg product) vs TO COLLECT `~$13k` → `~+52285`. Footer money look-ahead + Edge `to_collect_dollars`. Redeploy **`sports-bet-slip-parse`** test. Fixtures **63/63**. No promote this turn.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.
 

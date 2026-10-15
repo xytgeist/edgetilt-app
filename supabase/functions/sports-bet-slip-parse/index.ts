@@ -45,6 +45,8 @@ type SlipDraft = {
   line: string
   odds: string
   stake_dollars: string
+  to_collect_dollars: string
+  to_win_dollars: string
   selection_label: string
   home_team: string
   away_team: string
@@ -103,7 +105,8 @@ function outputTextFromResponsesApi(payload: any): string {
 function normalizeOdds(value: unknown): string {
   const raw = textOrEmpty(value)
   if (!raw) return ''
-  const m = raw.match(/^([+-]?\d{2,5})$/)
+  // Up to 6 digits … fat casino parlays (+52285)
+  const m = raw.match(/^([+-]?\d{2,6})$/)
   if (!m) return raw
   const n = Number(m[1])
   if (!Number.isFinite(n) || Math.abs(n) < 100) return raw
@@ -116,6 +119,20 @@ function normalizeMoney(value: unknown): string {
   if (!raw) return ''
   const n = Number(raw)
   return Number.isFinite(n) && n >= 0 ? String(n) : ''
+}
+
+/** Stake + payout-inclusive → American (same math as client). */
+function americanFromStakeAndPayout(stakeRaw: string, payoutRaw: string): string {
+  const s = Number(stakeRaw)
+  const p = Number(payoutRaw)
+  if (!Number.isFinite(s) || s <= 0 || !Number.isFinite(p) || p <= 0) return ''
+  const profit = p - s
+  if (Math.abs(profit) < 1e-9) return ''
+  if (profit > 0) {
+    const n = Math.round((profit / s) * 100)
+    return n > 0 ? `+${n}` : String(n)
+  }
+  return String(Math.round((-100 * s) / Math.abs(profit)))
 }
 
 function normalizeMarket(value: unknown): string {
@@ -222,13 +239,42 @@ function normalizeDraft(raw: Record<string, unknown>): SlipDraft {
   const away = textOrEmpty(nested.away_team ?? nested.awayTeam)
   const eventLabel = textOrEmpty(nested.event_label ?? nested.eventLabel)
     || (away && home ? `${away} @ ${home}` : '')
+  const stake_dollars = normalizeMoney(nested.stake_dollars ?? nested.stakeDollars ?? nested.stake)
+  let to_win_dollars = normalizeMoney(nested.to_win_dollars ?? nested.toWinDollars ?? nested.to_win)
+  let collect = normalizeMoney(
+    nested.to_collect_dollars ?? nested.toCollectDollars ?? nested.to_collect ?? nested.payout_dollars,
+  )
+  if (!collect && to_win_dollars && stake_dollars) {
+    const n = Number(stake_dollars) + Number(to_win_dollars)
+    if (Number.isFinite(n) && n > 0) collect = String(n)
+  }
+  if (!to_win_dollars && collect && stake_dollars) {
+    const n = Number(collect) - Number(stake_dollars)
+    if (Number.isFinite(n) && n > 0) to_win_dollars = String(n)
+  }
+  let odds = normalizeOdds(nested.odds)
+  // Prefer stake→collect American over a missing / leg-juice guess
+  const fromPay = collect && stake_dollars
+    ? americanFromStakeAndPayout(stake_dollars, collect)
+    : ''
+  if (fromPay) {
+    const cur = Number(String(odds).replace(/^\+/, ''))
+    const payN = Number(String(fromPay).replace(/^\+/, ''))
+    const missing = !odds
+    const tiny = Number.isFinite(cur) && Number.isFinite(payN)
+      && Math.abs(payN) >= 500
+      && Math.abs(cur) < Math.abs(payN) * 0.25
+    if (missing || tiny) odds = fromPay
+  }
   return {
     book: textOrEmpty(nested.book),
     market,
     side: normalizeSide(nested.side, market),
     line: textOrEmpty(nested.line),
-    odds: normalizeOdds(nested.odds),
-    stake_dollars: normalizeMoney(nested.stake_dollars ?? nested.stakeDollars ?? nested.stake),
+    odds,
+    stake_dollars,
+    to_collect_dollars: collect,
+    to_win_dollars,
     selection_label: textOrEmpty(nested.selection_label ?? nested.selectionLabel ?? nested.selection),
     home_team: home,
     away_team: away,
@@ -244,7 +290,8 @@ function normalizeDraft(raw: Record<string, unknown>): SlipDraft {
 }
 
 function draftLooksUsable(d: SlipDraft): boolean {
-  if (!d.odds) return false
+  const hasMoneyOdds = Boolean(d.stake_dollars && d.to_collect_dollars)
+  if (!d.odds && !hasMoneyOdds) return false
   if (d.market === 'parlay') {
     return d.legs.length >= 2 || Boolean(d.selection_label) || Boolean(d.notes)
   }
@@ -257,15 +304,17 @@ function draftLooksUsable(d: SlipDraft): boolean {
 
 const SYSTEM = `You extract one sportsbook bet slip into JSON for a bet tracker.
 Return ONLY a JSON object with keys:
-book, market, side, line, odds, stake_dollars, selection_label,
+book, market, side, line, odds, stake_dollars, to_collect_dollars, to_win_dollars, selection_label,
 home_team, away_team, event_label, sport_key, sport_label, commence_time,
 player_name, prop_stat, notes, legs (array), confidence (0-1).
 
 Rules:
 - market: spread | h2h | total | prop | parlay | other
 - side: home | away | over | under | draw | "" (empty when N/A … distance/method/round props)
-- odds: American with sign (+120 / -110). For parlays use the ticket combined odds (Total Odds / Combined). NEVER copy a single leg's juice (e.g. last-line -190) into the parlay odds. If the slip only shows Ticket Cost + To Win / To Collect and no American total, omit odds or leave "".
+- odds: American with sign (+120 / -110). For parlays use the ticket combined odds (Total Odds / Combined). NEVER copy a single leg's juice (e.g. last-line -190) into the parlay odds. NEVER invent odds by multiplying leg juices when TO COLLECT / YOU WON / TO WIN is visible.
+- When Ticket Cost + To Win / To Collect (or YOU WON) are on the slip, fill stake_dollars + to_collect_dollars (and to_win_dollars if shown). Odds may be omitted … the server derives American from stake and collect (e.g. $25 → collect $13096 ≈ +52285, not the ~+1195 leg product).
 - stake_dollars: number only (no $). Map TAKE / Wager / Risk / Ticket Cost → stake.
+- to_collect_dollars: TO COLLECT / YOU WON / Max Payout (includes stake). to_win_dollars: TO WIN profit only.
 - commence_time: ISO 8601 if event date/time known
 - sport_label: NFL | CFB | NBA | MLB | NHL | UFC | Boxing | Golf | MLS | Other
 - sport_key when known: americanfootball_nfl, americanfootball_ncaaf, basketball_nba, baseball_mlb, icehockey_nhl, mma_mixed_martial_arts, boxing_boxing

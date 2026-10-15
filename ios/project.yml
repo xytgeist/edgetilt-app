@@ -18,7 +18,7 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     CURRENT_PROJECT_VERSION: 4
-    MARKETING_VERSION: "1.4.96"
+    MARKETING_VERSION: "1.4.97"
     GENERATE_INFOPLIST_FILE: YES
     INFOPLIST_FILE: EdgeTilt/Info.plist
     INFOPLIST_KEY_CFBundleDisplayName: Edge
@@ -27,7 +27,7 @@ settings:
     INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     CODE_SIGN_STYLE: Automatic
-    # Individual paid team (Ryan / investigence@gmail.com). Same ID as the old free Personal Team.
+    # Digiverse Ventures LLC (Apple org convert). Team ID unchanged from the Individual paid team.
     DEVELOPMENT_TEAM: 8932AKQW4W
     ENABLE_PREVIEWS: NO
     ENABLE_USER_SCRIPT_SANDBOXING: YES
@@ -93,7 +93,7 @@ targets:
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
         TARGETED_DEVICE_FAMILY: "1,2"
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-        MARKETING_VERSION: "1.4.96"
+        MARKETING_VERSION: "1.4.97"
         INFOPLIST_KEY_CFBundleDisplayName: Edge
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
       configs:

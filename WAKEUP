@@ -32,11 +32,11 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**App Store (2026-10-11):** **1.4.96 Ready for Distribution** (build `20261008181941`, auto-release; App Review email Oct 11 accepted App Version 1.4.96). Prior live **1.4.95** (`20260928212300`) superseded. Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*.
+**App Store (2026-10-15):** live **1.4.96** (`20261008181941`). Next train **1.4.97** (Yahoo ASWebAuth + native video poster/tus remint) ... archive + submit for review. Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*.
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` web **1.4.1098** (`80550189`). iOS marketing **1.4.96** on `test` (`dbe1e9ac`). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` web **1.4.1098** (`80550189`). iOS marketing **1.4.97** on `test`. Dual-machine. Physical iOS 27 → **Xcode 27 beta**. Do not upload Play until Ryan says the APK is ready.
 
 **Supabase (do not swap these):**
 
@@ -45,7 +45,7 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal (Mac):** _iPad / phone landscape shell chrome (Lounge / Slots / Poker / Chat / rail) + iOS WKWebView when needed. Smoke landscape↔portrait on device. Marketing **1.4.96** is live … next store train can bump when Ryan names a ship._
+**Goal (Mac):** _Ship **1.4.97** Prod IPA for App Store review. Marketing **1.4.96** stays live until 1.4.97 releases. Play APK stays parked._
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + sports pill / live-data track + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
@@ -124,6 +124,9 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 
 ### Windows Theo ACTIVE TRACK 2026-10-13 ... Prod DB dumps → private R2
 **I am Windows Theo.** Offsite `pg_dump` → private R2 for **production only** (`docs/db-r2-backups.md`). Test keeps Supabase daily backups. Script `scripts/db-dump-to-r2.mjs`, 14-day prune, Windows task daily 3:15 AM. Needs Ryan: create private bucket + `DB_BACKUP_R2_*` in `.env.master`, install `pg_dump`, first `npm run db:dump:r2:production` to size egress, then `npm run db:dump:r2:install-windows-task`. Before scary prod SQL: `--tag=pre-migrate`.
+
+### Mac Theo ACTIVE TRACK 2026-10-15 ... App Store 1.4.97
+**I am Mac Theo.** Ryan asked for the latest **IPA** (not Play). Marketing **1.4.96** is live so the next store train is **1.4.97**. Native deltas vs `20261008181941`: Yahoo ASWebAuth, video export poster/dims, tus remint. Archive EdgeTilt Prod + submit for review. **Play APK stays parked** until Ryan says so. Windows leftover still AASA `/lounge/g/*` + `?game=`.
 
 ### Mac Theo ACTIVE TRACK 2026-10-14 ... Android ML Kit scan + OCR
 **I am Mac Theo.** APK **1.3.20** / vc **24** + web **`1.4.1132`:** `EdgeAndroid.scanDocument` (ML Kit Document Scanner) + `recognizeText` (bundled Latin OCR). Web gates route. Upload Play **24**. Smoke: W-2G Take photo, Offers Take photo, bet-slip photo OCR. **Prior:** native video **Ryan PASSED** (`2787d380` / 1.3.19). **Next native:** shortcuts + widget.

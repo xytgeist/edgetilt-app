@@ -8,6 +8,7 @@ import { sanitizeWireProse, splitWireSentences, cleanWireFeedExcerpt } from './w
 import { LOUNGE_BOT_WIRE_SYNOPSIS_MAX } from './loungeBotCaptionLimits.ts'
 import type { NewsProfile } from './loungeBotNewsProfile.ts'
 import {
+  openaiChatMaxCompletionTokens,
   openaiChatReasoningNone,
   resolveOpenAiChatModel,
 } from './openaiModelDefaults.ts'
@@ -238,7 +239,7 @@ export async function composeWirePost(opts: WirePostComposeInput): Promise<WireP
           model: resolveOpenAiChatModel(),
           ...openaiChatReasoningNone(),
           temperature: 0.3,
-          max_tokens: 220,
+          ...openaiChatMaxCompletionTokens(220),
           response_format: { type: 'json_object' },
           messages: [
             {

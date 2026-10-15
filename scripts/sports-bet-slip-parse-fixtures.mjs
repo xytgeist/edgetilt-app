@@ -1490,6 +1490,24 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 18 (Ryan yes): Fanatics WC Group Winner open … Wager/Payout/FCash, ignore Cash out
+    file: 'fanatics-wc-group-11.ocr.txt',
+    expect: {
+      legs: 4,
+      odds: 7437,
+      stake_dollars: 65,
+      to_collect_dollars: 4899.35,
+      to_win_dollars: 4834.35,
+      status: 'open',
+      book: 'Fanatics',
+      sport_label: 'Soccer',
+      leg0: 'Portugal',
+      leg_last: 'Switzerland',
+      notes_includes: 'Parlay picks (11)',
+      no_junk_sels: true,
+    },
+  },
+  {
     // Candidate 17 (Ryan yes): FD ATD CASHED OUT under stake … left=wager right=cashout
     file: 'fd-cashed-atd-7.ocr.txt',
     expect: {

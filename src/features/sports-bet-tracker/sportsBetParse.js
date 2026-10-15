@@ -527,6 +527,24 @@ function extractStakeDollars(text) {
     if (n != null && n > 0) return n
   }
 
+  // Fanatics My Bets: "Wager Payout FCash" (OCR "¥ Cash") then "$65.00 $4,899.35 $4.35"
+  // Left = stake; ignore Cash out button $ on a later line
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/\bwager\b/i.test(lines[i]) || !/\bpayout\b/i.test(lines[i])) continue
+    if (/\bcash\s*out\b/i.test(lines[i])) continue
+    const next = lines[i + 1] || ''
+    const triple = /^\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s*$/.exec(next)
+    if (triple) {
+      const n = parseMoneyAmount(triple[1])
+      if (n != null && n > 0) return n
+    }
+    const dual = /^\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s*$/.exec(next)
+    if (dual) {
+      const n = parseMoneyAmount(dual[1])
+      if (n != null && n > 0) return n
+    }
+  }
+
   // FanDuel settled: "$5.00" on the line above OR below "TOTAL WAGER"
   // Open My Bets footer: "$10.00 $2,129.55" then "TOTAL WAGER TOTAL PAYOUT" (stake is left $)
   for (let i = 0; i < lines.length; i += 1) {
@@ -912,6 +930,25 @@ function extractPayoutDollars(text) {
     if (!glued) continue
     const n = parseMoneyAmount(glued[1])
     if (n != null && n > 0) return n
+  }
+
+  // Fanatics My Bets: "Wager Payout FCash" then "$65.00 $4,899.35 $4.35" … middle = payout
+  // Do not use "Cash out $1,893.86" (offer, not ticket collect)
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/\bwager\b/i.test(lines[i]) || !/\bpayout\b/i.test(lines[i])) continue
+    if (/\bcash\s*out\b/i.test(lines[i])) continue
+    const next = lines[i + 1] || ''
+    const triple = /^\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s*$/.exec(next)
+    if (triple) {
+      const n = parseMoneyAmount(triple[2])
+      if (n != null && n > 0) return n
+    }
+    const dual = /^\$?\s*([0-9,]+\.?\d*)\s+\$?\s*([0-9,]+\.?\d*)\s*$/.exec(next)
+    if (dual) {
+      const a = parseMoneyAmount(dual[1])
+      const b = parseMoneyAmount(dual[2])
+      if (b != null && b > 0 && (a == null || Math.abs(b - a) > 0.009)) return b
+    }
   }
 
   // Casino OCR: "TO COLLECT:" then "$9,735.00" on the next line
@@ -1723,6 +1760,10 @@ function extractSport(text, { casinoMlbIsMoneyline = false } = {}) {
   if (/\bnba\b/i.test(s)) return resolveSportsBetSport('basketball_nba', 'NBA')
   if (/\bnhl\b/i.test(s)) return resolveSportsBetSport('icehockey_nhl', 'NHL')
   if (/\bmls\b/i.test(s)) return resolveSportsBetSport('soccer_usa_mls', 'MLS')
+  // FIFA / World Cup group winners (Fanatics futures) … not MLS
+  if (/\bfifa\b|\bworld\s*cup\b|\bgroup\s+[a-z]\s+winner\b/i.test(s)) {
+    return { key: 'other', label: 'Soccer' }
+  }
   if (
     /\bpga\b|\bgolfers?\b|\bgolf\b/i.test(s)
     || /\btop\s*\d+\s*live\s*betting\b/i.test(s)
@@ -3209,6 +3250,65 @@ function extractDkFighterWinnerLegs(text) {
   return zipped.filter((l) => l.odds)
 }
 
+/**
+ * Fanatics My Bets: "Portugal -215" / "Group K Winner" / "FIFA World Cup…"
+ * Collapsed 11-leg crops often show only a few expanded group futures.
+ */
+function extractFanaticsGroupWinnerLegs(text) {
+  const raw = normalizeSlipOcrText(text)
+  if (!/\bgroup\s+[a-z]\s+winner\b/i.test(raw)) return []
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+  const sport = extractSport(raw)
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const marketLine = lines[i + 1] || ''
+    const gm = /^group\s+([a-z])\s+winner\b/i.exec(marketLine)
+    if (!gm) continue
+    const group = String(gm[1] || '').toUpperCase()
+    let selLine = lines[i]
+      .replace(/^[\s<(©®™*&$@~•·→|=]+/, '')
+      .replace(/^[eE]?\d+\)\s*/, '')
+      .replace(/^[Oo0]\s+(?=[A-Z])/, '')
+      .replace(/\s*[=~]+\s*$/, '')
+      .trim()
+    const withOdds = /^(.+?)\s+([+-]\d{3,5})\s*$/.exec(selLine)
+    let team = withOdds ? withOdds[1].trim() : selLine
+    const odds = withOdds ? americanOddsInputString(withOdds[2]) : ''
+    team = team
+      .replace(/^[\s<(©®™*&$@~•·→|=]+/, '')
+      .replace(/^[eE]?\d+\)\s*/, '')
+      .replace(/^[Oo0]\s+(?=[A-Z])/, '')
+      .trim()
+    if (!team || team.length > 40 || !/^[A-Za-z]/.test(team)) continue
+    if (/^(wager|payout|cash|group|fanatics|home|live|my\s*bets)\b/i.test(team)) continue
+    // Keep USA / UAE style country codes uppercase (titleCase → "Usa")
+    const teamLabel = /^(usa|uae|uk)$/i.test(team) ? team.toUpperCase() : titleCaseWords(team)
+    const key = normalizeNameKey(`${teamLabel}|${group}`)
+    if (seen.has(key)) continue
+    seen.add(key)
+    pending.push({
+      market: 'other',
+      side: '',
+      line: '',
+      odds,
+      selection_label: `${teamLabel} Group ${group} Winner`,
+      player_name: '',
+      prop_stat: `Group ${group} Winner`,
+      home_team: '',
+      away_team: '',
+      event_label: '',
+      sport_key: sport.key || 'other',
+      sport_label: sport.label || 'Soccer',
+      commence_time: '',
+      event_id: '',
+      status: 'open',
+    })
+  }
+  return pending.length >= 2 ? pending : []
+}
+
 /** Futures: "ATL Braves (Winner)" + odds (Hollywood / championship slips). */
 function extractFuturesWinnerLegs(text) {
   const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
@@ -3283,6 +3383,8 @@ function extractParlayPickSummaryNotes(text) {
     // DK SGPx summary: "2 Picks SGP, 2 Picks SGP" … not a player name list
     if (/^(\d+\s*picks?\s*sgp\s*,?\s*)+$/i.test(line.trim())) continue
     if (/^(wager|paid|risk|stake|total\s*wager|total\s*odds|hide\s*legs|show\s*legs|bet\s*id|reuse\s*selections|details|winner)\b/i.test(line)) break
+    if (/\bwager\b.*\bpayout\b|\bcash\s*out\b/i.test(line)) break
+    if (/^group\s+[a-z]\s+winner\b/i.test(line)) break
     if (/^\$?\s*[\d,]+\.?\d*\s+[+-]\d{3,8}\b/.test(line)) break
     if (/^\$?\s*[\d,]+\.?\d*\s+\$?\s*[\d,]+\.?\d*\s*$/.test(line)) break
     if (/^[A-Za-z].+\s+[+-]\d{2,5}\s*$/.test(line)) break
@@ -3612,6 +3714,10 @@ export function extractParlayLegs(text) {
 
   const golfTop = extractGolfTopFinishLegs(text)
   if (golfTop.length >= 2) return golfTop
+
+  // Fanatics Group Winner futures before naive "Team ±odds" / boxing Winner
+  const groupWin = extractFanaticsGroupWinnerLegs(text)
+  if (groupWin.length >= 2) return groupWin
 
   // DK boxing fighter Winner before Hollywood team "(Winner)" futures
   const fightWin = extractDkFighterWinnerLegs(text)

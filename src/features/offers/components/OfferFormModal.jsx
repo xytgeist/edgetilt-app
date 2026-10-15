@@ -25,6 +25,7 @@ import {
   OFFER_ALERT_HOUR_BEFORE,
   OFFER_ALERT_NONE
 } from '../utils'
+import ChatImageMediaViewer from '../../chat/ChatImageMediaViewer.jsx'
 
 function FieldGroup({ children }) {
   return <div className="overflow-visible rounded-3xl bg-[#2b2d34] shadow-[0_2px_8px_rgba(0,0,0,0.16)]">{children}</div>
@@ -143,6 +144,7 @@ export default function OfferFormModal({
   const [showAlertMenu, setShowAlertMenu] = useState(false)
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
   const [showNativeImageSource, setShowNativeImageSource] = useState(false)
+  const [mailerLightboxOpen, setMailerLightboxOpen] = useState(false)
   const [alertCardPulse, setAlertCardPulse] = useState(false)
   const [offerTypeMenuDirection, setOfferTypeMenuDirection] = useState('down')
   const [alertMenuDirection, setAlertMenuDirection] = useState('down')
@@ -673,9 +675,14 @@ export default function OfferFormModal({
               {reviewSourceImageLoading ? (
                 <div className="flex items-center justify-center h-24 text-sm text-zinc-500">Loading preview…</div>
               ) : reviewSourceImageUrl ? (
-                <a href={reviewSourceImageUrl} target="_blank" rel="noreferrer" title="Open full image" className="block">
+                <button
+                  type="button"
+                  onClick={() => setMailerLightboxOpen(true)}
+                  title="View full image"
+                  className="block w-full touch-manipulation text-left"
+                >
                   <img src={reviewSourceImageUrl} alt="Source mailer" className="max-h-64 w-full object-contain" />
-                </a>
+                </button>
               ) : (
                 <div className="flex items-center justify-center h-16 text-sm text-zinc-500">Preview unavailable</div>
               )}
@@ -1173,6 +1180,9 @@ export default function OfferFormModal({
             </div>
           </div>
         </div>
+      ) : null}
+      {mailerLightboxOpen && reviewSourceImageUrl ? (
+        <ChatImageMediaViewer urls={[reviewSourceImageUrl]} onClose={() => setMailerLightboxOpen(false)} />
       ) : null}
     </div>
   )

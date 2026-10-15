@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import ChatImageMediaViewer from '../../chat/ChatImageMediaViewer.jsx'
+
 export default function WeekEventDetailModal({
   event,
   offerTypeMeta,
@@ -8,6 +11,8 @@ export default function WeekEventDetailModal({
   onDuplicate,
   onDelete
 }) {
+  const [mailerLightboxOpen, setMailerLightboxOpen] = useState(false)
+
   if (!event) return null
 
   const e = event
@@ -84,9 +89,14 @@ export default function WeekEventDetailModal({
           {e.notes && <div className="mt-3 max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-400">{e.notes}</div>}
 
           {sourceImageUrl && (
-            <a href={sourceImageUrl} target="_blank" rel="noreferrer" className="mt-4 inline-block overflow-hidden rounded-2xl border border-zinc-700/50" title="Open full mailer image">
+            <button
+              type="button"
+              onClick={() => setMailerLightboxOpen(true)}
+              className="mt-4 inline-block overflow-hidden rounded-2xl border border-zinc-700/50 touch-manipulation text-left"
+              title="View full mailer image"
+            >
               <img src={sourceImageUrl} alt="Source mailer" className="block max-h-48 max-w-full" />
-            </a>
+            </button>
           )}
         </div>
         <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-zinc-700/80 pt-4">
@@ -101,6 +111,9 @@ export default function WeekEventDetailModal({
           </button>
         </div>
       </div>
+      {mailerLightboxOpen && sourceImageUrl ? (
+        <ChatImageMediaViewer urls={[sourceImageUrl]} onClose={() => setMailerLightboxOpen(false)} />
+      ) : null}
     </div>
   )
 }

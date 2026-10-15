@@ -342,6 +342,7 @@ Rules:
 - FanDuel "FIRST TOUCHDOWN SCORER" under player name (multi-game 4-leg etc.): market=prop, selection "Player First TD", sport NFL. "$100 TOTAL WAGER" + "$… WON ON FANDUEL" → stake + to_collect, status=won. Zip bunched per-leg juices when printed.
 - FanDuel "TOTAL WAGER RETURNED" with "$stake $0.00" above → status=lost (not void), stake=non-zero $, to_win/to_collect=0. Collapsed "Same Game Parlay +odds" name list → notes="Parlay picks (N): …", legs[] may be empty. Extract ONLY the top ticket when stacked My Bets cards follow.
 - FanDuel "St. Louis Cardinals Void" + MONEYLINE (or any "Team Void" + MONEYLINE): selection_label="St. Louis Cardinals ML", leg status=void (do not put Void in the label). Parent WON ON FANDUEL still status=won; other legs won.
+- FanDuel "Uruguay" + "MONEYLINE (3-WAY)" (or any national + 3-way): selection_label="Uruguay ML (3-way)". MLB club + soccer 3-way/national in one parlay → leave sport blank. "2 leg parlay +391" is combined odds. Extract ONLY the top ticket when a second WON ON card follows.
 - Player props like "Over 0.5 (Matt Olson) / MATT OLSON HOME RUNS / +360" → leg market=prop, side=over, line=0.5, player_name, prop_stat=Home Runs, odds=+360
 - If unsure, still fill best effort; use market=other and side="" rather than inventing a fighter/team side`
 

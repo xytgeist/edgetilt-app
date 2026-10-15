@@ -2985,14 +2985,17 @@ function extractFanDuelMyBetsLegs(text) {
       marketKind = 'h2h'
       // Open My Bets: "Chicago Cubs -120" / MONEYLINE (juice on the pick line)
       // Settled: "St. Louis Cardinals Void" / MONEYLINE (Void is leg status, not the team)
+      // Soccer: "Uruguay" / "MONEYLINE (3-WAY)"
       if (/\bvoid\b/i.test(sel)) legStatus = 'void'
+      const threeWay = /\b3\s*-?\s*way\b/i.test(market)
+      const mlSuffix = threeWay ? ' ML (3-way)' : ' ML'
       const selClean = sel.replace(/\s*\bvoid\b\s*/i, ' ').replace(/\s+/g, ' ').trim()
       const withJuice = /^(.+?)\s+([+-]\d{3,6})\s*$/.exec(selClean)
       if (withJuice && Math.abs(Number(withJuice[2])) >= 100) {
-        selection_label = `${titleCaseWords(withJuice[1].trim())} ML`
+        selection_label = `${titleCaseWords(withJuice[1].trim())}${mlSuffix}`
         odds = americanOddsInputString(withJuice[2]) || withJuice[2]
       } else {
-        selection_label = `${titleCaseWords(selClean || sel)} ML`
+        selection_label = `${titleCaseWords(selClean || sel)}${mlSuffix}`
       }
     } else if (/^spread$/i.test(market) && !/[+-]\d/.test(sel)) {
       marketKind = 'spread'
@@ -3790,6 +3793,20 @@ export function parseParlaySlipText(text) {
       else if (!keepSolo) sport = { key: '', label: '' }
     }
   }
+  // MLB club + soccer 3-way / national side (Astros + Uruguay) → blank sport
+  if (
+    sport.key
+    && (sport.key === 'baseball_mlb' || /^mlb$/i.test(sport.label))
+    && (
+      /\bmoneyline\s*\(\s*3\s*-?\s*way\s*\)/i.test(raw)
+      || (
+        /\b(?:uruguay|argentina|brazil|mexico|england|france|germany|spain|portugal|italy|netherlands)\b/i.test(raw)
+        && /\b(?:moneyline|3\s*-?\s*way)\b/i.test(raw)
+      )
+    )
+  ) {
+    sport = { key: '', label: '' }
+  }
   // Prefer a sport already on legs (e.g. person-vs-person → Table Tennis)
   if (!sport.key) {
     for (const leg of legs) {
@@ -3825,7 +3842,8 @@ export function parseParlaySlipText(text) {
     line: null,
     selection_label: parlaySelectionLabel(normalized),
     sport_key: sport.key || '',
-    sport_label: sport.label || (collapsedMoneyOnly ? '' : 'Parlay'),
+    // Blank when unknown or intentionally multi-league (MLB+soccer, cashout mix) … never fake "Parlay"
+    sport_label: sport.label || '',
     home_team: '',
     away_team: '',
     commence_time,

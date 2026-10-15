@@ -1472,6 +1472,24 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 16 (Ryan yes): FD 2-leg Astros ML + Uruguay 3-way WON … blank sport (cross)
+    file: 'fd-won-astros-uruguay-2.ocr.txt',
+    expect: {
+      legs: 2,
+      odds: 391,
+      stake_dollars: 300,
+      to_collect_dollars: 1474.17,
+      to_win_dollars: 1174.17,
+      status: 'won',
+      book: 'FanDuel',
+      sport_blank: true,
+      leg0: 'Astros',
+      leg_last: 'Uruguay',
+      leg_last_includes: '3-way',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,
@@ -1741,6 +1759,12 @@ for (const row of ocrBatch) {
     if (e.sport_key) {
       assert(d.sport_key === e.sport_key, `${name}: sport_key want ${e.sport_key} got ${d.sport_key}`)
     }
+    if (e.sport_blank) {
+      assert(
+        !String(d.sport_label || '').trim() && !String(d.sport_key || '').trim(),
+        `${name}: sport want blank got ${d.sport_label}/${d.sport_key}`,
+      )
+    }
     if (e.notes_includes) {
       assert(
         String(d.notes || '').includes(e.notes_includes),
@@ -1770,6 +1794,13 @@ for (const row of ocrBatch) {
       assert(
         String(last?.selection_label || '').toLowerCase().includes(e.leg_last.toLowerCase()),
         `${name}: leg_last ${last?.selection_label}`,
+      )
+    }
+    if (e.leg_last_includes) {
+      const last = legs[legs.length - 1]
+      assert(
+        String(last?.selection_label || '').toLowerCase().includes(String(e.leg_last_includes).toLowerCase()),
+        `${name}: leg_last_includes ${last?.selection_label}`,
       )
     }
     if (e.leg_odds) {

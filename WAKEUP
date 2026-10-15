@@ -275,6 +275,8 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 
 **Web `1.4.1189`.** Batch harden candidate 15: FanDuel MLB ML won with **Void** leg … strip Void from selection (`Cardinals ML`), `leg.status=void`; insert preserves void/push when parent won. Fixture **fd-won-mlb-void**. Fixtures **85/85**. No promote this turn.
 
+**Web `1.4.1190`.** Batch harden candidate 16: FanDuel 2-leg Astros ML + Uruguay **3-way** WON … +391, $300/$1474, blank sport (MLB+soccer), `ML (3-way)` label; top card only. Fixture **fd-won-astros-uruguay-2**. Fixtures **86/86**. No promote this turn.
+
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.
 

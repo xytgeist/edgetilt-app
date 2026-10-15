@@ -506,6 +506,20 @@ function extractStakeDollars(text) {
     return null
   }
 
+  // DraftKings receipt: bare "$5.00" then "$408.82" (payout) with no Wager label
+  const bare = []
+  for (const line of lines) {
+    const m = /^\$\s*([0-9,]+\.?\d*)\s*$/.exec(line)
+    if (!m) continue
+    const n = parseMoneyAmount(m[1])
+    if (n != null && n > 0) bare.push(n)
+  }
+  if (bare.length >= 2) {
+    const lo = Math.min(...bare)
+    const hi = Math.max(...bare)
+    if (hi > lo * 1.5) return lo
+  }
+
   return null
 }
 
@@ -548,7 +562,100 @@ function extractPayoutDollars(text) {
     return win
   }
 
+  // DraftKings: larger bare "$408.82" next to smaller wager
+  const bare = []
+  for (const line of lines) {
+    const m = /^\$\s*([0-9,]+\.?\d*)\s*$/.exec(line)
+    if (!m) continue
+    const n = parseMoneyAmount(m[1])
+    if (n != null && n > 0) bare.push(n)
+  }
+  if (bare.length >= 2) {
+    const lo = Math.min(...bare)
+    const hi = Math.max(...bare)
+    if (hi > lo * 1.5) return hi
+  }
+
   return null
+}
+
+function isParlayLegJunkLine(line) {
+  return /must\s*start|plate\s*appearance|bet\s*with\s*friends|keep\s*picks|terms\s+and|download\s+the|sign\s*up|mobile\s*wagering/i.test(
+    String(line || ''),
+  )
+}
+
+/**
+ * DraftKings / app props: "Over 0.5 (Matt Olson)" + "MATT OLSON HOME RUNS" + matchup + "+360"
+ */
+function extractAppPlayerPropLegs(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  const legs = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    const m = /^(over|under)\s+(\d+(?:\.\d+)?)\s*\(([^)]+)\)\s*$/i.exec(line)
+      || /^(over|under)\s+(\d+(?:\.\d+)?)\s+([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s*$/i.exec(line)
+    if (!m) continue
+    const side = m[1].toLowerCase() === 'under' ? 'under' : 'over'
+    const lineNum = Number(m[2])
+    const player = titleCaseWords(m[3].trim())
+    if (!player || !Number.isFinite(lineNum)) continue
+    if (/^(point|total|team|game|the)$/i.test(player)) continue
+
+    let stat = ''
+    let event_label = ''
+    let away_team = ''
+    let home_team = ''
+    let odds = ''
+    for (let j = i + 1; j < Math.min(i + 8, lines.length); j += 1) {
+      const next = lines[j]
+      if (/^(over|under)\s+\d/i.test(next)) break
+      if (isParlayLegJunkLine(next)) continue
+      if (/^[+-]\d{3,5}$/.test(next)) {
+        odds = americanOddsInputString(next)
+        break
+      }
+      if (!stat && /home\s*runs?|passing|rushing|receiving|points|rebounds|assists|strikeouts|hits|bases|yards|touchdowns?/i.test(next)) {
+        const stripped = next.replace(new RegExp(player.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '').trim()
+        stat = titleCaseWords(stripped || next)
+        continue
+      }
+      if (!event_label && /(?:@|\bat\b)/i.test(next) && !/\$/.test(next)) {
+        const ev = parseEventMatchup(next)
+        event_label = ev.event || next
+        away_team = ev.away_team || ''
+        home_team = ev.home_team || ''
+      }
+    }
+    if (!odds) continue
+
+    const ou = side === 'under' ? 'Under' : 'Over'
+    const selection_label = [player, ou, String(lineNum), stat].filter(Boolean).join(' ')
+    const key = `${normalizeNameKey(selection_label)}|${odds}`
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    const sport = extractSport([selection_label, stat, event_label, 'MLB'].filter(Boolean).join(' '))
+    legs.push({
+      market: 'prop',
+      side,
+      line: String(lineNum),
+      odds,
+      selection_label,
+      player_name: player,
+      prop_stat: stat,
+      home_team,
+      away_team,
+      event_label,
+      sport_key: sport.key || (/\bhome\s*runs?\b/i.test(stat) ? 'baseball_mlb' : ''),
+      sport_label: sport.label || (/\bhome\s*runs?\b/i.test(stat) ? 'MLB' : ''),
+      commence_time: '',
+      event_id: '',
+    })
+  }
+  return legs
 }
 
 function sportHintFromLine(line) {
@@ -1450,12 +1557,17 @@ export function extractParlayLegs(text) {
   const casino = extractCasinoBracketLegs(text)
   if (casino.length >= 2) return casino
 
+  // DraftKings "Over 0.5 (Player)" props before disclaimer/+odds pairing invents junk legs.
+  const appProps = extractAppPlayerPropLegs(text)
+  if (appProps.length >= 2) return appProps
+
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
   const sport = extractSport(text)
   const legs = []
   const seen = new Set()
 
   const pushLeg = (sel, odds, opts) => {
+    if (isParlayLegJunkLine(sel)) return
     const stub = legStubFromSelection(sel, odds, sport, opts)
     if (!stub) return
     const key = `${normalizeNameKey(stub.selection_label)}|${stub.odds || 'na'}`
@@ -1472,6 +1584,7 @@ export function extractParlayLegs(text) {
       continue
     }
     if (/^wager\b|^risk\b/i.test(line)) continue
+    if (isParlayLegJunkLine(line)) continue
     if (looksLikeTicketIdOdds(line)) continue
 
     const withOdds = /^(.+?)\s+([+-]\d{3,5})\s*$/.exec(line)
@@ -1481,7 +1594,9 @@ export function extractParlayLegs(text) {
     }
 
     if (/^[+-]\d{3,5}\s*$/.test(line)) {
+      // Skip ticket-level parlay odds sitting under "3 Pick Parlay"
       const prev = lines[i - 1] || ''
+      if (/pick\s+parlay|\bparlay\b/i.test(prev) && !/over|under|spread|money/i.test(prev)) continue
       if (prev && !/total\s*odds|parlay|wager|risk|payout|ticket|straight|single/i.test(prev)) {
         pushLeg(prev, line)
       }

@@ -506,6 +506,43 @@ Circa Sports
     },
   },
   {
+    name: 'DraftKings 3-pick HR prop parlay',
+    text: `
+Receipt
+3 Pick Parlay
++8076
+Over 0.5 (Matt Olson)
+MATT OLSON HOME RUNS
+ATL Braves @ PHI Phillies
+Must start and have 1+ plate appearance
++360
+Over 0.5 (Yordan Alvarez)
+YORDAN ALVAREZ HOME RUNS
+NY Yankees @ HOU Astros
+Must start and have 1+ plate appearance
++295
+Over 0.5 (Shohei Ohtani)
+SHOHEI OHTANI HOME RUNS
+STL Cardinals @ LA Dodgers
+Must start and have 1+ plate appearance
++350
+$5.00
+$408.82
+Mar 29, 2024, 4:40:45AM DK638473056445061844
+DraftKings
+`,
+    expect: {
+      market: 'parlay',
+      book: 'DraftKings',
+      stake_dollars: 5,
+      odds: 8076,
+      selection_includes: 'Parlay',
+      legs: 3,
+      leg0_includes: 'Olson',
+      leg0_stat_includes: 'Home Runs',
+    },
+  },
+  {
     name: 'Parlay Card 10 spreads',
     text: `
 Parlay Card

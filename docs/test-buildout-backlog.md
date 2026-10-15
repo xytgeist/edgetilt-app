@@ -1215,6 +1215,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-14:** **Bet Tracker DK Over 0.5 (Player) parlays (`1.4.1158`).** App prop legs + bare $stake/$payout; skip must-start disclaimers. No Edge.
 - **2026-10-14:** **Promoted `1.4.1157`** (Circa OCR split juice). Frontend **`test` → `main`** (`f28b0edc`). No Edge.
 - **2026-10-14:** **Bet Tracker Circa OCR split juice (`1.4.1157`).** Real ticket: `[rot] TEAM` + next-line `+2-110` / `UN 54-110`. Casino extractor first; promo header not Event. No Edge.
 - **2026-10-14:** **Promoted `1.4.1156`** (Circa + Parlay Card parse). Frontend **`test` → `main`** (`44b45a02`). No Edge.

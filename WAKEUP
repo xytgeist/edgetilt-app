@@ -219,7 +219,7 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 **Web `1.4.1163`.** Fourth Vision batch: Caesars Horseshoe 10/4-leg `Money Line`, Golden Nugget AC `Money Line FT`, GN/Caesars casino brackets (broken `[`), DK alt-yards boost twin. Fixtures **58/58**. **Promoted** `test` → `main` (`db205f8a`) … includes harden #1–#4 (`1.4.1160`–`1.4.1163`). No Edge (heuristic only).
 
 ### Mac Theo 2026-10-14 ... GN AC 5-bet under-count (Duke)
-**Web `1.4.1164`.** Ryan’s Golden Nugget AC “Parlay 5 bets” landed with 4 legs (Duke dropped; Edge-style `Money Line Ft` labels). Declared leg count → weak if short; hydrate prefers OCR that hits the count; strip `Money Line FT` → `Team ML`. Edge prompt: exact N legs. Redeploy **`sports-bet-slip-parse`** test + prod.
+**Web `1.4.1164`.** Ryan’s Golden Nugget AC “Parlay 5 bets” landed with 4 legs (Duke dropped; Edge-style `Money Line Ft` labels). Declared leg count → weak if short; hydrate prefers OCR that hits the count; strip `Money Line FT` → `Team ML`. Edge prompt: exact N legs. Redeploy **`sports-bet-slip-parse`** test + prod. **Promoted** `main` @ `49c64082`.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.

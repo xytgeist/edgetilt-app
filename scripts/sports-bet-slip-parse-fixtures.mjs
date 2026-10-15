@@ -1490,6 +1490,25 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 17 (Ryan yes): FD ATD CASHED OUT under stake … left=wager right=cashout
+    file: 'fd-cashed-atd-7.ocr.txt',
+    expect: {
+      legs: 4,
+      odds: 10247,
+      stake_dollars: 5,
+      to_collect_dollars: 3.14,
+      to_win_dollars: -1.86,
+      status: 'won',
+      book: 'FanDuel',
+      sport_label: 'NFL',
+      sport_key: 'americanfootball_nfl',
+      leg0: 'Williams',
+      leg_last: 'Jones',
+      notes_includes: 'Parlay picks (7):',
+      no_junk_sels: true,
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,

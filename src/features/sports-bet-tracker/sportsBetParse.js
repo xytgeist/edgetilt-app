@@ -470,6 +470,8 @@ function extractBook(text) {
     /\breuse\s*selections\b/i.test(s)
     || /\bwon\s+on\s+fanduel\b/i.test(s)
     || /\btotal\s*wager\s*returned\b/i.test(s)
+    || /\btotal\s*wager\s*cashed\s*out\b/i.test(s)
+    || (/\bcashed\s*out\b/i.test(s) && /\btotal\s*wager\b/i.test(s))
   ) {
     return 'FanDuel'
   }
@@ -534,10 +536,10 @@ function extractStakeDollars(text) {
       if (dual) {
         const a = parseMoneyAmount(dual[1])
         const b = parseMoneyAmount(dual[2])
-        // "$5 $156" stake+payout … or "$3.09 $0.00" TOTAL WAGER RETURNED (stake is non-zero)
-        if (a != null && a > 0 && b != null && b > 0) return Math.min(a, b)
-        if (a != null && a > 0 && b === 0) return a
-        if (b != null && b > 0 && a === 0) return b
+        // FanDuel dual is left=wager, right=payout/return … even when cashout < stake
+        // ("$5 $3.14" CASHED OUT) or right is $0 ("$3.09 $0.00" RETURNED)
+        if (a != null && a > 0) return a
+        if (b != null && b > 0) return b
       }
       const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
       if (!m) continue
@@ -705,9 +707,13 @@ export function ticketMoneyFromText(text, draft = null) {
     ?? (raw ? extractToWinDollars(raw) : null)
     ?? footer?.toWin
     ?? null
-  // Include dead-heat wins where Paid < stake (negative profit)
+  // Dead heat / early cashout may pay under stake (negative profit)
   if (toWin == null && toCollect != null && stake != null) {
-    if (toCollect > stake || /\bdead\s*heat\b/i.test(raw)) {
+    if (
+      toCollect > stake
+      || /\bdead\s*heat\b/i.test(raw)
+      || /\bcashed\s*out\b/i.test(raw)
+    ) {
       toWin = Math.round((toCollect - stake) * 100) / 100
     }
   }
@@ -926,7 +932,7 @@ function extractPayoutDollars(text) {
   if (footer?.collect != null && footer.collect > 0) return footer.collect
 
   // FanDuel open My Bets: "$10.00 $2,129.55" / "TOTAL WAGER TOTAL PAYOUT" (payout is right $)
-  // Settled: "$5.00 $156.70" / "TOTAL WAGER WON ON FANDUEL" / "TOTAL WAGER CASHED OUT"
+  // Settled: "$5.00 $156.70" WON ON … or "$5.00 $3.14" CASHED OUT (right may be under stake)
   for (let i = 0; i < lines.length; i += 1) {
     if (!/\btotal\s*payout\b|\bwon\s+on\b|\bcashed\s*out\b/i.test(lines[i])) continue
     for (const candidate of [lines[i - 1] || '', lines[i + 1] || '']) {
@@ -934,7 +940,11 @@ function extractPayoutDollars(text) {
       if (dual) {
         const a = parseMoneyAmount(dual[1])
         const b = parseMoneyAmount(dual[2])
-        if (a != null && a > 0 && b != null && b > 0) return Math.max(a, b)
+        // Right column is payout/return (0 OK for RETURNED twin paths handled elsewhere)
+        if (b != null && b >= 0 && (a == null || Math.abs(b - a) > 0.009 || b === 0)) {
+          if (b > 0 || /\bcashed\s*out\b/i.test(lines[i])) return b
+        }
+        if (b != null && b > 0) return b
       }
       const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
       if (!m) continue
@@ -956,7 +966,9 @@ function extractPayoutDollars(text) {
       if (dual) {
         const a = parseMoneyAmount(dual[1])
         const b = parseMoneyAmount(dual[2])
-        if (a != null && a > 0 && b != null && b > 0) neighbors.push(Math.max(a, b))
+        // Prefer right $ (payout); cashout may be under left stake
+        if (b != null && b > 0) neighbors.push(b)
+        else if (a != null && a > 0 && b != null && b > 0) neighbors.push(Math.max(a, b))
         continue
       }
       const m = /^\$?\s*([0-9,]+\.?\d*)\s*$/.exec(candidate)
@@ -2214,7 +2226,10 @@ function draftFromBits({
     odds: american != null ? americanOddsInputString(american) : '',
     stake_units: units != null ? String(units) : '',
     stake_dollars: dollars != null ? String(dollars) : '',
-    to_win_dollars: toWinDollars != null && Number(toWinDollars) > 0 ? String(toWinDollars) : '',
+    // Allow negative to_win (dead heat / early cashout under stake)
+    to_win_dollars: toWinDollars != null && Number.isFinite(Number(toWinDollars))
+      ? String(toWinDollars)
+      : '',
     to_collect_dollars: toCollectDollars != null && Number(toCollectDollars) > 0
       ? String(toCollectDollars)
       : '',

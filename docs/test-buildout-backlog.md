@@ -1215,7 +1215,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-10-15:** **Promoted `1.4.1198`** (Bet Tracker slip harden through Match Betting + Offers mailer session-day expand). Frontend **`test` → `main`** (`0616d0d21`). No new SQL. Prod Edge **`sports-bet-slip-parse`** / **`process-offer-uploads`** redeploy only on Ryan ask (heuristic parse is client-side on Vercel).
+- **2026-10-15:** **Promoted `1.4.1198`** (Bet Tracker slip harden through Match Betting + Offers mailer session-day expand). Frontend **`test` → `main`** (`0616d0d21`). No new SQL. Redeployed Edge **`sports-bet-slip-parse`** + **`process-offer-uploads`** on **test + prod**.
 - **2026-10-15:** **Offers mailer expand discrete session days (`process-offer-uploads`).** "Dec 10 & 11" / short timed tournament ranges → one event per day (fixes Android dropping Dec 11 while iOS got all three). Redeploy Edge test + prod.
 - **2026-10-15:** **Promoted `1.4.1197`** (Offers year inference + Bet Tracker OCR batch). Frontend **`test` → `main`** (`7e50f352e`). Edge **`process-offer-uploads`** + **`sports-bet-slip-parse`** redeployed **test + prod**. No new SQL.
 - **2026-10-15:** **Offers mailer year inference (`process-offer-uploads`).** Flyers with month/day but no year: prompt must still emit `start_at`; server picks nearest upcoming year (this year if that M/D is today-or-later, else next… Nov→Jan). Redeploy Edge on the env you smoke. Not a client bump.

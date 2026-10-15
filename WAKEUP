@@ -177,7 +177,7 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 **Web `1.4.1149`.** Failed queue rows still prefill any extracted fields (heuristic + LLM partials); strip terminal-id fake events. No Edge redeploy.
 
 ### Mac Theo 2026-10-14 ... Bet Tracker auto-grade honesty + progress
-**Web `1.4.1150`.** Boxing never shows “Auto-grades when final” (no ESPN board); UFC/MMA h2h only. Stale unmatched opens → **No final matched yet**. Progress overlay for photo OCR/AI, Save / Save all / CSV, and post-save grade. Edge **`sports-bets-grade`** shared helper aligned (redeploy test; prod on promote).
+**Web `1.4.1150`.** Boxing never shows “Auto-grades when final” (no ESPN board); UFC/MMA h2h only. Stale unmatched opens → **No final matched yet**. Progress overlay for photo OCR/AI, Save / Save all / CSV, and post-save grade. **Promoted** `test` → `main` (`1d530787`). Edge **`sports-bets-grade`** + **`lounge-odds-poll`** on **test + prod**.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.

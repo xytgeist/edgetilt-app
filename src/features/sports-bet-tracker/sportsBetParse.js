@@ -1048,6 +1048,35 @@ function casinoLegFromPickAndJuice(pickRaw, juice, sportHint) {
   }
 }
 
+/** True when a leg selection is OCR/AI junk (dates, ticket footer, glued rotation). */
+export function legSelectionLooksJunk(sel) {
+  const s = String(sel || '').trim()
+  if (!s) return true
+  if (/ticket\s*cost|to\s*win|to\s*collect|you\s*won|max\s*payout|max\s*win/i.test(s)) return true
+  if (/^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(s) && /\d{4}/.test(s)) return true
+  // "[109] BILLS Jan 11 2026 - NFL PLAYOFF" / ">25] LAKERS an 12 2026 - NBA"
+  if (/[\[\]>]\s*\d*\]/.test(s) && /(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\bnba\b|\bnfl\b|playoff)/i.test(s)) {
+    return true
+  }
+  if (/\d{4}\s*[-–•]\s*(?:nba|nfl|mlb|nhl|cfb|playoff)/i.test(s)) return true
+  return false
+}
+
+function countJunkLegSelections(legs) {
+  return (Array.isArray(legs) ? legs : []).filter((l) => legSelectionLooksJunk(l?.selection_label)).length
+}
+
+function isCasinoPickJunk(pickRaw) {
+  const s = String(pickRaw || '').trim()
+  if (!s) return true
+  if (/^(ticket|parlay|straight|bet|to\s*win|to\s*collect|cost)/i.test(s)) return true
+  if (/ticket\s*cost|to\s*win|to\s*collect/i.test(s)) return true
+  if (/^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(s)) return true
+  if (/^\d{1,2}\s+\d{4}/.test(s)) return true
+  if (/^(?:nba|nfl|mlb|nhl|cfb|playoffs?)\s*$/i.test(s)) return true
+  return false
+}
+
 /**
  * Circa / the D / Wynn casino legs.
  * Prefer zip-by-order: Vision OCR often lists all [rot] picks then all juices.
@@ -1062,6 +1091,7 @@ function extractCasinoBracketLegs(text) {
 
   const push = (stub) => {
     if (!stub) return
+    if (legSelectionLooksJunk(stub.selection_label)) return
     const key = `${normalizeNameKey(stub.selection_label)}|${stub.odds || 'na'}`
     if (seen.has(key)) return
     seen.add(key)
@@ -1072,29 +1102,30 @@ function extractCasinoBracketLegs(text) {
     const line = lines[i]
     const hint = sportHintFromLine(line)
     if (hint) sportHint = hint
-    if (/\bcollege\s*fb\b|\bpro\s*basketball\b|\bpro\s*football\b/i.test(line)) {
-      if (/basketball/i.test(line)) sportHint = 'NBA'
-      else if (/football|fb/i.test(line)) sportHint = /college/i.test(line) ? 'CFB' : 'NFL'
+    if (/\bcollege\s*fb\b|\bpro\s*basketball\b|\bpro\s*football\b|\bnfl\s*playoffs?\b|\bnba\b/i.test(line)) {
+      if (/basketball|\bnba\b/i.test(line)) sportHint = 'NBA'
+      else if (/football|fb|nfl/i.test(line)) sportHint = /college/i.test(line) ? 'CFB' : 'NFL'
     }
 
     const paren = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s+\(([^)]+)\)\s*$/i.exec(line)
     if (paren) {
-      push(casinoLegFromPickAndJuice(paren[2], paren[3], sportHint))
+      if (!isCasinoPickJunk(paren[2])) push(casinoLegFromPickAndJuice(paren[2], paren[3], sportHint))
       continue
     }
 
     const same = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s+((?:OV|UN|OVER|UNDER)\s+\d+(?:\.\d+)?[+\-\s]*\d{3,5}|[+-]\d+(?:\.\d+)?[+\-\s]*\d{3,5}|[+-]\d{3,5})\s*$/i.exec(line)
     if (same) {
-      push(casinoLegFromPickAndJuice(same[2], same[3], sportHint))
+      if (!isCasinoPickJunk(same[2])) push(casinoLegFromPickAndJuice(same[2], same[3], sportHint))
       continue
     }
 
-    // "[101] RAVENS" or OCR drop leading bracket: "522] KNICKS"
+    // "[101] RAVENS" / OCR drop "[" → "522] KNICKS" / thumb junk → ">25] LAKERS"
     const head = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s*$/i.exec(line)
+      || /^[>]\s*(\d{2,4}(?:\/\d{2,4})?)\]\s+(.+?)\s*$/i.exec(line)
       || /^(\d{2,4}(?:\/\d{2,4})?)\]\s+(.+?)\s*$/i.exec(line)
     if (!head) continue
     const pickRaw = head[2].trim()
-    if (!pickRaw || /^(ticket|parlay|straight|bet)/i.test(pickRaw)) continue
+    if (isCasinoPickJunk(pickRaw)) continue
     picks.push({ pickRaw, sportHint })
   }
 
@@ -1102,8 +1133,8 @@ function extractCasinoBracketLegs(text) {
   if (picks.length >= 2) {
     const juices = []
     for (const line of lines) {
-      if (/^\[/.test(line)) continue
-      if (/ticket\s*cost|to\s*win|to\s*collect|^\$|parlay\s*\(|bet\(s\)/i.test(line)) continue
+      if (/^[\[>]?\d/.test(line) && /\]/.test(line)) continue
+      if (/ticket\s*cost|to\s*win|to\s*collect|^\$|parlay\s*\(|bet\(s\)|you\s*won/i.test(line)) continue
       if (parseCasinoJuiceToken(line)) juices.push(line)
     }
     const n = Math.min(picks.length, juices.length)
@@ -2754,6 +2785,8 @@ export function isWeakSportsBetDraft(draft, ocrText = '') {
       || declaredParlayLegCount(sel)
     const n = countUsableParlayLegs(draft.legs)
     if (declared != null && n > 0 && n < declared) return true
+    // Date lines / "TO WIN: TICKET COST:" as selections → weak (prefer OCR hydrate)
+    if (countJunkLegSelections(draft.legs) > 0) return true
   }
   return false
 }
@@ -2853,19 +2886,25 @@ export function hydrateParlayLegsForDraft(draft, ocrText = '') {
     || declaredParlayLegCount(draft.selection_label)
 
   const candidates = [
-    { legs: current, n: countUsableParlayLegs(current) },
-    { legs: fromText, n: countUsableParlayLegs(fromText) },
-    { legs: fromNotes, n: countUsableParlayLegs(fromNotes) },
+    { legs: current, n: countUsableParlayLegs(current), junk: countJunkLegSelections(current) },
+    { legs: fromText, n: countUsableParlayLegs(fromText), junk: countJunkLegSelections(fromText) },
+    { legs: fromNotes, n: countUsableParlayLegs(fromNotes), junk: countJunkLegSelections(fromNotes) },
   ]
+  const byQuality = (a, b) => {
+    // Prefer more legs, then fewer junk selections (Edge often glues dates / ticket footers)
+    if (b.n !== a.n) return b.n - a.n
+    if (a.junk !== b.junk) return a.junk - b.junk
+    return 0
+  }
   // Prefer a source that hits the slip's declared leg count ("Parlay 5 bets")
   if (declared != null) {
     const exact = candidates.filter((c) => c.n === declared)
     if (exact.length) {
-      exact.sort((a, b) => b.n - a.n)
+      exact.sort(byQuality)
       return { ...draft, legs: exact[0].legs }
     }
   }
-  candidates.sort((a, b) => b.n - a.n)
+  candidates.sort(byQuality)
   const best = candidates[0]
   if (best.n >= 2) return { ...draft, legs: best.legs }
   if (!parlayLegsNeedHydrate(draft.legs) && current.length) {

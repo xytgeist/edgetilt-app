@@ -1229,6 +1229,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - **2026-10-14:** **Bet Tracker batch OCR harden #3 (`1.4.1162`).** DK NBA `N+` props, FD open/settled SGP + dual-SGP, alt lines, spreads (missing line), DK NFL `×` ML strip. Fixtures **52/52**. No Edge / no promote.
 - **2026-10-14:** **Bet Tracker batch OCR harden #4 (`1.4.1163`).** Caesars Horseshoe ML, GN AC numbered ML FT, casino brackets, DK boost twin. Fixtures **58/58**. **Promoted** `main` @ `db205f8a` (batches #1–#4 / `1.4.1160`–`1.4.1163`). No Edge.
 - **2026-10-14:** **GN AC Parlay 5 → 4 legs (`1.4.1164`).** Declared-count weak + hydrate restore; Edge prompt exact N. Redeploy **`sports-bet-slip-parse`** test + prod.
+- **2026-10-14:** **Caesars casino Edge junk selections (`1.4.1165`).** Hydrate prefers clean OCR over date/footer junk legs; Edge prompt team-only. Redeploy **`sports-bet-slip-parse`** test + prod.
 - **2026-10-14:** **Bet Tracker batch OCR harden (`1.4.1160`).** Nine Vision-OCR slips (DK/FD/Circa/Wynn/Rampart/Hollywood/Parlay Card) → zip bunched juices + new extractors. Fixtures `scripts/fixtures/sports-bet-slips/` (35/35). No Edge.
 - **2026-10-14:** **Promoted `1.4.1159`** (Bet Tracker AI notes → parlay legs). Frontend **`test` → `main`** (`ba949dde`). Edge **`sports-bet-slip-parse`** on **test + prod**.
 - **2026-10-14:** **Bet Tracker AI notes → parlay legs (`1.4.1159`).** LLM `Parlay legs: …` in notes hydrates composer legs (prefer richest count vs OCR). Edge **`sports-bet-slip-parse`** schema/prompt for `legs[]`. Fixtures.

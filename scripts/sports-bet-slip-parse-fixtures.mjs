@@ -12,6 +12,7 @@ import {
   declaredParlayLegCount,
   hydrateParlayLegsForDraft,
   isWeakSportsBetDraft,
+  legSelectionLooksJunk,
   parseSportsBetSlipText,
 } from '../src/features/sports-bet-tracker/sportsBetParse.js'
 
@@ -872,6 +873,46 @@ try {
   console.error(`FAIL GN AC under-count hydrate: ${err.message}`)
 }
 
+// Caesars casino … Edge glues dates / ticket footer into selections → hydrate prefers clean OCR
+try {
+  const czOcr = fs.readFileSync(path.join(OCR_DIR, 'caesars-casino-5.ocr.txt'), 'utf8')
+  const clean = parseSportsBetSlipText(czOcr)[0]
+  assert(clean?.legs?.length === 5, 'Caesars casino clean want 5')
+  assert(
+    clean.legs.every((l) => !legSelectionLooksJunk(l.selection_label)),
+    'Caesars casino clean legs should not look junk',
+  )
+  const junkEdge = {
+    market: 'parlay',
+    odds: '+1195',
+    stake_dollars: '25',
+    selection_label: 'Parlay (5 legs)',
+    notes: 'PARLAY (5 TEAMS)',
+    legs: [
+      { market: 'h2h', selection_label: 'Commanders', odds: '-110' },
+      { market: 'h2h', selection_label: '[109] BILLS Jan 11 2026 - NFL PLAYOFF', odds: '+125' },
+      { market: 'h2h', selection_label: 'Jan 12 2026 - NBA', odds: '-170' },
+      { market: 'h2h', selection_label: '>25] LAKERS an 12 2026 - NBA', odds: '-410' },
+      { market: 'h2h', selection_label: 'TO WIN: TICKET COST:', odds: '-190' },
+    ],
+  }
+  assert(isWeakSportsBetDraft(junkEdge, czOcr) === true, 'Caesars junk Edge draft should be weak')
+  const restored = hydrateParlayLegsForDraft(junkEdge, czOcr)
+  assert(restored.legs?.length === 5, `Caesars hydrate want 5 got ${restored.legs?.length}`)
+  assert(
+    restored.legs.every((l) => !legSelectionLooksJunk(l.selection_label)),
+    `Caesars hydrate still junk: ${restored.legs.map((l) => l.selection_label).join(' | ')}`,
+  )
+  assert(
+    /ravens/i.test(restored.legs[0]?.selection_label || ''),
+    `Caesars hydrate leg0 want Ravens got ${restored.legs[0]?.selection_label}`,
+  )
+  console.log('ok  Caesars casino Edge junk → hydrate clean teams')
+} catch (err) {
+  failed += 1
+  console.error(`FAIL Caesars casino junk hydrate: ${err.message}`)
+}
+
 /** Real Vision OCR dumps from Ryan's batch (2026-10-14). */
 const ocrBatch = [
   {
@@ -1106,7 +1147,7 @@ for (const row of ocrBatch) {
   }
 }
 
-const total = fixtures.length + 2 + ocrCount
+const total = fixtures.length + 3 + ocrCount
 if (failed) {
   console.error(`\n${failed}/${total} failed`)
   process.exit(1)

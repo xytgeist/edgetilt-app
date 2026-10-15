@@ -1490,6 +1490,22 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 23 (Ryan yes): Fliff/ESPN MLB Money Line open 5-leg … MAX WIN, strip a/nD OCR crumbs
+    file: 'fliff-open-mlb-ml-5.ocr.txt',
+    expect: {
+      legs: 5,
+      odds: 1403,
+      stake_dollars: 25,
+      to_collect_dollars: 350.81,
+      to_win_dollars: 325.81,
+      status: 'open',
+      sport_label: 'MLB',
+      leg0: 'Orioles',
+      leg_last: 'Cardinals',
+      no_junk_sels: true,
+    },
+  },
+  {
     // Candidate 22 (Ryan yes): Fliff/ESPN MLB Money Line won 5-leg … TOTAL PAYOUT, slice Straight below
     file: 'fliff-won-mlb-ml-5.ocr.txt',
     expect: {

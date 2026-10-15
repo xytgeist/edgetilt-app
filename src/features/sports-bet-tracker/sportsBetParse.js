@@ -2824,9 +2824,12 @@ function extractAppMoneylineBetslipLegs(text) {
     if (/\bwon\b/i.test(teamRaw)) legStatus = 'won'
     else if (/\blost\b/i.test(teamRaw)) legStatus = 'lost'
     else if (/\bvoid\b/i.test(teamRaw)) legStatus = 'void'
+    // Strip Fliff icon OCR crumbs: "a Baltimore", "nD Boston", "ry) Tampa" …
+    // Require a lowercase start so real abbrevs (LA / NY / KC) stay intact.
     const team = String(teamRaw || '')
       .replace(/^[×xX$@©®™*&~\s]+/, '')
-      .replace(/^[a-z]{1,3}\)\s*/i, '')
+      .replace(/^[a-z][a-zA-Z]{0,2}\)\s*/, '')
+      .replace(/^[a-z][a-zA-Z]{0,2}\s+(?=[A-Z])/, '')
       .replace(/\b(?:won|lost|open|void)\b/gi, '')
       .replace(/\s+/g, ' ')
       .trim()

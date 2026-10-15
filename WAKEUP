@@ -32,7 +32,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**App Store (2026-10-15):** live **1.4.96** (`20261008181941`). Next train **1.4.97**. First Prod DTG **`20261015162433`** Failed (ITMS-90683 missing camera purpose string). Restore `NSCameraUsageDescription` (+ mic / photos / location from the same Aug 28 accidental plist slim) then re-archive. Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*. Do not attach Cloud **242**.
+**App Store (2026-10-15):** live **1.4.96** (`20261008181941`). **1.4.97** (`20261015175413`) is **Waiting for Review**. Do not attach Cloud **242** / **243** (Test Fast). Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*. W-9 still with Apple Finance.
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
@@ -45,7 +45,7 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal (Mac):** _Ship **1.4.97** Prod IPA for App Store review. Marketing **1.4.96** stays live until 1.4.97 releases. Play APK stays parked._
+**Goal (Mac):** _**1.4.97** is Waiting for Review (`20261015175413`). Live store stays **1.4.96** until Apple approves. Play APK stays parked._
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + sports pill / live-data track + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
@@ -126,7 +126,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 **I am Windows Theo.** Offsite `pg_dump` → private R2 for **production only** (`docs/db-r2-backups.md`). Test keeps Supabase daily backups. Script `scripts/db-dump-to-r2.mjs`, 14-day prune, Windows task daily 3:15 AM. Needs Ryan: create private bucket + `DB_BACKUP_R2_*` in `.env.master`, install `pg_dump`, first `npm run db:dump:r2:production` to size egress, then `npm run db:dump:r2:install-windows-task`. Before scary prod SQL: `--tag=pre-migrate`.
 
 ### Mac Theo ACTIVE TRACK 2026-10-15 ... App Store 1.4.97
-**I am Mac Theo.** Ryan asked for the latest **IPA** (not Play). Marketing **1.4.97**. ASC version **1.4.97 Prepare for Submission**. First Prod DTG **`20261015162433`** Failed ITMS-90683. Purpose strings restored (`061da8ba`). New Prod DTG **`20261015175413`** uploaded TestFlight-only (processing). Do **not** attach Cloud **242**. Org convert + W-9 still with Apple Finance. Live store stays **1.4.96**. **Play APK stays parked.** Windows leftover still AASA `/lounge/g/*` + `?game=`.
+**I am Mac Theo.** **1.4.97** (`20261015175413`) is **Waiting for Review**. Export compliance cleared (HTTPS / none of the listed algorithms). Apple warned Cloud **243** was newer; we kept Prod DTG, not Test Fast. Do **not** attach **242** / **243**. First DTG `20261015162433` Failed ITMS-90683 (purpose strings restored `061da8ba`). Live store stays **1.4.96**. W-9 still with Apple Finance. **Play APK stays parked.** Windows leftover still AASA `/lounge/g/*` + `?game=`.
 
 ### Mac Theo ACTIVE TRACK 2026-10-14 ... Android ML Kit scan + OCR
 **I am Mac Theo.** APK **1.3.20** / vc **24** + web **`1.4.1132`:** `EdgeAndroid.scanDocument` + `recognizeText`. Upload Play **24**. **W-2G Take photo Ryan PASSED 2026-10-15.** Offers calendar/mailer Take photo … smoking. Bet-slip OCR still owed. **Prior:** native video **Ryan PASSED** (`2787d380` / 1.3.19). **Play internal 13 (1.3.9) Ryan PASSED 2026-10-15:** End Call both-sides + live-session chip. **Next native:** shortcuts + widget.

@@ -12,7 +12,7 @@
 
 ## After the next App Store build goes live (do these, then delete the line)
 
-**Status 2026-10-15:** store version **1.4.96 Ready for Distribution** (build `20261008181941`; App Review accepted Oct 11). Next train **1.4.97** (Yahoo ASWebAuth + native video poster/tus remint) ... in flight for review. Prior **1.4.95** (`20260928212300`) superseded.
+**Status 2026-10-15:** store version **1.4.96 Ready for Distribution** (build `20261008181941`; App Review accepted Oct 11). **1.4.97** (`20261015175413`) is **Waiting for Review** (Yahoo ASWebAuth + native video poster/tus remint). Do not attach Cloud 242/243. Prior **1.4.95** (`20260928212300`) superseded.
 
 - [x] **Ship the bet sheet update.** Rides **1.4.96**. Prod web already serves `/native/bet-sheet-polymarket.js`.
 

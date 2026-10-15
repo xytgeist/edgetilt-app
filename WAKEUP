@@ -238,7 +238,7 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 
 **Web `1.4.1172`.** Settled **loss** OCR: LOST / Did not win / $0.00+TOTAL WAGER → status lost + to_win/collect 0; keep odds-less settled ML legs (DK 2-Pick); open PLACE BET stays open. Fixtures **fd-lost-alt-3** / **dk-lost-ml-2**. Fixtures **68/68**. **Promoted** `main` @ `f0bba300` (includes **`1.4.1171`** stake/Won field). Edge **`sports-bet-slip-parse`** on **test + prod**.
 
-**Web `1.4.1173`.** Wager / Won $ OCR: glued `$70 TOTAL WAGER` / `$207 WON ON`, $ above or below labels, `WON ON FANDUEL $207`; do not steal TOTAL WAGER as Won. Redeploy **`sports-bet-slip-parse`** test. Fixtures **69/69**. No promote this turn.
+**Web `1.4.1173`.** Wager / Won $ OCR: glued `$70 TOTAL WAGER` / `$207 WON ON`, $ above or below labels, `WON ON FANDUEL $207`; do not steal TOTAL WAGER as Won. Fixtures **69/69**. **Promoted** `main` @ `f2fb8400`. Edge **`sports-bet-slip-parse`** on **test + prod**.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-12 ... Fantasy suite roadmap
 **Docs only.** Layers A–F + phased ship (Connect → Live HQ + injury/lineup pushes → Start/Sit/Waiver → Emotional hedge → Trade Analyzer → DFS → second sport) in **`docs/fantasy-suite.md`**. Layer **F** = notifications retention fabric (outcomes, considerations, injuries, trades, opt-in hedges). Connect impl still **`docs/fantasy-connect.md`**. Yahoo API approval for App ID **`i4wW6xoc`** remains the Layer A soft-launch gate. No code this track.

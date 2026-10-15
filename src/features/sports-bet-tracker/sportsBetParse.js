@@ -1181,6 +1181,91 @@ function zipBunchedAmericanOdds(legs, text, { skipTicketTotal = true } = {}) {
 }
 
 /**
+ * Fliff / ESPN Active Bets: matchup / "Over 0.5 Open" / "Bryce Harper - Home Runs"
+ * (optional "[ +340 ]" on the Over line).
+ */
+function extractOpenOverUnderNamedPropLegs(text) {
+  const raw = normalizeSlipOcrText(text)
+  if (!/\b(?:over|under)\s+\d+(?:\.\d+)?\s*(?:open|won|lost)?\b/i.test(raw)) return []
+  if (!/\b[A-Za-z].+\s+-\s+(?:home\s*runs?|points|rebounds|assists|strikeouts|hits|bases|yards|touchdowns?|passing|rushing|receiving)\b/i.test(raw)) {
+    return []
+  }
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const ou = /^(?:[a-z0-9]{1,4}\s+)?(over|under)\s+(\d+(?:\.\d+)?)\s*(?:open|won|lost)?\b(?:\s*[\[(]?\s*([+-]\d{3,5})\s*[\])]?)?/i.exec(lines[i])
+    if (!ou) continue
+    const side = ou[1].toLowerCase() === 'under' ? 'under' : 'over'
+    const lineNum = Number(ou[2])
+    if (!Number.isFinite(lineNum)) continue
+    let odds = ou[3] ? americanOddsInputString(ou[3]) : ''
+    const detail = lines[i + 1] || ''
+    const named = /^([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s*-\s*(.+)$/.exec(detail)
+    if (!named) continue
+    // Hyphenated surnames (Crow-Armstrong) … titleCase each side
+    const player = named[1].trim()
+      .split(/(\s+)/)
+      .map((tok) => (
+        /^\s+$/.test(tok)
+          ? tok
+          : tok.split('-').map((p) => titleCaseWords(p)).join('-')
+      ))
+      .join('')
+    let stat = titleCaseWords(named[2].replace(/\s+[+-]\d{3,5}\s*$/, '').trim())
+    if (/^hr\.?$/i.test(stat)) stat = 'Home Runs'
+    if (!player || !stat || player.length > 48) continue
+    if (/^(over|under|parlay|odds|price|amount|promotion|bonus)\b/i.test(player)) continue
+    if (!/\b(?:home\s*runs?|points|rebounds|assists|strikeouts|hits|bases|yards|touchdowns?|passing|rushing|receiving)\b/i.test(stat)) {
+      continue
+    }
+    let event_label = ''
+    let away_team = ''
+    let home_team = ''
+    const prev = lines[i - 1] || ''
+    if (/(?:@|\bat\b|\bvs\.?\b)/i.test(prev) && !/\b(?:over|under|parlay|odds)\b/i.test(prev)) {
+      const ev = parseEventMatchup(prev.replace(/\s*\(Today[^)]*\)/i, '').trim())
+      event_label = ev.event || prev
+      away_team = ev.away_team || ''
+      home_team = ev.home_team || ''
+    }
+    if (!odds) {
+      const juiced = /([+-]\d{3,5})\s*$/.exec(detail)
+      if (juiced) odds = americanOddsInputString(juiced[1])
+    }
+    const ouLabel = side === 'under' ? 'Under' : 'Over'
+    const selection_label = `${player} ${ouLabel} ${lineNum} ${stat}`
+    const key = normalizeNameKey(selection_label)
+    if (seen.has(key)) continue
+    seen.add(key)
+    const sport = extractSport([selection_label, stat, event_label, raw].filter(Boolean).join('\n'))
+    pending.push(emptyLegStub({
+      market: 'prop',
+      side,
+      line: String(lineNum),
+      odds,
+      selection_label,
+      player_name: player,
+      prop_stat: stat,
+      event_label,
+      away_team,
+      home_team,
+      sport_key: sport.key || (/\bhome\s*runs?\b/i.test(stat) ? 'baseball_mlb' : ''),
+      sport_label: sport.label || (/\bhome\s*runs?\b/i.test(stat) ? 'MLB' : ''),
+    }))
+  }
+
+  if (pending.length < 2) return []
+  const zipped = zipBunchedAmericanOdds(pending, text)
+  if (extractTotalParlayOdds(text) != null) {
+    return zipped.length >= 2 ? zipped : pending
+  }
+  const withOdds = zipped.filter((l) => l.odds)
+  return withOdds.length >= 2 ? withOdds : pending
+}
+
+/**
  * DraftKings / app props:
  * - "Over 0.5 (Matt Olson)" + HOME RUNS + matchup + odds
  * - "100+ (Ja'Marr Chase)" + ALTERNATE RECEIVING YARDS (OCR may bunch odds at end)
@@ -3896,6 +3981,10 @@ export function extractParlayLegs(text) {
   // FanDuel open SGP before generic props (props alone would drop the ML leg)
   const fdSgp = extractFanDuelSgpLegs(text)
   if (fdSgp.length >= 2) return fdSgp
+
+  // Fliff/ESPN Active Bets: "Over 0.5 Open" + "Player - Home Runs" before DK "Over 0.5 (Player)"
+  const namedOu = extractOpenOverUnderNamedPropLegs(text)
+  if (namedOu.length >= 2) return namedOu
 
   // DraftKings "Over 0.5 (Player)" / "100+ (Player)" props before disclaimer/+odds pairing invents junk legs.
   const appProps = extractAppPlayerPropLegs(text)

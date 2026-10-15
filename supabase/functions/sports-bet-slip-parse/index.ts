@@ -347,6 +347,7 @@ Rules:
 - Fanatics My Bets "Wager Payout FCash" then "$65.00 $4,899.35 $4.35": left=stake, middle=to_collect (ignore FCash and Cash out $). "Team ±odds" + "Group K Winner" / FIFA World Cup → legs like "Portugal Group K Winner", sport Soccer. Collapsed 11-leg: visible Group Winner legs + notes="Parlay picks (11): …"; do not invent missing groups.
 - Fliff/ESPN "Parlay: 3 Legs" + "Bout Betting" under fighter vs matchups: market=parlay, sport UFC (not Table Tennis). "ODDS PRICE BET AMOUNT TOTAL PAYOUT" then "+481 $25.00 $145.16" → odds/stake/to_collect, status=won. Legs like "Reinier De Ridder ML" from "@ Pick Won" rows.
 - Open SGPx "4 Pick Parlay | +2872 +5745" + "Wager: $25 | To Pay: $1,461.25": odds=boosted (+5745), stake + to_collect from To Pay, status=open (ignore "If the bet is cashed out the boost…" disclaimer). Nested "2 Pick SGP | +odds" headers are NOT legs. Hydrate Anytime TD Scorer + Moneyline legs (Parkinson ATD, Rams ML, …).
+- Fliff/ESPN Active Bets "Parlay: 3 Legs" + "Over 0.5 Open" + "Bryce Harper - Home Runs": market=parlay, sport MLB, legs like "Bryce Harper Over 0.5 Home Runs" (zip [ +340 ] when printed). "ODDS PRICE BET AMOUNT MAX WIN" then "+6588 $25 $1,647" → odds/stake/to_collect. Ignore PROMOTION/BONUS chrome.
 - Player props like "Over 0.5 (Matt Olson) / MATT OLSON HOME RUNS / +360" → leg market=prop, side=over, line=0.5, player_name, prop_stat=Home Runs, odds=+360
 - If unsure, still fill best effort; use market=other and side="" rather than inventing a fighter/team side`
 

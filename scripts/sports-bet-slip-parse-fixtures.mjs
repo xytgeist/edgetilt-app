@@ -1490,6 +1490,23 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 21 (Ryan yes): Fliff/ESPN open MLB HR … Over 0.5 + Player - Home Runs + MAX WIN
+    file: 'fliff-open-hr-3.ocr.txt',
+    expect: {
+      legs: 3,
+      odds: 6588,
+      stake_dollars: 25,
+      to_collect_dollars: 1647,
+      to_win_dollars: 1622,
+      status: 'open',
+      sport_label: 'MLB',
+      leg0: 'Harper',
+      leg_last: 'Henderson',
+      leg_odds: [340, 300, 280],
+      no_junk_sels: true,
+    },
+  },
+  {
     // Candidate 20 (Ryan yes): open SGPx … Wager|To Pay, boosted dual odds, nested 2 Pick SGP ATD+ML
     file: 'dk-open-sgpx-to-pay-4.ocr.txt',
     expect: {

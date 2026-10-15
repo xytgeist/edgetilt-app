@@ -242,7 +242,7 @@ Return strict JSON (no markdown, no prose) with this shape:
 
 Rules:
 - Return one event object per distinct offer session day from the image.
-- Discrete days for the same session (examples: "DECEMBER 10 & 11", "Dec 10 and 11", "Dec 10-11" with the same registration/start times each day) MUST be separate event objects — one per calendar day with the same times. Do not collapse those into a single multi-day start_at/end_at range, and do not skip the middle day.
+- Discrete days for the same session (examples: "DECEMBER 10 & 11", "Dec 10 and 11", "Dec 10-11" with the same registration/start times each day) MUST be separate event objects ... one per calendar day with the same times. Do not collapse those into a single multi-day start_at/end_at range, and do not skip the middle day.
 - Continuous hotel/stay ranges without per-day session times may stay as one event with start_at and end_at.
 - Use local date text from the flyer. When month and day are visible but no 4-digit year, still set start_at/end_at with a provisional ISO year (prefer the nearest upcoming occurrence of that month/day within about one year). Never leave start_at null only because the year is missing ... set has_explicit_year false and you may add a short warning.
 - Only leave start_at null when the flyer does not show a usable month/day (or clearer date). For other uncertain fields, keep them null and add a warning.

@@ -24,7 +24,9 @@ Logins inside the bet sheet persist (shared WebView cookie store).
 
 ## Build
 
-Needs JDK 17 and the Android SDK (platform 36, build-tools 36). On Ryan's Mac:
+Needs JDK 17 and the Android SDK (platform 36, build-tools 36). `local.properties` (`sdk.dir=...`) is gitignored; `ANDROID_HOME` works too.
+
+### Mac
 
 ```bash
 export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
@@ -35,19 +37,59 @@ cd android
 adb install -r app/build/outputs/apk/staging/debug/app-staging-debug.apk
 ```
 
-`local.properties` (`sdk.dir=...`) is gitignored; `ANDROID_HOME` works too.
+### Windows (PC)
+
+One-time (Scoop). JDK 17 + Android cmdline-tools live under `%USERPROFILE%\scoop\apps\…`:
+
+```powershell
+scoop bucket add java
+scoop install temurin17-jdk
+scoop bucket add extras
+scoop install android-clt
+
+# User env (new terminals pick these up; current session set them too)
+[Environment]::SetEnvironmentVariable('JAVA_HOME', "$env:USERPROFILE\scoop\apps\temurin17-jdk\current", 'User')
+[Environment]::SetEnvironmentVariable('ANDROID_HOME', "$env:USERPROFILE\scoop\apps\android-clt\current", 'User')
+$env:JAVA_HOME = [Environment]::GetEnvironmentVariable('JAVA_HOME', 'User')
+$env:ANDROID_HOME = [Environment]::GetEnvironmentVariable('ANDROID_HOME', 'User')
+$env:Path = "$env:JAVA_HOME\bin;$env:ANDROID_HOME\cmdline-tools\latest\bin;$env:ANDROID_HOME\platform-tools;$env:Path"
+
+# Licenses + packages (sdkmanager warns about --path / --install; ignore)
+yes | sdkmanager --licenses
+sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+# Gitignored; Gradle reads this if ANDROID_HOME is missing (double backslashes)
+$sdkEscaped = $env:ANDROID_HOME.Replace('\', '\\')
+"sdk.dir=$sdkEscaped" | Set-Content -Encoding ascii android\local.properties
+```
+
+Build (same Gradle tasks as Mac):
+
+```powershell
+cd C:\dev\edgetilt-app\android
+$env:JAVA_HOME = [Environment]::GetEnvironmentVariable('JAVA_HOME', 'User')
+$env:ANDROID_HOME = [Environment]::GetEnvironmentVariable('ANDROID_HOME', 'User')
+.\gradlew.bat assembleStagingDebug
+# APK: app\build\outputs\apk\staging\debug\app-staging-debug.apk
+.\gradlew.bat assembleProdDebug
+adb install -r app\build\outputs\apk\staging\debug\app-staging-debug.apk
+```
+
+Verified on Ryan's Windows PC 2026-10-15 (`assembleStagingDebug` BUILD SUCCESSFUL).
 
 ## Release (Play)
 
 Upload key lives in `android/upload-keystore.jks` + `android/keystore.properties` (both gitignored; see `keystore.properties.example`). Alias **`edgetilt-upload`** (CN=EdgeTilt / Digiverse Ventures LLC, created 2026-10-08).
 
+**Windows:** copy those two files from the Mac (or NordPass / private backup) into `android/` before any release assemble. Debug builds do not need them.
+
 ```bash
 cd android
 ./gradlew bundleProdRelease   # app/build/outputs/bundle/prodRelease/app-prod-release.aab
+# Windows: .\gradlew.bat bundleProdRelease
 ```
 
 Bump `versionCode` every upload. Org account + Play App Signing + internal track are live (see fingerprints below).
-
 **Fingerprints (SHA-256):**
 - **Play app signing** (devices from Play): `45:CC:6E:17:6B:E9:19:B2:D3:7E:09:F0:17:2E:6B:8E:9D:F4:AB:BE:50:F2:AF:8C:44:7D:1B:AB:E8:00:9E:92`
 - **Upload key:** `33:56:43:97:85:D1:4C:AD:1B:CF:E8:89:34:31:8E:04:98:2B:AB:85:1C:D6:20:1B:0D:51:EE:41:B4:8D:7D:36`

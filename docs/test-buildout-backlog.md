@@ -1215,6 +1215,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-14:** **Bet Tracker Circa + Parlay Card (`1.4.1156`).** Casino bracket legs + retail Parlay Card spreads; TO COLLECT / Max Payout for ticket odds. No Edge.
 - **2026-10-14:** **Promoted `1.4.1155`** (Sports Hub pills by popularity). Frontend **`test` → `main`** (`0898fe53`). No Edge.
 - **2026-10-14:** **Sports Hub pills by popularity (`1.4.1155`).** All slate sections + league buttons ordered NFL → NBA → MLB → NHL → Golf → CFB → MLS. No Edge.
 - **2026-10-14:** **Promoted `1.4.1154`** (FanDuel ALT prop parlays). Frontend **`test` → `main`** (`48e5a3e6`). No Edge.

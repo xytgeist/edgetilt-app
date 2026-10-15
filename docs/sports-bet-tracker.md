@@ -95,7 +95,7 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 - Settings **`sports_bet_settings`** (unit size + starting bankroll) … **`20261006030000_sports_bet_settings.sql`**; default bankroll **$10k** … **`20261011050000_sports_bet_settings_default_bankroll.sql`**
 - Tap-through confirm flag **`sports_bets.confirmed`** + source `odds_tap` … **`20261006040000_sports_bets_tap_confirm.sql`**
 - Player prop market + `player_name` / `prop_stat` … **`20261006050000_sports_bets_prop_market.sql`**
-- Parlay legs … **`20261014160000_sports_bet_parlay_legs.sql`** (`market=parlay` + **`sports_bet_legs`**). Applied on **test + prod** with **`1.4.1140`**. Slip parse: BetMGM-style selection+odds legs; FanDuel settled ALT props (no per-leg odds / no “Parlay” word) via Over/Under + ALT STAT + TOTAL WAGER / WON ON → implied ticket odds.
+- Parlay legs … **`20261014160000_sports_bet_parlay_legs.sql`** (`market=parlay` + **`sports_bet_legs`**). Applied on **test + prod** with **`1.4.1140`**. Slip parse: BetMGM selection+odds; FanDuel ALT props; Circa/the D `[rot] TEAM (±line odds)`; retail Parlay Card `rot Team ±line Spread`. Ticket TO COLLECT / Max Payout preferred for combined odds.
 - CLV: **`sports_bets_refresh_clv()`** security definer reads locked closes for the caller’s event ids (does not widen market-file RLS to the client)
 
 Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** test + prod 2026-10-05 (intake sources). Applied **`20261006030000`** + **`20261006040000`** + **`20261006050000`** on **test + prod** 2026-10-06.

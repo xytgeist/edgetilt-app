@@ -439,6 +439,84 @@ WON ON FANDUEL
       leg0_stat_includes: 'Points',
     },
   },
+  {
+    name: 'Circa the D 5-team casino parlay',
+    text: `
+the D LAS VEGAS
+PARLAY (5 TEAMS)
+1 BET(S) @ $10.00
+Feb 01 2020 NBA
+[518] MAGIC (+2 -110)
+Feb 01 2020 NBA
+[527] HAWKS (+4 -110)
+Feb 01 2020 NBA
+[531] JAZZ (-6 -110)
+Feb 02 2020 NFL
+[101/102] 49ERS/CHIEFS (UN 54 -110)
+Feb 01 2020 NBA
+[529] HORNETS (+348)
+TICKET COST: $10.00
+TO WIN: $527.60
+TO COLLECT: $537.60
+Circa Sports
+`,
+    expect: {
+      market: 'parlay',
+      book: 'Circa',
+      stake_dollars: 10,
+      odds: 5276,
+      selection_includes: 'Parlay',
+      legs: 5,
+      leg0_includes: 'Magic',
+    },
+  },
+  {
+    name: 'Parlay Card 10 spreads',
+    text: `
+Parlay Card
+$2.00 Parlay Card 10
+Max Payout: $1,600.00
+133 Michigan -1.5 Spread
+Michigan At Penn State
+11/13/2021 9:00 AM
+152 Virginia +5.5 Spread
+Notre Dame At Virginia
+11/13/2021 4:30 PM
+166 UNLV +3.5 Spread
+Hawaii At UNLV
+11/13/2021 1:00 PM
+244 New England Patriots -2.5 Spread
+Cleveland Browns At New England Patriots
+11/14/2021 10:01 AM
+245 Atlanta Falcons +9.5 Spread
+Atlanta Falcons At Dallas Cowboys
+11/14/2021 10:01 AM
+252 Washington Football Team +9.5 Spread
+Tampa Bay Buccaneers At Washington Football Team
+11/14/2021 10:01 AM
+253 Detroit Lions +8.5 Spread
+Detroit Lions At Pittsburgh Steelers
+11/14/2021 10:01 AM
+255 Minnesota Vikings +3.5 Spread
+Minnesota Vikings At Los Angeles Chargers
+11/14/2021 1:06 PM
+260 Green Bay Packers -3.5 Spread
+Seattle Seahawks At Green Bay Packers
+11/14/2021 1:26 PM
+263 Kansas City Chiefs -2.5 Spread
+Kansas City Chiefs At Las Vegas Raiders
+11/14/2021 5:21 PM
+Ticket Cost $2.00
+`,
+    expect: {
+      market: 'parlay',
+      stake_dollars: 2,
+      odds: 79900,
+      selection_includes: 'Parlay',
+      legs: 10,
+      leg0_includes: 'Michigan',
+    },
+  },
 ]
 
 function assert(cond, msg) {

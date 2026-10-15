@@ -509,13 +509,18 @@ function extractStakeDollars(text) {
   return null
 }
 
-/** To-win / won amount (often includes stake on FanDuel "WON ON …"). */
+/** Payout that includes stake (for americanFromStakeAndPayout). Prefer collect/max over to-win. */
 function extractPayoutDollars(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
 
-  for (const line of lines) {
-    const m = /(?:potential\s*payout|max\s*payout|to\s*(?:win|collect)|payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i.exec(line)
-    if (m) {
+  const tryRes = [
+    /(?:potential\s*payout|max\s*payout|to\s*collect)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+    /(?:payout)(?:\s*\([^)]*\))?\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i,
+  ]
+  for (const re of tryRes) {
+    for (const line of lines) {
+      const m = re.exec(line)
+      if (!m) continue
       const n = parseMoneyAmount(m[1])
       if (n != null && n > 0) return n
     }
@@ -532,7 +537,182 @@ function extractPayoutDollars(text) {
     }
   }
 
+  // Last resort: TO WIN is profit-only … add stake when we have it
+  for (const line of lines) {
+    const m = /\bto\s*win\b\s*[:=]?\s*\$?\s*([0-9,]+\.?\d*)/i.exec(line)
+    if (!m) continue
+    const win = parseMoneyAmount(m[1])
+    if (win == null || win <= 0) continue
+    const stake = extractStakeDollars(text)
+    if (stake != null && stake > 0) return win + stake
+    return win
+  }
+
   return null
+}
+
+function sportHintFromLine(line) {
+  const s = String(line || '')
+  if (/\bNCAAF\b|\bCFB\b|\bCOLLEGE\s*FOOTBALL\b/i.test(s)) return 'CFB'
+  if (/\bNFL\b/i.test(s)) return 'NFL'
+  if (/\bNBA\b/i.test(s)) return 'NBA'
+  if (/\bNHL\b/i.test(s)) return 'NHL'
+  if (/\bMLB\b/i.test(s)) return 'MLB'
+  if (/\bMLS\b/i.test(s)) return 'MLS'
+  return ''
+}
+
+/**
+ * Circa / the D casino: "[518] MAGIC (+2 -110)" / "[529] HORNETS (+348)" /
+ * "[101/102] 49ERS/CHIEFS (UN 54 -110)"
+ */
+function extractCasinoBracketLegs(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  const legs = []
+  const seen = new Set()
+  let sportHint = ''
+
+  for (const line of lines) {
+    const hint = sportHintFromLine(line)
+    if (hint) sportHint = hint
+
+    const m = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s+\(([^)]+)\)\s*$/i.exec(line)
+    if (!m) continue
+    const pickRaw = m[2].trim().replace(/\s+/g, ' ')
+    const inside = m[3].trim().replace(/\s+/g, ' ')
+    if (!pickRaw || !inside) continue
+
+    let market = 'h2h'
+    let side = ''
+    let lineNum = ''
+    let odds = ''
+    let selection_label = ''
+    let event_label = ''
+    let away_team = ''
+    let home_team = ''
+
+    const tot = /^(OV|UN|OVER|UNDER)\s+(\d+(?:\.\d+)?)\s+([+-]\d{3,5})$/i.exec(inside)
+    if (tot) {
+      market = 'total'
+      side = /^(UN|UNDER)$/i.test(tot[1]) ? 'under' : 'over'
+      lineNum = String(Number(tot[2]))
+      odds = americanOddsInputString(tot[3])
+      const ou = side === 'under' ? 'Under' : 'Over'
+      if (pickRaw.includes('/')) {
+        const parts = pickRaw.split('/').map((p) => titleCaseWords(p.trim())).filter(Boolean)
+        if (parts.length === 2) {
+          away_team = parts[0]
+          home_team = parts[1]
+          event_label = `${away_team} @ ${home_team}`
+        }
+      }
+      selection_label = `${ou} ${lineNum}`
+    } else {
+      const spr = /^([+-]\d+(?:\.\d+)?)\s+([+-]\d{3,5})$/.exec(inside)
+      if (spr) {
+        market = 'spread'
+        lineNum = String(Number(spr[1]))
+        odds = americanOddsInputString(spr[2])
+        const team = titleCaseWords(pickRaw)
+        const signed = Number(spr[1]) > 0 ? `+${lineNum}` : String(Number(spr[1]))
+        selection_label = `${team} ${signed}`.trim()
+      } else {
+        const ml = /^([+-]\d{3,5})$/.exec(inside)
+        if (!ml) continue
+        market = 'h2h'
+        odds = americanOddsInputString(ml[1])
+        selection_label = `${titleCaseWords(pickRaw)} ML`
+      }
+    }
+
+    const key = `${normalizeNameKey(selection_label)}|${odds || 'na'}`
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    const sport = extractSport(
+      [sportHint, event_label, selection_label, pickRaw].filter(Boolean).join(' '),
+    )
+    legs.push({
+      market,
+      side,
+      line: lineNum,
+      odds,
+      selection_label,
+      player_name: '',
+      prop_stat: '',
+      home_team,
+      away_team,
+      event_label,
+      sport_key: sport.key || '',
+      sport_label: sport.label || sportHint || '',
+      commence_time: '',
+      event_id: '',
+    })
+  }
+  return legs
+}
+
+/**
+ * Retail Parlay Card: "133 Michigan -1.5 Spread" (+ optional "At" matchup / datetime lines).
+ */
+function extractParlayCardLegs(text) {
+  const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
+  const legs = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    const m = /^(\d{2,4})\s+(.+?)\s+([+-]\d+(?:\.\d+)?)\s+Spread\b/i.exec(line)
+    if (!m) continue
+    let team = m[2].trim().replace(/\s+/g, ' ')
+    // OCR wrap: "Washington Football" then next line starts with "Team +9.5 Spread" … handled if full on one line
+    if (/^(team|football)$/i.test(team)) continue
+    const lineNum = Number(m[3])
+    if (!Number.isFinite(lineNum)) continue
+    const signed = lineNum > 0 ? `+${lineNum}` : String(lineNum)
+    const selection_label = `${team} ${signed}`.trim()
+
+    let event_label = ''
+    let away_team = ''
+    let home_team = ''
+    let commence_time = ''
+    const next = lines[i + 1] || ''
+    const next2 = lines[i + 2] || ''
+    if (/\bat\b/i.test(next) && !/\bSpread\b/i.test(next)) {
+      const ev = parseEventMatchup(next)
+      event_label = ev.event || next
+      away_team = ev.away_team || ''
+      home_team = ev.home_team || ''
+      const dt = extractCommenceTime(`${next2}\n${next}`)
+      if (dt) commence_time = dt
+    } else {
+      const dt = extractCommenceTime(next)
+      if (dt) commence_time = dt
+    }
+
+    const key = normalizeNameKey(selection_label)
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    const sport = extractSport([selection_label, event_label, next].filter(Boolean).join(' '))
+    legs.push({
+      market: 'spread',
+      side: '',
+      line: String(lineNum),
+      odds: '',
+      selection_label,
+      player_name: '',
+      prop_stat: '',
+      home_team,
+      away_team,
+      event_label,
+      sport_key: sport.key || '',
+      sport_label: sport.label || '',
+      commence_time,
+      event_id: '',
+    })
+  }
+  return legs
 }
 
 /** "DEMAR DEROZAN - ALT POINTS" → "Alt Points" */
@@ -1240,6 +1420,26 @@ export function extractParlayLegs(text) {
     }
   }
 
+  // Circa / the D: "[518] MAGIC (+2 -110)"
+  if (legs.length < 2) {
+    for (const stub of extractCasinoBracketLegs(text)) {
+      const key = `${normalizeNameKey(stub.selection_label)}|${stub.odds || 'na'}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      legs.push(stub)
+    }
+  }
+
+  // Retail Parlay Card: "133 Michigan -1.5 Spread"
+  if (legs.length < 2) {
+    for (const stub of extractParlayCardLegs(text)) {
+      const key = `${normalizeNameKey(stub.selection_label)}|${stub.odds || 'na'}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      legs.push(stub)
+    }
+  }
+
   // Settled FanDuel props: no per-leg odds … fill from Over/Under + ALT lines
   if (legs.length < 2) {
     for (const stub of extractPropLegsWithoutOdds(text, sport)) {
@@ -1265,7 +1465,8 @@ export function parseParlaySlipText(text) {
   const stakeDollars = extractStakeDollars(raw)
   const payoutDollars = extractPayoutDollars(raw)
   const fromPayout = americanFromStakeAndPayout(stakeDollars, payoutDollars)
-  const odds = totalOdds ?? fromLegs ?? fromPayout
+  // Printed ticket price (Total Odds / TO COLLECT / Max Payout) beats recomputed leg juice.
+  const odds = totalOdds ?? fromPayout ?? fromLegs
   if (odds == null) return null
 
   const book = extractBook(raw)

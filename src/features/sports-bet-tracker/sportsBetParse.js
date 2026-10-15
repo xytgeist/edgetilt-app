@@ -2607,8 +2607,9 @@ function extractAppMoneylineBetslipLegs(text) {
 export function declaredParlayLegCount(text) {
   const raw = String(text || '')
   const m = /parlay\s+(\d+)\s*bets?\b/i.exec(raw)
-    || /(\d+)\s*-?\s*leg\s+pa[ryi]lay/i.exec(raw)
+    || /(\d+)\s*-?\s*legs?\s+pa[ryi]lay/i.exec(raw)
     || /parlay\s*\(\s*(\d+)\s*teams?\s*\)/i.exec(raw)
+    || /(\d+)\s*picks?\s+pa[ry]lay/i.exec(raw)
     || /(\d+)\s*(?:pick\s+)?pa[ry]lay/i.exec(raw)
   if (m) {
     const n = Number(m[1])
@@ -3051,6 +3052,122 @@ function extractFuturesWinnerLegs(text) {
 }
 
 /**
+ * Comma name list under "N PICKS PARLAY" when legs are collapsed … Notes only.
+ * Do not turn this into legs[] (user fills missing markets).
+ */
+function extractParlayPickSummaryNotes(text) {
+  const lines = normalizeSlipOcrText(text).split('\n').map((l) => l.trim()).filter(Boolean)
+  let declared = null
+  let start = -1
+  for (let i = 0; i < lines.length; i += 1) {
+    const m = /^(\d+)\s*picks?\s+pa[ry]lay\b/i.exec(lines[i])
+    if (!m) continue
+    declared = Number(m[1])
+    start = i + 1
+    break
+  }
+  if (start < 0 || !Number.isFinite(declared) || declared < 2) return ''
+  const parts = []
+  for (let i = start; i < Math.min(start + 8, lines.length); i += 1) {
+    const line = lines[i]
+    if (/^(wager|paid|risk|total\s*wager|hide\s*legs|show\s*legs|bet\s*id|\$)/i.test(line)) break
+    if (/^[A-Za-z].+\s+[+-]\d{2,5}\s*$/.test(line)) break
+    if (/anytime\s*td|moneyline|spread|top\s*\d+/i.test(line)) break
+    // Name list lines (commas or continuation)
+    if (/[A-Za-z]/.test(line) && (/,/.test(line) || parts.length > 0)) {
+      parts.push(line.replace(/,+\s*$/, '').trim())
+      continue
+    }
+    if (parts.length) break
+  }
+  const blob = parts.join(', ').replace(/\s*,\s*,/g, ',').replace(/\s+/g, ' ').trim()
+  if (!blob || blob.length < 8) return ''
+  // Need enough commas to look like a multi-name summary (not one event line)
+  const commas = (blob.match(/,/g) || []).length
+  if (commas < 1 && declared > 2) return ''
+  return `Parlay picks (${declared}): ${blob}`
+}
+
+/**
+ * DK Anytime TD Scorer: "JONATHAN TAYLOR -175" + "Anytime TD Scorer"
+ */
+function extractDkAnytimeTdScorerLegs(text) {
+  const raw = normalizeSlipOcrText(text)
+  if (!/\banytime\s*td\s*scorer\b|\bany\s*time\s*td\s*scorer\b|\banytime\s*touchdown\b/i.test(raw)) {
+    return []
+  }
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+  const pending = []
+  const seen = new Set()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i].replace(/^[\s(©®™*&$@~•·→]+/, '').trim()
+    const m = /^([A-Za-z][A-Za-z.'\-]+(?:\s+[A-Za-z][A-Za-z.'\-]+){0,3})\s+([+-]\d{3,5})\s*$/.exec(line)
+    if (!m) continue
+    const player = titleCaseWords(m[1])
+    if (/^(wager|paid|result|hou|ind|pit|bal)\b/i.test(player)) continue
+    const marketLine = lines[i + 1] || ''
+    if (!/\banytime\s*td\s*scorer\b|\bany\s*time\s*td\s*scorer\b|\banytime\s*touchdown\b/i.test(marketLine)) {
+      continue
+    }
+    const odds = americanOddsInputString(m[2]) || m[2]
+    const selection_label = `${player} ATD`
+    const key = normalizeNameKey(selection_label)
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    let event_label = ''
+    let away_team = ''
+    let home_team = ''
+    for (let j = i + 2; j < Math.min(i + 12, lines.length); j += 1) {
+      const next = lines[j]
+      if (/^[A-Za-z].+\s+[+-]\d{3,5}\s*$/.test(next) && /\banytime\s*td/i.test(lines[j + 1] || '')) break
+      if (/(?:@|\bat\b)/i.test(next) || /\b(?:texans|colts|ravens|steelers|final\s*score)\b/i.test(next)) {
+        const ev = parseEventMatchup(next.replace(/\s*\|\s*.*$/, '').trim())
+        if (ev.event) {
+          event_label = ev.event
+          away_team = ev.away_team || ''
+          home_team = ev.home_team || ''
+          break
+        }
+        // Scoreboard "HOU TEXANS … IND COLTS"
+        const boards = next.match(/\b([A-Z]{2,3})\s+([A-Za-z]+)/g)
+        if (boards && boards.length >= 2) {
+          const a = boards[0].replace(/^[A-Z]{2,3}\s+/, '')
+          const b = boards[1].replace(/^[A-Z]{2,3}\s+/, '')
+          event_label = `${titleCaseWords(a)} @ ${titleCaseWords(b)}`
+          away_team = titleCaseWords(a)
+          home_team = titleCaseWords(b)
+          break
+        }
+      }
+    }
+
+    pending.push(emptyLegStub({
+      market: 'prop',
+      side: 'over',
+      line: '0.5',
+      odds,
+      selection_label,
+      player_name: player,
+      prop_stat: 'Anytime TD',
+      event_label,
+      away_team,
+      home_team,
+      sport_key: 'americanfootball_nfl',
+      sport_label: 'NFL',
+    }))
+  }
+
+  if (pending.length < 2) return []
+  const zipped = zipBunchedAmericanOdds(pending, text)
+  if (extractTotalParlayOdds(text) != null) {
+    return zipped.length >= 2 ? zipped : pending
+  }
+  return zipped.filter((l) => l.odds)
+}
+
+/**
  * DK golf finish markets: "JUSTIN THOMAS -115" + "… Top 10 Live Betting"
  * (OCR may drop the minus: "JUSTIN THOMAS 15")
  */
@@ -3232,6 +3349,9 @@ export function extractParlayLegs(text) {
   const mlLegs = extractAppMoneylineBetslipLegs(text)
   if (mlLegs.length >= 2) return mlLegs
 
+  const atdScorer = extractDkAnytimeTdScorerLegs(text)
+  if (atdScorer.length >= 2) return atdScorer
+
   const golfTop = extractGolfTopFinishLegs(text)
   if (golfTop.length >= 2) return golfTop
 
@@ -3411,6 +3531,11 @@ export function parseParlaySlipText(text) {
   })
   const withMoney = attachTicketMoney(draft, raw)
   withMoney.status = detectSlipResult(raw)
+  // Collapsed "N PICKS" name list → Notes (not legs)
+  const pickNotes = extractParlayPickSummaryNotes(raw)
+  if (pickNotes && !String(withMoney.notes || '').trim()) {
+    withMoney.notes = pickNotes
+  }
   return withMoney
 }
 
@@ -3455,12 +3580,14 @@ export function isWeakSportsBetDraft(draft, ocrText = '') {
   }
   if ((market === 'spread' || market === 'h2h') && !away && !home && !sel) return true
   // "Parlay 5 bets" but only 4 legs → weak so Edge / hydrate can recover the miss
+  // Exception: Notes hold "Parlay picks (N): …" with money … intentional partial (collapsed UI)
   if (market === 'parlay') {
     const declared = declaredParlayLegCount(ocrText)
       || declaredParlayLegCount(draft.notes)
       || declaredParlayLegCount(sel)
     const n = countUsableParlayLegs(draft.legs)
-    if (declared != null && n > 0 && n < declared) return true
+    const notesHoldPickList = /\bparlay\s*picks?\s*\(\s*\d+\s*\)\s*:/i.test(String(draft.notes || ''))
+    if (declared != null && n > 0 && n < declared && !(notesHoldPickList && hasMoney)) return true
     // Date lines / "TO WIN: TICKET COST:" as selections → weak (prefer OCR hydrate)
     if (countJunkLegSelections(draft.legs) > 0) return true
   }

@@ -1330,6 +1330,25 @@ const ocrBatch = [
     },
   },
   {
+    // Candidate 8 (Ryan yes): 9-pick ATD collapsed … 2 visible legs + money; names in Notes
+    file: 'dk-won-atd-9pick-partial.ocr.txt',
+    expect: {
+      legs: 2,
+      odds: 40109,
+      stake_dollars: 5,
+      to_collect_dollars: 2010.49,
+      to_win_dollars: 2005.49,
+      status: 'won',
+      book: 'DraftKings',
+      sport_label: 'NFL',
+      sport_key: 'americanfootball_nfl',
+      leg0: 'Taylor',
+      leg_last: 'Harris',
+      no_junk_sels: true,
+      notes_includes: 'Parlay picks (9):',
+    },
+  },
+  {
     file: 'circa-d-5team.ocr.txt',
     expect: {
       legs: 5,
@@ -1598,6 +1617,12 @@ for (const row of ocrBatch) {
     }
     if (e.sport_key) {
       assert(d.sport_key === e.sport_key, `${name}: sport_key want ${e.sport_key} got ${d.sport_key}`)
+    }
+    if (e.notes_includes) {
+      assert(
+        String(d.notes || '').includes(e.notes_includes),
+        `${name}: notes want include ${JSON.stringify(e.notes_includes)} got ${JSON.stringify(d.notes)}`,
+      )
     }
     if (e.leg0) {
       assert(

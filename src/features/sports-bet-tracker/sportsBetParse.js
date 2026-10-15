@@ -3252,19 +3252,36 @@ function parlayLegsNeedHydrate(legs) {
 /**
  * Clear invented combined odds (stolen leg juice / leg product). Fill To win /
  * To collect from OCR or Edge money fields. Do not derive American from $.
+ * When Combined odds is blank, backfill from labeled ticket total ("3 Leg Parlay +584").
  */
 function repairParlayTicketOdds(draft, ocrText = '') {
   if (!draft || typeof draft !== 'object') return draft
   let next = attachTicketMoney(draft, ocrText)
-  // Drop "3 Leg Parlay +584" chrome that OCR/Edge stuffed into legs[]
-  const legs = (Array.isArray(next.legs) ? next.legs : [])
-    .filter((l) => !isParlayTicketChromeSelection(l?.selection_label))
-  if (legs.length !== (next.legs?.length || 0)) {
+  const rawLegs = Array.isArray(next.legs) ? next.legs : []
+  // Salvage +584 off a chrome "3 Leg Parlay" leg before stripping it
+  const chromeOdds = rawLegs
+    .filter((l) => isParlayTicketChromeSelection(l?.selection_label))
+    .map((l) => americanOrNull(l.odds))
+    .find((n) => n != null)
+  const legs = rawLegs.filter((l) => !isParlayTicketChromeSelection(l?.selection_label))
+  if (legs.length !== rawLegs.length) {
     next = { ...next, legs }
   }
   if (legs.length < 2) return next
 
-  const current = americanOrNull(next.odds)
+  const printed = (
+    (ocrText ? extractTotalParlayOdds(ocrText) : null)
+    ?? (next.notes ? extractTotalParlayOdds(String(next.notes)) : null)
+    ?? chromeOdds
+    ?? null
+  )
+  let current = americanOrNull(next.odds)
+  // Edge / weak path often leaves odds blank after chrome is stripped … fill Combined odds
+  if (current == null && printed != null) {
+    const tok = americanOddsInputString(printed) || (printed > 0 ? `+${printed}` : String(printed))
+    next = { ...next, odds: tok }
+    current = printed
+  }
   if (current == null) return next
 
   const fromLegs = combinedOddsFromLegs(legs)
@@ -3275,7 +3292,6 @@ function repairParlayTicketOdds(draft, ocrText = '') {
   const legProductOnly = fromLegs != null
     && Math.abs(current - fromLegs) <= Math.max(5, Math.abs(fromLegs) * 0.02)
   // Keep labeled ticket totals ("3 Leg Parlay +584") even when they ≈ leg product.
-  const printed = ocrText ? extractTotalParlayOdds(ocrText) : null
   const keepPrinted = printed != null && printed === current
   if (!keepPrinted && (stolen || legProductOnly)) {
     next = { ...next, odds: '' }

@@ -1163,6 +1163,20 @@ To win $29.21
   }, chrome)
   assert(dirty.legs?.length === 3, `hydrate strip want 3 got ${dirty.legs?.length}`)
   assert(String(dirty.odds) === '+584' || Number(dirty.odds) === 584, `hydrate keep odds got ${dirty.odds}`)
+  // Blank Combined odds (Edge path) must backfill from "3 Leg Parlay +584"
+  const blank = hydrateParlayLegsForDraft({
+    market: 'parlay',
+    odds: '',
+    stake_dollars: '100',
+    legs: [
+      { selection_label: 'Denver Broncos -8', odds: '-110', market: 'spread' },
+      { selection_label: 'Washington Commanders', odds: '-110', market: 'spread' },
+      { selection_label: 'New York Giants +10.5', odds: '-114', market: 'spread' },
+      { selection_label: '3 Leg Parlay', odds: '+584', market: 'h2h' },
+    ],
+  }, chrome)
+  assert(blank.legs?.length === 3, `blank hydrate legs want 3 got ${blank.legs?.length}`)
+  assert(String(blank.odds) === '+584' || Number(blank.odds) === 584, `blank hydrate odds want +584 got ${blank.odds}`)
   console.log('ok  3 Leg Parlay chrome → combined odds (not a leg)')
 } catch (err) {
   failed += 1

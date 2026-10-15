@@ -1229,6 +1229,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - **2026-10-14:** **Bet Tracker batch OCR harden #3 (`1.4.1162`).** DK NBA `N+` props, FD open/settled SGP + dual-SGP, alt lines, spreads (missing line), DK NFL `×` ML strip. Fixtures **52/52**. No Edge / no promote.
 - **2026-10-14:** **Bet Tracker batch OCR harden #4 (`1.4.1163`).** Caesars Horseshoe ML, GN AC numbered ML FT, casino brackets, DK boost twin. Fixtures **58/58**. **Promoted** `main` @ `db205f8a` (batches #1–#4 / `1.4.1160`–`1.4.1163`). No Edge.
 - **2026-10-14:** **GN AC Parlay 5 → 4 legs (`1.4.1164`).** Declared-count weak + hydrate restore; Edge prompt exact N. Redeploy **`sports-bet-slip-parse`** test + prod.
+- **2026-10-14:** **Combined odds backfill (`1.4.1175`).** When Edge/hydrate leaves odds blank, fill from printed `N Leg Parlay +odds` (or stripped chrome leg). Fixtures **71/71**.
 - **2026-10-14:** **Promoted `1.4.1174`** (open "N Leg Parlay +odds" chrome). Frontend **`test` → `main`** (`d288507c`). Edge **`sports-bet-slip-parse`** on **test + prod**.
 - **2026-10-14:** **Open "N Leg Parlay +odds" chrome (`1.4.1174`).** Not a leg; combined odds + WAGER/TO WIN from footer; keep printed total when ≈ leg product. Fixture **fd-open-spreads-3**. Redeploy **`sports-bet-slip-parse`** test + prod. Fixtures **71/71**.
 - **2026-10-14:** **Promoted `1.4.1173`** (wager/Won glued + below-label OCR). Frontend **`test` → `main`** (`f2fb8400`). Edge **`sports-bet-slip-parse`** on **test + prod**.

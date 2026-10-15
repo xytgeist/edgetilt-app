@@ -440,23 +440,58 @@ WON ON FANDUEL
     },
   },
   {
-    name: 'Circa the D 5-team casino parlay',
+    name: 'Circa the D 5-team casino parlay (OCR split juice)',
     text: `
 the D LAS VEGAS
+301 FREMONT STREET LAS VEGAS, NV 89101
+Sign up for a Mobile Wagering Account at the counter and download the Circa Sports mobile app today! circasports.com
+E366ACEFC9AC
 PARLAY (5 TEAMS)
 1 BET(S) @ $10.00
 Feb 01 2020 NBA
-[518] MAGIC (+2 -110)
+[518] MAGIC
++2-110
 Feb 01 2020 NBA
-[527] HAWKS (+4 -110)
+[527] HAWKS
++4-110
 Feb 01 2020 NBA
-[531] JAZZ (-6 -110)
+[531] JAZZ
+-6-110
 Feb 02 2020 NFL
-[101/102] 49ERS/CHIEFS (UN 54 -110)
+SUPER BOWL LIV AT MIAMI GARDENS, FL
+[101/102] 49ERS/CHIEFS
+UN 54-110
 Feb 01 2020 NBA
+[529] HORNETS
++348
+TICKET COST $10.00
+TO WIN $527.60
+TO COLLECT $537.60
+February 01 2020 12:29:34
+Circa Sports
+`,
+    expect: {
+      market: 'parlay',
+      book: 'Circa',
+      stake_dollars: 10,
+      odds: 5276,
+      selection_includes: 'Parlay',
+      legs: 5,
+      leg0_includes: 'Magic',
+      event_label: '',
+    },
+  },
+  {
+    name: 'Circa casino parlay parenthesized juice',
+    text: `
+PARLAY (5 TEAMS)
+1 BET(S) @ $10.00
+[518] MAGIC (+2 -110)
+[527] HAWKS (+4 -110)
+[531] JAZZ (-6 -110)
+[101/102] 49ERS/CHIEFS (UN 54 -110)
 [529] HORNETS (+348)
 TICKET COST: $10.00
-TO WIN: $527.60
 TO COLLECT: $537.60
 Circa Sports
 `,

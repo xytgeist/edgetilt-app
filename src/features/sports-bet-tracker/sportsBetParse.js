@@ -563,8 +563,108 @@ function sportHintFromLine(line) {
 }
 
 /**
- * Circa / the D casino: "[518] MAGIC (+2 -110)" / "[529] HORNETS (+348)" /
- * "[101/102] 49ERS/CHIEFS (UN 54 -110)"
+ * Circa juice lines: "+2-110", "+2 -110", "UN 54-110", "+348", "(+2 -110)".
+ * @returns {{ market: string, side: string, line: string, odds: string } | null}
+ */
+function parseCasinoJuiceToken(raw) {
+  const s = String(raw || '').trim().replace(/^\(|\)$/g, '').replace(/\s+/g, ' ')
+  if (!s) return null
+
+  // Totals: UN 54-110 / UN 54 -110
+  const tot = /^(OV|UN|OVER|UNDER)\s+(\d+(?:\.\d+)?)([+-]\d{3,5})$/i.exec(s)
+    || /^(OV|UN|OVER|UNDER)\s+(\d+(?:\.\d+)?)\s+([+-]\d{3,5})$/i.exec(s)
+  if (tot) {
+    const side = /^(UN|UNDER)$/i.test(tot[1]) ? 'under' : 'over'
+    return {
+      market: 'total',
+      side,
+      line: String(Number(tot[2])),
+      odds: americanOddsInputString(tot[3]),
+    }
+  }
+
+  // Pure ML before glued spread (so "+348" is not misread)
+  if (/^[+-]\d{3,5}$/.test(s)) {
+    return { market: 'h2h', side: '', line: '', odds: americanOddsInputString(s) }
+  }
+
+  // Spread + odds glued or spaced: +2-110 / +2 -110 / -6-110
+  const spr = /^([+-]\d+(?:\.\d+)?)([+-]\d{3,5})$/.exec(s)
+    || /^([+-]\d+(?:\.\d+)?)\s+([+-]\d{3,5})$/.exec(s)
+  if (spr) {
+    const lineN = Number(spr[1])
+    if (Math.abs(lineN) < 100 || String(spr[1]).includes('.')) {
+      return {
+        market: 'spread',
+        side: '',
+        line: String(lineN),
+        odds: americanOddsInputString(spr[2]),
+      }
+    }
+  }
+
+  return null
+}
+
+function casinoPickTeams(pickRaw) {
+  const event_label = ''
+  let away_team = ''
+  let home_team = ''
+  let event = ''
+  if (String(pickRaw || '').includes('/')) {
+    const parts = pickRaw.split('/').map((p) => titleCaseWords(p.trim())).filter(Boolean)
+    if (parts.length === 2) {
+      away_team = parts[0]
+      home_team = parts[1]
+      event = `${away_team} @ ${home_team}`
+    }
+  }
+  return { away_team, home_team, event_label: event }
+}
+
+function casinoLegFromPickAndJuice(pickRaw, juice, sportHint) {
+  const parsed = parseCasinoJuiceToken(juice)
+  if (!parsed || !parsed.odds) return null
+  const pick = String(pickRaw || '').trim().replace(/\s+/g, ' ')
+  if (!pick) return null
+  const teams = casinoPickTeams(pick)
+  let selection_label = ''
+  if (parsed.market === 'total') {
+    const ou = parsed.side === 'under' ? 'Under' : 'Over'
+    selection_label = `${ou} ${parsed.line}`
+  } else if (parsed.market === 'spread') {
+    const n = Number(parsed.line)
+    const signed = n > 0 ? `+${n}` : String(n)
+    selection_label = `${titleCaseWords(pick)} ${signed}`.trim()
+  } else {
+    selection_label = `${titleCaseWords(pick)} ML`
+  }
+  const sport = extractSport(
+    [sportHint, teams.event_label, selection_label, pick].filter(Boolean).join(' '),
+  )
+  return {
+    market: parsed.market,
+    side: parsed.side,
+    line: parsed.line,
+    odds: parsed.odds,
+    selection_label,
+    player_name: '',
+    prop_stat: '',
+    home_team: teams.home_team,
+    away_team: teams.away_team,
+    event_label: teams.event_label,
+    sport_key: sport.key || '',
+    sport_label: sport.label || sportHint || '',
+    commence_time: '',
+    event_id: '',
+  }
+}
+
+/**
+ * Circa / the D casino legs. Real OCR is usually:
+ *   [518] MAGIC
+ *   +2-110
+ * (not parenthesized). Also accepts "[518] MAGIC (+2 -110)" / same-line glued.
  */
 function extractCasinoBracketLegs(text) {
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
@@ -572,82 +672,44 @@ function extractCasinoBracketLegs(text) {
   const seen = new Set()
   let sportHint = ''
 
-  for (const line of lines) {
+  const push = (stub) => {
+    if (!stub) return
+    const key = `${normalizeNameKey(stub.selection_label)}|${stub.odds || 'na'}`
+    if (seen.has(key)) return
+    seen.add(key)
+    legs.push(stub)
+  }
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
     const hint = sportHintFromLine(line)
     if (hint) sportHint = hint
 
-    const m = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s+\(([^)]+)\)\s*$/i.exec(line)
-    if (!m) continue
-    const pickRaw = m[2].trim().replace(/\s+/g, ' ')
-    const inside = m[3].trim().replace(/\s+/g, ' ')
-    if (!pickRaw || !inside) continue
-
-    let market = 'h2h'
-    let side = ''
-    let lineNum = ''
-    let odds = ''
-    let selection_label = ''
-    let event_label = ''
-    let away_team = ''
-    let home_team = ''
-
-    const tot = /^(OV|UN|OVER|UNDER)\s+(\d+(?:\.\d+)?)\s+([+-]\d{3,5})$/i.exec(inside)
-    if (tot) {
-      market = 'total'
-      side = /^(UN|UNDER)$/i.test(tot[1]) ? 'under' : 'over'
-      lineNum = String(Number(tot[2]))
-      odds = americanOddsInputString(tot[3])
-      const ou = side === 'under' ? 'Under' : 'Over'
-      if (pickRaw.includes('/')) {
-        const parts = pickRaw.split('/').map((p) => titleCaseWords(p.trim())).filter(Boolean)
-        if (parts.length === 2) {
-          away_team = parts[0]
-          home_team = parts[1]
-          event_label = `${away_team} @ ${home_team}`
-        }
-      }
-      selection_label = `${ou} ${lineNum}`
-    } else {
-      const spr = /^([+-]\d+(?:\.\d+)?)\s+([+-]\d{3,5})$/.exec(inside)
-      if (spr) {
-        market = 'spread'
-        lineNum = String(Number(spr[1]))
-        odds = americanOddsInputString(spr[2])
-        const team = titleCaseWords(pickRaw)
-        const signed = Number(spr[1]) > 0 ? `+${lineNum}` : String(Number(spr[1]))
-        selection_label = `${team} ${signed}`.trim()
-      } else {
-        const ml = /^([+-]\d{3,5})$/.exec(inside)
-        if (!ml) continue
-        market = 'h2h'
-        odds = americanOddsInputString(ml[1])
-        selection_label = `${titleCaseWords(pickRaw)} ML`
-      }
+    // Parenthesized classic: [518] MAGIC (+2 -110)
+    const paren = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s+\(([^)]+)\)\s*$/i.exec(line)
+    if (paren) {
+      push(casinoLegFromPickAndJuice(paren[2], paren[3], sportHint))
+      continue
     }
 
-    const key = `${normalizeNameKey(selection_label)}|${odds || 'na'}`
-    if (seen.has(key)) continue
-    seen.add(key)
+    // Same line glued/spaced: [518] MAGIC +2-110  /  [529] HORNETS +348
+    const same = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s+((?:OV|UN|OVER|UNDER)\s+\d+(?:\.\d+)?[+\-\s]*\d{3,5}|[+-]\d+(?:\.\d+)?[+\-\s]*\d{3,5}|[+-]\d{3,5})\s*$/i.exec(line)
+    if (same) {
+      push(casinoLegFromPickAndJuice(same[2], same[3], sportHint))
+      continue
+    }
 
-    const sport = extractSport(
-      [sportHint, event_label, selection_label, pickRaw].filter(Boolean).join(' '),
-    )
-    legs.push({
-      market,
-      side,
-      line: lineNum,
-      odds,
-      selection_label,
-      player_name: '',
-      prop_stat: '',
-      home_team,
-      away_team,
-      event_label,
-      sport_key: sport.key || '',
-      sport_label: sport.label || sportHint || '',
-      commence_time: '',
-      event_id: '',
-    })
+    // Split: [518] MAGIC   then   +2-110
+    const head = /^\[(\d+(?:\/\d+)?)\]\s+(.+?)\s*$/i.exec(line)
+    if (!head) continue
+    const pickRaw = head[2].trim()
+    if (!pickRaw || /^(ticket|parlay|straight|bet)/i.test(pickRaw)) continue
+    const next = lines[i + 1] || ''
+    if (!next || /^\[/.test(next) || sportHintFromLine(next)) continue
+    if (parseCasinoJuiceToken(next)) {
+      push(casinoLegFromPickAndJuice(pickRaw, next, sportHint))
+      i += 1
+    }
   }
   return legs
 }
@@ -743,6 +805,8 @@ function extractEvent(text) {
     if (PAYOUT_LINE_RE.test(line)) return true
     if (/ticket\s*cost|slip\s*id|internal\s*id|betslip|account\s*#/i.test(line)) return true
     if (/^(straight|single|parlay)\b/i.test(line) && line.length < 24) return true
+    // Circa / the D promo header … "… Account at the counter …" false-matches \bat\b
+    if (/sign\s*up|mobile\s*wagering|download\s+the\s+circa|circasports\.com/i.test(line)) return true
     // "1 BET(S) @ $50,000.00" is stake, not a matchup
     if (/\bbet\(s\)\s*@\s*\$/i.test(line) || /\b\d+\s*bet\(s\)\b/i.test(line)) return true
     // Skip "101 49ers MLB" style rotation lines (not the matchup)
@@ -1382,6 +1446,10 @@ function extractPropLegsWithoutOdds(text, rawSport) {
 
 /** Extract ≥2 legs from a parlay slip. */
 export function extractParlayLegs(text) {
+  // Circa / the D rotation legs first … naive "sel +odds" steals HORNETS/+348 as a 1-leg miss.
+  const casino = extractCasinoBracketLegs(text)
+  if (casino.length >= 2) return casino
+
   const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean)
   const sport = extractSport(text)
   const legs = []
@@ -1417,16 +1485,6 @@ export function extractParlayLegs(text) {
       if (prev && !/total\s*odds|parlay|wager|risk|payout|ticket|straight|single/i.test(prev)) {
         pushLeg(prev, line)
       }
-    }
-  }
-
-  // Circa / the D: "[518] MAGIC (+2 -110)"
-  if (legs.length < 2) {
-    for (const stub of extractCasinoBracketLegs(text)) {
-      const key = `${normalizeNameKey(stub.selection_label)}|${stub.odds || 'na'}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      legs.push(stub)
     }
   }
 

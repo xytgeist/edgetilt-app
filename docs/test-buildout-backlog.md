@@ -1215,6 +1215,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-15:** **Offers mailer year inference (`process-offer-uploads`).** Flyers with month/day but no year: prompt must still emit `start_at`; server picks nearest upcoming year (this year if that M/D is today-or-later, else next… Nov→Jan). Redeploy Edge on the env you smoke. Not a client bump.
 - **2026-10-15:** **Android ML Kit W-2G Take photo PASSED (Ryan).** APK **1.3.20** / vc **24**. Offers calendar/mailer Take photo in progress; bet-slip OCR still owed.
 - **2026-10-15:** **Android Play internal 13 (1.3.9) End Call + live-session chip COMPLETE (Ryan PASSED).** (1) Android End Call ends the iPhone call; (2) start live bankroll/poker session → status-bar notif/chip → tap opens bankroll. (Kill→tap after process death was a later **1.3.10–1.3.12** chase … not this sign-off.)
 - **2026-10-14:** **Promoted `1.4.1158`** (DK Over 0.5 Player prop parlays). Frontend **`test` → `main`** (`6dfe5d54`). No Edge.

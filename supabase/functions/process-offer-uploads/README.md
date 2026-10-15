@@ -6,6 +6,8 @@ Supabase Edge Function that processes queued image uploads, uses OpenAI vision t
 - creates `offer_ai_review_items` with partial draft data otherwise
 - updates `offer_uploads.status` and `offer_import_batches.status`
 
+When a flyer shows month/day but no 4-digit year, the model should still emit `start_at`, and the function rewrites the year to the **nearest upcoming** occurrence (this year if that month/day is still today-or-later, otherwise next year… e.g. November → January). Explicit years on the flyer are left alone.
+
 ## Required secrets
 
 Set these in your Supabase project before deploying:

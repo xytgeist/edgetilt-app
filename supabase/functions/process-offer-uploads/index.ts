@@ -243,8 +243,8 @@ Return strict JSON (no markdown, no prose) with this shape:
 Rules:
 - Return one event object per distinct offer/date range from the image.
 - For calendar-style mailers, expand repeated dates/ranges into separate event objects.
-- Use local date text from the flyer and infer year if needed.
-- If a field is uncertain, keep it null and add a warning.
+- Use local date text from the flyer. When month and day are visible but no 4-digit year, still set start_at/end_at with a provisional ISO year (prefer the nearest upcoming occurrence of that month/day within about one year). Never leave start_at null only because the year is missing ... set has_explicit_year false and you may add a short warning.
+- Only leave start_at null when the flyer does not show a usable month/day (or clearer date). For other uncertain fields, keep them null and add a warning.
 - confidence should reflect how complete and reliable the extraction is.
 - Set has_specific_time to true ONLY when an explicit clock time is visible in the image.
 - If has_specific_time is true, include time_evidence copied from the image (example: "5:00 PM").
@@ -374,36 +374,75 @@ function enforceOfferTypeConsistency(offer: ParsedOffer): ParsedOffer {
   }
 }
 
-function applyImplicitCurrentYear(offer: ParsedOffer): ParsedOffer {
+/** Calendar Y/M/D in a named zone (or UTC if Intl fails). */
+function ymdInTimeZone(date: Date, timeZone: string): { y: number; m: number; d: number } {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(date)
+    const pick = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 'NaN')
+    const y = pick('year')
+    const m = pick('month')
+    const d = pick('day')
+    if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) return { y, m, d }
+  } catch (_) {
+    // fall through
+  }
+  return { y: date.getUTCFullYear(), m: date.getUTCMonth() + 1, d: date.getUTCDate() }
+}
+
+/**
+ * When the flyer omits a year: pick this year if that month/day is still today-or-later,
+ * otherwise next year (e.g. Nov → January). Always the nearest upcoming occurrence within ~364 days.
+ */
+function inferUpcomingYearForMonthDay(month: number, day: number, now = new Date(), timeZone = DEFAULT_TIMEZONE): number {
+  const nowParts = ymdInTimeZone(now, timeZone)
+  const eventMd = month * 100 + day
+  const nowMd = nowParts.m * 100 + nowParts.d
+  if (eventMd >= nowMd) return nowParts.y
+  return nowParts.y + 1
+}
+
+/** Re-year start/end when the flyer had no explicit 4-digit year. */
+function applyInferredUpcomingYear(offer: ParsedOffer): ParsedOffer {
   if (offer.has_explicit_year === true || !offer.start_at) return offer
   const start = new Date(offer.start_at)
   if (Number.isNaN(start.getTime())) return offer
-  const nowYear = new Date().getFullYear()
+
+  const month = start.getUTCMonth() + 1
+  const day = start.getUTCDate()
+  const inferredYear = inferUpcomingYearForMonthDay(month, day)
+  const priorYear = start.getUTCFullYear()
 
   const startAdjusted = new Date(start)
-  startAdjusted.setUTCFullYear(nowYear)
+  startAdjusted.setUTCFullYear(inferredYear)
 
   let endAdjustedIso = offer.end_at ?? null
   if (offer.end_at) {
     const end = new Date(offer.end_at)
     if (!Number.isNaN(end.getTime())) {
       const endAdjusted = new Date(end)
-      endAdjusted.setUTCFullYear(nowYear)
-      // If same-year adjustment flips range backwards, assume it crosses year-end.
+      // Preserve multi-day span: shift end by the same year delta as start, then fix wrap.
+      const endYear = end.getUTCFullYear() + (inferredYear - priorYear)
+      endAdjusted.setUTCFullYear(endYear)
       if (endAdjusted.getTime() < startAdjusted.getTime()) {
-        endAdjusted.setUTCFullYear(nowYear + 1)
+        endAdjusted.setUTCFullYear(inferredYear + 1)
       }
       endAdjustedIso = endAdjusted.toISOString()
     }
   }
 
+  const priorWarnings = (offer.warnings || []).filter((w) => !/\byear\b/i.test(String(w)))
   return {
     ...offer,
     start_at: startAdjusted.toISOString(),
     end_at: endAdjustedIso,
     warnings: [
-      ...(offer.warnings || []),
-      `No explicit year found; assumed ${nowYear}.`
+      ...priorWarnings,
+      `No explicit year on flyer; assumed ${inferredYear} (nearest upcoming date within a year).`
     ]
   }
 }
@@ -555,7 +594,7 @@ Deno.serve(async (req) => {
 
         const parsedRawList = await parseOffersFromImage(openaiApiKey, upload.mime_type || 'image/jpeg', new Uint8Array(await fileBlob.arrayBuffer()))
         const parsedList = parsedRawList
-          .map((p) => applyImplicitCurrentYear(enforceOfferTypeConsistency(normalizeToAllDayIfNeeded(p, timezoneOffsetMinutes))))
+          .map((p) => applyInferredUpcomingYear(enforceOfferTypeConsistency(normalizeToAllDayIfNeeded(p, timezoneOffsetMinutes))))
           .map((p) => {
             if (!p.title || !p.title.trim()) p.title = defaultTitleForOfferType(p.offer_type)
             return p

@@ -139,11 +139,25 @@ async function seedPipelineExtras(
     })
   }
   if (pipeline === 'x' && xHandles.length) {
-    for (const h of xHandles) {
-      await admin.rpc('admin_lounge_bot_add_x_source', {
-        p_bot_user_id: botUserId,
-        p_handle: h,
+    // Direct insert: admin_lounge_bot_add_x_source requires auth.uid() (portal JWT).
+    // This function runs as service role, so that RPC always fails and the handle is dropped.
+    for (const raw of xHandles) {
+      const handle = String(raw || '').trim().replace(/^@/, '').toLowerCase()
+      if (!/^[a-z0-9_]{1,15}$/.test(handle)) {
+        console.error('[lounge-bot-admin] skip invalid X handle', { botUserId, raw })
+        continue
+      }
+      const { error } = await admin.from('lounge_bot_x_sources').insert({
+        bot_user_id: botUserId,
+        x_handle: handle,
       })
+      if (error && error.code !== '23505') {
+        console.error('[lounge-bot-admin] X source insert failed', {
+          botUserId,
+          handle,
+          message: error.message,
+        })
+      }
     }
   }
 }

@@ -23,13 +23,18 @@ function xToken(): string {
   return String(Deno.env.get('X_API_BEARER_TOKEN') || '').trim()
 }
 
-async function resolveXUserId(handle: string, token: string): Promise<string | null> {
+async function resolveXUserId(handle: string, token: string): Promise<string> {
   const res = await fetch(`${X_API}/users/by/username/${encodeURIComponent(handle)}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) return null
+  if (!res.ok) throw new Error(await readXApiError(res))
   const json = await res.json()
-  return String(json?.data?.id || '') || null
+  const id = String(json?.data?.id || '')
+  if (!id) {
+    const snippet = JSON.stringify(json).slice(0, 280)
+    throw new Error(`X user lookup returned no id for @${handle}: ${snippet}`)
+  }
+  return id
 }
 
 function buildTweetExclude(src: { exclude_replies?: boolean | null; exclude_retweets?: boolean | null }) {
@@ -343,20 +348,9 @@ Deno.serve(async (req) => {
           if (!xUserId) {
             xUserId = await resolveXUserId(src.x_handle, token)
             diag.xUserId = xUserId
-            if (xUserId && !dryRun) {
+            if (!dryRun) {
               await admin.from('lounge_bot_x_sources').update({ x_user_id: xUserId }).eq('id', src.id)
             }
-          }
-          if (!xUserId) {
-            diag.error = `Could not resolve X user id for @${src.x_handle}`
-            if (!dryRun) {
-              await admin.from('lounge_bot_x_sources').update({
-                last_polled_at: new Date().toISOString(),
-                last_error: String(diag.error).slice(0, 400),
-              }).eq('id', src.id)
-            }
-            sourcesDiag.push(diag)
-            continue
           }
 
           const fetched = await fetchTweets(xUserId, src.since_id, token, src)
@@ -369,24 +363,15 @@ Deno.serve(async (req) => {
           diag.rawKeys = fetched.rawKeys
           if (fetched.errors) diag.xErrors = fetched.errors
 
-          // First poll on a source: seed since_id only (forward from next run, no history backfill).
-          if (!src.since_id && newestId) {
-            diag.action = 'seed_since_id'
-            if (!dryRun) {
-              await admin.from('lounge_bot_x_sources').update({
-                since_id: newestId,
-                x_user_id: xUserId,
-                last_polled_at: new Date().toISOString(),
-                last_error: null,
-              }).eq('id', src.id)
-            }
-            sourcesDiag.push(diag)
-            continue
-          }
+          // First poll: one page only (no pagination). Keep tweets from the last 36h
+          // so a new handle is not silent until the next cron. Older rows on that page stay skipped.
+          const firstPoll = !src.since_id
+          const firstPollCutoff = Date.now() - 36 * 60 * 60 * 1000
 
           let kept = 0
           let skippedNotTopLevel = 0
           let skippedDup = 0
+          let skippedStale = 0
           for (const twRaw of tweets) {
             const tw = twRaw as {
               id?: string
@@ -402,6 +387,13 @@ Deno.serve(async (req) => {
             const tweetId = String(tw.id || '')
             const text = expandTweetTextUrls(String(tw.text || '').trim(), tw.entities)
             if (!text || !tweetId) continue
+            if (firstPoll && tw.created_at) {
+              const postedMs = new Date(tw.created_at).getTime()
+              if (Number.isFinite(postedMs) && postedMs < firstPollCutoff) {
+                skippedStale += 1
+                continue
+              }
+            }
 
             const { data: existing } = await admin
               .from('lounge_bot_queue')
@@ -461,6 +453,8 @@ Deno.serve(async (req) => {
           diag.kept = kept
           diag.skippedNotTopLevel = skippedNotTopLevel
           diag.skippedDup = skippedDup
+          diag.skippedStale = skippedStale
+          diag.firstPoll = firstPoll
 
           // Always stamp last_polled_at. Empty timelines used to leave it stale.
           const emptyNote =

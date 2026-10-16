@@ -123,9 +123,70 @@ function PlayerAvatar({ row }) {
   )
 }
 
-function PlayerRow({ row }) {
+function pts(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return ''
+  return n.toFixed(1)
+}
+
+function ordinal(n) {
+  const v = Math.abs(Number(n))
+  const mod100 = v % 100
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`
+  const mod10 = v % 10
+  if (mod10 === 1) return `${n}st`
+  if (mod10 === 2) return `${n}nd`
+  if (mod10 === 3) return `${n}rd`
+  return `${n}th`
+}
+
+function cents(price) {
+  const n = Number(price)
+  if (!Number.isFinite(n)) return ''
+  const p = n <= 1 ? n * 100 : n
+  return `${Math.round(p)}¢`
+}
+
+function gameWhen(card) {
+  if (card?.kickoff) {
+    const d = new Date(card.kickoff)
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+    }
+  }
+  if (card?.game_date) {
+    const d = new Date(`${card.game_date}T12:00:00`)
+    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString(undefined, { weekday: 'short' })
+  }
+  return ''
+}
+
+function gradeClass(grade) {
+  if (grade === 'A') return 'text-sky-300'
+  if (grade === 'C') return 'text-amber-300'
+  if (grade === 'D') return 'text-rose-300'
+  return 'text-zinc-300'
+}
+
+function PlayerRow({ row, card, cardsLoading }) {
   const [open, setOpen] = useState(false)
   const inj = injuryLabel(row.injury_status)
+  const when = gameWhen(card)
+  const side = card?.opponent ? (card.home ? 'vs' : '@') : ''
+  const gameLine = card?.bye
+    ? 'Bye'
+    : card?.opponent
+      ? `${row.nfl_team || ''} ${side} ${card.opponent}${when ? ` · ${when}` : ''}`.trim()
+      : ''
+  const statBits = [
+    pts(card?.total) ? `${pts(card.total)} tot` : '',
+    pts(card?.avg) ? `${pts(card.avg)} avg` : '',
+    pts(card?.projected) ? `${pts(card.projected)} proj` : '',
+    pts(card?.week_pts) && card?.game_status === 'complete' ? `${pts(card.week_pts)} wk` : '',
+  ].filter(Boolean)
+  const rank = card?.pos_rank ? `${row.position || ''}${card.pos_rank}` : ''
+  const main = card?.main_prop
+  const rest = (card?.props || []).filter((p) => p !== main && p?.label !== main?.label)
   return (
     <li className="border-b border-zinc-800/80 last:border-b-0">
       <button
@@ -138,29 +199,60 @@ function PlayerRow({ row }) {
           {row.position || '-'}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold text-zinc-100">
-            {row.player_name}
+          <span className="flex items-baseline gap-2">
+            <span className="min-w-0 truncate text-[15px] font-semibold text-zinc-100">
+              {row.player_name}
+            </span>
+            {rank ? <span className="shrink-0 text-[12px] font-bold text-zinc-400">{rank}</span> : null}
           </span>
           <span className="block truncate text-[12px] text-zinc-500">
-            {row.nfl_team || 'FA'}
+            {gameLine || row.nfl_team || 'FA'}
             {inj ? ` · ${inj}` : ''}
           </span>
-        </span>
-        <span className="shrink-0 text-[12px] font-semibold text-sky-300">
-          {open ? 'Hide' : 'Props'}
+          {statBits.length ? (
+            <span className="mt-0.5 block truncate text-[12px] text-zinc-400">{statBits.join(' · ')}</span>
+          ) : cardsLoading && row.sleeper_id ? (
+            <span className="mt-0.5 block text-[12px] text-zinc-600">Loading week…</span>
+          ) : null}
+          {card?.matchup_grade ? (
+            <span className={`mt-0.5 block text-[12px] font-semibold ${gradeClass(card.matchup_grade)}`}>
+              Matchup {card.matchup_grade}
+              {card.matchup_rank ? ` · ${ordinal(card.matchup_rank)} easiest` : ''}
+            </span>
+          ) : null}
+          {main?.label ? (
+            <span className="mt-0.5 block truncate text-[12px] font-semibold text-sky-300">
+              {main.label}
+              {cents(main.price) ? ` · ${cents(main.price)}` : ''}
+            </span>
+          ) : !cardsLoading && row.sleeper_id && card ? (
+            <span className="mt-0.5 block text-[12px] text-zinc-600">No open line</span>
+          ) : null}
         </span>
       </button>
       {open ? (
         <div className="px-3 pb-3 pl-14 text-[13px] leading-snug text-zinc-400">
-          No prop board on {row.player_name} yet. The first line here will be the most relevant
-          one, and this list is the rest.
+          {rest.length ? (
+            <ul className="space-y-1">
+              {rest.map((p) => (
+                <li key={p.label}>
+                  {p.label}
+                  {cents(p.price) ? ` · ${cents(p.price)}` : ''}
+                </li>
+              ))}
+            </ul>
+          ) : main?.label ? (
+            <p>That is the only open line on {row.player_name}.</p>
+          ) : (
+            <p>No open line on {row.player_name}.</p>
+          )}
         </div>
       ) : null}
     </li>
   )
 }
 
-function LineupCard({ title, rows }) {
+function LineupCard({ title, rows, cards, cardsLoading }) {
   const starters = startersOf(rows)
   const bench = (rows || []).filter((r) => r.slot !== 'starter')
   const hurt = starters.filter((r) => injuryLabel(r.injury_status))
@@ -173,7 +265,12 @@ function LineupCard({ title, rows }) {
       {starters.length ? (
         <ul className="mt-1">
           {starters.map((r, i) => (
-            <PlayerRow key={`${r.sleeper_id || r.player_name}-${i}`} row={r} />
+            <PlayerRow
+              key={`${r.sleeper_id || r.player_name}-${i}`}
+              row={r}
+              card={r.sleeper_id ? cards?.[r.sleeper_id] : null}
+              cardsLoading={cardsLoading}
+            />
           ))}
         </ul>
       ) : (
@@ -219,6 +316,8 @@ export default function FantasyCommandCenter({
   onPickLeague,
   detail,
   loadingDetail,
+  cards,
+  cardsLoading,
   busy,
   onOpenManage,
   onSync,
@@ -426,6 +525,8 @@ export default function FantasyCommandCenter({
         <LineupCard
           title={current.kind === 'matchup' ? 'Your starters' : 'Their starters'}
           rows={current.roster}
+          cards={cards}
+          cardsLoading={cardsLoading}
         />
       ) : null}
     </div>

@@ -47,6 +47,7 @@ Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves 
 | `fantasy-cbs-link` | user JWT | `{ access_token, league_ids }` → store token, sync NFL leagues. Rejects `password`. |
 | `fantasy-cbs-sync` | user JWT | Re-read stored CBS token. |
 | `fantasy-espn-sync` | user JWT | re-sync using the stored ESPN cookie |
+| `fantasy-lineup-cards` | user JWT | `{ players: [{ sleeper_id, name, position, team }] }` → kickoff, season total / average, this-week projection, position rank, points-allowed matchup grade, and the biggest open Kalshi line. No new SQL. |
 
 Shared: **`fantasySleeperSync.ts`**, **`fantasyYahooSync.ts`**, **`fantasyEspnSync.ts`**. `verify_jwt = false` (manual JWT via `userIdFromJwt` except the Yahoo callback).
 

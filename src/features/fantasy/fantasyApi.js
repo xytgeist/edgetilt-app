@@ -193,6 +193,24 @@ export async function loadFantasySnapshot(supabase) {
   }
 }
 
+export async function loadLineupCards(supabase, players) {
+  const list = (Array.isArray(players) ? players : [])
+    .map((p) => ({
+      sleeper_id: String(p?.sleeper_id || '').trim(),
+      name: String(p?.player_name || p?.name || '').trim(),
+      position: String(p?.position || '').trim(),
+      team: String(p?.nfl_team || p?.team || '').trim(),
+    }))
+    .filter((p) => p.sleeper_id)
+    .slice(0, 250)
+  if (!list.length) return {}
+  const { data, error } = await supabase.functions.invoke('fantasy-lineup-cards', {
+    body: { players: list },
+  })
+  const result = await finishEdge(data, error, 'Could not load lineup cards.')
+  return result?.cards && typeof result.cards === 'object' ? result.cards : {}
+}
+
 export async function loadLeagueDetail(supabase, leagueId) {
   const id = String(leagueId || '').trim()
   if (!id) return null

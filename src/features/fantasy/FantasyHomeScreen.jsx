@@ -4,6 +4,7 @@ import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import {
   loadFantasySnapshot,
   loadLeagueDetail,
+  loadLineupCards,
   linkCbsSession,
   linkEspnSession,
   linkSleeperUsername,
@@ -98,6 +99,8 @@ export default function FantasyHomeScreen({
   const [snap, setSnap] = useState({ connections: [], leagues: [] })
   const [leagueId, setLeagueId] = useState(null)
   const [detail, setDetail] = useState(null)
+  const [cards, setCards] = useState(null)
+  const [cardsLoading, setCardsLoading] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [manageOpen, setManageOpen] = useState(false)
   /** EdgeiOS ASWebAuth / Safari fallback … refresh when the user returns. */
@@ -225,6 +228,44 @@ export default function FantasyHomeScreen({
       cancelled = true
     }
   }, [supabaseClient, leagueId, signedIn])
+
+  useEffect(() => {
+    if (!supabaseClient || !detail) {
+      setCards(null)
+      setCardsLoading(false)
+      return undefined
+    }
+    const seen = new Set()
+    const players = []
+    for (const rows of Object.values(detail.rostersByTeam || {})) {
+      for (const row of rows || []) {
+        const id = String(row?.sleeper_id || '').trim()
+        if (!id || seen.has(id)) continue
+        seen.add(id)
+        players.push(row)
+      }
+    }
+    if (!players.length) {
+      setCards({})
+      setCardsLoading(false)
+      return undefined
+    }
+    let cancelled = false
+    setCardsLoading(true)
+    void loadLineupCards(supabaseClient, players)
+      .then((map) => {
+        if (!cancelled) setCards(map)
+      })
+      .catch(() => {
+        if (!cancelled) setCards(null)
+      })
+      .finally(() => {
+        if (!cancelled) setCardsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [supabaseClient, detail])
 
   const onConnectCbs = async () => {
     if (!signedIn) {
@@ -488,6 +529,8 @@ export default function FantasyHomeScreen({
             onPickLeague={onPickLeague}
             detail={detail}
             loadingDetail={loadingDetail}
+            cards={cards}
+            cardsLoading={cardsLoading}
             busy={busy}
             onOpenManage={() => setManageOpen(true)}
             onSync={onSync}

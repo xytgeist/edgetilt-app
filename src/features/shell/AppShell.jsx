@@ -398,6 +398,16 @@ class TabErrorBoundary extends React.Component {
   }
 }
 
+/** Finger moved or the menu actually scrolled ... not a tap. */
+function navMenuPressWasScroll(event, gesture) {
+  if (!gesture) return false
+  const menu = event.currentTarget?.closest?.('.lounge-title-nav-menu')
+  const dy = Math.abs(event.clientY - gesture.y)
+  const dx = Math.abs(event.clientX - gesture.x)
+  const scrolled = menu && Math.abs(menu.scrollTop - gesture.scrollTop) > 2
+  return gesture.moved || dy > 8 || dx > 8 || scrolled
+}
+
 export default function AppShell({
   onLogout,
   onDeleteAccount,
@@ -577,6 +587,8 @@ export default function AppShell({
   const chromeTourMenuHoldTimerRef = useRef(0)
   /** pointerup + click both fire for one tap. Ignore the second. */
   const navSelectAtRef = useRef(0)
+  /** Scroll-to-see-more must not activate the row the finger started on. */
+  const navMenuGestureRef = useRef({ y: 0, x: 0, scrollTop: 0, moved: false })
   const ipadShell = useIpadAuthStage()
   const ipadSlotsLandscape = useIpadSlotsLandscape()
   const ipadNavRail = useIpadNavRail()
@@ -2654,15 +2666,30 @@ export default function AppShell({
             // menu after it closes ... usually Lounge Home.
             event.preventDefault()
             event.stopPropagation()
+            const menu = event.currentTarget.closest('.lounge-title-nav-menu')
+            navMenuGestureRef.current = {
+              y: event.clientY,
+              x: event.clientX,
+              scrollTop: menu?.scrollTop || 0,
+              moved: false,
+            }
+          }}
+          onPointerMove={(event) => {
+            const g = navMenuGestureRef.current
+            if (Math.abs(event.clientY - g.y) > 8 || Math.abs(event.clientX - g.x) > 8) {
+              g.moved = true
+            }
           }}
           onPointerUp={(event) => {
             event.preventDefault()
             event.stopPropagation()
+            if (navMenuPressWasScroll(event, navMenuGestureRef.current)) return
             selectItem()
           }}
           onClick={(event) => {
             event.preventDefault()
             event.stopPropagation()
+            if (navMenuPressWasScroll(event, navMenuGestureRef.current)) return
             selectItem()
           }}
           className={`lounge-title-nav-menu-item w-full rounded-xl px-2.5 py-1.5 text-left text-sm touch-manipulation ${
@@ -4255,7 +4282,10 @@ export default function AppShell({
       {menuOpen && menuAnchor && typeof document !== 'undefined'
         ? createPortal(
             <div
-              className="lounge-title-nav-menu fixed z-[116] mt-0 min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
+              className="lounge-title-nav-menu fixed z-[116] mt-0 min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))-5rem))] touch-pan-y overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
+              onScroll={() => {
+                navMenuGestureRef.current.moved = true
+              }}
               role="menu"
               style={
                 menuAnchor.bottom != null

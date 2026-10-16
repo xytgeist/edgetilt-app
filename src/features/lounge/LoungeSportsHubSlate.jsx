@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Calculator, ChevronLeft, ClipboardList, Loader2, Shirt } from 'lucide-react'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
@@ -112,15 +112,38 @@ function isPgaHubFilter(filter) {
   return f === LOUNGE_SPORTS_HUB_FILTER_PGA || f.startsWith('golf_') || f === 'pga' || f === 'golf'
 }
 
+/** Hidden door. Public tile stays Coming soon. Four taps, each within this of the last, open Fantasy. */
+const FANTASY_UNLOCK_TAPS = 4
+const FANTASY_UNLOCK_GAP_MS = 600
+
 function NflHubFantasyComingSoon() {
+  const tapCountRef = useRef(0)
+  const lastTapRef = useRef(0)
+
+  const onTap = () => {
+    const now = Date.now()
+    if (now - lastTapRef.current > FANTASY_UNLOCK_GAP_MS) tapCountRef.current = 0
+    lastTapRef.current = now
+    tapCountRef.current += 1
+    if (tapCountRef.current < FANTASY_UNLOCK_TAPS) return
+    tapCountRef.current = 0
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    url.searchParams.set('tab', 'fantasy')
+    url.searchParams.delete('game')
+    window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
+
   return (
     <div className="px-1 pb-3 pt-1">
-      <div
+      <button
+        type="button"
         data-sports-hub-fantasy="nfl-soon"
         data-hub-tool-coming-soon
-        aria-disabled="true"
         aria-label="Fantasy, coming soon"
-        className="relative flex min-h-[3.25rem] w-full items-center gap-3 rounded-2xl border px-3.5 text-left opacity-90"
+        onClick={onTap}
+        className="relative flex min-h-[3.25rem] w-full items-center gap-3 rounded-2xl border px-3.5 text-left opacity-90 touch-manipulation [-webkit-tap-highlight-color:transparent]"
       >
         <Shirt className="h-5 w-5 shrink-0 text-sky-400" strokeWidth={2.25} aria-hidden />
         <span className="min-w-0 flex-1">
@@ -139,7 +162,7 @@ function NflHubFantasyComingSoon() {
             Coming soon
           </span>
         </span>
-      </div>
+      </button>
     </div>
   )
 }

@@ -2,13 +2,38 @@
  * Fantasy Connect client … Sleeper + Yahoo link/sync + RLS reads.
  */
 
+/** supabase-js hides the JSON `{ error }` behind "non-2xx status code". */
+async function messageFromEdgeError(error, fallback) {
+  const base = String(error?.message || fallback).trim()
+  const ctx = error?.context
+  if (!ctx || typeof ctx.text !== 'function') return base || fallback
+  try {
+    const text = await ctx.clone().text()
+    if (!text) return base || fallback
+    try {
+      const json = JSON.parse(text)
+      const fromError = json?.error != null ? String(json.error).trim() : ''
+      if (fromError) return fromError
+    } catch {
+      return text.slice(0, 400) || base || fallback
+    }
+  } catch {
+    /* ignore */
+  }
+  return base || fallback
+}
+
+async function finishEdge(data, error, fallback) {
+  if (error) throw new Error(await messageFromEdgeError(error, fallback))
+  if (data?.error) throw new Error(String(data.error))
+  return data
+}
+
 export async function linkSleeperUsername(supabase, username) {
   const { data, error } = await supabase.functions.invoke('fantasy-sleeper-link', {
     body: { username: String(username || '').trim().replace(/^@/, '') },
   })
-  if (error) throw new Error(error.message || 'Link failed.')
-  if (data?.error) throw new Error(String(data.error))
-  return data
+  return finishEdge(data, error, 'Link failed.')
 }
 
 /**
@@ -20,8 +45,7 @@ export async function startYahooOAuth(supabase, opts = {}) {
   const { data, error } = await supabase.functions.invoke('fantasy-yahoo-oauth-start', {
     body: { returnMode },
   })
-  if (error) throw new Error(error.message || 'Could not start Yahoo connect.')
-  if (data?.error) throw new Error(String(data.error))
+  await finishEdge(data, error, 'Could not start Yahoo connect.')
   const url = String(data?.url || '').trim()
   if (!url) throw new Error('Yahoo authorize URL missing.')
   return url
@@ -31,9 +55,7 @@ export async function syncSleeperFantasy(supabase, body = {}) {
   const { data, error } = await supabase.functions.invoke('fantasy-sleeper-sync', {
     body: body && typeof body === 'object' ? body : {},
   })
-  if (error) throw new Error(error.message || 'Sync failed.')
-  if (data?.error) throw new Error(String(data.error))
-  return data
+  return finishEdge(data, error, 'Sync failed.')
 }
 
 export async function linkEspnSession(supabase, session) {
@@ -43,25 +65,19 @@ export async function linkEspnSession(supabase, session) {
       swid: String(session?.swid || '').trim(),
     },
   })
-  if (error) throw new Error(error.message || 'ESPN link failed.')
-  if (data?.error) throw new Error(String(data.error))
-  return data
+  return finishEdge(data, error, 'ESPN link failed.')
 }
 
 export async function syncEspnFantasy(supabase) {
   const { data, error } = await supabase.functions.invoke('fantasy-espn-sync', { body: {} })
-  if (error) throw new Error(error.message || 'ESPN sync failed.')
-  if (data?.error) throw new Error(String(data.error))
-  return data
+  return finishEdge(data, error, 'ESPN sync failed.')
 }
 
 export async function syncYahooFantasy(supabase, body = {}) {
   const { data, error } = await supabase.functions.invoke('fantasy-yahoo-sync', {
     body: body && typeof body === 'object' ? body : {},
   })
-  if (error) throw new Error(error.message || 'Yahoo sync failed.')
-  if (data?.error) throw new Error(String(data.error))
-  return data
+  return finishEdge(data, error, 'Yahoo sync failed.')
 }
 
 /** Sync every active provider the user has linked. */

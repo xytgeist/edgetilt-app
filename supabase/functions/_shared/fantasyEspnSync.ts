@@ -5,6 +5,10 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 
 const READS = 'https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl'
+const FAN = 'https://fan.api.espn.com/apis/v2/fans'
+/** ESPN fantasy preference types (league manager + regular member). NFL game id is 1. */
+const FAN_PREF_TYPES = new Set([9, 10])
+const NFL_GAME_ID = 1
 
 const PRO_TEAM: Record<number, string> = {
   1: 'ATL',
@@ -80,11 +84,16 @@ export function normalizeEspnSession(espnS2Raw: string, swidRaw: string): EspnSe
   return { espnS2, swid: `{${key}}` }
 }
 
+function espnCookieHeader(session: EspnSession): string {
+  // SWID is `{UUID}`. A raw brace in the Cookie header is dropped, and ESPN then returns {}.
+  return `espn_s2=${session.espnS2}; SWID=${encodeURIComponent(session.swid)}`
+}
+
 async function espnGet(path: string, session: EspnSession): Promise<unknown> {
   const res = await fetch(`${READS}${path}`, {
     headers: {
       Accept: 'application/json',
-      Cookie: `espn_s2=${session.espnS2}; SWID=${session.swid}`,
+      Cookie: espnCookieHeader(session),
       'User-Agent':
         'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
     },
@@ -106,6 +115,52 @@ async function espnGet(path: string, session: EspnSession): Promise<unknown> {
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   return value as Record<string, unknown>
+}
+
+type FanLeagueRef = { id: string; name: string }
+
+/** ESPN's site lists "my leagues" on the fan profile, not on the season URL (that one is `{}`). */
+async function listFanLeagueRefs(session: EspnSession, season: number): Promise<FanLeagueRef[]> {
+  const res = await fetch(`${FAN}/${encodeURIComponent(session.swid)}`, {
+    headers: {
+      Accept: 'application/json',
+      Cookie: espnCookieHeader(session),
+      'X-Personalization-Source': 'fantasy',
+    },
+  })
+  if (res.status === 401 || res.status === 403) {
+    throw new Error('ESPN session expired. Connect ESPN again.')
+  }
+  if (!res.ok) {
+    throw new Error(`ESPN account read failed (${res.status}). Connect ESPN again.`)
+  }
+  const raw = (await res.json().catch(() => null)) as unknown
+  const prefs = asRecord(raw)?.preferences
+  if (!Array.isArray(prefs)) return []
+  const seen = new Set<string>()
+  const out: FanLeagueRef[] = []
+  for (const pref of prefs) {
+    const row = asRecord(pref)
+    if (!row) continue
+    const typeId = Number(asRecord(row.type)?.id)
+    if (typeId && !FAN_PREF_TYPES.has(typeId)) continue
+    const entry = asRecord(asRecord(row.metaData)?.entry)
+    if (!entry) continue
+    const gameId = Number(entry.gameId)
+    if (gameId && gameId !== NFL_GAME_ID) continue
+    const entrySeason = Number(entry.seasonId) || season
+    if (entrySeason !== season) continue
+    const groups = Array.isArray(entry.groups) ? entry.groups : []
+    const group = asRecord(groups[0])
+    const idNum = Math.abs(Number(group?.groupId))
+    if (!idNum) continue
+    const id = String(idNum)
+    if (seen.has(id)) continue
+    seen.add(id)
+    const name = String(group?.groupName || `ESPN ${id}`).trim() || `ESPN ${id}`
+    out.push({ id, name })
+  }
+  return out
 }
 
 function normalizeLeagues(raw: unknown): Record<string, unknown>[] {
@@ -256,11 +311,27 @@ async function syncEspnConnection(
     const period = asRecord(currentSeason?.currentScoringPeriod)
     const defaultWeek = Math.max(1, Number(period?.id) || 1)
 
-    const raw = await espnGet(
-      `/seasons/${season}?view=mTeam&view=mRoster&view=mMatchup&view=mSettings&view=mStatus`,
-      session,
-    )
-    const leagues = normalizeLeagues(raw)
+    const views = 'view=mTeam&view=mRoster&view=mMatchup&view=mSettings&view=mStatus'
+    const refs = await listFanLeagueRefs(session, season)
+    const leagues: Record<string, unknown>[] = []
+    for (const ref of refs) {
+      try {
+        const one = await espnGet(
+          `/seasons/${season}/segments/0/leagues/${encodeURIComponent(ref.id)}?${views}`,
+          session,
+        )
+        const parsed = normalizeLeagues(one)
+        if (parsed.length) leagues.push(...parsed)
+        else leagues.push({ id: ref.id, settings: { name: ref.name }, teams: [] })
+      } catch {
+        // A league that is still drafting can fail the roster read. Keep the league.
+        leagues.push({ id: ref.id, settings: { name: ref.name }, teams: [] })
+      }
+    }
+    if (!leagues.length) {
+      const raw = await espnGet(`/seasons/${season}?${views}`, session)
+      leagues.push(...normalizeLeagues(raw))
+    }
     if (!leagues.length) {
       await admin
         .from('fantasy_connections')

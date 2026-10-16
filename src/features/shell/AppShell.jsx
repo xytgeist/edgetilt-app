@@ -94,6 +94,7 @@ import {
   readPokerStableBackerOnboardingSliceId,
 } from '../poker-stable/pokerStableBackerOnboarding.js'
 import LoungeActivityInAppToast from '../lounge/LoungeActivityInAppToast.jsx'
+import LoungeStaffNoticeBanner from '../lounge/LoungeStaffNoticeBanner.jsx'
 import PokerStableCommitSyncModal from '../poker-stable/PokerStableCommitSyncModal.jsx'
 import {
   IN_APP_TOAST_ACCESS_BANNER,
@@ -166,7 +167,7 @@ import {
   clearLoungeSportsGamePending,
 } from '../lounge/loungeSportsHubNav.js'
 import { isSportsBetTrackerSearch, isUsefulSportsBetPrefill, sportsBetLogOpenEventName, sportsBetPrefillFromSearchParams, closeSportsBetTracker } from '../sports-bet-tracker/sportsBetNav.js'
-import { BadgeCheck, Bot, ChartSpline, Cherry, ClipboardList, Handshake, MessagesSquare, Shirt, Spade, Sparkles, Trophy } from 'lucide-react'
+import { BadgeCheck, Bot, ChartSpline, Cherry, ClipboardList, Flag, Handshake, MessagesSquare, Shirt, Spade, Sparkles, Trophy } from 'lucide-react'
 import { football, footballHelmet } from '@lucide/lab'
 import LucideLabIcon from '../../components/LucideLabIcon.jsx'
 
@@ -186,6 +187,7 @@ const NAV_ICONS = {
   fantasy: { Glyph: Shirt, tint: '#38bdf8' },
   chat: { Glyph: MessagesSquare, tint: '#a78bfa' },
   monitor: { Glyph: ChartSpline, tint: '#22d3ee' },
+  mod: { Glyph: Flag, tint: '#fbbf24' },
   bots: { Glyph: Bot, tint: '#cbd5e1' },
   affiliates: { Glyph: Handshake, tint: '#2dd4bf' },
   'stable-smoke': { Glyph: BadgeCheck, tint: '#a3e635' },
@@ -227,6 +229,7 @@ const SlotsScreen = lazyRoute(() => import('../slots/SlotsScreen.jsx'))
 const PokerScreen = lazyRoute(() => import('../poker/PokerScreen.jsx'))
 const ChatTab = lazyRoute(() => import('../chat/ChatTab.jsx'))
 const EdgeMonitorScreen = lazyRoute(() => import('../ops/EdgeMonitorScreen.jsx'))
+const LoungeModQueueScreen = lazyRoute(() => import('../lounge/LoungeModQueueScreen.jsx'))
 const BotManagementScreen = lazyRoute(() => import('../bots/BotManagementScreen.jsx'))
 const AffiliateAdminScreen = lazyRoute(() => import('../affiliates/AffiliateAdminScreen.jsx'))
 const CreatorAffiliateScreen = lazyRoute(() => import('../affiliates/CreatorAffiliateScreen.jsx'))
@@ -525,6 +528,8 @@ export default function AppShell({
   const [pendingPlayLogSessionId, setPendingPlayLogSessionId] = useState(null)
   const [pendingW2GPrefill, setPendingW2GPrefill] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
+  /** Launcher shortcut / deep link: open slots bankroll start-session sheet. */
+  const [pendingBankrollStartSession, setPendingBankrollStartSession] = useState(false)
   const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
   const [pendingTournamentSwapId, setPendingTournamentSwapId] = useState(null)
   /** Alert tap for rewritten withdrawn invite (deal row already gone). */
@@ -1561,6 +1566,7 @@ export default function AppShell({
         'w2g-scanner',
         'chat',
         'monitor',
+        'mod',
         'bots',
         'affiliates',
         'stable-smoke',
@@ -1729,6 +1735,14 @@ export default function AppShell({
           setMenuOpen(false)
         }
       }
+      if (targetTab === 'mod') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else if (isStaff) {
+          setTab('mod')
+          setMenuOpen(false)
+        }
+      }
       if (targetTab === 'bots') {
         if (browseMode === 'anonymous') {
           onRequireAuthRef.current?.()
@@ -1767,6 +1781,10 @@ export default function AppShell({
         } else {
           setTab('bankroll')
           setMenuOpen(false)
+          const startSessionRaw = (params.get('startSession') || '').trim().toLowerCase()
+          if (startSessionRaw === '1' || startSessionRaw === 'true') {
+            setPendingBankrollStartSession(true)
+          }
         }
       }
       if (targetTab === 'poker-bankroll') {
@@ -1864,7 +1882,7 @@ export default function AppShell({
     applyFromUrl()
     window.addEventListener('popstate', applyFromUrl)
     return () => window.removeEventListener('popstate', applyFromUrl)
-  }, [browseMode, isAdmin, authSessionReady, openStableCommitDeepLinkIfPending])
+  }, [browseMode, isAdmin, isStaff, authSessionReady, openStableCommitDeepLinkIfPending])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -2466,7 +2484,7 @@ export default function AppShell({
     }
   }, [browseMode, supabaseClient, tab])
 
-  /** Title bar ☰ menu - Slots / Poker / Sports hubs + Chat (Lounge via dock home; Monitor admin-only). */
+  /** Title bar ☰ menu - Slots / Poker / Sports hubs + Chat (Lounge via dock home; Monitor admin-only; Mod staff). */
   const navItems = [
     { id: 'slots', label: 'Slots', icon: NAV_ICONS.slots, subscriberGated: false },
     { id: 'poker', label: 'Poker', icon: NAV_ICONS.poker, subscriberGated: false },
@@ -2475,6 +2493,7 @@ export default function AppShell({
     { id: 'cfb-hub', label: 'CFB Hub', icon: NAV_ICONS['cfb-hub'], subscriberGated: false },
     { id: 'chat', label: 'Chat', icon: NAV_ICONS.chat, subscriberGated: false },
     ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: NAV_ICONS.monitor, subscriberGated: false }] : []),
+    ...(isStaff ? [{ id: 'mod', label: 'Mod', icon: NAV_ICONS.mod, subscriberGated: false }] : []),
     ...(isAdmin ? [{ id: 'bots', label: 'Bots', icon: NAV_ICONS.bots, subscriberGated: false }] : []),
     ...(isAdmin ? [{ id: 'affiliates', label: 'Affiliates', icon: NAV_ICONS.affiliates, subscriberGated: false }] : []),
     ...(isAdmin && isSmokeChecklistHostAllowed()
@@ -3494,6 +3513,8 @@ export default function AppShell({
               onRequireSubscribeForBankroll={() => onRequireSubscribe?.('slots-edge')}
               onBankrollSessionCreated={refreshFreemiumUsage}
               showGlobalConfirm={showGlobalConfirm}
+              autoOpenStartSession={pendingBankrollStartSession}
+              onAutoOpenStartSessionConsumed={() => setPendingBankrollStartSession(false)}
               titleBarNavSlot={
                 slotsBankrollPanePortal || tab !== 'bankroll' ? null : renderTitleBarNavSlot()
               }
@@ -4004,6 +4025,21 @@ export default function AppShell({
           </div>
         </ScrollLinkedEdgeTitleBarShell>
       )
+    } else if (tab === 'mod') {
+      visibleTab = isStaff ? (
+        <LoungeModQueueScreen
+          supabaseClient={supabaseClient}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
+        />
+      ) : (
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+          <div className="rounded-2xl bg-zinc-900 p-5 text-zinc-400 text-sm leading-relaxed">
+            Mod queue is staff-only.
+          </div>
+        </ScrollLinkedEdgeTitleBarShell>
+      )
     } else if (tab === 'bots') {
       visibleTab = isAdmin ? (
         <BotManagementScreen
@@ -4119,6 +4155,7 @@ export default function AppShell({
           </div>
         </div>
       ) : null}
+      <LoungeStaffNoticeBanner supabaseClient={supabaseClient} enabled={Boolean(isStaff && supabaseClient)} />
       {renderTabContent()}
 
       {loungeActivityInAppToast ? (

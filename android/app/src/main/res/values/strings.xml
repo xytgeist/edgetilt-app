@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- app_name comes from productFlavor resValue -->
+
+  <string name="shortcut_lounge_short">Lounge</string>
+  <string name="shortcut_lounge_long">Open Lounge</string>
+  <string name="shortcut_start_session_short">Start session</string>
+  <string name="shortcut_start_session_long">Start a bankroll session</string>
+  <string name="shortcut_log_win_short">Log a win</string>
+  <string name="shortcut_log_win_long">Open Play Logbook</string>
+
+  <string name="widget_live_session_description">Live bankroll or poker session</string>
+  <string name="widget_live_idle_title">Edge</string>
+  <string name="widget_live_idle_text">No live session</string>
+  <string name="widget_live_tap">Tap to open bankroll</string>
+</resources>

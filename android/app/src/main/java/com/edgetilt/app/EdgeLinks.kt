@@ -83,7 +83,7 @@ object EdgeLinks {
     if (path.startsWith("/lounge/g/")) return true
     if (path.startsWith("/u/")) return true
     if (path == "/" || path.isEmpty()) {
-      for (name in listOf("post", "u", "profile", "game", "yahoo")) {
+      for (name in listOf("post", "u", "profile", "game", "yahoo", "tab")) {
         val value = uri.getQueryParameter(name)?.trim().orEmpty()
         if (value.isNotEmpty()) return true
       }

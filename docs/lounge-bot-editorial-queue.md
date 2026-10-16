@@ -27,7 +27,7 @@ Both modes (plus farm) use **one Edge profile per niche** and **`lounge_bot_acco
 - **Many unique Edge profiles**, each a **specialist** ... not one generic bot posting everything.
 - **One primary niche per X account:** crypto bot → crypto handles only; poker bot → poker handles only; etc.
 - **Human-imitating:** LLM rewrite in that account's voice ... not verbatim syndication; optional link preview to source tweet.
-- **No auto-publish** for X bots until that persona's pipeline is trusted for weeks (then product decision ... still editorial by default).
+- **Default: editorial inbox.** Per-bot toggle **Lounge direct** (`review_mode=automatic`) publishes on ingest (still writes a queue row for dedupe). Inbox has **Delete all** for the current status (+ bot filter).
 
 ---
 
@@ -39,11 +39,11 @@ Each bot = **one** `auth.users` + **`profiles`** row + **one ingest pipeline** +
 | --- | --- | --- | --- |
 | **Sports lines** bot | The Odds API | **Self-contained** | Sports betting ... see sports odds doc |
 | **Financial wire** bot | RSS/API/EDGAR | **Self-contained** | Timely market news ... see market news doc |
-| **Crypto pulse** bot | X timelines | **Editorial** | Crypto influencers you configure |
-| **Smart money** bot | X timelines | **Editorial** | Intelligent investing accounts you configure |
-| **Poker room** bot | X timelines | **Editorial** | Poker accounts you configure |
-| **Slots / AP floor** bot | X timelines | **Editorial** | Slot/AP educators, manufacturers, floor intel |
-| *(add more X bots)* | X | **Editorial** | One niche per new profile |
+| **Crypto pulse** bot | X timelines | **Editorial** (or Lounge direct) | Crypto influencers you configure |
+| **Smart money** bot | X timelines | **Editorial** (or Lounge direct) | Intelligent investing accounts you configure |
+| **Poker room** bot | X timelines | **Editorial** (or Lounge direct) | Poker accounts you configure |
+| **Slots / AP floor** bot | X timelines | **Editorial** (or Lounge direct) | Slot/AP educators, manufacturers, floor intel |
+| *(add more X bots)* | X | **Editorial** default | One niche per new profile |
 
 **Rules (X bots):**
 
@@ -58,7 +58,7 @@ Each bot = **one** `auth.users` + **`profiles`** row + **one ingest pipeline** +
 | `user_id` | PK → `profiles` |
 | `slug` | `sports-odds`, `financial-wire`, `x-crypto`, ... |
 | **`pipeline`** | `odds_api` \| `market_news` \| `x` \| `manual` \| **`farm`** |
-| `review_mode` | `automatic` \| `editorial` ... **`editorial` only when `pipeline = x`** |
+| `review_mode` | `automatic` \| `editorial` ... X bots default **`editorial`**; set **`automatic`** (portal **Lounge direct**) to publish on ingest |
 | `display_name`, `bio`, `avatar` | Public persona |
 | `voice_prompt_id` | LLM system prompt key (X bots; optional for self-contained templates) |
 | `config.voice_prompt` | **Shipped:** full LLM instruction for X ingest rewrite (portal **Settings** on X bots) |
@@ -111,6 +111,7 @@ Optional pipeline states: `drafting` / `ingesting` (visibility only).
 
 | Action | Behavior |
 | --- | --- |
+| **Delete all** | Hard-delete every row in the current status tab (+ bot filter). Published tab also deletes linked Lounge posts. |
 | **Next open slot** | Next free slot today for that bot persona |
 | **Spread N today** | Even spacing between morning and evening (e.g. 8am–8pm local) |
 | **Custom time** | Date + time picker |

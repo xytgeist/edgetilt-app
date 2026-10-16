@@ -1,5 +1,6 @@
 /**
- * X-tracker ingest → editorial queue (pending_review).
+ * X-tracker ingest → editorial queue (pending_review), or publish immediately when
+ * review_mode=automatic.
  * Body: { "slug": "x-crypto", "dryRun": false }
  * Body (single post): { "slug": "x-crypto", "tweetUrl": "https://x.com/handle/status/123", "sourceText"?: "..." }
  */
@@ -10,6 +11,7 @@ import { resolveXBotVoicePrompt } from '../_shared/loungeBotXVoice.ts'
 import { canonicalXTweetUrl, parseXTweetUrl } from '../_shared/loungeBotXTweetUrl.ts'
 import { readXApiError } from '../_shared/loungeBotXApi.ts'
 import { resolveTweetForManualIngest, expandTweetTextUrls } from '../_shared/loungeBotXTweetFetch.ts'
+import { publishQueueRow } from '../_shared/loungeBotQueuePublish.ts'
 
 const X_API = 'https://api.x.com/2'
 
@@ -41,6 +43,65 @@ function isTopLevelTweet(tw: { referenced_tweets?: Array<{ type?: string }> }) {
   const refs = tw.referenced_tweets
   if (!Array.isArray(refs) || refs.length === 0) return true
   return !refs.some((r) => r?.type === 'replied_to' || r?.type === 'retweeted')
+}
+
+function botPostsDirectToLounge(bot: { review_mode?: string | null }) {
+  return String(bot.review_mode || '').toLowerCase() === 'automatic'
+}
+
+async function enqueueXDraft(
+  admin: SupabaseClient,
+  opts: {
+    bot: {
+      user_id: string
+      review_mode?: string | null
+      category_pills_default?: string[] | null
+    }
+    sourceId: string | null
+    externalKey: string
+    sourceText: string
+    sourceUrl: string
+    sourcePostedAt: string | null
+    draftCaption: string
+    sourcePayload: unknown
+  },
+): Promise<{ queueId: string | null; publishedPostId: string | null; error: string | null }> {
+  const { data: inserted, error: insErr } = await admin
+    .from('lounge_bot_queue')
+    .insert({
+      source_type: 'x',
+      source_id: opts.sourceId,
+      external_key: opts.externalKey,
+      bot_user_id: opts.bot.user_id,
+      source_text: opts.sourceText,
+      source_url: opts.sourceUrl,
+      source_posted_at: opts.sourcePostedAt,
+      draft_caption: opts.draftCaption,
+      category_pills: opts.bot.category_pills_default || [],
+      attach_source_link: false,
+      status: 'pending_review',
+      source_payload: opts.sourcePayload,
+    })
+    .select('id, bot_user_id, draft_caption, draft_image_urls, category_pills, attach_source_link, source_url, status')
+    .single()
+
+  if (insErr || !inserted?.id) {
+    return { queueId: null, publishedPostId: null, error: insErr?.message || 'Queue insert failed.' }
+  }
+
+  if (!botPostsDirectToLounge(opts.bot)) {
+    return { queueId: inserted.id, publishedPostId: null, error: null }
+  }
+
+  const published = await publishQueueRow(admin, inserted, null)
+  if (!published.postId) {
+    return {
+      queueId: inserted.id,
+      publishedPostId: null,
+      error: published.error || 'Auto-publish failed.',
+    }
+  }
+  return { queueId: inserted.id, publishedPostId: published.postId, error: null }
 }
 
 type XTimelineFetch = {
@@ -100,7 +161,7 @@ async function ingestTweetUrl(
 
   const { data: bot, error: botErr } = await admin
     .from('lounge_bot_accounts')
-    .select('user_id, slug, pipeline, display_name, category_pills_default, config')
+    .select('user_id, slug, pipeline, review_mode, display_name, category_pills_default, config')
     .eq('pipeline', 'x')
     .eq('slug', opts.slug)
     .maybeSingle()
@@ -182,33 +243,30 @@ async function ingestTweetUrl(
     (s) => String(s.x_handle || '').toLowerCase() === xHandle.toLowerCase(),
   )
 
-  const { data: inserted, error: insErr } = await admin
-    .from('lounge_bot_queue')
-    .insert({
-      source_type: 'x',
-      source_id: matchedSource?.id ?? null,
-      external_key: fetched.id,
-      bot_user_id: bot.user_id,
-      source_text: fetched.text,
-      source_url: sourceUrl,
-      source_posted_at: fetched.created_at || null,
-      draft_caption: draft,
-      category_pills: bot.category_pills_default || [],
-      attach_source_link: false,
-      status: 'pending_review',
-      source_payload: fetched.payload ?? { source: fetched.source },
-    })
-    .select('id')
-    .single()
+  const enqueued = await enqueueXDraft(admin, {
+    bot,
+    sourceId: matchedSource?.id ?? null,
+    externalKey: fetched.id,
+    sourceText: fetched.text,
+    sourceUrl,
+    sourcePostedAt: fetched.created_at || null,
+    draftCaption: draft,
+    sourcePayload: fetched.payload ?? { source: fetched.source },
+  })
 
-  if (insErr) return adminOpsJson(500, { error: insErr.message })
+  if (enqueued.error && !enqueued.queueId) {
+    return adminOpsJson(500, { error: enqueued.error })
+  }
 
   return adminOpsJson(200, {
     ok: true,
     mode: 'tweet_url',
     slug: opts.slug,
     ingested: 1,
-    queueId: inserted?.id,
+    queueId: enqueued.queueId,
+    publishedPostId: enqueued.publishedPostId,
+    autoPublished: Boolean(enqueued.publishedPostId),
+    publishError: enqueued.error || undefined,
     tweetId: fetched.id,
     xHandle,
   })
@@ -244,7 +302,7 @@ Deno.serve(async (req) => {
 
     let botQuery = admin
       .from('lounge_bot_accounts')
-      .select('user_id, slug, run_state, pipeline, display_name, category_pills_default, config')
+      .select('user_id, slug, run_state, pipeline, review_mode, display_name, category_pills_default, config')
       .eq('pipeline', 'x')
     if (slug) botQuery = botQuery.eq('slug', slug)
     else botQuery = botQuery.eq('run_state', 'running')
@@ -368,20 +426,34 @@ Deno.serve(async (req) => {
               continue
             }
 
-            await admin.from('lounge_bot_queue').insert({
-              source_type: 'x',
-              source_id: src.id,
-              external_key: tweetId,
-              bot_user_id: bot.user_id,
-              source_text: text,
-              source_url: `https://x.com/${src.x_handle}/status/${tweetId}`,
-              source_posted_at: tw.created_at || null,
-              draft_caption: draft,
-              category_pills: bot.category_pills_default || [],
-              attach_source_link: false,
-              status: 'pending_review',
-              source_payload: twRaw,
+            const enqueued = await enqueueXDraft(admin, {
+              bot,
+              sourceId: src.id,
+              externalKey: tweetId,
+              sourceText: text,
+              sourceUrl: `https://x.com/${src.x_handle}/status/${tweetId}`,
+              sourcePostedAt: tw.created_at || null,
+              draftCaption: draft,
+              sourcePayload: twRaw,
             })
+            if (enqueued.error && !enqueued.queueId) {
+              console.error('[lounge-x-ingest] enqueue failed', {
+                bot: bot.slug,
+                handle: src.x_handle,
+                tweetId,
+                error: enqueued.error,
+              })
+              continue
+            }
+            if (enqueued.error) {
+              console.error('[lounge-x-ingest] auto-publish failed', {
+                bot: bot.slug,
+                handle: src.x_handle,
+                tweetId,
+                queueId: enqueued.queueId,
+                error: enqueued.error,
+              })
+            }
             kept += 1
             ingested += 1
           }

@@ -125,6 +125,9 @@ export default function BankrollTracker({
   paneEmbed = false,
   /** Shell destructive confirm (swipe / edit delete). */
   showGlobalConfirm = null,
+  /** Android launcher shortcut / deep link `?startSession=1`. */
+  autoOpenStartSession = false,
+  onAutoOpenStartSessionConsumed = null,
 }) {
   const ipadShell = useIpadAuthStage()
   const [userId, setUserId] = useState(null)
@@ -567,6 +570,15 @@ export default function BankrollTracker({
     setStartCasino(''); setStartDate(today); setStartTime(`${hh}:${mm}`); setStartAmount(''); setError(''); setSheet('startSession')
     fetchNearby(name => setStartCasino(name))
   }
+
+  useEffect(() => {
+    if (!autoOpenStartSession || !isActivePage) return
+    openStartSession()
+    onAutoOpenStartSessionConsumed?.()
+    // openStartSession is stable enough for one-shot deep links; avoid re-firing on sheet edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot
+  }, [autoOpenStartSession, isActivePage])
+
   const openEndSession = () => {
     setEndAmount(''); setSessionNotes(''); setError(''); setSheet('endSession')
   }

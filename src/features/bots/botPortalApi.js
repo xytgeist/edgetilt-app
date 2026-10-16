@@ -237,6 +237,35 @@ export async function deleteEditorialQueueRow(supabaseClient, queueId) {
 }
 
 /**
+ * Hard-delete all queue rows for a status (+ optional bot filter).
+ * Published rows also delete linked Lounge feed posts.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} status
+ * @param {string} [botUserId]
+ */
+export async function deleteEditorialQueueAll(supabaseClient, status, botUserId = null) {
+  const { data, error } = await supabaseClient.rpc('admin_lounge_bot_queue_delete_all', {
+    p_status: status,
+    p_bot_user_id: botUserId || null,
+  })
+  return { data, error }
+}
+
+/**
+ * X bots only: editorial (inbox) or automatic (publish on ingest).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} userId
+ * @param {'editorial'|'automatic'} reviewMode
+ */
+export async function setBotReviewMode(supabaseClient, userId, reviewMode) {
+  const { data, error } = await supabaseClient.rpc('admin_lounge_bot_set_review_mode', {
+    p_user_id: userId,
+    p_review_mode: reviewMode,
+  })
+  return { data, error }
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} botUserId
  * @param {string} handle

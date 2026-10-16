@@ -41,6 +41,7 @@ import {
   invokeLoungeOddsPublishExamples,
   invokeLoungeXIngest,
   saveBotSettings,
+  setBotReviewMode,
   toggleBotNewsSource,
   updateBotPostCaption,
   waitForPgNetRequestResult,
@@ -615,6 +616,34 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
       return
     }
     setToast(`Set ${bot.slug} → ${runState}`)
+    void onReload()
+  }
+
+  const setXReviewMode = async (reviewMode) => {
+    if (bot.pipeline !== 'x') return
+    if (bot.review_mode === reviewMode) return
+    const goingAuto = reviewMode === 'automatic'
+    const ok =
+      typeof window !== 'undefined'
+        ? window.confirm(
+            goingAuto
+              ? 'Post new X ingest drafts straight to the Lounge (skip editorial inbox)? Existing inbox rows stay until you publish or delete them.'
+              : 'Send new X ingest drafts to the editorial inbox for review before Lounge?',
+          )
+        : true
+    if (!ok) return
+    setBusy(`review-${reviewMode}`)
+    const { error } = await setBotReviewMode(supabaseClient, bot.user_id, reviewMode)
+    setBusy('')
+    if (error) {
+      setToast(error.message || 'Could not update publish mode.')
+      return
+    }
+    setToast(
+      goingAuto
+        ? `${bot.slug}: new X posts go straight to Lounge.`
+        : `${bot.slug}: new X posts go to editorial inbox.`,
+    )
     void onReload()
   }
 
@@ -1745,22 +1774,59 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
         ) : null}
 
         {bot.pipeline === 'x' ? (
-          <label className="block mt-4">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-              LLM voice instructions
+          <>
+            <div className="mt-4 rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-1">
+                X publish destination
+              </div>
+              <div className="text-zinc-600 text-[10px] mb-3">
+                Editorial inbox = review / edit / schedule first. Lounge direct = publish as soon as
+                ingest rewrites the tweet (still keeps a queue row for dedupe).
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={Boolean(busy) || bot.review_mode === 'editorial'}
+                  onClick={() => void setXReviewMode('editorial')}
+                  className={`min-h-8 rounded-lg px-3 text-[11px] font-semibold ring-1 disabled:opacity-50 ${
+                    bot.review_mode === 'editorial'
+                      ? 'bg-cyan-950/50 text-cyan-200 ring-cyan-500/35'
+                      : 'bg-zinc-900 text-zinc-300 ring-zinc-700'
+                  }`}
+                >
+                  Editorial inbox
+                </button>
+                <button
+                  type="button"
+                  disabled={Boolean(busy) || bot.review_mode === 'automatic'}
+                  onClick={() => void setXReviewMode('automatic')}
+                  className={`min-h-8 rounded-lg px-3 text-[11px] font-semibold ring-1 disabled:opacity-50 ${
+                    bot.review_mode === 'automatic'
+                      ? 'bg-emerald-950/50 text-emerald-200 ring-emerald-500/35'
+                      : 'bg-zinc-900 text-zinc-300 ring-zinc-700'
+                  }`}
+                >
+                  Lounge direct
+                </button>
+              </div>
             </div>
-            <div className="text-zinc-600 text-[10px] mt-0.5 mb-1">
-              Ingest runs each top-level tweet through OpenAI with this prompt. Set per bot ... not shared
-              across X trackers.
-            </div>
-            <textarea
-              value={draft.voicePrompt}
-              rows={5}
-              onChange={(e) => setDraft((d) => ({ ...d, voicePrompt: e.target.value }))}
-              placeholder={X_BOT_VOICE_PLACEHOLDER}
-              className="mt-1 w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm leading-relaxed resize-y focus:border-violet-500/50 focus:outline-none"
-            />
-          </label>
+            <label className="block mt-4">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                LLM voice instructions
+              </div>
+              <div className="text-zinc-600 text-[10px] mt-0.5 mb-1">
+                Ingest runs each top-level tweet through OpenAI with this prompt. Set per bot ... not shared
+                across X trackers.
+              </div>
+              <textarea
+                value={draft.voicePrompt}
+                rows={5}
+                onChange={(e) => setDraft((d) => ({ ...d, voicePrompt: e.target.value }))}
+                placeholder={X_BOT_VOICE_PLACEHOLDER}
+                className="mt-1 w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm leading-relaxed resize-y focus:border-violet-500/50 focus:outline-none"
+              />
+            </label>
+          </>
         ) : null}
 
         <button

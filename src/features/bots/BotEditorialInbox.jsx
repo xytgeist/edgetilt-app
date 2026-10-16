@@ -8,6 +8,7 @@ import {
 } from './botComposeImages.js'
 import { formatBotPortalWhen } from './botPortalConstants.js'
 import {
+  deleteEditorialQueueAll,
   deleteEditorialQueueRow,
   fetchEditorialInbox,
   invokeLoungeBotPublishDue,
@@ -226,6 +227,45 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
     void onReload?.()
   }
 
+  const deleteAllInView = async () => {
+    const count = rows.length
+    if (!count) return
+    const botLabel = filteredBot
+      ? filteredBot.display_name || filteredBot.slug
+      : 'all X bots'
+    const publishedNote =
+      status === 'published'
+        ? ' This also hard-deletes the linked Lounge feed posts.'
+        : ''
+    const ok =
+      typeof window !== 'undefined'
+        ? window.confirm(
+            `Delete all ${count} ${status.replace(/_/g, ' ')} item(s) for ${botLabel}?${publishedNote}\n\nThis cannot be undone. Transform can re-ingest the same X posts after.`,
+          )
+        : true
+    if (!ok) return
+    setBusy('delete-all')
+    const { data, error } = await deleteEditorialQueueAll(
+      supabaseClient,
+      status,
+      botFilter || null,
+    )
+    setBusy('')
+    if (error) {
+      setToast?.(error.message || 'Delete all failed.')
+      return
+    }
+    const deleted = Number(data?.deleted) || 0
+    const deletedPosts = Number(data?.deleted_posts) || 0
+    setToast?.(
+      deletedPosts > 0
+        ? `Deleted ${deleted} inbox row(s) and ${deletedPosts} Lounge post(s).`
+        : `Deleted ${deleted} inbox row(s).`,
+    )
+    void load()
+    void onReload?.()
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/90 p-4">
@@ -235,6 +275,14 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
             <div className="text-zinc-500 text-xs mt-0.5">Review, edit, schedule, or publish X-tracker drafts</div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={Boolean(busy) || rows.length === 0 || loading}
+              onClick={() => void deleteAllInView()}
+              className="min-h-8 rounded-lg bg-red-950/80 px-3 text-red-200 text-[11px] font-semibold ring-1 ring-red-500/30 disabled:opacity-50"
+            >
+              {busy === 'delete-all' ? 'Deleting…' : 'Delete all'}
+            </button>
             <button
               type="button"
               disabled={Boolean(busy)}

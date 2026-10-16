@@ -70,6 +70,12 @@ verify_jwt = false
 [functions.fantasy-espn-sync]
 verify_jwt = false
 
+[functions.fantasy-cbs-link]
+verify_jwt = false
+
+[functions.fantasy-cbs-sync]
+verify_jwt = false
+
 [functions.lounge-cfb-game-players]
 verify_jwt = false
 

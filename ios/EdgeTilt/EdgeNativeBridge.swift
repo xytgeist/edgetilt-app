@@ -111,6 +111,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       )
     case "startEspnFantasyLogin":
       EdgeEspnLoginSheet.present(completion: completion)
+    case "startCbsFantasyLogin":
+      EdgeCbsLoginSheet.present(completion: completion)
     case "openSportsbookUrl":
       guard let urlString = payload?["url"] as? String,
             let url = URL(string: urlString)
@@ -824,6 +826,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       openInSafari: function (payload) { return call('openInSafari', payload || {}); },
       startWebAuthSession: function (payload) { return call('startWebAuthSession', payload || {}); },
       startEspnFantasyLogin: function () { return call('startEspnFantasyLogin', {}); },
+      startCbsFantasyLogin: function () { return call('startCbsFantasyLogin', {}); },
       openSportsbookUrl: function (payload) { return call('openSportsbookUrl', payload || {}); },
       openAppSettings: function () { return call('openAppSettings', null); },
       getPushPermissionStatus: function () {

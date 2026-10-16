@@ -58,6 +58,22 @@ export async function syncSleeperFantasy(supabase, body = {}) {
   return finishEdge(data, error, 'Sync failed.')
 }
 
+export async function linkCbsSession(supabase, session) {
+  const ids = Array.isArray(session?.league_ids) ? session.league_ids : []
+  const { data, error } = await supabase.functions.invoke('fantasy-cbs-link', {
+    body: {
+      access_token: String(session?.access_token || '').trim(),
+      league_ids: ids.map((id) => String(id || '').trim()).filter(Boolean),
+    },
+  })
+  return finishEdge(data, error, 'CBS link failed.')
+}
+
+export async function syncCbsFantasy(supabase) {
+  const { data, error } = await supabase.functions.invoke('fantasy-cbs-sync', { body: {} })
+  return finishEdge(data, error, 'CBS sync failed.')
+}
+
 export async function linkEspnSession(supabase, session) {
   const { data, error } = await supabase.functions.invoke('fantasy-espn-link', {
     body: {
@@ -84,7 +100,7 @@ export async function syncYahooFantasy(supabase, body = {}) {
 export async function syncAllFantasy(supabase, connections = []) {
   const list = Array.isArray(connections) ? connections : []
   const has = (p) => list.some((c) => c.provider === p && c.status !== 'revoked')
-  const out = { sleeper: null, yahoo: null, espn: null }
+  const out = { sleeper: null, yahoo: null, espn: null, cbs: null }
   const errors = []
   if (has('sleeper') || !list.length) {
     try {
@@ -107,7 +123,14 @@ export async function syncAllFantasy(supabase, connections = []) {
       errors.push(e?.message || 'ESPN sync failed.')
     }
   }
-  if (errors.length && !out.sleeper && !out.yahoo && !out.espn) {
+  if (has('cbs')) {
+    try {
+      out.cbs = await syncCbsFantasy(supabase)
+    } catch (e) {
+      errors.push(e?.message || 'CBS sync failed.')
+    }
+  }
+  if (errors.length && !out.sleeper && !out.yahoo && !out.espn && !out.cbs) {
     throw new Error(errors.join(' '))
   }
   return { ...out, warnings: errors }

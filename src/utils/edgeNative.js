@@ -322,6 +322,73 @@ export function canStartEdgeWebAuthSession() {
 }
 
 /** True when this IPA or APK can open the ESPN login sheet and return a session cookie. */
+/** True when this IPA or APK can open the CBS login sheet and return a session token. */
+export function canStartCbsFantasyLogin() {
+  if (typeof window === 'undefined') return false
+  if (isEdgeAndroidShell() && typeof window.EdgeAndroid?.startCbsFantasyLogin === 'function') return true
+  if (!isEdgeiOSShell()) return false
+  return typeof window.EdgeNative?.startCbsFantasyLogin === 'function'
+}
+
+/**
+ * CBS's own login page in a separate sheet. Resolves with access_token + league ids.
+ * The password never comes back to JavaScript. Old shell → { ok: false, via: 'noop' }.
+ *
+ * @returns {Promise<{ ok: boolean, cancelled?: boolean, access_token?: string, league_ids?: string[], error?: string, via: string }>}
+ */
+export async function startCbsFantasyLogin() {
+  if (isEdgeAndroidShell() && typeof window.EdgeAndroid?.startCbsFantasyLogin === 'function') {
+    return new Promise((resolve) => {
+      let done = false
+      const finish = (detail, via) => {
+        if (done) return
+        done = true
+        window.removeEventListener('edge-android-cbs-login', onResult)
+        window.clearTimeout(timer)
+        const ids = Array.isArray(detail?.league_ids) ? detail.league_ids.map((id) => String(id)) : []
+        resolve({
+          ok: detail?.ok === true,
+          cancelled: detail?.cancelled === true,
+          access_token: typeof detail?.access_token === 'string' ? detail.access_token : undefined,
+          league_ids: ids,
+          error: typeof detail?.error === 'string' ? detail.error : undefined,
+          via,
+        })
+      }
+      const onResult = (event) => finish(event?.detail || {}, 'sheet')
+      const timer = window.setTimeout(() => finish({ ok: false, error: 'timeout' }, 'timeout'), 10 * 60_000)
+      window.addEventListener('edge-android-cbs-login', onResult)
+      try {
+        const raw = window.EdgeAndroid.startCbsFantasyLogin('{}')
+        const started = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+        if (started?.ok === false) {
+          finish(
+            { ok: false, error: typeof started?.error === 'string' ? started.error : 'Could not open CBS' },
+            'bridge',
+          )
+        }
+      } catch {
+        finish({ ok: false, error: 'Could not open CBS' }, 'error')
+      }
+    })
+  }
+  if (!canStartCbsFantasyLogin()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('startCbsFantasyLogin', {})
+    const ids = Array.isArray(result?.league_ids) ? result.league_ids.map((id) => String(id)) : []
+    return {
+      ok: result?.ok === true,
+      cancelled: result?.cancelled === true,
+      access_token: typeof result?.access_token === 'string' ? result.access_token : undefined,
+      league_ids: ids,
+      error: typeof result?.error === 'string' ? result.error : undefined,
+      via: 'sheet',
+    }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 export function canStartEspnFantasyLogin() {
   if (typeof window === 'undefined') return false
   if (isEdgeAndroidShell() && typeof window.EdgeAndroid?.startEspnFantasyLogin === 'function') return true

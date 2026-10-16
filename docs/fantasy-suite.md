@@ -74,7 +74,7 @@ Priority is US hosts with real APIs or stable sync paths. Spec status vs plan:
 | **Sleeper** | Username → API | **Shipped** | Best open API; multi-sport on Sleeper over time |
 | **Yahoo** | OAuth (`fspt-r`) | **Shipped code; API approval pending** App ID `i4wW6xoc` | Blocker: Yahoo Fantasy API gate |
 | **ESPN** | In-app login sheet → `espn_s2` + `SWID` (password never stored) | **iOS + Android sheet** (`1.4.1208`, APK **1.3.22**). Browser still cannot read the ESPN session | Server password login is blocked by ESPN captcha. Sheet is a separate WebView, not the app webview |
-| **CBS Sports** | TBD | Stub **Soon** | Lower priority than ESPN |
+| **CBS Sports** | In-app login sheet | iOS + Android session token | Password never stored. League ids from My Teams. |
 | **NFL.com** | TBD | Planned | Common host; API quality TBD |
 | **Fantrax** | TBD | Later | Power-user / deeper custom leagues |
 | **MyFantasyLeague (MFL)** | TBD | Later | High-stakes / dynasty crowds |

@@ -4,6 +4,7 @@ import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import {
   loadFantasySnapshot,
   loadLeagueDetail,
+  linkCbsSession,
   linkEspnSession,
   linkSleeperUsername,
   setPrimaryFantasyLeague,
@@ -11,17 +12,15 @@ import {
   syncAllFantasy,
 } from './fantasyApi.js'
 import {
+  canStartCbsFantasyLogin,
   canStartEdgeWebAuthSession,
   canStartEspnFantasyLogin,
   isEdgeiOSShell,
   openExternalUrl,
+  startCbsFantasyLogin,
   startEdgeWebAuthSession,
   startEspnFantasyLogin,
 } from '../../utils/edgeNative.js'
-
-const PROVIDER_STUBS = [
-  { id: 'cbs', label: 'CBS' },
-]
 
 function recordLine(t) {
   const w = Number(t.wins) || 0
@@ -34,6 +33,7 @@ function providerLabel(provider) {
   if (provider === 'yahoo') return 'Yahoo'
   if (provider === 'sleeper') return 'Sleeper'
   if (provider === 'espn') return 'ESPN'
+  if (provider === 'cbs') return 'CBS'
   return provider || ''
 }
 
@@ -188,8 +188,13 @@ export default function FantasyHomeScreen({
     () => (snap.connections || []).find((c) => c.provider === 'espn'),
     [snap.connections],
   )
-  const hasConnection = Boolean(sleeper || yahoo || espn)
+  const cbs = useMemo(
+    () => (snap.connections || []).find((c) => c.provider === 'cbs'),
+    [snap.connections],
+  )
+  const hasConnection = Boolean(sleeper || yahoo || espn || cbs)
   const espnInApp = canStartEspnFantasyLogin()
+  const cbsInApp = canStartCbsFantasyLogin()
 
   const refresh = useCallback(async () => {
     if (!supabaseClient || !signedIn) {
@@ -293,6 +298,45 @@ export default function FantasyHomeScreen({
       cancelled = true
     }
   }, [supabaseClient, leagueId, signedIn])
+
+  const onConnectCbs = async () => {
+    if (!signedIn) {
+      onRequireAuth?.('login')
+      return
+    }
+    if (!cbsInApp) {
+      setErr('CBS connect is in the EdgeTilt app. Update the app, then log in on the CBS page. We never store the password.')
+      return
+    }
+    setBusy(true)
+    setErr('')
+    setInfo('Opening CBS…')
+    try {
+      const session = await startCbsFantasyLogin()
+      if (session?.cancelled) {
+        setInfo('')
+        return
+      }
+      if (!session?.ok || !session.access_token) {
+        setInfo('')
+        setErr(session?.error || 'CBS login did not finish.')
+        return
+      }
+      setInfo('Syncing CBS leagues…')
+      const linked = await linkCbsSession(supabaseClient, session)
+      setInfo(
+        linked?.leagues
+          ? `CBS linked. ${linked.leagues} league${linked.leagues === 1 ? '' : 's'}.`
+          : 'CBS linked.',
+      )
+      await refresh()
+    } catch (e) {
+      setInfo('')
+      setErr(e?.message || 'CBS link failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const onConnectEspn = async () => {
     if (!signedIn) {
@@ -624,6 +668,46 @@ export default function FantasyHomeScreen({
               </ConnectionCard>
             )}
 
+            {cbs ? (
+              <ConnectionCard
+                title="CBS"
+                subtitle={cbs.external_username || 'Connected'}
+                statusLine={
+                  cbs.last_sync_at
+                    ? `Synced ${new Date(cbs.last_sync_at).toLocaleString()}`
+                    : 'Not synced'
+                }
+                errorLine={cbs.status === 'error' ? cbs.last_error || 'Sync error' : ''}
+              >
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onConnectCbs()}
+                  className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
+                >
+                  Reconnect CBS
+                </button>
+              </ConnectionCard>
+            ) : (
+              <ConnectionCard
+                title="Connect CBS"
+                subtitle={
+                  cbsInApp
+                    ? 'Log in on the CBS page inside EdgeTilt. We keep the session and never store your password.'
+                    : 'Available in the EdgeTilt iPhone or Android app after this update. A normal browser cannot read a CBS login.'
+                }
+              >
+                <button
+                  type="button"
+                  disabled={busy || !cbsInApp}
+                  onClick={() => void onConnectCbs()}
+                  className="rounded-full bg-sky-500 px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40"
+                >
+                  {busy ? '…' : 'Connect CBS'}
+                </button>
+              </ConnectionCard>
+            )}
+
             {hasConnection ? (
               <>
                 {(snap.leagues || []).length ? (
@@ -740,21 +824,6 @@ export default function FantasyHomeScreen({
               </>
             ) : null}
 
-            <div className="rounded-2xl border border-zinc-800/80 p-4">
-              <div className="text-[12px] font-bold uppercase tracking-[0.12em] text-zinc-500">
-                Coming next
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {PROVIDER_STUBS.map((p) => (
-                  <span
-                    key={p.id}
-                    className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-[12px] font-semibold text-zinc-500"
-                  >
-                    {p.label} · Soon
-                  </span>
-                ))}
-              </div>
-            </div>
           </div>
         ) : null}
       </div>

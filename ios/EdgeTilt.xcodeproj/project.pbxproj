@@ -48,6 +48,7 @@
 		C9BC839D606179C6D5157C72 /* ShellRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */; };
 		D1A48565A63EFCD6012D4C86 /* EdgeBetSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E00F0F7F73D53284B52B55C /* EdgeBetSheet.swift */; };
 		B1E5B0C0E5B0C0E5B0C0E5B1 /* EdgeEspnLoginSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E5B0C0E5B0C0E5B0C0E5B0 /* EdgeEspnLoginSheet.swift */; };
+		D2E5B0C0E5B0C0E5B0C0E5C1 /* EdgeCbsLoginSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2E5B0C0E5B0C0E5B0C0E5C0 /* EdgeCbsLoginSheet.swift */; };
 		D409761760FC945615B8075A /* EdgeCallKitAvatarApply.m in Sources */ = {isa = PBXBuildFile; fileRef = EFFB047139687FDEEE829B3B /* EdgeCallKitAvatarApply.m */; };
 		D8232F9CE5E3919C29DAE2AA /* EdgeCallKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */; };
 		DAFB0470CCB9156C895B3947 /* EdgeOrientationLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DB0259F2A317DC1635FD17 /* EdgeOrientationLock.swift */; };
@@ -102,6 +103,7 @@
 		89DB0259F2A317DC1635FD17 /* EdgeOrientationLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeOrientationLock.swift; sourceTree = "<group>"; };
 		8E00F0F7F73D53284B52B55C /* EdgeBetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeBetSheet.swift; sourceTree = "<group>"; };
 		A1E5B0C0E5B0C0E5B0C0E5B0 /* EdgeEspnLoginSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeEspnLoginSheet.swift; sourceTree = "<group>"; };
+		C2E5B0C0E5B0C0E5B0C0E5C0 /* EdgeCbsLoginSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeCbsLoginSheet.swift; sourceTree = "<group>"; };
 		8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeCallKitManager.swift; sourceTree = "<group>"; };
 		A039684E44413435F9C5696A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeAudioSession.swift; sourceTree = "<group>"; };
@@ -177,6 +179,7 @@
 				226515DE808038FBBFC76BE7 /* EdgeAuthSessionStore.swift */,
 				8E00F0F7F73D53284B52B55C /* EdgeBetSheet.swift */,
 				A1E5B0C0E5B0C0E5B0C0E5B0 /* EdgeEspnLoginSheet.swift */,
+				C2E5B0C0E5B0C0E5B0C0E5C0 /* EdgeCbsLoginSheet.swift */,
 				EFFB047139687FDEEE829B3B /* EdgeCallKitAvatarApply.m */,
 				8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */,
 				22A7E631FCF8686B1D061151 /* EdgeChatCallsClient.swift */,
@@ -341,6 +344,7 @@
 				2220D161D3DD3D621E704EBD /* EdgeAuthSessionStore.swift in Sources */,
 				D1A48565A63EFCD6012D4C86 /* EdgeBetSheet.swift in Sources */,
 				B1E5B0C0E5B0C0E5B0C0E5B1 /* EdgeEspnLoginSheet.swift in Sources */,
+				D2E5B0C0E5B0C0E5B0C0E5C1 /* EdgeCbsLoginSheet.swift in Sources */,
 				D409761760FC945615B8075A /* EdgeCallKitAvatarApply.m in Sources */,
 				D8232F9CE5E3919C29DAE2AA /* EdgeCallKitManager.swift in Sources */,
 				2C826D2B39E7E6FDC0EA2F7E /* EdgeChatCallsClient.swift in Sources */,

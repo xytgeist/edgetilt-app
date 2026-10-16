@@ -191,6 +191,15 @@ class MainActivity : Activity() {
     )
   }
 
+  /** Deliver CBS login-sheet session to JS (`edge-android-cbs-login`). Do not log [detailJson]. */
+  fun dispatchCbsLoginResult(detailJson: String) {
+    val quoted = JSONObject.quote(detailJson)
+    webView.evaluateJavascript(
+      "(function(){try{var d=JSON.parse($quoted);window.dispatchEvent(new CustomEvent('${EdgeCbsLogin.EVENT}',{detail:d}));}catch(e){}})()",
+      null,
+    )
+  }
+
   /** Deliver ESPN login-sheet cookies to JS (`edge-android-espn-login`). Do not log [detailJson]. */
   fun dispatchEspnLoginResult(detailJson: String) {
     val quoted = JSONObject.quote(detailJson)
@@ -446,6 +455,20 @@ class MainActivity : Activity() {
      * ESPN Fantasy login sheet. Returns `{ ok, started }` immediately.
      * Completes with window event `edge-android-espn-login` `{ ok, cancelled?, espn_s2?, swid? }`.
      */
+    /**
+     * CBS Fantasy login sheet. Returns `{ ok, started }` immediately.
+     * Completes with window event `edge-android-cbs-login`.
+     */
+    @JavascriptInterface
+    fun startCbsFantasyLogin(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
+      return try {
+        EdgeCbsLogin.start(this@MainActivity).toString()
+      } catch (e: Exception) {
+        JSONObject().put("ok", false).put("error", e.message ?: "failed").toString()
+      }
+    }
+
     @JavascriptInterface
     fun startEspnFantasyLogin(json: String): String {
       if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()

@@ -157,6 +157,9 @@ OpenAI retires GPT-4o / 4o-mini / 4.1 / 4.1-mini on **2027-01-14**. Code default
 ### Windows Theo 2026-10-15 ... Editorial Delete all + X Lounge direct
 **I am Windows Theo.** Portal: **Delete all** on current inbox tab (+ bot filter). X bot Settings: **Editorial inbox** vs **Lounge direct** (publish on ingest). Migration **`20261015230000`**. Edge **`lounge-x-ingest`** reads `review_mode`.
 
+### Windows Theo 2026-10-15 ... InvestingLive HTML in wire captions (Luna fallout)
+**Symptom:** Market Edge / Degentics Lounge posts with raw `<ul><li><a…>` / `<p class=…>` under a clean headline (InvestingLive / Forexlive RSS). **Cause:** RSS decoded `&lt;ul&gt;` *after* tag strip, so HTML survived into the feed excerpt; Luna (or fallback) pasted it as synopsis; `cleanWireFeedExcerpt` did not strip tags. **Audit since Luna (`2026-10-14`):** prod **6** HTML captions (53 other bot posts ok); no pulse/json/tiny leftovers on the feed; test **0**. **Fix:** strip HTML after entity decode in `wireBotProse` + `loungeBotRssFetch`; refuse synopsis that still has markup/URLs. Repaired the **6** prod captions in place (`scripts/repair-bot-html-captions.mjs`). Redeployed **`lounge-news-poll`** test + prod.
+
 ### Mac Theo 2026-10-14 ... Bet Tracker slip photo on Log a bet
 **Web `1.4.1136`.** Photo OCR opens composer with the slip image attached (blob preview) so fields can be checked against the ticket. Session-only … not saved to DB.
 

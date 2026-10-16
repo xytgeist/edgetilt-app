@@ -257,6 +257,8 @@ Near-real-time = **poll interval + scoring**, not scraping 10,000 domains.
 
 **Never tier E:** arbitrary HTML scrape of news sites.
 
+**RSS HTML leftovers (2026-10-15):** InvestingLive / similar feeds often ship entity-encoded `<ul>/<li>/<p>` in `description`. Decode entities **then** strip tags (`loungeBotRssFetch` + `cleanWireFeedExcerpt` / `sanitizeWireProse`). Never publish raw markup in Lounge captions.
+
 Start with **~15–30 allowlisted feeds**, not the whole internet. Expand only after legal review per source.
 
 ### Layer 2 — Ingest (Supabase Edge + cron)

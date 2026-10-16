@@ -16,13 +16,19 @@ const DEFAULT_RSS_USER_AGENT =
   'Mozilla/5.0 (compatible; EdgeTilt/1.0; +https://edgetilt.com)'
 
 function decodeXmlText(raw: string): string {
-  return decodeHtmlEntities(
-    String(raw || '')
-      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-      .replace(/<[^>]+>/g, ''),
+  // Decode entities *before* tag strip so &lt;ul&gt;…&lt;/ul&gt; does not survive as HTML.
+  let s = decodeHtmlEntities(
+    String(raw || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'),
   )
-    .replace(/\s+/g, ' ')
-    .trim()
+  s = decodeHtmlEntities(s) // second pass for double-encoded feeds
+  s = s
+    .replace(/<\s*br\s*\/?\s*>/gi, ' ')
+    .replace(/<\s*\/\s*p\s*>/gi, ' ')
+    .replace(/<\s*p\b[^>]*>/gi, ' ')
+    .replace(/<\s*\/\s*li\s*>/gi, ' ')
+    .replace(/<\s*li\b[^>]*>/gi, ' • ')
+    .replace(/<[^>]+>/g, ' ')
+  return s.replace(/\s+/g, ' ').trim()
 }
 
 function parseRssItemBlocks(xml: string, sourceName: string): NormalizedNewsItem[] {

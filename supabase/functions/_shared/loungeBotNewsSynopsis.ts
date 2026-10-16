@@ -285,7 +285,13 @@ export async function composeWirePost(opts: WirePostComposeInput): Promise<WireP
       if (res.ok) {
         const json = await res.json()
         const parsed = parseComposeJson(String(json?.choices?.[0]?.message?.content || ''))
-        if (parsed) {
+        // Luna sometimes echoes InvestingLive HTML / wrap dumps as "synopsis" — refuse and fall back.
+        const echoedMarkup =
+          parsed &&
+          (/<[a-z][\s/]/i.test(parsed.synopsis) ||
+            /^headlines?:/i.test(parsed.synopsis.trim()) ||
+            /https?:\/\//i.test(parsed.synopsis))
+        if (parsed && !echoedMarkup) {
           const synopsis = filterSynopsisRedundancy(
             normalizeSynopsisLead(sanitizeWireProse(parsed.synopsis)),
             headline,

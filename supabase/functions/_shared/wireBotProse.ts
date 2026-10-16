@@ -3,6 +3,8 @@
  * Prose breaks → ellipses (...); numeric ranges → hyphen without spaces.
  */
 
+import { decodeHtmlEntities } from './decodeHtmlEntities.ts'
+
 const PROSE_BREAK = ' ... '
 
 /** Private-use placeholders — mask dots that are not sentence terminators. */
@@ -77,7 +79,8 @@ function isMarkdownDialectCaption(text: string): boolean {
 }
 
 function sanitizeWireProseLine(text: string, opts?: { preserveMiddleDots?: boolean }): string {
-  let s = String(text || '')
+  // Defense: never let feed HTML / entity-encoded tags reach Lounge captions.
+  let s = stripHtmlToPlainText(String(text || ''))
 
   // Numeric ranges: 2024–2026, $955–968 → hyphen without spaces
   s = s.replace(/(\d)\s*[\u2013\u2014]\s*(\d)/g, '$1-$2')
@@ -97,9 +100,29 @@ function sanitizeWireProseLine(text: string, opts?: { preserveMiddleDots?: boole
     .trim()
 }
 
-/** Strip URLs / bare domains from RSS excerpts before synopsis compose (headlines keep Crypto.com, etc.). */
+/**
+ * InvestingLive / Yahoo / Atom often ship list markup in description.
+ * Decode entities first so &lt;ul&gt; becomes real tags, then strip.
+ * (RSS parsers that strip tags *before* decode leave entity-encoded HTML intact.)
+ */
+export function stripHtmlToPlainText(raw: string): string {
+  let s = decodeHtmlEntities(String(raw || ''))
+  if (!s) return ''
+  s = s
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1')
+    .replace(/<\s*br\s*\/?\s*>/gi, ' ')
+    .replace(/<\s*\/\s*p\s*>/gi, ' ')
+    .replace(/<\s*p\b[^>]*>/gi, ' ')
+    .replace(/<\s*\/\s*li\s*>/gi, ' ')
+    .replace(/<\s*li\b[^>]*>/gi, ' • ')
+    .replace(/<[^>]+>/g, ' ')
+  return s.replace(/\s+/g, ' ').trim()
+}
+
+/** Strip HTML + URLs / bare domains from RSS excerpts before synopsis compose. */
 export function cleanWireFeedExcerpt(text: string): string {
-  let s = String(text || '')
+  let s = stripHtmlToPlainText(String(text || ''))
+  if (!s) return ''
   s = s.replace(/https?:\/\/[^\s<>"']+/gi, ' ')
   s = s.replace(/\bwww\.[^\s<>"']+/gi, ' ')
   s = s.replace(

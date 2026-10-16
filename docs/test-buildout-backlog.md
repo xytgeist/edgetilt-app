@@ -1256,6 +1256,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-16:** **NFL Hub Fantasy door actually leaves the hub (`1.4.1211`).** Four taps did set `?tab=fantasy`, but the slate is a body portal and Lounge stays mounted, so the Coming soon cover stayed on top. The door now closes the slate the same way Bet Tracker does.
 - **2026-10-16:** **NFL Hub Fantasy door (`1.4.1210`).** Coming soon veil stays. Four taps, each within 600ms of the last, open `?tab=fantasy`. One or two taps do nothing.
 - **2026-10-16:** **lvslotpro login stays on the sandbox (`1.4.1209`).** No more bounce to edgetilt.com. Email only. The address field must start with `112358-`, which is stripped before Supabase. Google, Apple, and phone are hidden on that host. Test Auth still has signups disabled.
 - **2026-10-16:** **Fantasy Connect ESPN Android (`1.4.1208`, APK **1.3.22** / vc **26**).** `EdgeAndroid.startEspnFantasyLogin` WebView sheet, event `edge-android-espn-login`. Same test Edge functions as iOS. Password never stored. Not uploaded to Play from this Mac. Not on prod web until a promote.

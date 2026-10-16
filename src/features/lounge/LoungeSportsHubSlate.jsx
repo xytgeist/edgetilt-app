@@ -117,6 +117,7 @@ const FANTASY_UNLOCK_TAPS = 4
 const FANTASY_UNLOCK_GAP_MS = 600
 
 function NflHubFantasyComingSoon() {
+  const sports = useLoungeSportsFeed()
   const tapCountRef = useRef(0)
   const lastTapRef = useRef(0)
 
@@ -133,6 +134,8 @@ function NflHubFantasyComingSoon() {
     url.searchParams.delete('game')
     window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
     window.dispatchEvent(new PopStateEvent('popstate'))
+    // Hub is a body portal and the feed stays mounted, so the veil would cover Fantasy.
+    sports?.closeSlate?.()
   }
 
   return (

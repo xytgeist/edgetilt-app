@@ -34,7 +34,7 @@ The agent should treat the following as **standing instructions for this session
 
 **App Store (2026-10-15):** live **1.4.96** (`20261008181941`). **1.4.97** (`20261015175413`) is **Waiting for Review**. Do not attach Cloud **242** / **243** (Test Fast). Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*. W-9 still with Apple Finance.
 
-**Fantasy ESPN (2026-10-16, Mac):** Connect ESPN is an in-app login sheet on iPhone and Android (`startEspnFantasyLogin`), cookie stored server-side, password never stored. Web `1.4.1213`. CBS Connect is an in-app login sheet (`startCbsFantasyLogin`), APK **1.3.23**. ESPN leagues are listed from the fan profile, not the empty season URL. APK **1.3.22** (vc 26) not uploaded to Play yet. Edge `fantasy-espn-link` + `fantasy-espn-sync` on test only until Ryan says prod. Needs a new IPA and a new APK. NFL Hub Fantasy tile stays Coming soon. Four rapid taps open `?tab=fantasy`.
+**Fantasy intent (2026-10-16):** Read the synopsis at the top of **`docs/fantasy-suite.md`** before building more fantasy. Rosters unlock the tools. ESPN and CBS are bottom login sheets (password never stored). Yahoo does not freeze the suite. NFL Hub tile stays Coming soon (four taps to test). Sheets docked in APK **1.3.24**. ESPN/CBS Edge functions are on test only. First real ESPN retest and first CBS login are still open.
 
 **Platform ops todos (2026-10-15):** Denk / beehiiv iceberg parked in backlog **Planned (Platform ops — Denk iceberg)** (pairs with Limestone). Not a newsletter clone. Must: DMCA, no marketing email, Digiverse W-9, UGC queue (hub shipped test `1.4.1202` … SLA clock + ban still open), gambling rails, no second ESP.
 

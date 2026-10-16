@@ -5,6 +5,26 @@ Product plan for EdgeTilt Fantasy … **tools for edge hunters**, not a league v
 **Connect implementation (shipped / in flight):** **`docs/fantasy-connect.md`**.  
 **Positioning:** Connect is the door. The suite is decision tools + live command center + DFS toolkit + cross-edge hedges, fed by synced leagues/lineups. **Notifications are a first-class retention fabric** across all layers … not an afterthought.
 
+## Synopsis (Ryan, 2026-10-16)
+
+Fantasy in Edge is a command center for leagues the person already plays. It is not a second ESPN, Yahoo, CBS, or Sleeper, and it is not an expert-rankings site.
+
+The unlock is **their roster**. Once Edge can see this user’s teams, starters, and opponents, the rest of the plan is possible: who to start, who to pick up, what trade to send, a live week view, and bets that insure a bad fantasy outcome. Connecting a host is the door. The product is what we do with the roster after that.
+
+How people get in:
+
+- **Sleeper** is live (username). It only sees leagues already on Sleeper. It does not pull ESPN or CBS.
+- **ESPN and CBS** use an in-app login sheet docked to the bottom of the phone. The person signs in on that site, captcha included. We keep the session. We never ask for or store the password. A pasted cookie, a public league id, or a CSV is not the product. The browser cannot do this. Old app builds that lack the sheet stay disabled.
+- **Yahoo** is one more door. Its API approval can sit forever without freezing the suite.
+- **DraftKings and FanDuel** are the daily mode later (lineup file first). They are not season-long Connect.
+- **DataForce** has a read API. Not in the plan until Ryan asks for it.
+
+What we will not copy from FantasyPros: a pile of expert votes. What is worth copying is the idea that advice is about **your** roster, not a generic top-50 list. Our advice is ops (start, waiver, trade), a live week, and optional insurance bets. Expert consensus stays out.
+
+The NFL Hub Fantasy tile stays **Coming soon** until Ryan says Connect is good enough to show. Four fast taps on that tile open Fantasy for testing. Do not put Fantasy back in the hamburger.
+
+Build order after a roster actually syncs: Live week and injury/lineup alerts, then Start/Sit and waivers, then an optional hedge into the bet slip, then the trade finder, then DFS. NFL first.
+
 ---
 
 ## North star
@@ -73,8 +93,8 @@ Priority is US hosts with real APIs or stable sync paths. Spec status vs plan:
 | --- | --- | --- | --- |
 | **Sleeper** | Username → API | **Shipped** | Best open API; multi-sport on Sleeper over time |
 | **Yahoo** | OAuth (`fspt-r`) | **Shipped code; API approval pending** App ID `i4wW6xoc` | Blocker: Yahoo Fantasy API gate |
-| **ESPN** | In-app login sheet → `espn_s2` + `SWID` (password never stored) | **iOS + Android sheet** (`1.4.1208`, APK **1.3.22**). Browser still cannot read the ESPN session | Server password login is blocked by ESPN captcha. Sheet is a separate WebView, not the app webview |
-| **CBS Sports** | In-app login sheet | iOS + Android session token | Password never stored. League ids from My Teams. |
+| **ESPN** | In-app bottom login sheet → `espn_s2` + `SWID` (password never stored) | **Sheet shipped** (web `1.4.1212`, Android APK **1.3.24**). Leagues come from the fan profile. Browser cannot read the session | Server password login is blocked by ESPN captcha. Sheet is a separate WebView, not the app webview. Not yet retested after the fan-profile fix |
+| **CBS Sports** | In-app bottom login sheet → member token + My Teams league ids | **Sheet shipped** (web `1.4.1213`, Android APK **1.3.24**). First real account not smoked yet | Password never stored. Token and league-id shape may need a tweak after the first real login |
 | **NFL.com** | TBD | Planned | Common host; API quality TBD |
 | **Fantrax** | TBD | Later | Power-user / deeper custom leagues |
 | **MyFantasyLeague (MFL)** | TBD | Later | High-stakes / dynasty crowds |
@@ -118,9 +138,9 @@ Separate provider enum / tables from season-long (or `kind = season | dfs` on co
 
 ### Layer A deliverables / specifics
 
-- [ ] Yahoo API approval + reconnect path live
-- [x] ESPN iOS + Android session-cookie sync
-- [ ] CBS real sync (after a clean path)
+- [ ] Yahoo API approval + reconnect path live (does not block the rest)
+- [x] ESPN iOS + Android session-cookie sync (retest on a real account still open)
+- [x] CBS iOS + Android token sync (first real account still open)
 - [ ] `sport` + `kind` (`season` \| `dfs`) on connection/league model
 - [ ] Multi-league switcher (primary still drives hub auto-pins)
 - [ ] Scoring + roster-slot snapshot for tool engines
@@ -362,7 +382,7 @@ Reuse existing Edge channels where possible: **APNs / FCM**, Lounge **activity /
 
 | Phase | Layers | Ship | Exit criteria |
 | --- | --- | --- | --- |
-| **0** | A | Soft-launch Connect (Yahoo approval, multi-league UX, sport/kind fields). Fantasy IA shell: Leagues / Live / Tools / DFS. Notification prefs shell (all off until events exist). | Users sync ≥1 league; Coming soon can lift on NFL Hub |
+| **0** | A | Soft-launch Connect. Yahoo approval is one door, not the gate. ESPN and CBS sheets count once a real account syncs. Fantasy IA shell: Leagues / Live / Tools / DFS. Notification prefs shell (all off until events exist). | Users sync ≥1 league on a phone-usable host; Coming soon lifts only when Ryan says so |
 | **1** | C + F | Live Fantasy HQ (NFL) + hub deep links + **injury/inactive + lineup-lock pushes** | Pre-kickoff HQ used; starter Out push opens Start/Sit or HQ |
 | **2** | B1–B2 + F | Value engine + Start/Sit + Waiver + **consideration / waiver digest pushes** | League-aware advice + tap-through from digest |
 | **2.5** | E1 + F | Emotional hedge v1 + **opt-in hedge prompts** | Hedges open bet composer with `hedge_of` |

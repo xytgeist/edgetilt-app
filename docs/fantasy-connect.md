@@ -1,4 +1,4 @@
-# Fantasy Connect (Sleeper + Yahoo + ESPN)
+# Fantasy Connect (Sleeper + Yahoo + ESPN + CBS)
 
 Signed-in users link a fantasy account, sync leagues/rosters/matchups, and auto-highlight **mine** + **enemy** players on NFL game hubs.
 
@@ -8,12 +8,12 @@ Signed-in users link a fantasy account, sync leagues/rosters/matchups, and auto-
 
 | Item | Spec |
 | --- | --- |
-| Providers | **Sleeper** (username) · **Yahoo** (OAuth 2.0) · **ESPN** (in-app login sheet → session cookie) |
+| Providers | **Sleeper** (username) · **Yahoo** (OAuth 2.0) · **ESPN** (in-app bottom sheet → session cookie) · **CBS** (in-app bottom sheet → member token) |
 | Surfaces | Fantasy home (`?tab=fantasy`) + NFL game-hub pins |
 | Gate | Free for signed-in users |
 | Primary league | Last picked … drives hub pins (one across all providers) |
 
-**Soon (same tables, new Edge modules):** CBS. Out of scope for now: waivers/AI, multi-league simultaneous hub highlight, paid gate.
+**Product intent:** **`docs/fantasy-suite.md`** → Synopsis. Out of scope for now: waivers/AI, multi-league simultaneous hub highlight, paid gate. Password paste is not a connector.
 
 ## Tables (provider-agnostic)
 

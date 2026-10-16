@@ -1256,6 +1256,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-16:** **Fantasy matchup is paired starters (`1.4.1217`).** Your week is a two-column starter list (projection, position, kickoff). The NFL game fantasy tab no longer prints "Swipe to cycle". The portrait stack still swipes. WR1 on that tab is still the depth-chart order 1, not the projection leader.
 - **2026-10-16:** **Fantasy player rows carry the week (`1.4.1216`).** Edge `fantasy-lineup-cards` joins ESPN kickoff, Sleeper season total / average / projection, a position rank from season PPR, a matchup letter from points the opponent has allowed to that position (1 = easiest), and the highest-liquidity open Kalshi line. Expand lists the other strikes from that pull. No new SQL. Deploy the function on a project before the rows fill in.
 - **2026-10-16:** **Fantasy lineup rows show headshots (`1.4.1215`).** `loadLeagueDetail` joins `nfl_players.headshot_url`. DEF/DST uses `/sports/nfl/logos/{TEAM}.png`. No sleeper id means an initial. No new SQL.
 - **2026-10-16:** **Fantasy home is a command center (`1.4.1214`).** Once a host is linked, connect cards move into Manage. The page is the league, your matchup, a swipe through other teams’ synced lineups, and the tool row (Start/Sit, Waivers, Trades, Live, Fliers). Props, suggested swaps, and fliers are labeled as not computing. Injury tags come from `nfl_players` when the sleeper id matches. No new SQL.

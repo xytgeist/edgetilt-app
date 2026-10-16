@@ -673,12 +673,6 @@ function FantasyMatchupStack({ matchups, game, gameStatus }) {
         </div>
       </div>
 
-      {stack.length > 1 ? (
-        <div className="text-center text-[11px] font-medium text-zinc-500">
-          Swipe to cycle · {stack[0]?.label}
-          <span className="text-zinc-600"> · {stack.length} cards</span>
-        </div>
-      ) : null}
     </div>
   )
 }

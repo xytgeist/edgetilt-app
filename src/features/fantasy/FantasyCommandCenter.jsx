@@ -65,6 +65,57 @@ function startersOf(rows) {
   return (rows || []).filter((r) => r.slot === 'starter')
 }
 
+function fantasyPos(position) {
+  const p = String(position || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+  if (p === 'FB' || p === 'HB') return 'RB'
+  if (p === 'DST' || p === 'D' || p === 'DEF') return 'DEF'
+  if (p === 'PK') return 'K'
+  return p
+}
+
+function shortName(name, position) {
+  if (fantasyPos(position) === 'DEF') return String(name || 'DEF').toUpperCase()
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (!parts.length) return ''
+  if (parts.length === 1) return parts[0].toUpperCase()
+  return `${parts[0].charAt(0).toUpperCase()}. ${parts.slice(1).join(' ').toUpperCase()}`
+}
+
+function pairStarters(leftRows, rightRows) {
+  const order = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+  const bucket = (rows) => {
+    const map = {}
+    for (const row of startersOf(rows)) {
+      const pos = fantasyPos(row.position)
+      if (!map[pos]) map[pos] = []
+      map[pos].push(row)
+    }
+    return map
+  }
+  const left = bucket(leftRows)
+  const right = bucket(rightRows)
+  const pairs = []
+  for (const pos of order) {
+    const a = left[pos] || []
+    const b = right[pos] || []
+    const n = Math.max(a.length, b.length)
+    for (let i = 0; i < n; i++) {
+      pairs.push({
+        key: `${pos}-${i}`,
+        label: n > 1 ? `${pos}${i + 1}` : pos,
+        left: a[i] || null,
+        right: b[i] || null,
+      })
+    }
+  }
+  return pairs
+}
+
 function isDefense(row) {
   const p = String(row?.position || '')
     .toUpperCase()
@@ -78,14 +129,15 @@ function teamAbbrev(row) {
     .replace(/[^A-Z]/g, '')
 }
 
-function PlayerAvatar({ row }) {
+function PlayerAvatar({ row, size = 'md' }) {
   const [failed, setFailed] = useState(false)
   const team = teamAbbrev(row)
   const letter = String(row?.player_name || team || '?').slice(0, 1).toUpperCase()
+  const box = size === 'sm' ? 'h-7 w-7' : 'h-9 w-9'
 
   if (isDefense(row) && team && !failed) {
     return (
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-1.5 ring-1 ring-zinc-700/60">
+      <span className={`flex ${box} shrink-0 items-center justify-center rounded-full bg-zinc-800 p-1.5 ring-1 ring-zinc-700/60`}>
         <img
           src={`/sports/nfl/logos/${team}.png`}
           alt=""
@@ -101,7 +153,7 @@ function PlayerAvatar({ row }) {
   if (!row?.headshot_url || failed) {
     return (
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold ring-1 ring-zinc-700/60"
+        className={`flex ${box} shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold ring-1 ring-zinc-700/60`}
         style={{ color: '#fff' }}
       >
         {letter}
@@ -110,7 +162,7 @@ function PlayerAvatar({ row }) {
   }
 
   return (
-    <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-zinc-800 ring-1 ring-zinc-700/60">
+    <span className={`relative ${box} shrink-0 overflow-hidden rounded-full bg-zinc-800 ring-1 ring-zinc-700/60`}>
       <img
         src={row.headshot_url}
         alt=""
@@ -252,6 +304,138 @@ function PlayerRow({ row, card, cardsLoading }) {
   )
 }
 
+function injuryPill(status) {
+  const label = injuryLabel(status)
+  if (!label) return null
+  const out = label === 'Out' || label === 'IR'
+  return (
+    <span
+      className={`shrink-0 rounded px-1 text-[9px] font-bold uppercase ${
+        out ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-500/15 text-rose-300'
+      }`}
+    >
+      {label}
+    </span>
+  )
+}
+
+function VsSide({ row, card, align }) {
+  if (!row) return <div />
+  const when = gameWhen(card)
+  const side = card?.bye ? 'Bye' : card?.opponent ? `${card.home ? 'vs' : '@'} ${card.opponent}` : ''
+  const gameLine = [when, side].filter(Boolean).join(' ')
+  const prop = card?.main_prop
+  return (
+    <div className={`min-w-0 ${align === 'right' ? 'text-right' : 'text-left'}`}>
+      <div className={`flex items-center gap-1.5 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+        <PlayerAvatar row={row} size="sm" />
+        <div className="min-w-0">
+          <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
+            <span className="truncate text-[12px] font-bold tracking-wide text-zinc-100">
+              {shortName(row.player_name, row.position)}
+            </span>
+            {injuryPill(row.injury_status)}
+          </div>
+          <div className="truncate text-[10px] text-zinc-500">
+            {fantasyPos(row.position) || row.position}
+            {row.nfl_team ? ` · ${row.nfl_team}` : ''}
+          </div>
+        </div>
+      </div>
+      {gameLine ? <div className="mt-0.5 truncate text-[10px] text-zinc-500">{gameLine}</div> : null}
+      {prop?.label ? (
+        <div className="mt-0.5 truncate text-[10px] font-semibold text-sky-300">
+          {prop.label}
+          {cents(prop.price) ? ` · ${cents(prop.price)}` : ''}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function VsMatchup({ mine, opp, cards, cardsLoading }) {
+  const [openKey, setOpenKey] = useState(null)
+  const pairs = pairStarters(mine, opp)
+  const bench = (rows) => (rows || []).filter((r) => r.slot !== 'starter')
+  const mineBench = bench(mine)
+  const oppBench = bench(opp)
+  if (!pairs.length) {
+    return <p className="px-1 text-[13px] text-zinc-500">No starters synced for this matchup.</p>
+  }
+  return (
+    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80">
+      <ul>
+        {pairs.map((pair) => {
+          const open = openKey === pair.key
+          const leftCard = pair.left?.sleeper_id ? cards?.[pair.left.sleeper_id] : null
+          const rightCard = pair.right?.sleeper_id ? cards?.[pair.right.sleeper_id] : null
+          const leftProj = pts(leftCard?.projected)
+          const rightProj = pts(rightCard?.projected)
+          return (
+            <li key={pair.key} className="border-b border-zinc-800/80 last:border-b-0">
+              <button
+                type="button"
+                onClick={() => setOpenKey(open ? null : pair.key)}
+                className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-2 py-2.5 text-left"
+              >
+                <VsSide row={pair.left} card={leftCard} align="left" />
+                <div className="flex items-center gap-1">
+                  <span className="w-8 text-right text-[13px] font-bold tabular-nums text-zinc-100">
+                    {leftProj || (cardsLoading ? '…' : '-')}
+                  </span>
+                  <span
+                    className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
+                    style={{ color: '#fff' }}
+                  >
+                    {pair.label}
+                  </span>
+                  <span className="w-8 text-[13px] font-bold tabular-nums text-zinc-100">
+                    {rightProj || (cardsLoading ? '…' : '-')}
+                  </span>
+                </div>
+                <VsSide row={pair.right} card={rightCard} align="right" />
+              </button>
+              {open ? (
+                <div className="grid grid-cols-2 gap-3 px-3 pb-3 text-[12px] leading-snug text-zinc-400">
+                  <PropList row={pair.left} card={leftCard} />
+                  <PropList row={pair.right} card={rightCard} />
+                </div>
+              ) : null}
+            </li>
+          )
+        })}
+      </ul>
+      {mineBench.length || oppBench.length ? (
+        <p className="border-t border-zinc-800 px-3 py-2 text-[12px] text-zinc-500">
+          {mineBench.length
+            ? `Your bench ${mineBench.map((r) => r.player_name).filter(Boolean).slice(0, 4).join(', ')}`
+            : ''}
+          {mineBench.length && oppBench.length ? ' · ' : ''}
+          {oppBench.length
+            ? `Opp bench ${oppBench.map((r) => r.player_name).filter(Boolean).slice(0, 4).join(', ')}`
+            : ''}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+function PropList({ row, card }) {
+  if (!row) return <div />
+  const props = card?.props || []
+  if (!props.length) return <p>No open line on {shortName(row.player_name, row.position) || row.player_name}.</p>
+  return (
+    <ul className="space-y-1">
+      {props.map((p) => (
+        <li key={p.label}>
+          {p.label}
+          {cents(p.price) ? ` · ${cents(p.price)}` : ''}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function LineupCard({ title, rows, cards, cardsLoading }) {
   const starters = startersOf(rows)
   const bench = (rows || []).filter((r) => r.slot !== 'starter')
@@ -339,6 +523,7 @@ export default function FantasyCommandCenter({
         team: mine,
         opp,
         roster: byTeam[mine.id] || detail?.mineRoster || [],
+        oppRoster: (opp && byTeam[opp.id]) || detail?.oppRoster || [],
       })
     }
     for (const t of teams) {
@@ -521,9 +706,16 @@ export default function FantasyCommandCenter({
       </div>
       <p className="text-[13px] leading-snug text-zinc-400">{activeTool.body}</p>
 
-      {current ? (
+      {current?.kind === 'matchup' ? (
+        <VsMatchup
+          mine={current.roster}
+          opp={current.oppRoster}
+          cards={cards}
+          cardsLoading={cardsLoading}
+        />
+      ) : current ? (
         <LineupCard
-          title={current.kind === 'matchup' ? 'Your starters' : 'Their starters'}
+          title="Their starters"
           rows={current.roster}
           cards={cards}
           cardsLoading={cardsLoading}

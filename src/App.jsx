@@ -4,6 +4,11 @@ import { mobileShell, btnPrimary, linkBtn } from './features/shell/shellClasses'
 import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLocation, hasAuthSuccessTokens, replaceUrlPreservingQuery, isLikelyEmailConfirmLanding } from './features/auth/oauthCallback'
 import { parseAuthPanelFromSearch, stripAuthPanelQueryParam } from './features/auth/authPanelFromUrl.js'
 import {
+  consumeSandboxAuthBypassFromLocation,
+  redirectSandboxAuthToProd,
+  shouldRedirectSandboxAuthToProd,
+} from './features/auth/sandboxAuthRedirect.js'
+import {
   isAuthConfirmRecovery,
   mapAuthConfirmError,
   parseAuthConfirmFromLocation,
@@ -345,20 +350,27 @@ function App() {
   useEffect(() => {
     queueMicrotask(() => {
       try {
+        consumeSandboxAuthBypassFromLocation()
         const pref = window.localStorage.getItem(AUTH_VIEW_STORAGE_KEY)
-        if (pref === 'create') {
-          setAuthTab('join')
-          setAuthJoinEmailOpen(true)
-          setShowForgotPassword(false)
-          setAuthPanelOpen(true)
+        if (pref === 'create' || pref === 'login') {
+          if (shouldRedirectSandboxAuthToProd()) {
+            window.localStorage.removeItem(AUTH_VIEW_STORAGE_KEY)
+            redirectSandboxAuthToProd(pref === 'create' ? 'create' : 'login')
+            return
+          }
+          if (pref === 'create') {
+            setAuthTab('join')
+            setAuthJoinEmailOpen(true)
+            setShowForgotPassword(false)
+            setAuthPanelOpen(true)
+          } else {
+            setAuthTab('signin')
+            setAuthJoinEmailOpen(false)
+            setShowForgotPassword(false)
+            setAuthPanelOpen(true)
+          }
+          window.localStorage.removeItem(AUTH_VIEW_STORAGE_KEY)
         }
-        if (pref === 'login') {
-          setAuthTab('signin')
-          setAuthJoinEmailOpen(false)
-          setShowForgotPassword(false)
-          setAuthPanelOpen(true)
-        }
-        if (pref) window.localStorage.removeItem(AUTH_VIEW_STORAGE_KEY)
       } catch {
         // Ignore storage read failures.
       }
@@ -1053,6 +1065,10 @@ function App() {
     const tokens = readAuthTokensFromLocation()
     stripAuthPanelQueryParam()
     if (hasAuthSuccessTokens(tokens) || user?.id) return
+    if (shouldRedirectSandboxAuthToProd()) {
+      redirectSandboxAuthToProd(mode)
+      return
+    }
     setAuthTab(mode === 'login' ? 'signin' : 'join')
     setAuthJoinEmailOpen(mode !== 'login')
     setSignupHint('')
@@ -1539,6 +1555,10 @@ function App() {
   )
 
   const openAuthPanel = (mode = 'login') => {
+    if (shouldRedirectSandboxAuthToProd()) {
+      redirectSandboxAuthToProd(mode)
+      return
+    }
     const create = mode === 'create' || mode === 'join'
     setAuthTab(create ? 'join' : 'signin')
     setAuthJoinEmailOpen(create)
@@ -1704,7 +1724,12 @@ function App() {
   }, [finishLegalReturn])
 
   useEffect(() => {
-    if (spaAuthLocked) setAuthPanelOpen(true)
+    if (!spaAuthLocked) return
+    if (shouldRedirectSandboxAuthToProd()) {
+      redirectSandboxAuthToProd('login')
+      return
+    }
+    setAuthPanelOpen(true)
   }, [spaAuthLocked])
 
   useEffect(() => {

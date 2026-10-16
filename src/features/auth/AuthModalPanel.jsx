@@ -147,10 +147,11 @@ export default function AuthModalPanel({
   onSendPhoneCode,
   onVerifyPhoneCode,
   connectNotice = '',
+  emailOnly = false,
 }) {
   const signupMessageRef = useRef(null)
   const ipadStage = useIpadAuthStage()
-  const [emailOpen, setEmailOpen] = useState(false)
+  const [emailOpen, setEmailOpen] = useState(emailOnly)
   const [phoneStep, setPhoneStep] = useState(null)
   const [phoneInput, setPhoneInput] = useState('')
   const [phoneCountry, setPhoneCountry] = useState('US')
@@ -262,6 +263,11 @@ export default function AuthModalPanel({
     return (
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-white text-center">Trouble signing in?</h3>
+        {emailOnly ? (
+          <p className="text-sm text-zinc-300 leading-relaxed text-center">
+            Enter your email and we&apos;ll send you a reset link.
+          </p>
+        ) : (
         <div
           className="rounded-2xl border border-zinc-600/80 bg-zinc-800/60 p-4 text-sm text-zinc-300 leading-relaxed space-y-3"
           role="note"
@@ -283,7 +289,8 @@ export default function AuthModalPanel({
             Still having trouble? Enter your email and we&apos;ll send you a reset link.
           </p>
         </div>
-        {showAppleSignIn ? (
+        )}
+        {emailOnly ? null : showAppleSignIn ? (
         <button
           type="button"
           disabled={isOAuthLoading}
@@ -295,6 +302,7 @@ export default function AuthModalPanel({
           Continue with Apple
         </button>
         ) : null}
+        {emailOnly ? null : (
         <button
           type="button"
           disabled={isOAuthLoading}
@@ -305,7 +313,8 @@ export default function AuthModalPanel({
           <GoogleIcon />
           Continue with Google
         </button>
-        <OAuthDivider />
+        )}
+        {emailOnly ? null : <OAuthDivider />}
         <form onSubmit={onForgotSubmit} className="space-y-4">
           <input
             type="email"
@@ -346,16 +355,18 @@ export default function AuthModalPanel({
     )
   }
 
-  const showJoinEmail =
-    authTab === 'join' &&
-    (emailOpen ||
-      joinEmailOpen ||
-      Boolean(signupMessage) ||
-      Boolean(signupHint) ||
-      Boolean(signupError && !isOAuthProviderError(signupError)))
-  const showLoginEmail =
-    authTab !== 'join' &&
-    (emailOpen || Boolean(loginError && !isOAuthProviderError(loginError)))
+  const showJoinEmail = emailOnly
+    ? authTab === 'join'
+    : authTab === 'join' &&
+      (emailOpen ||
+        joinEmailOpen ||
+        Boolean(signupMessage) ||
+        Boolean(signupHint) ||
+        Boolean(signupError && !isOAuthProviderError(signupError)))
+  const showLoginEmail = emailOnly
+    ? authTab !== 'join'
+    : authTab !== 'join' &&
+      (emailOpen || Boolean(loginError && !isOAuthProviderError(loginError)))
   const showEmailFields = showJoinEmail || showLoginEmail
 
   const closePhoneStep = () => {
@@ -456,6 +467,7 @@ export default function AuthModalPanel({
             </form>
           ) : (
           <>
+          {emailOnly ? null : (
           <div className="flex items-center justify-center gap-5">
             <ProviderCircle
               label="Continue with Google"
@@ -484,7 +496,8 @@ export default function AuthModalPanel({
               <EmailIcon />
             </ProviderCircle>
           </div>
-          {!showEmailFields ? (
+          )}
+          {!emailOnly && !showEmailFields ? (
             <>
               <OrDivider className={ipadStage ? 'my-7' : 'my-5'} />
               <button

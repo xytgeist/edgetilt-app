@@ -5,8 +5,8 @@ import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLoca
 import { parseAuthPanelFromSearch, stripAuthPanelQueryParam } from './features/auth/authPanelFromUrl.js'
 import {
   consumeSandboxAuthBypassFromLocation,
-  redirectSandboxAuthToProd,
-  shouldRedirectSandboxAuthToProd,
+  isPublicSandboxHost,
+  resolveSandboxAuthEmail,
 } from './features/auth/sandboxAuthRedirect.js'
 import {
   isAuthConfirmRecovery,
@@ -353,11 +353,6 @@ function App() {
         consumeSandboxAuthBypassFromLocation()
         const pref = window.localStorage.getItem(AUTH_VIEW_STORAGE_KEY)
         if (pref === 'create' || pref === 'login') {
-          if (shouldRedirectSandboxAuthToProd()) {
-            window.localStorage.removeItem(AUTH_VIEW_STORAGE_KEY)
-            redirectSandboxAuthToProd(pref === 'create' ? 'create' : 'login')
-            return
-          }
           if (pref === 'create') {
             setAuthTab('join')
             setAuthJoinEmailOpen(true)
@@ -1065,10 +1060,6 @@ function App() {
     const tokens = readAuthTokensFromLocation()
     stripAuthPanelQueryParam()
     if (hasAuthSuccessTokens(tokens) || user?.id) return
-    if (shouldRedirectSandboxAuthToProd()) {
-      redirectSandboxAuthToProd(mode)
-      return
-    }
     setAuthTab(mode === 'login' ? 'signin' : 'join')
     setAuthJoinEmailOpen(mode !== 'login')
     setSignupHint('')
@@ -1172,12 +1163,23 @@ function App() {
       // ignore
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const resolvedEmail = resolveSandboxAuthEmail(email)
+    if (!resolvedEmail.ok) {
+      setLoginError(resolvedEmail.error)
+      setIsLoggingIn(false)
+      return
+    }
+    const emailForAuth = resolvedEmail.email
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: emailForAuth,
+      password,
+    })
 
     if (error) {
       skipSubscribeOpenForAuthReloadRef.current = false
       if (isInvalidLoginCredentialsError(error)) {
-        const nextEmail = String(email || '').trim()
+        const nextEmail = emailForAuth
         const { data: signInKind, error: kindError } = await supabase.rpc('auth_email_sign_in_kind', {
           p_email: nextEmail,
         })
@@ -1191,7 +1193,7 @@ function App() {
           setIsLoggingIn(false)
           return
         }
-        setSignupEmail(nextEmail)
+        setSignupEmail(String(email || '').trim())
         setSignupPassword(password)
         setSignupConfirmPassword('')
         setSignupError('')
@@ -1219,6 +1221,9 @@ function App() {
   }
 
   const handleSendPhoneCode = async (phone) => {
+    if (isPublicSandboxHost()) {
+      return { error: "Email sign-in is the only way in here." }
+    }
     const { error } = await supabase.auth.signInWithOtp({
       phone,
       options: { channel: 'sms', shouldCreateUser: true },
@@ -1244,6 +1249,10 @@ function App() {
   }
 
   const handleOAuthSignIn = async (provider, { setError = setLoginError, markLegalPending = false } = {}) => {
+    if (isPublicSandboxHost()) {
+      setError("Email sign-in is the only way in here.")
+      return
+    }
     if (isOAuthLoading || oauthInFlightRef.current) return
     oauthInFlightRef.current = true
     setError('')
@@ -1340,6 +1349,9 @@ function App() {
     if (!signupEmail || !signupPassword || !signupConfirmPassword) return setSignupError("Please fill in all fields")
     if (signupPassword !== signupConfirmPassword) return setSignupError("Passwords do not match")
     if (signupPassword.length < 6) return setSignupError("Password must be at least 6 characters")
+    const resolvedSignup = resolveSandboxAuthEmail(signupEmail)
+    if (!resolvedSignup.ok) return setSignupError(resolvedSignup.error)
+    const signupEmailForAuth = resolvedSignup.email
     markPendingLegalAcceptance()
     setIsSigningUp(true)
 
@@ -1377,7 +1389,7 @@ function App() {
       }),
     }
     const { data, error } = await supabase.auth.signUp({
-      email: signupEmail,
+      email: signupEmailForAuth,
       password: signupPassword,
       options: {
         // Stake/stable/swap claim: confirm via Site URL (always allow-listed).
@@ -1395,8 +1407,8 @@ function App() {
       },
     })
     if (isEmailAlreadyRegisteredSignup(error, data)) {
-      const nextEmail = String(signupEmail || '').trim()
-      setEmail((prev) => (prev.trim() ? prev : nextEmail))
+      const nextEmail = signupEmailForAuth
+      setEmail((prev) => (prev.trim() ? prev : String(signupEmail || '').trim()))
       setPassword((prev) => (prev ? prev : signupPassword))
       setSignupHint('')
       setSignupError('')
@@ -1440,11 +1452,13 @@ function App() {
     e.preventDefault()
     if (isSendingReset) return
     if (!forgotEmail) return setForgotError("Please enter your email")
+    const resolvedForgot = resolveSandboxAuthEmail(forgotEmail)
+    if (!resolvedForgot.ok) return setForgotError(resolvedForgot.error)
     setIsSendingReset(true)
     setForgotError('')
     setForgotMessage('')
 
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+    const { error } = await supabase.auth.resetPasswordForEmail(resolvedForgot.email, {
       redirectTo: `${window.location.origin}/reset-password`
     })
 
@@ -1555,10 +1569,6 @@ function App() {
   )
 
   const openAuthPanel = (mode = 'login') => {
-    if (shouldRedirectSandboxAuthToProd()) {
-      redirectSandboxAuthToProd(mode)
-      return
-    }
     const create = mode === 'create' || mode === 'join'
     setAuthTab(create ? 'join' : 'signin')
     setAuthJoinEmailOpen(create)
@@ -1725,10 +1735,6 @@ function App() {
 
   useEffect(() => {
     if (!spaAuthLocked) return
-    if (shouldRedirectSandboxAuthToProd()) {
-      redirectSandboxAuthToProd('login')
-      return
-    }
     setAuthPanelOpen(true)
   }, [spaAuthLocked])
 
@@ -1817,6 +1823,7 @@ function App() {
       onSendPhoneCode={handleSendPhoneCode}
       onVerifyPhoneCode={handleVerifyPhoneCode}
       connectNotice={user ? '' : connectNotice}
+      emailOnly={isPublicSandboxHost()}
       onOAuthSignIn={({ provider, setErrorTarget }) => {
         const setError =
           setErrorTarget === 'forgot'

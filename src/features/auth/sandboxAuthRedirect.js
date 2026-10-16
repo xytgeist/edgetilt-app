@@ -1,8 +1,13 @@
 /**
- * lvslotpro.com is a private sandbox. Public Login / Create account → edgetilt.com.
- * Bypass for Ryan/Theo smoke: visit `https://lvslotpro.com/?sandbox_auth=1` once per tab.
- * Localhost / Vite never redirect.
+ * lvslotpro.com is a private sandbox. Login stays on this host.
+ * Email is the only method, and the field must start with SANDBOX_EMAIL_GATE.
+ * That prefix is stripped before Supabase sees the address.
+ * Localhost / Vite are not the public sandbox host.
  */
+
+export const SANDBOX_EMAIL_GATE = '112358-'
+
+export const SANDBOX_EMAIL_DENIED = "That email can't sign in here."
 
 const SANDBOX_AUTH_BYPASS_KEY = 'lvslotpro-sandbox-auth:v1'
 
@@ -45,6 +50,23 @@ export function consumeSandboxAuthBypassFromLocation() {
   } catch {
     return false
   }
+}
+
+/**
+ * On lvslotpro, require the gate prefix and return the real email.
+ * Everywhere else, return the trimmed field unchanged.
+ */
+export function resolveSandboxAuthEmail(raw) {
+  const value = String(raw || '').trim()
+  if (!isPublicSandboxHost()) return { ok: true, email: value }
+  if (!value.toLowerCase().startsWith(SANDBOX_EMAIL_GATE)) {
+    return { ok: false, error: SANDBOX_EMAIL_DENIED }
+  }
+  const email = value.slice(SANDBOX_EMAIL_GATE.length).trim()
+  if (!email.includes('@') || email.startsWith('@')) {
+    return { ok: false, error: SANDBOX_EMAIL_DENIED }
+  }
+  return { ok: true, email }
 }
 
 export function shouldRedirectSandboxAuthToProd() {

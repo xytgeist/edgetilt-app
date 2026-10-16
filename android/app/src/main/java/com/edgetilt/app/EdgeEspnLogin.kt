@@ -81,11 +81,9 @@ object EdgeEspnLogin {
       LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f),
     )
 
-    val sheet = Dialog(activity, android.R.style.Theme_DeviceDefault_Light_NoActionBar)
-    sheet.setContentView(root)
-    sheet.setCancelable(true)
-    sheet.setOnCancelListener { finish(activity, ok = false, cancelled = true, espnS2 = null, swid = null) }
-    sheet.show()
+    val sheet = EdgeBottomDialog.show(activity, root) {
+      finish(activity, ok = false, cancelled = true, espnS2 = null, swid = null)
+    }
     dialog = sheet
     webView = view
 

@@ -1256,6 +1256,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-16:** **ESPN and CBS login sheets dock to the bottom (APK 1.3.24).** Same sheets, not full screen. iOS uses a 92% page sheet. Android uses a bottom dialog. Bet sheet unchanged.
 - **2026-10-16:** **Fantasy Connect CBS (`1.4.1213`, APK **1.3.23**).** In-app CBS login sheet `startCbsFantasyLogin`. Token stored server-side, password rejected. Edge `fantasy-cbs-link` + `fantasy-cbs-sync` on test. Not on prod. Needs the new test APK (or a new IPA). The old Soon chip is gone.
 - **2026-10-16:** **ESPN Connect league list (`1.4.1212`).** A saved session still got "No ESPN NFL leagues" because `/seasons/{year}` returns `{}`. Leagues now come from the fan profile, then each league is read by id. A draft-in-progress league is kept. Test Edge `fantasy-espn-link` + `fantasy-espn-sync` redeployed. Not on prod.
 - **2026-10-16:** **NFL Hub Fantasy door actually leaves the hub (`1.4.1211`).** Four taps did set `?tab=fantasy`, but the slate is a body portal and Lounge stays mounted, so the Coming soon cover stayed on top. The door now closes the slate the same way Bet Tracker does.

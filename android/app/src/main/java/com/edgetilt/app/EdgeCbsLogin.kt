@@ -87,11 +87,9 @@ object EdgeCbsLogin {
     root.addView(cancel, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     root.addView(view, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
-    val sheet = Dialog(activity, android.R.style.Theme_DeviceDefault_Light_NoActionBar)
-    sheet.setContentView(root)
-    sheet.setCancelable(true)
-    sheet.setOnCancelListener { finish(activity, ok = false, cancelled = true, token = null, leagues = emptyList(), error = null) }
-    sheet.show()
+    val sheet = EdgeBottomDialog.show(activity, root) {
+      finish(activity, ok = false, cancelled = true, token = null, leagues = emptyList(), error = null)
+    }
     dialog = sheet
     webView = view
 

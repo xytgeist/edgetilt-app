@@ -14,8 +14,11 @@ enum EdgeCbsLoginSheet {
       let nav = UINavigationController(rootViewController: controller)
       nav.modalPresentationStyle = .pageSheet
       if let sheet = nav.sheetPresentationController {
-        sheet.detents = [.large()]
+        sheet.detents = [.custom { context in context.maximumDetentValue * 0.92 }]
         sheet.prefersGrabberVisible = true
+        sheet.prefersEdgeAttachedInCompactHeight = true
+        sheet.preferredCornerRadius = 22
+        sheet.prefersScrollingExpandsWhenScrolledToEdge = false
       }
       presenter.present(nav, animated: true)
     }

@@ -300,7 +300,7 @@ export default function FantasyHomeScreen({
       return
     }
     if (!espnInApp) {
-      setErr('ESPN connect is in the EdgeTilt iPhone app. Update the app, then log in on the ESPN page. We never store the password.')
+      setErr('ESPN connect is in the EdgeTilt app. Update the app, then log in on the ESPN page. We never store the password.')
       return
     }
     setBusy(true)
@@ -610,7 +610,7 @@ export default function FantasyHomeScreen({
                 subtitle={
                   espnInApp
                     ? 'Log in on the ESPN page inside EdgeTilt. We keep the session cookie and never store your password.'
-                    : 'Available in the EdgeTilt iPhone app after this update. Web cannot read an ESPN login.'
+                    : 'Available in the EdgeTilt iPhone or Android app after this update. A normal browser cannot read an ESPN login.'
                 }
               >
                 <button

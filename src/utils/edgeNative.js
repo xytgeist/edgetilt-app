@@ -321,27 +321,55 @@ export function canStartEdgeWebAuthSession() {
   return typeof window.EdgeNative?.startWebAuthSession === 'function'
 }
 
-/**
- * Present an in-app OAuth auth sheet. Resolves when the callback scheme is hit or cancelled.
- * Old IPA / non-shell → `{ ok: false, via: 'noop' }` (caller should fall back).
- *
- * @param {string} url
- * @param {{ callbackScheme?: string }} [opts]
- * @returns {Promise<{ ok: boolean, url?: string, cancelled?: boolean, error?: string, via: string }>}
- */
-/** True when this IPA can open the ESPN login sheet and return a session cookie. */
+/** True when this IPA or APK can open the ESPN login sheet and return a session cookie. */
 export function canStartEspnFantasyLogin() {
-  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  if (typeof window === 'undefined') return false
+  if (isEdgeAndroidShell() && typeof window.EdgeAndroid?.startEspnFantasyLogin === 'function') return true
+  if (!isEdgeiOSShell()) return false
   return typeof window.EdgeNative?.startEspnFantasyLogin === 'function'
 }
 
 /**
  * ESPN's own login page in a separate sheet. Resolves with espn_s2 + swid, or cancelled.
- * The password never comes back to JavaScript. Old IPA → { ok: false, via: 'noop' }.
+ * The password never comes back to JavaScript. Old shell → { ok: false, via: 'noop' }.
  *
  * @returns {Promise<{ ok: boolean, cancelled?: boolean, espn_s2?: string, swid?: string, error?: string, via: string }>}
  */
 export async function startEspnFantasyLogin() {
+  if (isEdgeAndroidShell() && typeof window.EdgeAndroid?.startEspnFantasyLogin === 'function') {
+    return new Promise((resolve) => {
+      let done = false
+      const finish = (detail, via) => {
+        if (done) return
+        done = true
+        window.removeEventListener('edge-android-espn-login', onResult)
+        window.clearTimeout(timer)
+        resolve({
+          ok: detail?.ok === true,
+          cancelled: detail?.cancelled === true,
+          espn_s2: typeof detail?.espn_s2 === 'string' ? detail.espn_s2 : undefined,
+          swid: typeof detail?.swid === 'string' ? detail.swid : undefined,
+          error: typeof detail?.error === 'string' ? detail.error : undefined,
+          via,
+        })
+      }
+      const onResult = (event) => finish(event?.detail || {}, 'sheet')
+      const timer = window.setTimeout(() => finish({ ok: false, error: 'timeout' }, 'timeout'), 10 * 60_000)
+      window.addEventListener('edge-android-espn-login', onResult)
+      try {
+        const raw = window.EdgeAndroid.startEspnFantasyLogin('{}')
+        const started = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+        if (started?.ok === false) {
+          finish(
+            { ok: false, error: typeof started?.error === 'string' ? started.error : 'Could not open ESPN' },
+            'bridge',
+          )
+        }
+      } catch {
+        finish({ ok: false, error: 'Could not open ESPN' }, 'error')
+      }
+    })
+  }
   if (!canStartEspnFantasyLogin()) return { ok: false, via: 'noop' }
   try {
     const result = await edgeNativeInvoke('startEspnFantasyLogin', {})
@@ -358,6 +386,14 @@ export async function startEspnFantasyLogin() {
   }
 }
 
+/**
+ * Present an in-app OAuth auth sheet. Resolves when the callback scheme is hit or cancelled.
+ * Old IPA / non-shell → `{ ok: false, via: 'noop' }` (caller should fall back).
+ *
+ * @param {string} url
+ * @param {{ callbackScheme?: string }} [opts]
+ * @returns {Promise<{ ok: boolean, url?: string, cancelled?: boolean, error?: string, via: string }>}
+ */
 export async function startEdgeWebAuthSession(url, opts = {}) {
   const href = String(url || '').trim()
   if (!href) return { ok: false, via: 'noop', error: 'url required' }

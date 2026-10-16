@@ -191,6 +191,15 @@ class MainActivity : Activity() {
     )
   }
 
+  /** Deliver ESPN login-sheet cookies to JS (`edge-android-espn-login`). Do not log [detailJson]. */
+  fun dispatchEspnLoginResult(detailJson: String) {
+    val quoted = JSONObject.quote(detailJson)
+    webView.evaluateJavascript(
+      "(function(){try{var d=JSON.parse($quoted);window.dispatchEvent(new CustomEvent('${EdgeEspnLogin.EVENT}',{detail:d}));}catch(e){}})()",
+      null,
+    )
+  }
+
   override fun onDestroy() {
     EdgeCallRing.bindHost(null)
     super.onDestroy()
@@ -428,6 +437,20 @@ class MainActivity : Activity() {
         }
         latch.await(8, java.util.concurrent.TimeUnit.SECONDS)
         result.toString()
+      } catch (e: Exception) {
+        JSONObject().put("ok", false).put("error", e.message ?: "failed").toString()
+      }
+    }
+
+    /**
+     * ESPN Fantasy login sheet. Returns `{ ok, started }` immediately.
+     * Completes with window event `edge-android-espn-login` `{ ok, cancelled?, espn_s2?, swid? }`.
+     */
+    @JavascriptInterface
+    fun startEspnFantasyLogin(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
+      return try {
+        EdgeEspnLogin.start(this@MainActivity).toString()
       } catch (e: Exception) {
         JSONObject().put("ok", false).put("error", e.message ?: "failed").toString()
       }

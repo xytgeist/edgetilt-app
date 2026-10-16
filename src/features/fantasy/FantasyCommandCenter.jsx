@@ -65,6 +65,64 @@ function startersOf(rows) {
   return (rows || []).filter((r) => r.slot === 'starter')
 }
 
+function isDefense(row) {
+  const p = String(row?.position || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+  return p === 'DEF' || p === 'DST' || p === 'D'
+}
+
+function teamAbbrev(row) {
+  return String(row?.nfl_team || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+}
+
+function PlayerAvatar({ row }) {
+  const [failed, setFailed] = useState(false)
+  const team = teamAbbrev(row)
+  const letter = String(row?.player_name || team || '?').slice(0, 1).toUpperCase()
+
+  if (isDefense(row) && team && !failed) {
+    return (
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-1.5 ring-1 ring-zinc-700/60">
+        <img
+          src={`/sports/nfl/logos/${team}.png`}
+          alt=""
+          className="h-full w-full object-contain"
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+        />
+      </span>
+    )
+  }
+
+  if (!row?.headshot_url || failed) {
+    return (
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold ring-1 ring-zinc-700/60"
+        style={{ color: '#fff' }}
+      >
+        {letter}
+      </span>
+    )
+  }
+
+  return (
+    <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-zinc-800 ring-1 ring-zinc-700/60">
+      <img
+        src={row.headshot_url}
+        alt=""
+        className="absolute inset-0 h-full w-full origin-[center_22%] scale-[1.42] object-cover object-[center_18%]"
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+    </span>
+  )
+}
+
 function PlayerRow({ row }) {
   const [open, setOpen] = useState(false)
   const inj = injuryLabel(row.injury_status)
@@ -75,8 +133,9 @@ function PlayerRow({ row }) {
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
       >
+        <PlayerAvatar row={row} />
         <span className="w-8 shrink-0 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-          {row.position || '–'}
+          {row.position || '-'}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] font-semibold text-zinc-100">

@@ -1256,6 +1256,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-16:** **Fantasy lineup rows show headshots (`1.4.1215`).** `loadLeagueDetail` joins `nfl_players.headshot_url`. DEF/DST uses `/sports/nfl/logos/{TEAM}.png`. No sleeper id means an initial. No new SQL.
 - **2026-10-16:** **Fantasy home is a command center (`1.4.1214`).** Once a host is linked, connect cards move into Manage. The page is the league, your matchup, a swipe through other teams’ synced lineups, and the tool row (Start/Sit, Waivers, Trades, Live, Fliers). Props, suggested swaps, and fliers are labeled as not computing. Injury tags come from `nfl_players` when the sleeper id matches. No new SQL.
 - **2026-10-16:** **Fantasy ESPN + CBS on prod.** Web **`1.4.1213`** promoted `test` → `main` (`970973a59`). Edge **`fantasy-espn-link`** / **`fantasy-espn-sync`** / **`fantasy-cbs-link`** / **`fantasy-cbs-sync`** deployed on **`jtjgtucumuoswnbauxry`** (`verify_jwt` false, active). No new SQL. iOS **1.4.97 (`20261016221413`)** uploaded to TestFlight only. It does not join the **1.4.97** build already Waiting for Review (`20261015175413`). Android prod AAB **1.3.24** / vc **28** is signed locally and not on Play yet (this Mac has no Play publisher credential). Play internal stays **25 (1.3.21)** until that AAB is uploaded.
 - **2026-10-16:** **ESPN and CBS login sheets dock to the bottom (APK 1.3.24).** Same sheets, not full screen. iOS uses a 92% page sheet. Android uses a bottom dialog. Bet sheet unchanged.

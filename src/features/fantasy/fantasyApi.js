@@ -240,7 +240,7 @@ export async function loadLeagueDetail(supabase, leagueId) {
   if (sleeperIds.length) {
     const { data: players } = await supabase
       .from('nfl_players')
-      .select('sleeper_id, injury_status, status')
+      .select('sleeper_id, injury_status, status, headshot_url, local_headshot_path')
       .in('sleeper_id', sleeperIds)
     for (const p of players || []) {
       if (p?.sleeper_id) injuryById[String(p.sleeper_id)] = p
@@ -256,6 +256,7 @@ export async function loadLeagueDetail(supabase, leagueId) {
       ...row,
       injury_status: tag?.injury_status || null,
       player_status: tag?.status || null,
+      headshot_url: tag?.headshot_url || tag?.local_headshot_path || null,
     })
   }
   for (const list of Object.values(rostersByTeam)) {

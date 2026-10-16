@@ -21,21 +21,8 @@ import {
   startEdgeWebAuthSession,
   startEspnFantasyLogin,
 } from '../../utils/edgeNative.js'
-
-function recordLine(t) {
-  const w = Number(t.wins) || 0
-  const l = Number(t.losses) || 0
-  const ti = Number(t.ties) || 0
-  return ti > 0 ? `${w}-${l}-${ti}` : `${w}-${l}`
-}
-
-function providerLabel(provider) {
-  if (provider === 'yahoo') return 'Yahoo'
-  if (provider === 'sleeper') return 'Sleeper'
-  if (provider === 'espn') return 'ESPN'
-  if (provider === 'cbs') return 'CBS'
-  return provider || ''
-}
+import FantasyCommandCenter from './FantasyCommandCenter.jsx'
+import FantasyConnectPanel from './FantasyConnectPanel.jsx'
 
 const YAHOO_HANDOFF_KEY = 'edge.fantasy.yahooHandoff'
 
@@ -94,67 +81,6 @@ function friendlyYahooError(raw) {
   return s
 }
 
-function RosterList({ title, rows, tone = 'mine' }) {
-  const starters = (rows || []).filter((r) => r.slot === 'starter')
-  const bench = (rows || []).filter((r) => r.slot !== 'starter')
-  const accent =
-    tone === 'enemy'
-      ? 'border-rose-500/40 bg-rose-950/20'
-      : 'border-sky-500/40 bg-sky-950/20'
-  return (
-    <div className={`rounded-2xl border ${accent} p-3`}>
-      <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-400">{title}</div>
-      <ul className="mt-2 space-y-1.5">
-        {starters.map((r, i) => (
-          <li key={`${r.sleeper_id || r.player_name}-${r.slot}-${i}`} className="flex items-baseline justify-between gap-2">
-            <span className="min-w-0 truncate text-[14px] font-semibold text-zinc-100">
-              {r.player_name}
-            </span>
-            <span className="shrink-0 text-[11px] uppercase tracking-wide text-zinc-500">
-              {r.position || '-'}
-              {r.nfl_team ? ` · ${r.nfl_team}` : ''}
-            </span>
-          </li>
-        ))}
-        {!starters.length ? (
-          <li className="text-[13px] text-zinc-500">No starters synced yet.</li>
-        ) : null}
-      </ul>
-      {bench.length ? (
-        <div className="mt-3 border-t border-zinc-800 pt-2">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-600">Bench</div>
-          <ul className="mt-1 space-y-1">
-            {bench.slice(0, 8).map((r, i) => (
-              <li key={`${r.sleeper_id || r.player_name}-b-${i}`} className="truncate text-[12px] text-zinc-500">
-                {r.player_name}
-                {r.position ? ` · ${r.position}` : ''}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function ConnectionCard({ title, subtitle, statusLine, errorLine, children }) {
-  return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="text-[15px] font-semibold">{title}</div>
-          {subtitle ? <p className="mt-1 text-[13px] text-zinc-400">{subtitle}</p> : null}
-        </div>
-        {statusLine ? (
-          <div className="shrink-0 text-right text-[11px] text-zinc-500">{statusLine}</div>
-        ) : null}
-      </div>
-      {errorLine ? <div className="mt-2 text-[12px] text-rose-400">{errorLine}</div> : null}
-      {children ? <div className="mt-3">{children}</div> : null}
-    </div>
-  )
-}
-
 /**
  * Fantasy Connect home … Sleeper + Yahoo, league pick, my team + matchup + standings.
  */
@@ -173,6 +99,7 @@ export default function FantasyHomeScreen({
   const [leagueId, setLeagueId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
+  const [manageOpen, setManageOpen] = useState(false)
   /** EdgeiOS ASWebAuth / Safari fallback … refresh when the user returns. */
   const yahooOAuthPendingRef = useRef(false)
 
@@ -497,8 +424,23 @@ export default function FantasyHomeScreen({
     }
   }
 
-  const mineTeam = detail?.teams?.find((t) => t.is_mine)
-  const oppTeam = detail?.teams?.find((t) => t.id === detail?.matchup?.opp_team_id)
+  const connectPanel = (
+    <FantasyConnectPanel
+      sleeper={sleeper}
+      yahoo={yahoo}
+      espn={espn}
+      cbs={cbs}
+      username={username}
+      setUsername={setUsername}
+      busy={busy}
+      espnInApp={espnInApp}
+      cbsInApp={cbsInApp}
+      onLinkSleeper={onLinkSleeper}
+      onConnectYahoo={onConnectYahoo}
+      onConnectEspn={onConnectEspn}
+      onConnectCbs={onConnectCbs}
+    />
+  )
 
   return (
     <ScrollLinkedEdgeTitleBarShell
@@ -510,18 +452,6 @@ export default function FantasyHomeScreen({
       contentClassName="px-4 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
     >
       <div data-fantasy-home className="text-white">
-        {hasConnection ? (
-          <div className="mb-3 flex justify-end">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void onSync()}
-              className="rounded-full border border-zinc-700 px-3 py-1 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
-            >
-              {busy ? '…' : 'Sync'}
-            </button>
-          </div>
-        ) : null}
         {err ? (
           <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-950/30 px-3 py-2 text-[13px] text-rose-200">
             {err}
@@ -537,7 +467,7 @@ export default function FantasyHomeScreen({
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-5 text-center">
             <div className="text-[16px] font-semibold">Connect your fantasy league</div>
             <p className="mt-2 text-[13px] text-zinc-400">
-              Sign in to link Sleeper, Yahoo, or ESPN and auto-highlight your players in the game hub.
+              Sign in to link Sleeper, Yahoo, ESPN, or CBS. The roster is what unlocks the tools.
             </p>
             <button
               type="button"
@@ -549,281 +479,37 @@ export default function FantasyHomeScreen({
           </div>
         ) : null}
 
-        {signedIn ? (
-          <div className="space-y-4">
-            {sleeper ? (
-              <ConnectionCard
-                title="Sleeper"
-                subtitle={`@${sleeper.external_username}`}
-                statusLine={
-                  sleeper.last_sync_at
-                    ? `Synced ${new Date(sleeper.last_sync_at).toLocaleString()}`
-                    : 'Not synced'
-                }
-                errorLine={sleeper.status === 'error' ? sleeper.last_error || 'Sync error' : ''}
-              />
-            ) : (
-              <ConnectionCard
-                title="Connect Sleeper"
-                subtitle="Enter the username you use on sleeper.app (public … no password)."
-              >
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="sleeper username"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    className="min-w-0 flex-1 rounded-full border border-zinc-700 bg-zinc-950 px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-zinc-600"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') void onLinkSleeper()
-                    }}
-                  />
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void onLinkSleeper()}
-                    className="shrink-0 rounded-full bg-sky-500 px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40"
-                  >
-                    {busy ? '…' : 'Link'}
-                  </button>
-                </div>
-              </ConnectionCard>
-            )}
+        {signedIn && !hasConnection ? connectPanel : null}
 
-            {yahoo ? (
-              <ConnectionCard
-                title="Yahoo"
-                subtitle={yahoo.external_username || 'Connected'}
-                statusLine={
-                  yahoo.last_sync_at
-                    ? `Synced ${new Date(yahoo.last_sync_at).toLocaleString()}`
-                    : 'Not synced'
-                }
-                errorLine={yahoo.status === 'error' ? yahoo.last_error || 'Sync error' : ''}
-              >
+        {signedIn && hasConnection ? (
+          <FantasyCommandCenter
+            leagues={snap.leagues}
+            leagueId={leagueId}
+            onPickLeague={onPickLeague}
+            detail={detail}
+            loadingDetail={loadingDetail}
+            busy={busy}
+            onOpenManage={() => setManageOpen(true)}
+            onSync={onSync}
+          />
+        ) : null}
+
+        {signedIn && manageOpen ? (
+          <div className="fixed inset-0 z-[96] flex flex-col justify-end bg-black/50" role="dialog" aria-modal="true" aria-label="Manage fantasy connects">
+            <button type="button" className="min-h-0 flex-1" aria-label="Close" onClick={() => setManageOpen(false)} />
+            <div className="max-h-[88%] overflow-y-auto rounded-t-3xl border border-zinc-800 bg-zinc-950 px-4 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="text-[16px] font-semibold">Connects</div>
                 <button
                   type="button"
-                  disabled={busy}
-                  onClick={() => void onConnectYahoo()}
-                  className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
+                  onClick={() => setManageOpen(false)}
+                  className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200"
                 >
-                  Reconnect Yahoo
+                  Done
                 </button>
-              </ConnectionCard>
-            ) : (
-              <ConnectionCard
-                title="Connect Yahoo"
-                subtitle="Authorize EdgeTilt to read your Yahoo Fantasy NFL leagues (OAuth ... no password stored)."
-              >
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void onConnectYahoo()}
-                  className="rounded-full bg-violet-500 px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40"
-                >
-                  {busy ? '…' : 'Connect Yahoo'}
-                </button>
-              </ConnectionCard>
-            )}
-
-            {espn ? (
-              <ConnectionCard
-                title="ESPN"
-                subtitle={espn.external_username || 'Connected'}
-                statusLine={
-                  espn.last_sync_at
-                    ? `Synced ${new Date(espn.last_sync_at).toLocaleString()}`
-                    : 'Not synced'
-                }
-                errorLine={espn.status === 'error' ? espn.last_error || 'Sync error' : ''}
-              >
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void onConnectEspn()}
-                  className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
-                >
-                  Reconnect ESPN
-                </button>
-              </ConnectionCard>
-            ) : (
-              <ConnectionCard
-                title="Connect ESPN"
-                subtitle={
-                  espnInApp
-                    ? 'Log in on the ESPN page inside EdgeTilt. We keep the session cookie and never store your password.'
-                    : 'Available in the EdgeTilt iPhone or Android app after this update. A normal browser cannot read an ESPN login.'
-                }
-              >
-                <button
-                  type="button"
-                  disabled={busy || !espnInApp}
-                  onClick={() => void onConnectEspn()}
-                  className="rounded-full bg-sky-500 px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40"
-                >
-                  {busy ? '…' : 'Connect ESPN'}
-                </button>
-              </ConnectionCard>
-            )}
-
-            {cbs ? (
-              <ConnectionCard
-                title="CBS"
-                subtitle={cbs.external_username || 'Connected'}
-                statusLine={
-                  cbs.last_sync_at
-                    ? `Synced ${new Date(cbs.last_sync_at).toLocaleString()}`
-                    : 'Not synced'
-                }
-                errorLine={cbs.status === 'error' ? cbs.last_error || 'Sync error' : ''}
-              >
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void onConnectCbs()}
-                  className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
-                >
-                  Reconnect CBS
-                </button>
-              </ConnectionCard>
-            ) : (
-              <ConnectionCard
-                title="Connect CBS"
-                subtitle={
-                  cbsInApp
-                    ? 'Log in on the CBS page inside EdgeTilt. We keep the session and never store your password.'
-                    : 'Available in the EdgeTilt iPhone or Android app after this update. A normal browser cannot read a CBS login.'
-                }
-              >
-                <button
-                  type="button"
-                  disabled={busy || !cbsInApp}
-                  onClick={() => void onConnectCbs()}
-                  className="rounded-full bg-sky-500 px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40"
-                >
-                  {busy ? '…' : 'Connect CBS'}
-                </button>
-              </ConnectionCard>
-            )}
-
-            {hasConnection ? (
-              <>
-                {(snap.leagues || []).length ? (
-                  <div>
-                    <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
-                      Leagues
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {snap.leagues.map((lg) => {
-                        const on = lg.id === leagueId
-                        return (
-                          <button
-                            key={lg.id}
-                            type="button"
-                            onClick={() => void onPickLeague(lg.id)}
-                            className={`rounded-full px-3 py-1.5 text-[12px] font-semibold border ${
-                              on
-                                ? 'border-sky-400 bg-sky-500 text-white'
-                                : 'border-zinc-700 bg-zinc-900 text-zinc-300'
-                            }`}
-                          >
-                            {lg.name}
-                            <span className="opacity-70"> · {providerLabel(lg.provider)}</span>
-                            {lg.is_primary ? ' · Primary' : ''}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-zinc-800 p-4 text-[13px] text-zinc-400">
-                    No NFL leagues synced yet. Tap Sync after your league is live, or reconnect the
-                    platform.
-                  </div>
-                )}
-
-                {loadingDetail ? (
-                  <div className="py-8 text-center text-sm text-zinc-500">Loading league…</div>
-                ) : null}
-
-                {detail?.matchup ? (
-                  <div className="space-y-3">
-                    <div className="flex items-end justify-between gap-2">
-                      <div>
-                        <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
-                          Week {detail.matchup.week} matchup
-                          {detail.league?.provider
-                            ? ` · ${providerLabel(detail.league.provider)}`
-                            : ''}
-                        </div>
-                        <div className="mt-1 text-[16px] font-semibold">
-                          {mineTeam?.team_name || 'You'}
-                          <span className="mx-2 text-zinc-600">vs</span>
-                          {oppTeam?.team_name || 'Opponent'}
-                        </div>
-                      </div>
-                      <div className="text-right text-[20px] font-bold tabular-nums">
-                        {detail.matchup.mine_score != null
-                          ? Number(detail.matchup.mine_score).toFixed(1)
-                          : '-'}
-                        <span className="mx-1 text-zinc-600">-</span>
-                        {detail.matchup.opp_score != null
-                          ? Number(detail.matchup.opp_score).toFixed(1)
-                          : '-'}
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <RosterList title="Your lineup" rows={detail.mineRoster} tone="mine" />
-                      <RosterList title="Opponent" rows={detail.oppRoster} tone="enemy" />
-                    </div>
-                  </div>
-                ) : null}
-
-                {detail?.teams?.length ? (
-                  <div>
-                    <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
-                      Standings
-                    </div>
-                    <ul className="overflow-hidden rounded-2xl border border-zinc-800 divide-y divide-zinc-800">
-                      {[...detail.teams]
-                        .sort((a, b) => {
-                          if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0)
-                          return (Number(b.points_for) || 0) - (Number(a.points_for) || 0)
-                        })
-                        .map((t) => (
-                          <li
-                            key={t.id}
-                            className={`flex items-center justify-between gap-2 px-3 py-2.5 ${
-                              t.is_mine ? 'bg-sky-500/10' : ''
-                            }`}
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate text-[14px] font-semibold text-zinc-100">
-                                {t.team_name}
-                                {t.is_mine ? (
-                                  <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-sky-300">
-                                    You
-                                  </span>
-                                ) : null}
-                              </div>
-                              <div className="truncate text-[12px] text-zinc-500">{t.owner_name}</div>
-                            </div>
-                            <div className="shrink-0 text-right">
-                              <div className="text-[14px] font-bold tabular-nums">{recordLine(t)}</div>
-                              <div className="text-[11px] tabular-nums text-zinc-500">
-                                {t.points_for != null ? Number(t.points_for).toFixed(1) : '-'} PF
-                              </div>
-                            </div>
-                          </li>
-                        ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-
+              </div>
+              {connectPanel}
+            </div>
           </div>
         ) : null}
       </div>

@@ -11780,6 +11780,19 @@ html.light [data-fantasy-home] .bg-rose-950\/20 {
 html.light [data-fantasy-home] .bg-sky-500\/10 {
   background-color: rgb(14 165 233 / 0.12) !important;
 }
+html.light [data-fantasy-home] .text-sky-300 {
+  color: #0369a1 !important;
+}
+html.light [data-fantasy-home] .text-rose-300,
+html.light [data-fantasy-home] .text-rose-400 {
+  color: #be123c !important;
+}
+html.light [data-fantasy-home] .text-amber-300 {
+  color: #b45309 !important;
+}
+html.light [data-fantasy-home] .bg-black\/50 {
+  background-color: rgb(0 0 0 / 0.35) !important;
+}
 
 /* Sports bet tracker (light mode) */
 html.light [data-sports-bet-progress] {

@@ -223,26 +223,51 @@ export async function loadLeagueDetail(supabase, leagueId) {
     .maybeSingle()
 
   const week = matchup?.week ?? null
-  let mineRoster = []
-  let oppRoster = []
-  if (week && matchup?.mine_team_id) {
-    const { data: mine } = await supabase
+  const teamIds = (teams || []).map((t) => t.id).filter(Boolean)
+  let rosterRows = []
+  if (week && teamIds.length) {
+    const { data: rows, error: rErr } = await supabase
       .from('fantasy_rosters')
-      .select('sleeper_id, player_name, position, nfl_team, slot')
-      .eq('team_id', matchup.mine_team_id)
+      .select('team_id, sleeper_id, player_name, position, nfl_team, slot')
+      .in('team_id', teamIds)
       .eq('week', week)
-      .order('slot', { ascending: true })
-    mineRoster = mine || []
+    if (rErr) throw new Error(rErr.message)
+    rosterRows = rows || []
   }
-  if (week && matchup?.opp_team_id) {
-    const { data: opp } = await supabase
-      .from('fantasy_rosters')
-      .select('sleeper_id, player_name, position, nfl_team, slot')
-      .eq('team_id', matchup.opp_team_id)
-      .eq('week', week)
-      .order('slot', { ascending: true })
-    oppRoster = opp || []
+
+  const sleeperIds = [...new Set(rosterRows.map((r) => r.sleeper_id).filter(Boolean))]
+  const injuryById = {}
+  if (sleeperIds.length) {
+    const { data: players } = await supabase
+      .from('nfl_players')
+      .select('sleeper_id, injury_status, status')
+      .in('sleeper_id', sleeperIds)
+    for (const p of players || []) {
+      if (p?.sleeper_id) injuryById[String(p.sleeper_id)] = p
+    }
   }
+
+  const rostersByTeam = {}
+  for (const row of rosterRows) {
+    const key = row.team_id
+    if (!rostersByTeam[key]) rostersByTeam[key] = []
+    const tag = row.sleeper_id ? injuryById[String(row.sleeper_id)] : null
+    rostersByTeam[key].push({
+      ...row,
+      injury_status: tag?.injury_status || null,
+      player_status: tag?.status || null,
+    })
+  }
+  for (const list of Object.values(rostersByTeam)) {
+    list.sort((a, b) => {
+      const as = a.slot === 'starter' ? 0 : 1
+      const bs = b.slot === 'starter' ? 0 : 1
+      return as - bs
+    })
+  }
+
+  const mineRoster = matchup?.mine_team_id ? rostersByTeam[matchup.mine_team_id] || [] : []
+  const oppRoster = matchup?.opp_team_id ? rostersByTeam[matchup.opp_team_id] || [] : []
 
   return {
     league,
@@ -250,5 +275,6 @@ export async function loadLeagueDetail(supabase, leagueId) {
     matchup: matchup || null,
     mineRoster,
     oppRoster,
+    rostersByTeam,
   }
 }

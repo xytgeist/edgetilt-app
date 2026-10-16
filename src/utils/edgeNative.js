@@ -329,6 +329,35 @@ export function canStartEdgeWebAuthSession() {
  * @param {{ callbackScheme?: string }} [opts]
  * @returns {Promise<{ ok: boolean, url?: string, cancelled?: boolean, error?: string, via: string }>}
  */
+/** True when this IPA can open the ESPN login sheet and return a session cookie. */
+export function canStartEspnFantasyLogin() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  return typeof window.EdgeNative?.startEspnFantasyLogin === 'function'
+}
+
+/**
+ * ESPN's own login page in a separate sheet. Resolves with espn_s2 + swid, or cancelled.
+ * The password never comes back to JavaScript. Old IPA → { ok: false, via: 'noop' }.
+ *
+ * @returns {Promise<{ ok: boolean, cancelled?: boolean, espn_s2?: string, swid?: string, error?: string, via: string }>}
+ */
+export async function startEspnFantasyLogin() {
+  if (!canStartEspnFantasyLogin()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('startEspnFantasyLogin', {})
+    return {
+      ok: result?.ok === true,
+      cancelled: result?.cancelled === true,
+      espn_s2: typeof result?.espn_s2 === 'string' ? result.espn_s2 : undefined,
+      swid: typeof result?.swid === 'string' ? result.swid : undefined,
+      error: typeof result?.error === 'string' ? result.error : undefined,
+      via: 'sheet',
+    }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 export async function startEdgeWebAuthSession(url, opts = {}) {
   const href = String(url || '').trim()
   if (!href) return { ok: false, via: 'noop', error: 'url required' }

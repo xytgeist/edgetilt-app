@@ -1,4 +1,4 @@
-# Fantasy Connect (Sleeper + Yahoo)
+# Fantasy Connect (Sleeper + Yahoo + ESPN)
 
 Signed-in users link a fantasy account, sync leagues/rosters/matchups, and auto-highlight **mine** + **enemy** players on NFL game hubs.
 
@@ -8,12 +8,12 @@ Signed-in users link a fantasy account, sync leagues/rosters/matchups, and auto-
 
 | Item | Spec |
 | --- | --- |
-| Providers | **Sleeper** (username) · **Yahoo** (OAuth 2.0) |
+| Providers | **Sleeper** (username) · **Yahoo** (OAuth 2.0) · **ESPN** (in-app login sheet → session cookie) |
 | Surfaces | Fantasy home (`?tab=fantasy`) + NFL game-hub pins |
 | Gate | Free for signed-in users |
 | Primary league | Last picked … drives hub pins (one across all providers) |
 
-**Soon (same tables, new Edge modules):** ESPN, CBS. Out of scope for now: waivers/AI, multi-league simultaneous hub highlight, paid gate.
+**Soon (same tables, new Edge modules):** CBS. Out of scope for now: waivers/AI, multi-league simultaneous hub highlight, paid gate.
 
 ## Tables (provider-agnostic)
 
@@ -43,8 +43,10 @@ Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves 
 | `fantasy-yahoo-oauth-start` | user JWT | returns Yahoo authorize `url`. Body `{ returnMode?: 'native'\|'web' }` encodes return channel in OAuth `state` (`n.*` / `w.*`) |
 | `fantasy-yahoo-oauth-callback` | browser redirect | exchange code, store tokens, sync; **native** → `edgetilt://yahoo-oauth?tab=fantasy&yahoo=…`; **web** → `/fantasy-yahoo-return.html?…` |
 | `fantasy-yahoo-sync` | user JWT | refresh token if needed, re-sync Yahoo leagues |
+| `fantasy-espn-link` | user JWT | `{ espn_s2, swid }` → store cookie, sync NFL leagues. Rejects `password`. |
+| `fantasy-espn-sync` | user JWT | re-sync using the stored ESPN cookie |
 
-Shared: **`fantasySleeperSync.ts`**, **`fantasyYahooSync.ts`**. `verify_jwt = false` (manual JWT via `userIdFromJwt` except the Yahoo callback).
+Shared: **`fantasySleeperSync.ts`**, **`fantasyYahooSync.ts`**, **`fantasyEspnSync.ts`**. `verify_jwt = false` (manual JWT via `userIdFromJwt` except the Yahoo callback).
 
 ### Yahoo secrets (test + prod)
 
@@ -66,7 +68,7 @@ Setup notes: **`supabase/functions/fantasy-yahoo-oauth-start/README.md`**.
 
 | Path | Role |
 | --- | --- |
-| `src/features/fantasy/FantasyHomeScreen.jsx` | Connect Sleeper / Yahoo, league pick, matchup, standings |
+| `src/features/fantasy/FantasyHomeScreen.jsx` | Connect Sleeper / Yahoo / ESPN, league pick, matchup, standings |
 | `src/features/fantasy/fantasyApi.js` | invoke Edges + RLS reads; `setPrimaryFantasyLeague` is client RLS |
 | AppShell tab **`fantasy`** | `?tab=fantasy` + Yahoo OAuth handoff still wired (no hamburger entry). Entry tile lives on **NFL Hub** as Coming soon until Yahoo API approval + soft launch |
 | NFL Hub Fantasy tile | `data-sports-hub-fantasy="nfl-soon"` … Coming soon veil (not on Sports Hub home) |
@@ -108,4 +110,4 @@ Authorize URL requests `scope=fspt-r`.
 3. Pick primary league → lineup + matchup + standings.
 4. Open an NFL hub with a starter → Watch / Enemy pins.
 5. Sleeper username link still works alongside Yahoo.
-6. ESPN / CBS remain **Soon**.
+6. ESPN connect is the iPhone login sheet (`startEspnFantasyLogin`). Web and older IPAs explain that an app update is required. CBS remains **Soon**.

@@ -64,6 +64,12 @@ verify_jwt = false
 [functions.fantasy-yahoo-sync]
 verify_jwt = false
 
+[functions.fantasy-espn-link]
+verify_jwt = false
+
+[functions.fantasy-espn-sync]
+verify_jwt = false
+
 [functions.lounge-cfb-game-players]
 verify_jwt = false
 

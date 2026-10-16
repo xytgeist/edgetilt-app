@@ -4,6 +4,7 @@ import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import {
   loadFantasySnapshot,
   loadLeagueDetail,
+  linkEspnSession,
   linkSleeperUsername,
   setPrimaryFantasyLeague,
   startYahooOAuth,
@@ -11,13 +12,14 @@ import {
 } from './fantasyApi.js'
 import {
   canStartEdgeWebAuthSession,
+  canStartEspnFantasyLogin,
   isEdgeiOSShell,
   openExternalUrl,
   startEdgeWebAuthSession,
+  startEspnFantasyLogin,
 } from '../../utils/edgeNative.js'
 
 const PROVIDER_STUBS = [
-  { id: 'espn', label: 'ESPN' },
   { id: 'cbs', label: 'CBS' },
 ]
 
@@ -31,6 +33,7 @@ function recordLine(t) {
 function providerLabel(provider) {
   if (provider === 'yahoo') return 'Yahoo'
   if (provider === 'sleeper') return 'Sleeper'
+  if (provider === 'espn') return 'ESPN'
   return provider || ''
 }
 
@@ -181,7 +184,12 @@ export default function FantasyHomeScreen({
     () => (snap.connections || []).find((c) => c.provider === 'yahoo'),
     [snap.connections],
   )
-  const hasConnection = Boolean(sleeper || yahoo)
+  const espn = useMemo(
+    () => (snap.connections || []).find((c) => c.provider === 'espn'),
+    [snap.connections],
+  )
+  const hasConnection = Boolean(sleeper || yahoo || espn)
+  const espnInApp = canStartEspnFantasyLogin()
 
   const refresh = useCallback(async () => {
     if (!supabaseClient || !signedIn) {
@@ -285,6 +293,45 @@ export default function FantasyHomeScreen({
       cancelled = true
     }
   }, [supabaseClient, leagueId, signedIn])
+
+  const onConnectEspn = async () => {
+    if (!signedIn) {
+      onRequireAuth?.('login')
+      return
+    }
+    if (!espnInApp) {
+      setErr('ESPN connect is in the EdgeTilt iPhone app. Update the app, then log in on the ESPN page. We never store the password.')
+      return
+    }
+    setBusy(true)
+    setErr('')
+    setInfo('Opening ESPN…')
+    try {
+      const session = await startEspnFantasyLogin()
+      if (session?.cancelled) {
+        setInfo('')
+        return
+      }
+      if (!session?.ok || !session.espn_s2 || !session.swid) {
+        setInfo('')
+        setErr(session?.error || 'ESPN login did not finish.')
+        return
+      }
+      setInfo('Syncing ESPN leagues…')
+      const linked = await linkEspnSession(supabaseClient, session)
+      setInfo(
+        linked?.leagues
+          ? `ESPN linked. ${linked.leagues} league${linked.leagues === 1 ? '' : 's'}.`
+          : 'ESPN linked.',
+      )
+      await refresh()
+    } catch (e) {
+      setInfo('')
+      setErr(e?.message || 'ESPN link failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const onLinkSleeper = async () => {
     if (!signedIn) {
@@ -446,7 +493,7 @@ export default function FantasyHomeScreen({
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-5 text-center">
             <div className="text-[16px] font-semibold">Connect your fantasy league</div>
             <p className="mt-2 text-[13px] text-zinc-400">
-              Sign in to link Sleeper or Yahoo and auto-highlight your players in the game hub.
+              Sign in to link Sleeper, Yahoo, or ESPN and auto-highlight your players in the game hub.
             </p>
             <button
               type="button"
@@ -524,7 +571,7 @@ export default function FantasyHomeScreen({
             ) : (
               <ConnectionCard
                 title="Connect Yahoo"
-                subtitle="Authorize EdgeTilt to read your Yahoo Fantasy NFL leagues (OAuth … no password stored)."
+                subtitle="Authorize EdgeTilt to read your Yahoo Fantasy NFL leagues (OAuth ... no password stored)."
               >
                 <button
                   type="button"
@@ -533,6 +580,46 @@ export default function FantasyHomeScreen({
                   className="rounded-full bg-violet-500 px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40"
                 >
                   {busy ? '…' : 'Connect Yahoo'}
+                </button>
+              </ConnectionCard>
+            )}
+
+            {espn ? (
+              <ConnectionCard
+                title="ESPN"
+                subtitle={espn.external_username || 'Connected'}
+                statusLine={
+                  espn.last_sync_at
+                    ? `Synced ${new Date(espn.last_sync_at).toLocaleString()}`
+                    : 'Not synced'
+                }
+                errorLine={espn.status === 'error' ? espn.last_error || 'Sync error' : ''}
+              >
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onConnectEspn()}
+                  className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
+                >
+                  Reconnect ESPN
+                </button>
+              </ConnectionCard>
+            ) : (
+              <ConnectionCard
+                title="Connect ESPN"
+                subtitle={
+                  espnInApp
+                    ? 'Log in on the ESPN page inside EdgeTilt. We keep the session cookie and never store your password.'
+                    : 'Available in the EdgeTilt iPhone app after this update. Web cannot read an ESPN login.'
+                }
+              >
+                <button
+                  type="button"
+                  disabled={busy || !espnInApp}
+                  onClick={() => void onConnectEspn()}
+                  className="rounded-full bg-sky-500 px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40"
+                >
+                  {busy ? '…' : 'Connect ESPN'}
                 </button>
               </ConnectionCard>
             )}

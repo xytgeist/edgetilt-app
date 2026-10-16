@@ -73,7 +73,7 @@ Priority is US hosts with real APIs or stable sync paths. Spec status vs plan:
 | --- | --- | --- | --- |
 | **Sleeper** | Username → API | **Shipped** | Best open API; multi-sport on Sleeper over time |
 | **Yahoo** | OAuth (`fspt-r`) | **Shipped code; API approval pending** App ID `i4wW6xoc` | Blocker: Yahoo Fantasy API gate |
-| **ESPN** | Cookie / private API or official path TBD | Stub **Soon** | High demand; sync often brittle … research before build |
+| **ESPN** | In-app login sheet → `espn_s2` + `SWID` (password never stored) | **iOS sheet shipped** (`1.4.1207`). Needs a new IPA. Web/Android cannot read the ESPN session yet | Server password login is blocked by ESPN captcha. Sheet is a separate WKWebView, not the app webview |
 | **CBS Sports** | TBD | Stub **Soon** | Lower priority than ESPN |
 | **NFL.com** | TBD | Planned | Common host; API quality TBD |
 | **Fantrax** | TBD | Later | Power-user / deeper custom leagues |
@@ -119,14 +119,15 @@ Separate provider enum / tables from season-long (or `kind = season | dfs` on co
 ### Layer A deliverables / specifics
 
 - [ ] Yahoo API approval + reconnect path live
-- [ ] ESPN + CBS real sync (after spike)
+- [x] ESPN iOS session-cookie sync (Android twin still open)
+- [ ] CBS real sync (after a clean path)
 - [ ] `sport` + `kind` (`season` \| `dfs`) on connection/league model
 - [ ] Multi-league switcher (primary still drives hub auto-pins)
 - [ ] Scoring + roster-slot snapshot for tool engines
 - [ ] DFS connection stub + CSV lineup import
 - [ ] Soft-launch Fantasy entry (remove Coming soon when A is “good enough”)
 
-**Depends on:** Yahoo approval (external). ESPN spike.
+**Depends on:** Yahoo approval (external). ESPN Android twin.
 
 ---
 

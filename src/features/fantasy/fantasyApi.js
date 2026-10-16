@@ -36,6 +36,25 @@ export async function syncSleeperFantasy(supabase, body = {}) {
   return data
 }
 
+export async function linkEspnSession(supabase, session) {
+  const { data, error } = await supabase.functions.invoke('fantasy-espn-link', {
+    body: {
+      espn_s2: String(session?.espn_s2 || '').trim(),
+      swid: String(session?.swid || '').trim(),
+    },
+  })
+  if (error) throw new Error(error.message || 'ESPN link failed.')
+  if (data?.error) throw new Error(String(data.error))
+  return data
+}
+
+export async function syncEspnFantasy(supabase) {
+  const { data, error } = await supabase.functions.invoke('fantasy-espn-sync', { body: {} })
+  if (error) throw new Error(error.message || 'ESPN sync failed.')
+  if (data?.error) throw new Error(String(data.error))
+  return data
+}
+
 export async function syncYahooFantasy(supabase, body = {}) {
   const { data, error } = await supabase.functions.invoke('fantasy-yahoo-sync', {
     body: body && typeof body === 'object' ? body : {},
@@ -49,7 +68,7 @@ export async function syncYahooFantasy(supabase, body = {}) {
 export async function syncAllFantasy(supabase, connections = []) {
   const list = Array.isArray(connections) ? connections : []
   const has = (p) => list.some((c) => c.provider === p && c.status !== 'revoked')
-  const out = { sleeper: null, yahoo: null }
+  const out = { sleeper: null, yahoo: null, espn: null }
   const errors = []
   if (has('sleeper') || !list.length) {
     try {
@@ -65,7 +84,14 @@ export async function syncAllFantasy(supabase, connections = []) {
       errors.push(e?.message || 'Yahoo sync failed.')
     }
   }
-  if (errors.length && !out.sleeper && !out.yahoo) {
+  if (has('espn')) {
+    try {
+      out.espn = await syncEspnFantasy(supabase)
+    } catch (e) {
+      errors.push(e?.message || 'ESPN sync failed.')
+    }
+  }
+  if (errors.length && !out.sleeper && !out.yahoo && !out.espn) {
     throw new Error(errors.join(' '))
   }
   return { ...out, warnings: errors }

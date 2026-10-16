@@ -109,6 +109,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         callbackScheme: (callbackScheme?.isEmpty == false) ? callbackScheme! : "edgetilt",
         completion: completion
       )
+    case "startEspnFantasyLogin":
+      EdgeEspnLoginSheet.present(completion: completion)
     case "openSportsbookUrl":
       guard let urlString = payload?["url"] as? String,
             let url = URL(string: urlString)
@@ -821,6 +823,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       getInfo: function () { return call('getInfo', null); },
       openInSafari: function (payload) { return call('openInSafari', payload || {}); },
       startWebAuthSession: function (payload) { return call('startWebAuthSession', payload || {}); },
+      startEspnFantasyLogin: function () { return call('startEspnFantasyLogin', {}); },
       openSportsbookUrl: function (payload) { return call('openSportsbookUrl', payload || {}); },
       openAppSettings: function () { return call('openAppSettings', null); },
       getPushPermissionStatus: function () {

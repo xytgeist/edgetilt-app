@@ -1,4 +1,5 @@
-/** Silent Lounge report classifier. Not a public bot persona. */
+/** Silent Lounge report classifier. Not a public bot persona.
+ * New reports insert needs_human=false. This module is what elevates. */
 
 export const LOUNGE_REPORT_NEVER_AUTO_REASONS = new Set([
   'sexual',

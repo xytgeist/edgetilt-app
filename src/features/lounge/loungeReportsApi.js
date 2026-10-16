@@ -32,6 +32,8 @@ export async function submitLoungeReport(supabase, payload) {
     reason,
     details: details || null,
     status: 'open',
+    needs_human: false,
+    triage_status: 'pending',
   }
 
   const { data, error } = await supabase.from('lounge_reports').insert(row).select('id').maybeSingle()

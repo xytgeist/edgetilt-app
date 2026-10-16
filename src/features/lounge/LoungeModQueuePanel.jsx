@@ -146,8 +146,9 @@ export default function LoungeModQueuePanel({ supabaseClient, compact = false })
         <div>
           <div className="text-[15px] font-bold text-white">Mod queue</div>
           <div className="mt-0.5 text-xs leading-relaxed text-zinc-500">
-            Human inbox for reports the classifier will not own. Spam can auto-dismiss. Sexual, illegal,
-            impersonation, hate, and uncertain stay here. Hide removes from Lounge. Delete is permanent.
+            Human inbox for reports the bot elevated. New reports start pending. Spam can auto-dismiss.
+            Sexual, illegal, impersonation, hate, and uncertain get elevated. Hide removes from Lounge.
+            Delete is permanent.
           </div>
         </div>
         <div className="flex flex-wrap gap-2">

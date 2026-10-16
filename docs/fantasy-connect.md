@@ -112,4 +112,4 @@ Authorize URL requests `scope=fspt-r`.
 3. Pick primary league → lineup + matchup + standings.
 4. Open an NFL hub with a starter → Watch / Enemy pins.
 5. Sleeper username link still works alongside Yahoo.
-6. ESPN connect is the in-app login sheet (`startEspnFantasyLogin`) on iPhone and Android (APK **1.3.22+**). A normal browser and older shells explain that an app update is required. CBS remains **Soon**.
+6. ESPN and CBS connect are in-app login sheets (`startEspnFantasyLogin` / `startCbsFantasyLogin`) on iPhone and Android (APK **1.3.24**). A normal browser and older shells explain that an app update is required. Edge functions are on test and prod. Password is never stored.

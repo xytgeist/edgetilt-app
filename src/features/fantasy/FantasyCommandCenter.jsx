@@ -663,7 +663,7 @@ function WinBar({ left, right }) {
   )
 }
 
-function MatchupCard({ page, teams, week, provider, cards, cardsLoading, showLineup }) {
+function MatchupCard({ page, teams, week, provider, cards }) {
   const leftOut = sideOutlook(page.roster, cards)
   const rightOut = sideOutlook(page.oppRoster, cards)
   return (
@@ -685,19 +685,14 @@ function MatchupCard({ page, teams, week, provider, cards, cardsLoading, showLin
         )}
       </div>
       {page.right ? <WinBar left={leftOut.outlook} right={rightOut.outlook} /> : null}
-      {showLineup ? (
-        <div className="border-t border-zinc-800 p-2">
-          <VsMatchup mine={page.roster} opp={page.oppRoster} cards={cards} cardsLoading={cardsLoading} />
-        </div>
-      ) : null}
     </div>
   )
 }
 
 /**
  * Connected fantasy home. Hosts live in the manage sheet, not on this page.
- * League pills stay pills, grouped by sport. The open pill is the only expanded matchup.
- * Other games in that league are a swipe away.
+ * The page opens on the league pills only. A tap expands that league’s matchup.
+ * Players sit under the card, not inside it. Other games are a swipe.
  */
 export default function FantasyCommandCenter({
   leagues,
@@ -711,6 +706,7 @@ export default function FantasyCommandCenter({
   onSync,
 }) {
   const [leagueId, setLeagueId] = useState(null)
+  const [opened, setOpened] = useState(false)
   const [page, setPage] = useState(0)
   const [tool, setTool] = useState('start')
   const touchX = useRef(null)
@@ -736,18 +732,19 @@ export default function FantasyCommandCenter({
       }))
   }, [leagues])
 
-  const selected =
-    (leagues || []).find((lg) => lg.id === leagueId) ||
-    (leagues || []).find((lg) => lg.is_primary) ||
-    (leagues || [])[0] ||
-    null
+  const selected = opened ? (leagues || []).find((lg) => lg.id === leagueId) || null : null
   const detail = selected ? details?.[selected.id] || null : null
   const pages = useMemo(() => (detail ? matchupPages(detail) : []), [detail])
   const safePage = pages.length ? Math.min(page, pages.length - 1) : 0
   const current = pages[safePage] || null
 
   const pickLeague = (id) => {
+    if (opened && id === leagueId) {
+      setOpened(false)
+      return
+    }
     setLeagueId(id)
+    setOpened(true)
     setPage(0)
     void onSetPrimary?.(id)
   }
@@ -778,38 +775,32 @@ export default function FantasyCommandCenter({
         </div>
       ) : null}
 
-      {groups.length ? (
-        <div className="space-y-2">
-          {groups.map((group) => (
-            <div key={group.sport} className="flex items-center gap-2">
-              {groups.length > 1 ? (
-                <div className="w-9 shrink-0 text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-                  {group.label}
-                </div>
-              ) : null}
-              <div className="-mx-0 flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1">
-                {group.leagues.map((lg) => {
-                  const on = lg.id === selected?.id
-                  return (
-                    <button
-                      key={lg.id}
-                      type="button"
-                      onClick={() => pickLeague(lg.id)}
-                      className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold ${
-                        on
-                          ? 'border-sky-400 bg-sky-500 text-white'
-                          : 'border-zinc-700 bg-zinc-900 text-zinc-300'
-                      }`}
-                    >
-                      {lg.name}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
+      {groups.map((group) => (
+        <div key={group.sport} className="space-y-1.5">
+          {groups.length > 1 ? (
+            <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{group.label}</div>
+          ) : null}
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            {group.leagues.map((lg) => {
+              const on = opened && lg.id === selected?.id
+              return (
+                <button
+                  key={lg.id}
+                  type="button"
+                  onClick={() => pickLeague(lg.id)}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold ${
+                    on
+                      ? 'border-sky-400 bg-sky-500 text-white'
+                      : 'border-zinc-700 bg-zinc-900 text-zinc-300'
+                  }`}
+                >
+                  {lg.sport && lg.sport !== 'nfl' ? `${lg.name} · ${String(lg.sport).toUpperCase()}` : lg.name}
+                </button>
+              )
+            })}
+          </div>
         </div>
-      ) : null}
+      ))}
 
       {selected && !detail && loadingDetail ? (
         <div className="py-6 text-center text-sm text-zinc-500">Loading league…</div>
@@ -842,8 +833,6 @@ export default function FantasyCommandCenter({
             week={detail?.week}
             provider={selected?.provider || detail?.league?.provider}
             cards={cards}
-            cardsLoading={cardsLoading}
-            showLineup
           />
         </div>
       ) : null}
@@ -872,24 +861,37 @@ export default function FantasyCommandCenter({
         </div>
       ) : null}
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {TOOLS.map((item) => {
-          const on = item.id === tool
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setTool(item.id)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold ${
-                on ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
-              }`}
-            >
-              {item.label}
-            </button>
-          )
-        })}
-      </div>
-      <p className="text-[13px] leading-snug text-zinc-400">{activeTool.body}</p>
+      {opened ? (
+        <>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {TOOLS.map((item) => {
+              const on = item.id === tool
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setTool(item.id)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold ${
+                    on ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-[13px] leading-snug text-zinc-400">{activeTool.body}</p>
+        </>
+      ) : null}
+
+      {current ? (
+        <VsMatchup
+          mine={current.roster}
+          opp={current.oppRoster}
+          cards={cards}
+          cardsLoading={cardsLoading}
+        />
+      ) : null}
     </div>
   )
 }

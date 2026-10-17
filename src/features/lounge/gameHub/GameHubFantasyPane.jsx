@@ -8,6 +8,7 @@ import {
   setFantasyScoring,
 } from './gameHubFantasyScoring.js'
 import { useHubPointFormat, useNflLeagueRules } from './gameHubLeagueRules.js'
+import { rosterLeaguePill, rosterLeagueTitle, useRosterLeagues } from './gameHubRosterLeagues.js'
 import {
   getFantasyPinIds,
   getFantasyPinRole,
@@ -868,6 +869,7 @@ export default function GameHubFantasyPane({
   const gameColTitle = status === 'post' ? 'Game' : status === 'in' ? 'Live' : 'Proj'
   const paint = useLoungeSportsPillWashAndLogos(game)
   const { league, leagues, selectLeague } = useNflLeagueRules()
+  const rosterLeagues = useRosterLeagues()
   const scoring = useHubPointFormat()
   const pins = useFantasyPins()
   const pinIds = useMemo(() => getFantasyPinIds(pins), [pins])
@@ -894,14 +896,18 @@ export default function GameHubFantasyPane({
     }
 
     // Live / final: the H2H stack folds into the board so every player ranks by points scored.
+    const owned = (player) => Boolean(rosterLeagues[String(player?.sleeper_id || '')])
     const board = list
       .filter((p) => ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].includes(normalizeFantasyPos(p)))
-      .filter((p) => liveOrFinal || !featuredIds.has(String(p.sleeper_id)))
+      .filter((p) => liveOrFinal || owned(p) || !featuredIds.has(String(p.sleeper_id)))
     board.sort((a, b) => {
+      const aOwn = owned(a) ? 0 : 1
+      const bOwn = owned(b) ? 0 : 1
+      if (aOwn !== bOwn) return aOwn - bOwn
       const aPin = pinSet.has(String(a.sleeper_id))
       const bPin = pinSet.has(String(b.sleeper_id))
       if (aPin !== bPin) return aPin ? -1 : 1
-      if (aPin && bPin) {
+      if (aPin && bPin && aOwn === 1) {
         // Preserve most-recently-selected order from the pin list.
         return pinIds.indexOf(String(a.sleeper_id)) - pinIds.indexOf(String(b.sleeper_id))
       }
@@ -920,7 +926,7 @@ export default function GameHubFantasyPane({
     })
 
     return { matchups: slots, rest: board }
-  }, [players, liveOrFinal, scoring, pinSet, pinIds, league, boxIndex])
+  }, [players, liveOrFinal, scoring, pinSet, pinIds, league, boxIndex, rosterLeagues])
 
   if (loading) return <div className="py-10 text-center text-sm text-zinc-500">Loading fantasy…</div>
   if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
@@ -963,22 +969,29 @@ export default function GameHubFantasyPane({
                 : seasonDetailLine(p)
               const leaguePoints = league ? leaguePointsForBox(box, league.scoring, 'nfl') : null
               const col = restBoardPointsColumn(p, status, live, scoring, leaguePoints)
+              const ownership = rosterLeagues[String(p.sleeper_id || '')] || null
+              const leagueLabel = rosterLeaguePill(ownership)
               const pinRole = getFantasyPinRole(p.sleeper_id, pins)
-              const pinned = Boolean(pinRole)
-              const enemy = pinRole === 'enemy'
+              const enemy = pinRole === 'enemy' && !ownership
+              const pinned = Boolean(ownership || pinRole)
               return (
                 <li key={p.sleeper_id}>
                   <button
                     type="button"
                     data-lounge-fantasy-pin={pinned ? (enemy ? 'enemy' : 'mine') : '0'}
-                    onClick={() => toggleFantasyPin(p.sleeper_id)}
+                    onClick={() => {
+                      if (ownership) return
+                      toggleFantasyPin(p.sleeper_id)
+                    }}
                     aria-pressed={pinned}
                     aria-label={
-                      pinned
-                        ? enemy
+                      ownership
+                        ? `${p.name} is on your ${rosterLeagueTitle(ownership)} roster`
+                        : enemy
                           ? `Clear enemy highlight for ${p.name}`
-                          : `Deselect ${p.name} from fantasy watch`
-                        : `Select ${p.name} for fantasy watch`
+                          : pinned
+                            ? `Deselect ${p.name} from fantasy watch`
+                            : `Select ${p.name} for fantasy watch`
                     }
                     className={`relative grid w-full grid-cols-[minmax(0,1fr)_3.25rem_3.25rem] items-center gap-x-2 px-3 py-2.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] first:rounded-t-2xl last:rounded-b-2xl ${
                       enemy
@@ -1008,13 +1021,14 @@ export default function GameHubFantasyPane({
                           <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
                           {pinned ? (
                             <span
+                              title={leagueLabel ? rosterLeagueTitle(ownership) : undefined}
                               className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
                                 enemy
                                   ? 'bg-rose-500/25 text-rose-300'
                                   : 'bg-sky-500/25 text-sky-300'
                               }`}
                             >
-                              {enemy ? 'Enemy' : 'Watch'}
+                              {leagueLabel || (enemy ? 'Enemy' : 'Watch')}
                             </span>
                           ) : null}
                           <InjuryPill status={p.injury_status} />

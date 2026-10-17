@@ -12,6 +12,7 @@ import {
   livePrimaryYards,
 } from './gameHubPropStats.js'
 import { getFantasyPinRole, useFantasyPins } from './gameHubFantasyPins.js'
+import { rosterLeaguePill, rosterLeagueTitle, useRosterLeagues } from './gameHubRosterLeagues.js'
 
 function InjuryPill({ status }) {
   const tag = injuryTag(status)
@@ -677,6 +678,8 @@ function RosterPlayerHeader({
   logoBase,
   headline,
   fantasyRole = null,
+  leagueLabel = '',
+  leagueTitle = '',
 }) {
   return (
     <div data-roster-player-header className="relative overflow-hidden px-3.5 py-3.5">
@@ -730,7 +733,14 @@ function RosterPlayerHeader({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
             <div className="truncate text-[16px] font-semibold text-zinc-100">{player.name}</div>
-            {fantasyRole === 'mine' ? (
+            {leagueLabel ? (
+              <span
+                title={leagueTitle || undefined}
+                className="shrink-0 rounded-full bg-sky-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-300"
+              >
+                {leagueLabel}
+              </span>
+            ) : fantasyRole === 'mine' ? (
               <span className="shrink-0 rounded-full bg-sky-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-300">
                 Watch
               </span>
@@ -773,6 +783,7 @@ function RosterPlayerHeader({
 function RosterBoard({ players, game, liveOrFinal = false, boxIndex = null }) {
   const [expandedId, setExpandedId] = useState(null)
   const fantasyPins = useFantasyPins()
+  const rosterLeagues = useRosterLeagues()
   const paint = useLoungeSportsPillWashAndLogos(game)
   const logoBase = isCfbGame(game) ? '/sports/cfb/logos' : '/sports/nfl/logos'
   const sorted = useMemo(() => {
@@ -818,7 +829,11 @@ function RosterBoard({ players, game, liveOrFinal = false, boxIndex = null }) {
         const hasStats = buildStatGroups(p).length > 0
         const accent = rosterAccentForPlayer(p, game, paint)
         const expanded = expandedId === id
+        const ownership = rosterLeagues[id] || null
+        const leagueLabel = rosterLeaguePill(ownership)
         const fantasyRole = getFantasyPinRole(id, fantasyPins)
+        const owned = Boolean(ownership)
+        const shownRole = owned ? 'mine' : fantasyRole
         const box = liveOrFinal ? boxForPlayer(boxIndex, p) : null
         const seasonHead = seasonHeadline(p)
         const headline = liveOrFinal
@@ -830,11 +845,11 @@ function RosterBoard({ players, game, liveOrFinal = false, boxIndex = null }) {
             key={id}
             data-roster-player-card={expanded ? '' : undefined}
             data-expanded={expanded ? '' : undefined}
-            data-fantasy-role={fantasyRole || undefined}
+            data-fantasy-role={shownRole || undefined}
             className={`relative overflow-hidden ${
-              fantasyRole === 'enemy'
+              shownRole === 'enemy'
                 ? 'bg-rose-500/5'
-                : fantasyRole === 'mine'
+                : shownRole === 'mine'
                   ? 'bg-sky-500/5'
                   : ''
             }`}
@@ -852,7 +867,9 @@ function RosterBoard({ players, game, liveOrFinal = false, boxIndex = null }) {
               hasStats={hasStats}
               logoBase={logoBase}
               headline={headline}
-              fantasyRole={fantasyRole}
+              fantasyRole={owned ? null : fantasyRole}
+              leagueLabel={leagueLabel}
+              leagueTitle={rosterLeagueTitle(ownership)}
               onToggle={() => {
                 if (!hasStats) return
                 setExpandedId((cur) => (cur === id ? null : id))

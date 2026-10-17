@@ -1,0 +1,131 @@
+/**
+ * Which of this game's players the signed-in user owns, and in which NFL leagues.
+ * The Fantasy list floats those players and replaces the Watch pill with the league name.
+ * A trailing + means the same player is on more than one of their teams.
+ */
+import { useEffect, useState } from 'react'
+
+const CHANGE_EVENT = 'edgetilt:game-hub-roster-leagues'
+
+/** @type {Record<string, { leagues: { id: string, name: string, primary: boolean }[] }>} */
+let snapshot = {}
+let loadSeq = 0
+
+function emit() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(CHANGE_EVENT))
+}
+
+export function getRosterLeague(sleeperId) {
+  const id = String(sleeperId || '').trim()
+  return id ? snapshot[id] || null : null
+}
+
+/** Primary league name, then the rest. "+" when they own him in more than one. */
+export function rosterLeaguePill(entry) {
+  const leagues = entry?.leagues || []
+  if (!leagues.length) return ''
+  const name = String(leagues[0].name || 'League').trim() || 'League'
+  const short = name.length > 14 ? `${name.slice(0, 13)}…` : name
+  return leagues.length > 1 ? `${short}+` : short
+}
+
+export function rosterLeagueTitle(entry) {
+  return (entry?.leagues || []).map((league) => league.name).filter(Boolean).join(', ')
+}
+
+export function useRosterLeagues() {
+  const [, bump] = useState(0)
+  useEffect(() => {
+    const onChange = () => bump((n) => n + 1)
+    window.addEventListener(CHANGE_EVENT, onChange)
+    return () => window.removeEventListener(CHANGE_EVENT, onChange)
+  }, [])
+  return snapshot
+}
+
+/**
+ * Latest stored week on the user's NFL teams, then who they own among `sleeperIds`.
+ * A miss leaves the map empty so the list keeps the manual Watch pins.
+ */
+export function loadGameRosterLeagues(supabase, sleeperIds) {
+  const ids = [...new Set((sleeperIds || []).map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 200)
+  if (!supabase || !ids.length) {
+    snapshot = {}
+    emit()
+    return
+  }
+  const seq = ++loadSeq
+  void (async () => {
+    const { data: teams, error: teamErr } = await supabase
+      .from('fantasy_teams')
+      .select('id, league:fantasy_leagues!league_id(id, name, sport, is_primary)')
+      .eq('is_mine', true)
+    if (seq !== loadSeq) return
+    if (teamErr) {
+      snapshot = {}
+      emit()
+      return
+    }
+    const nflTeams = (teams || []).filter((team) => {
+      const sport = String(team?.league?.sport || 'nfl').toLowerCase()
+      return sport === 'nfl' && team?.league?.id && team?.id
+    })
+    const teamById = new Map(nflTeams.map((team) => [String(team.id), team]))
+    const teamIds = [...teamById.keys()]
+    if (!teamIds.length) {
+      snapshot = {}
+      emit()
+      return
+    }
+    const { data: latest, error: weekErr } = await supabase
+      .from('fantasy_rosters')
+      .select('week')
+      .in('team_id', teamIds)
+      .order('week', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (seq !== loadSeq) return
+    const week = Number(latest?.week)
+    if (weekErr || !Number.isFinite(week)) {
+      snapshot = {}
+      emit()
+      return
+    }
+    const { data: rows, error: rowErr } = await supabase
+      .from('fantasy_rosters')
+      .select('sleeper_id, team_id')
+      .in('team_id', teamIds)
+      .in('sleeper_id', ids)
+      .eq('week', week)
+    if (seq !== loadSeq) return
+    if (rowErr) {
+      snapshot = {}
+      emit()
+      return
+    }
+    const next = {}
+    for (const row of rows || []) {
+      const playerId = String(row?.sleeper_id || '').trim()
+      const team = teamById.get(String(row?.team_id || ''))
+      const league = team?.league
+      if (!playerId || !league?.id) continue
+      const bucket = next[playerId] || { leagues: [] }
+      if (!bucket.leagues.some((item) => item.id === String(league.id))) {
+        bucket.leagues.push({
+          id: String(league.id),
+          name: String(league.name || 'League').trim() || 'League',
+          primary: league.is_primary === true,
+        })
+      }
+      next[playerId] = bucket
+    }
+    for (const bucket of Object.values(next)) {
+      bucket.leagues.sort((a, b) => {
+        if (a.primary !== b.primary) return a.primary ? -1 : 1
+        return a.name.localeCompare(b.name)
+      })
+    }
+    snapshot = next
+    emit()
+  })()
+}

@@ -11,7 +11,7 @@ Signed-in users link a fantasy account, sync leagues/rosters/matchups, and auto-
 | Providers | **Sleeper** (username) · **Yahoo** (OAuth 2.0) · **ESPN** (in-app bottom sheet → session cookie) · **CBS** (in-app bottom sheet → member token) |
 | Surfaces | Fantasy home (`?tab=fantasy`) + NFL game-hub pins, Fantasy tab, and play pills |
 | Gate | Free for signed-in users |
-| Primary league | Last picked … drives hub pins (one across all providers) |
+| Primary league | Last picked … drives the opponent (Enemy) pins. Owned players on the Fantasy list come from every NFL league |
 
 **Product intent:** **`docs/fantasy-suite.md`** → Synopsis. Out of scope for now: waivers/AI, multi-league simultaneous hub highlight, paid gate. Password paste is not a connector.
 
@@ -83,10 +83,10 @@ Setup notes: **`supabase/functions/fantasy-yahoo-oauth-start/README.md`**.
 
 | Role | UI | Source |
 | --- | --- | --- |
-| `mine` | Blue **Watch** | Manual tap or league auto |
-| `enemy` | Rose **Enemy** | League auto (opponent starters in this game) |
+| `mine` | Blue **Watch**, unless the player is on your roster | Manual tap. Rostered players show the league name instead |
+| `enemy` | Rose **Enemy** | Primary-league opponent starters in this game |
 
-On NFL hub open: `hub_pins: true` reads the user’s **primary** league (any provider) and applies mine/enemy sleeper ids present in that game.
+On NFL hub open, the Fantasy list reads every NFL league the user owns. Those players are highlighted and sorted to the top. The pill is that league's name, with a trailing **+** when the same player is owned in more than one. `hub_pins: true` still reads the **primary** league for Enemy (and for Watch on players they do not own).
 
 ## EdgeiOS note
 

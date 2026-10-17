@@ -31,6 +31,7 @@ import {
 import GameHubPlayersPane from './gameHub/GameHubPlayersPane.jsx'
 import GameHubFantasyPane from './gameHub/GameHubFantasyPane.jsx'
 import { loadNflLeagueRules } from './gameHub/gameHubLeagueRules.js'
+import { loadGameRosterLeagues } from './gameHub/gameHubRosterLeagues.js'
 import GameHubChatPane from './gameHub/GameHubChatPane.jsx'
 import GameHubNewsPane from './gameHub/GameHubNewsPane.jsx'
 import { GAME_CHAT_MAX_CHARS } from './gameHub/gameHubChatApi.js'
@@ -413,8 +414,12 @@ function LoungeMatchupGameHubModal({
   useEffect(() => {
     if (!game || !supabaseClient || !fantasyPresentKey) return undefined
     const sk = String(game.sport_key || '')
-    if (!sk.includes('americanfootball') || sk.includes('ncaaf')) return undefined
+    if (!sk.includes('americanfootball') || sk.includes('ncaaf')) {
+      loadGameRosterLeagues(null, [])
+      return undefined
+    }
     const present = fantasyPresentKey.split(',')
+    loadGameRosterLeagues(supabaseClient, present)
     let cancelled = false
     void fetchHubFantasyPins(supabaseClient)
       .then((data) => {

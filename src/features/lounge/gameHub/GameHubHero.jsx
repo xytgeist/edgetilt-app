@@ -31,6 +31,7 @@ import {
   useFantasyScoring,
 } from './gameHubFantasyScoring.js'
 import { getActiveNflLeague, useNflLeagueRules } from './gameHubLeagueRules.js'
+import { getRosterLeague } from './gameHubRosterLeagues.js'
 import { getFantasyPinIds, getFantasyPinRole, useFantasyPins } from './gameHubFantasyPins.js'
 import {
   CATCH_HANDS_LOCAL,
@@ -4152,12 +4153,13 @@ function FieldViz({
             aria-live="polite"
           >
             {fantasyToast.rows.map((r) => {
+              const owned = Boolean(r.sleeperId && getRosterLeague(r.sleeperId))
               const pinRole =
                 r.sleeperId && fantasyPinSet.has(String(r.sleeperId))
                   ? getFantasyPinRole(r.sleeperId, fantasyPins)
                   : null
-              const watched = pinRole === 'mine'
-              const enemy = pinRole === 'enemy'
+              const watched = owned || pinRole === 'mine'
+              const enemy = !owned && pinRole === 'enemy'
               const ptsColor =
                 r.points < 0
                   ? '#fda4af'

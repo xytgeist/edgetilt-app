@@ -44,6 +44,30 @@ function recordLine(t) {
   return ti > 0 ? `${w}-${l}-${ti}` : `${w}-${l}`
 }
 
+function TeamLogo({ team }) {
+  const [failed, setFailed] = useState(false)
+  const url = String(team?.avatar_url || '').trim()
+  const letter = String(team?.team_name || '?').trim().slice(0, 1).toUpperCase() || '?'
+  if (!url || failed) {
+    return (
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-[13px] font-bold"
+        style={{ color: '#fff' }}
+      >
+        {letter}
+      </span>
+    )
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      className="h-9 w-9 shrink-0 rounded-full bg-zinc-800 object-cover"
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
 function scoreText(value) {
   if (value == null || value === '') return '-'
   const n = Number(value)
@@ -181,17 +205,6 @@ function pts(value) {
   return n.toFixed(1)
 }
 
-function ordinal(n) {
-  const v = Math.abs(Number(n))
-  const mod100 = v % 100
-  if (mod100 >= 11 && mod100 <= 13) return `${n}th`
-  const mod10 = v % 10
-  if (mod10 === 1) return `${n}st`
-  if (mod10 === 2) return `${n}nd`
-  if (mod10 === 3) return `${n}rd`
-  return `${n}th`
-}
-
 function cents(price) {
   const n = Number(price)
   if (!Number.isFinite(n)) return ''
@@ -211,97 +224,6 @@ function gameWhen(card) {
     if (!Number.isNaN(d.getTime())) return d.toLocaleDateString(undefined, { weekday: 'short' })
   }
   return ''
-}
-
-function gradeClass(grade) {
-  if (grade === 'A') return 'text-sky-300'
-  if (grade === 'C') return 'text-amber-300'
-  if (grade === 'D') return 'text-rose-300'
-  return 'text-zinc-300'
-}
-
-function PlayerRow({ row, card, cardsLoading }) {
-  const [open, setOpen] = useState(false)
-  const inj = injuryLabel(row.injury_status)
-  const when = gameWhen(card)
-  const side = card?.opponent ? (card.home ? 'vs' : '@') : ''
-  const gameLine = card?.bye
-    ? 'Bye'
-    : card?.opponent
-      ? `${row.nfl_team || ''} ${side} ${card.opponent}${when ? ` · ${when}` : ''}`.trim()
-      : ''
-  const statBits = [
-    pts(card?.total) ? `${pts(card.total)} tot` : '',
-    pts(card?.avg) ? `${pts(card.avg)} avg` : '',
-    pts(card?.projected) ? `${pts(card.projected)} proj` : '',
-    pts(card?.week_pts) && card?.game_status === 'complete' ? `${pts(card.week_pts)} wk` : '',
-  ].filter(Boolean)
-  const rank = card?.pos_rank ? `${row.position || ''}${card.pos_rank}` : ''
-  const main = card?.main_prop
-  const rest = (card?.props || []).filter((p) => p !== main && p?.label !== main?.label)
-  return (
-    <li className="border-b border-zinc-800/80 last:border-b-0">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
-      >
-        <PlayerAvatar row={row} />
-        <span className="w-8 shrink-0 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-          {row.position || '-'}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-baseline gap-2">
-            <span className="min-w-0 truncate text-[15px] font-semibold text-zinc-100">
-              {row.player_name}
-            </span>
-            {rank ? <span className="shrink-0 text-[12px] font-bold text-zinc-400">{rank}</span> : null}
-          </span>
-          <span className="block truncate text-[12px] text-zinc-500">
-            {gameLine || row.nfl_team || 'FA'}
-            {inj ? ` · ${inj}` : ''}
-          </span>
-          {statBits.length ? (
-            <span className="mt-0.5 block truncate text-[12px] text-zinc-400">{statBits.join(' · ')}</span>
-          ) : cardsLoading && row.sleeper_id ? (
-            <span className="mt-0.5 block text-[12px] text-zinc-600">Loading week…</span>
-          ) : null}
-          {card?.matchup_grade ? (
-            <span className={`mt-0.5 block text-[12px] font-semibold ${gradeClass(card.matchup_grade)}`}>
-              Matchup {card.matchup_grade}
-              {card.matchup_rank ? ` · ${ordinal(card.matchup_rank)} easiest` : ''}
-            </span>
-          ) : null}
-          {main?.label ? (
-            <span className="mt-0.5 block truncate text-[12px] font-semibold text-sky-300">
-              {main.label}
-              {cents(main.price) ? ` · ${cents(main.price)}` : ''}
-            </span>
-          ) : !cardsLoading && row.sleeper_id && card ? (
-            <span className="mt-0.5 block text-[12px] text-zinc-600">No open line</span>
-          ) : null}
-        </span>
-      </button>
-      {open ? (
-        <div className="px-3 pb-3 pl-14 text-[13px] leading-snug text-zinc-400">
-          {rest.length ? (
-            <ul className="space-y-1">
-              {rest.map((p) => (
-                <li key={p.label}>
-                  {p.label}
-                  {cents(p.price) ? ` · ${cents(p.price)}` : ''}
-                </li>
-              ))}
-            </ul>
-          ) : main?.label ? (
-            <p>That is the only open line on {row.player_name}.</p>
-          ) : (
-            <p>No open line on {row.player_name}.</p>
-          )}
-        </div>
-      ) : null}
-    </li>
-  )
 }
 
 function injuryPill(status) {
@@ -353,7 +275,7 @@ function VsSide({ row, card, align }) {
   )
 }
 
-function VsMatchup({ mine, opp, cards, cardsLoading }) {
+function VsMatchup({ mine, opp, cards, cardsLoading, leftLabel, rightLabel }) {
   const [openKey, setOpenKey] = useState(null)
   const pairs = pairStarters(mine, opp)
   const bench = (rows) => (rows || []).filter((r) => r.slot !== 'starter')
@@ -408,11 +330,11 @@ function VsMatchup({ mine, opp, cards, cardsLoading }) {
       {mineBench.length || oppBench.length ? (
         <p className="border-t border-zinc-800 px-3 py-2 text-[12px] text-zinc-500">
           {mineBench.length
-            ? `Your bench ${mineBench.map((r) => r.player_name).filter(Boolean).slice(0, 4).join(', ')}`
+            ? `${leftLabel || 'Bench'} ${mineBench.map((r) => r.player_name).filter(Boolean).slice(0, 4).join(', ')}`
             : ''}
           {mineBench.length && oppBench.length ? ' · ' : ''}
           {oppBench.length
-            ? `Opp bench ${oppBench.map((r) => r.player_name).filter(Boolean).slice(0, 4).join(', ')}`
+            ? `${rightLabel || 'Bench'} ${oppBench.map((r) => r.player_name).filter(Boolean).slice(0, 4).join(', ')}`
             : ''}
         </p>
       ) : null}
@@ -433,61 +355,6 @@ function PropList({ row, card }) {
         </li>
       ))}
     </ul>
-  )
-}
-
-function LineupCard({ title, rows, cards, cardsLoading }) {
-  const starters = startersOf(rows)
-  const bench = (rows || []).filter((r) => r.slot !== 'starter')
-  const hurt = starters.filter((r) => injuryLabel(r.injury_status))
-  return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80">
-      <div className="flex items-baseline justify-between gap-2 px-3 pt-3">
-        <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">{title}</div>
-        <div className="text-[11px] text-zinc-600">{starters.length} starters</div>
-      </div>
-      {starters.length ? (
-        <ul className="mt-1">
-          {starters.map((r, i) => (
-            <PlayerRow
-              key={`${r.sleeper_id || r.player_name}-${i}`}
-              row={r}
-              card={r.sleeper_id ? cards?.[r.sleeper_id] : null}
-              cardsLoading={cardsLoading}
-            />
-          ))}
-        </ul>
-      ) : (
-        <p className="px-3 py-4 text-[13px] text-zinc-500">No starters synced for this team.</p>
-      )}
-      {bench.length ? (
-        <p className="border-t border-zinc-800 px-3 py-2 text-[12px] text-zinc-500">
-          Bench {bench.map((r) => r.player_name).filter(Boolean).slice(0, 6).join(', ')}
-          {bench.length > 6 ? '…' : ''}
-        </p>
-      ) : null}
-      {hurt.length ? (
-        <div className="border-t border-zinc-800 px-3 py-3">
-          <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
-            Injuries
-          </div>
-          <ul className="mt-2 space-y-1">
-            {hurt.map((r) => (
-              <li key={r.sleeper_id || r.player_name} className="text-[13px] text-zinc-300">
-                <span className="font-semibold text-amber-300">{injuryLabel(r.injury_status)}</span>
-                {' · '}
-                {r.player_name}
-                {r.nfl_team ? ` · ${r.nfl_team}` : ''}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        <p className="border-t border-zinc-800 px-3 py-2 text-[12px] text-zinc-600">
-          No injury tags on these starters.
-        </p>
-      )}
-    </div>
   )
 }
 
@@ -512,28 +379,63 @@ export default function FantasyCommandCenter({
 
   const pages = useMemo(() => {
     const teams = detail?.teams || []
-    const mine = teams.find((t) => t.is_mine) || null
-    const opp = teams.find((t) => t.id === detail?.matchup?.opp_team_id) || null
+    const byId = Object.fromEntries(teams.map((t) => [t.id, t]))
     const byTeam = detail?.rostersByTeam || {}
+    const mine = teams.find((t) => t.is_mine) || null
+    const matchups = detail?.matchups || []
+    const usedTeams = new Set()
     const out = []
-    if (mine) {
+
+    const pushPair = (mu, preferLeftId) => {
+      if (!mu?.mine_team_id) return
+      const pairKey = [mu.mine_team_id, mu.opp_team_id].filter(Boolean).sort().join(':')
+      if (out.some((page) => page.key === pairKey)) return
+      let leftId = mu.mine_team_id
+      let rightId = mu.opp_team_id || null
+      let leftScore = mu.mine_score
+      let rightScore = mu.opp_score
+      if (preferLeftId && preferLeftId === rightId) {
+        leftId = rightId
+        rightId = mu.mine_team_id
+        leftScore = mu.opp_score
+        rightScore = mu.mine_score
+      }
+      usedTeams.add(leftId)
+      if (rightId) usedTeams.add(rightId)
       out.push({
-        key: 'mine',
-        kind: 'matchup',
-        team: mine,
-        opp,
-        roster: byTeam[mine.id] || detail?.mineRoster || [],
-        oppRoster: (opp && byTeam[opp.id]) || detail?.oppRoster || [],
+        key: pairKey,
+        kind: rightId ? 'matchup' : 'bye',
+        left: byId[leftId] || null,
+        right: rightId ? byId[rightId] || null : null,
+        leftScore,
+        rightScore,
+        yours: Boolean(mine && (leftId === mine.id || rightId === mine.id)),
+        roster: byTeam[leftId] || [],
+        oppRoster: rightId ? byTeam[rightId] || [] : [],
       })
     }
-    for (const t of teams) {
-      if (mine && t.id === mine.id) continue
-      out.push({
-        key: t.id,
-        kind: 'team',
-        team: t,
-        roster: byTeam[t.id] || [],
-      })
+
+    const mineMu = matchups.find(
+      (mu) => mu.mine_team_id === mine?.id || mu.opp_team_id === mine?.id,
+    )
+    if (mineMu) pushPair(mineMu, mine?.id)
+    for (const mu of matchups) pushPair(mu, null)
+
+    const unpaired = teams.filter((t) => !usedTeams.has(t.id))
+    if (unpaired.length && unpaired.length < matchups.length) {
+      for (const t of unpaired) {
+        out.push({
+          key: `bye-${t.id}`,
+          kind: 'bye',
+          left: t,
+          right: null,
+          leftScore: null,
+          rightScore: null,
+          yours: Boolean(mine && t.id === mine.id),
+          roster: byTeam[t.id] || [],
+          oppRoster: [],
+        })
+      }
     }
     return out
   }, [detail])
@@ -551,7 +453,7 @@ export default function FantasyCommandCenter({
             {league?.name || 'Fantasy'}
           </div>
           <div className="mt-0.5 text-[12px] text-zinc-500">
-            {detail?.matchup?.week != null ? `Week ${detail.matchup.week}` : 'This week'}
+            {detail?.week != null ? `Week ${detail.week}` : 'This week'}
             {league?.provider ? ` · ${providerLabel(league.provider)}` : ''}
           </div>
         </div>
@@ -621,44 +523,44 @@ export default function FantasyCommandCenter({
           if (dx > 48) setPage((n) => Math.max(0, n - 1))
         }}
       >
-      {current?.kind === 'matchup' ? (
+      {current?.kind === 'matchup' || current?.kind === 'bye' ? (
         <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
-          <div className="grid grid-cols-2">
-            <div className="border-r border-zinc-800 px-4 py-4">
-              <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-sky-300">You</div>
-              <div className="mt-1 truncate text-[16px] font-semibold">{current.team?.team_name || 'You'}</div>
-              <div className="text-[12px] text-zinc-500">{recordLine(current.team)}</div>
+          <div className={`grid ${current.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            <div className={`px-4 py-4 ${current.right ? 'border-r border-zinc-800' : ''}`}>
+              {current.yours && current.left?.is_mine ? (
+                <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-sky-300">You</div>
+              ) : null}
+              <div className="mt-1 flex items-center gap-2">
+                <TeamLogo team={current.left} />
+                <div className="min-w-0">
+                  <div className="truncate text-[16px] font-semibold">{current.left?.team_name || 'Team'}</div>
+                  <div className="text-[12px] text-zinc-500">{recordLine(current.left)}</div>
+                </div>
+              </div>
               <div className="mt-2 text-[28px] font-bold tabular-nums leading-none">
-                {scoreText(detail?.matchup?.mine_score)}
+                {scoreText(current.leftScore)}
               </div>
             </div>
-            <div className="px-4 py-4 text-right">
-              <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-rose-300">Opp</div>
-              <div className="mt-1 truncate text-[16px] font-semibold">{current.opp?.team_name || 'Opponent'}</div>
-              <div className="text-[12px] text-zinc-500">{recordLine(current.opp)}</div>
-              <div className="mt-2 text-[28px] font-bold tabular-nums leading-none">
-                {scoreText(detail?.matchup?.opp_score)}
+            {current.right ? (
+              <div className="px-4 py-4 text-right">
+                {current.yours && current.right?.is_mine ? (
+                  <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-sky-300">You</div>
+                ) : null}
+                <div className="mt-1 flex items-center justify-end gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-[16px] font-semibold">{current.right?.team_name || 'Team'}</div>
+                    <div className="text-[12px] text-zinc-500">{recordLine(current.right)}</div>
+                  </div>
+                  <TeamLogo team={current.right} />
+                </div>
+                <div className="mt-2 text-[28px] font-bold tabular-nums leading-none">
+                  {scoreText(current.rightScore)}
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="px-4 pb-4 text-[12px] text-zinc-500">Bye this week.</p>
+            )}
           </div>
-        </div>
-      ) : null}
-
-      {current?.kind === 'team' ? (
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-4">
-          <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
-            League team
-          </div>
-          <div className="mt-1 text-[18px] font-semibold">{current.team?.team_name}</div>
-          <div className="mt-1 text-[13px] text-zinc-400">
-            {recordLine(current.team)}
-            {current.team?.points_for != null
-              ? ` · ${Number(current.team.points_for).toFixed(1)} PF`
-              : ''}
-          </div>
-          <p className="mt-2 text-[12px] leading-snug text-zinc-500">
-            Opponent score is only stored for your matchup. This is their synced lineup.
-          </p>
         </div>
       ) : null}
       </div>
@@ -706,19 +608,14 @@ export default function FantasyCommandCenter({
       </div>
       <p className="text-[13px] leading-snug text-zinc-400">{activeTool.body}</p>
 
-      {current?.kind === 'matchup' ? (
+      {current ? (
         <VsMatchup
           mine={current.roster}
           opp={current.oppRoster}
           cards={cards}
           cardsLoading={cardsLoading}
-        />
-      ) : current ? (
-        <LineupCard
-          title="Their starters"
-          rows={current.roster}
-          cards={cards}
-          cardsLoading={cardsLoading}
+          leftLabel={current.yours && current.left?.is_mine ? 'Your bench' : `${current.left?.team_name || 'Bench'} bench`}
+          rightLabel={current.yours && current.right?.is_mine ? 'Your bench' : `${current.right?.team_name || 'Bench'} bench`}
         />
       ) : null}
     </div>

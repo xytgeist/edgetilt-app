@@ -140,6 +140,27 @@ async function yahooGet(accessToken: string, path: string): Promise<unknown> {
 }
 
 /** Walk Yahoo's nested JSON and collect objects that have `key`. */
+function yahooTeamLogo(team: Record<string, unknown>): string | null {
+  const walk = (node: unknown, depth: number): string | null => {
+    if (depth > 5 || node == null) return null
+    if (typeof node === 'string' && /^https?:\/\//i.test(node)) return node
+    if (typeof node !== 'object') return null
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const hit = walk(item, depth + 1)
+        if (hit) return hit
+      }
+      return null
+    }
+    for (const value of Object.values(node as Record<string, unknown>)) {
+      const hit = walk(value, depth + 1)
+      if (hit) return hit
+    }
+    return null
+  }
+  return walk(team.team_logos, 0)
+}
+
 function collectByKey(root: unknown, key: string): Record<string, unknown>[] {
   const out: Record<string, unknown>[] = []
   const walk = (node: unknown) => {
@@ -600,7 +621,7 @@ export async function syncYahooConnection(
               external_team_id: teamKey,
               owner_name: ownerName,
               team_name: teamName,
-              avatar_url: null,
+              avatar_url: yahooTeamLogo(t),
               is_mine: isMine,
               wins: num(outcome.wins) || 0,
               losses: num(outcome.losses) || 0,
@@ -619,68 +640,57 @@ export async function syncYahooConnection(
         if (isMine) mineTeamId = String(teamRow.id)
       }
 
-      // Scoreboard → matchup + points.
-      let oppTeamId: string | null = null
-      let mineScore: number | null = null
-      let oppScore: number | null = null
-      let externalMatchupId: string | null = null
+      // Scoreboard → one row per game. Home side is mine_team_id.
+      let sb: unknown = null
       try {
-        const sb = await yahooGet(
+        sb = await yahooGet(
           access,
           `/league/${encodeURIComponent(leagueKey)}/scoreboard;week=${week}`,
         )
-        const matchupObjs = findScoreboardMatchups(sb)
-        for (const mu of matchupObjs) {
+      } catch {
+        sb = null
+      }
+      if (sb) {
+        await admin.from('fantasy_matchups').delete().eq('league_id', leagueId).eq('week', week)
+        const seenPairs = new Set<string>()
+        for (const mu of findScoreboardMatchups(sb)) {
           const teamsIn = collectByKey(mu, 'team_key')
-          if (teamsIn.length < 2 || !myTeamKey) continue
-          const keys = teamsIn.map((x) => str(x.team_key))
-          if (!keys.includes(myTeamKey)) continue
-          const oppKey = keys.find((k) => k !== myTeamKey) || null
-          oppTeamId = oppKey ? teamIdByKey.get(oppKey) || null : null
-          externalMatchupId = `${leagueKey}:w${week}`
-          for (const tt of teamsIn) {
-            const tk = str(tt.team_key)
+          if (teamsIn.length < 2) continue
+          const aKey = str(teamsIn[0].team_key)
+          const bKey = str(teamsIn[1].team_key)
+          const aId = aKey ? teamIdByKey.get(aKey) || null : null
+          const bId = bKey ? teamIdByKey.get(bKey) || null : null
+          if (!aId) continue
+          const pairKey = [aId, bId].filter(Boolean).sort().join(':')
+          if (seenPairs.has(pairKey)) continue
+          seenPairs.add(pairKey)
+          const pointsFor = (tt: Record<string, unknown>) => {
             const ptsObj = tt.team_points
-            const pts = num(
+            return num(
               ptsObj && typeof ptsObj === 'object'
                 ? (ptsObj as Record<string, unknown>).total
                 : tt.points,
             )
-            if (tk === myTeamKey) mineScore = pts
-            else if (tk === oppKey) oppScore = pts
           }
-          break
+          const { error: muErr } = await admin.from('fantasy_matchups').upsert(
+            {
+              league_id: leagueId,
+              user_id: edgeUserId,
+              week,
+              mine_team_id: aId,
+              opp_team_id: bId,
+              mine_score: pointsFor(teamsIn[0]),
+              opp_score: bId ? pointsFor(teamsIn[1]) : null,
+              external_matchup_id: `${leagueKey}:w${week}:${pairKey}`,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'league_id,week,mine_team_id' },
+          )
+          if (muErr) throw new Error(muErr.message)
         }
-      } catch {
-        /* scoreboard optional mid-week */
       }
 
-      if (mineTeamId) {
-        await admin.from('fantasy_matchups').upsert(
-          {
-            league_id: leagueId,
-            user_id: edgeUserId,
-            week,
-            mine_team_id: mineTeamId,
-            opp_team_id: oppTeamId,
-            mine_score: mineScore,
-            opp_score: oppScore,
-            external_matchup_id: externalMatchupId,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'league_id,week,mine_team_id' },
-        )
-      }
-
-      // Rosters for mine + opp.
-      const rosterTeamKeys = [myTeamKey, ...[...teamIdByKey.keys()].filter((k) => k !== myTeamKey)].filter(
-        Boolean,
-      )
-      // Prefer mine + scoreboard opp only when known.
-      const focusKeys = [myTeamKey, ...[...teamIdByKey.entries()]
-        .filter(([, id]) => id === oppTeamId)
-        .map(([k]) => k)].filter(Boolean) as string[]
-      const keysToFetch = focusKeys.length ? focusKeys : rosterTeamKeys.slice(0, 2)
+      const keysToFetch = [...teamIdByKey.keys()]
 
       for (const teamKey of keysToFetch) {
         const teamId = teamIdByKey.get(teamKey)

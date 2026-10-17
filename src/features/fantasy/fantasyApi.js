@@ -270,15 +270,28 @@ export async function loadLeagueDetail(supabase, leagueId) {
     .order('wins', { ascending: false })
   if (tErr) throw new Error(tErr.message)
 
-  const { data: matchup } = await supabase
+  const { data: latestWeek } = await supabase
     .from('fantasy_matchups')
-    .select('id, week, mine_team_id, opp_team_id, mine_score, opp_score')
+    .select('week')
     .eq('league_id', id)
     .order('week', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  const week = matchup?.week ?? null
+  const week = latestWeek?.week ?? null
+  let matchups = []
+  if (week != null) {
+    const { data: rows, error: mErr } = await supabase
+      .from('fantasy_matchups')
+      .select('id, week, mine_team_id, opp_team_id, mine_score, opp_score')
+      .eq('league_id', id)
+      .eq('week', week)
+    if (mErr) throw new Error(mErr.message)
+    matchups = rows || []
+  }
+  const mineTeam = (teams || []).find((t) => t.is_mine) || null
+  const matchup =
+    matchups.find((m) => m.mine_team_id === mineTeam?.id || m.opp_team_id === mineTeam?.id) || null
   const teamIds = (teams || []).map((t) => t.id).filter(Boolean)
   let rosterRows = []
   if (week && teamIds.length) {
@@ -325,12 +338,19 @@ export async function loadLeagueDetail(supabase, leagueId) {
     })
   }
 
-  const mineRoster = matchup?.mine_team_id ? rostersByTeam[matchup.mine_team_id] || [] : []
-  const oppRoster = matchup?.opp_team_id ? rostersByTeam[matchup.opp_team_id] || [] : []
+  const oppTeamId = !matchup
+    ? null
+    : matchup.mine_team_id === mineTeam?.id
+      ? matchup.opp_team_id
+      : matchup.mine_team_id
+  const mineRoster = mineTeam ? rostersByTeam[mineTeam.id] || [] : []
+  const oppRoster = oppTeamId ? rostersByTeam[oppTeamId] || [] : []
 
   return {
     league,
     teams: teams || [],
+    week,
+    matchups,
     matchup: matchup || null,
     mineRoster,
     oppRoster,

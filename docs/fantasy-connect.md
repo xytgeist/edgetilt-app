@@ -28,9 +28,9 @@ Signed-in users link a fantasy account, sync leagues/rosters/matchups, and auto-
 | `fantasy_provider_tokens` | OAuth access/refresh for Yahoo (etc.) … **never** readable by authenticated clients |
 | `fantasy_oauth_states` | Short-lived CSRF state for OAuth starts |
 | `fantasy_leagues` | connection, external league id, name, season, `is_primary` |
-| `fantasy_teams` | league, external roster/team id, owner label, `is_mine`, W-L, PF |
+| `fantasy_teams` | league, external roster/team id, owner label, `is_mine`, W-L, PF, `avatar_url` (ESPN team logo, Sleeper user avatar, Yahoo team logo when the scoreboard has one) |
 | `fantasy_rosters` | team + week + slot, **`sleeper_id`** (canonical), optional `yahoo_player_key`, name/pos/team |
-| `fantasy_matchups` | league + week, mine/opp team ids + scores |
+| `fantasy_matchups` | one row per game that week (home team in `mine_team_id`). The connected user's game is whichever row includes their team. |
 
 Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves players by name + team (+ position).
 

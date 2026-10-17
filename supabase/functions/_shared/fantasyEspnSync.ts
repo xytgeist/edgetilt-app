@@ -469,42 +469,38 @@ async function syncEspnConnection(
         }
       }
 
-      if (mineTeamId) {
-        if (!firstMineLeague) firstMineLeague = leagueId
-        const schedule = Array.isArray(lg.schedule) ? lg.schedule : []
-        const match = schedule
-          .map(asRecord)
-          .find((row) => row && Number(row.matchupPeriodId) === week && (
-            teamIdByEspn.get(String(asRecord(row.home)?.teamId ?? '')) === mineTeamId ||
-            teamIdByEspn.get(String(asRecord(row.away)?.teamId ?? '')) === mineTeamId
-          ))
-        let oppTeamId: string | null = null
-        let mineScore: number | null = null
-        let oppScore: number | null = null
-        if (match) {
-          const home = asRecord(match.home)
-          const away = asRecord(match.away)
-          const homeId = teamIdByEspn.get(String(home?.teamId ?? '')) || null
-          const awayId = teamIdByEspn.get(String(away?.teamId ?? '')) || null
-          const homeIsMine = homeId === mineTeamId
-          oppTeamId = homeIsMine ? awayId : homeId
-          mineScore = num(homeIsMine ? home?.totalPoints : away?.totalPoints)
-          oppScore = num(homeIsMine ? away?.totalPoints : home?.totalPoints)
-        }
-        await admin.from('fantasy_matchups').upsert(
+      if (mineTeamId && !firstMineLeague) firstMineLeague = leagueId
+      await admin.from('fantasy_matchups').delete().eq('league_id', leagueId).eq('week', week)
+      const schedule = Array.isArray(lg.schedule) ? lg.schedule : []
+      const seenPairs = new Set<string>()
+      for (const rowRaw of schedule) {
+        const row = asRecord(rowRaw)
+        if (!row || Number(row.matchupPeriodId) !== week) continue
+        const home = asRecord(row.home)
+        const away = asRecord(row.away)
+        const homeId = teamIdByEspn.get(String(home?.teamId ?? '')) || null
+        const awayId = teamIdByEspn.get(String(away?.teamId ?? '')) || null
+        if (!homeId && !awayId) continue
+        const pairKey = [homeId, awayId].filter(Boolean).sort().join(':')
+        if (seenPairs.has(pairKey)) continue
+        seenPairs.add(pairKey)
+        const leftId = homeId || awayId
+        const rightId = homeId && awayId ? awayId : null
+        const { error: muErr } = await admin.from('fantasy_matchups').upsert(
           {
             league_id: leagueId,
             user_id: edgeUserId,
             week,
-            mine_team_id: mineTeamId,
-            opp_team_id: oppTeamId,
-            mine_score: mineScore,
-            opp_score: oppScore,
-            external_matchup_id: match ? String(match.id ?? week) : null,
+            mine_team_id: leftId,
+            opp_team_id: rightId,
+            mine_score: num(homeId ? home?.totalPoints : away?.totalPoints),
+            opp_score: rightId ? num(away?.totalPoints) : null,
+            external_matchup_id: row.id != null ? String(row.id) : pairKey,
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'league_id,week,mine_team_id' },
         )
+        if (muErr) throw new Error(muErr.message)
       }
     }
 

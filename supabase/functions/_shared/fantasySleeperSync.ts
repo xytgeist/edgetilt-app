@@ -283,34 +283,35 @@ export async function syncSleeperConnection(
         }
       }
 
-      // Matchup for my team this week.
-      if (mineTeamId) {
-        const mineRosterId = [...teamIdByRoster.entries()].find(([, id]) => id === mineTeamId)?.[0]
-        const mineMu = (matchups || []).find((m) => m.roster_id === mineRosterId)
-        let oppTeamId: string | null = null
-        let oppScore: number | null = null
-        if (mineMu?.matchup_id != null) {
-          const opp = (matchups || []).find(
-            (m) => m.matchup_id === mineMu.matchup_id && m.roster_id !== mineRosterId,
-          )
-          if (opp) {
-            oppTeamId = teamIdByRoster.get(opp.roster_id) || null
-            oppScore = opp.points != null ? Number(opp.points) : null
-          }
-        }
-        await admin.from('fantasy_matchups').upsert(
+      await admin.from('fantasy_matchups').delete().eq('league_id', leagueId).eq('week', week)
+      const groups = new Map<string, SleeperMatchup[]>()
+      for (const m of matchups || []) {
+        if (m?.matchup_id == null || m.roster_id == null) continue
+        const key = String(m.matchup_id)
+        const list = groups.get(key) || []
+        list.push(m)
+        groups.set(key, list)
+      }
+      for (const [mid, list] of groups) {
+        const a = list[0]
+        const b = list.find((m) => m.roster_id !== a.roster_id) || null
+        const aId = teamIdByRoster.get(a.roster_id) || null
+        const bId = b ? teamIdByRoster.get(b.roster_id) || null : null
+        if (!aId) continue
+        const { error: muErr } = await admin.from('fantasy_matchups').upsert(
           {
             league_id: leagueId,
             user_id: edgeUserId,
             week,
-            mine_team_id: mineTeamId,
-            opp_team_id: oppTeamId,
-            mine_score: mineMu?.points != null ? Number(mineMu.points) : null,
-            opp_score: oppScore,
-            external_matchup_id: mineMu?.matchup_id != null ? String(mineMu.matchup_id) : null,
+            mine_team_id: aId,
+            opp_team_id: bId,
+            mine_score: a.points != null ? Number(a.points) : null,
+            opp_score: b?.points != null ? Number(b.points) : null,
+            external_matchup_id: mid,
           },
           { onConflict: 'league_id,week,mine_team_id' },
         )
+        if (muErr) throw new Error(muErr.message)
       }
 
       if (!primaryLeagueId && mineTeamId) primaryLeagueId = leagueId

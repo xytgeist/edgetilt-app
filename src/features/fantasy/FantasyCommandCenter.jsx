@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
 const TOOLS = [
   {
@@ -696,7 +696,8 @@ function MatchupCard({ page, teams, week, provider, cards, cardsLoading, showLin
 
 /**
  * Connected fantasy home. Hosts live in the manage sheet, not on this page.
- * Every league’s matchups sit on this screen, grouped by sport.
+ * League pills stay pills, grouped by sport. The open pill is the only expanded matchup.
+ * Other games in that league are a swipe away.
  */
 export default function FantasyCommandCenter({
   leagues,
@@ -709,7 +710,10 @@ export default function FantasyCommandCenter({
   onOpenManage,
   onSync,
 }) {
+  const [leagueId, setLeagueId] = useState(null)
+  const [page, setPage] = useState(0)
   const [tool, setTool] = useState('start')
+  const touchX = useRef(null)
   const activeTool = TOOLS.find((t) => t.id === tool) || TOOLS[0]
 
   const groups = useMemo(() => {
@@ -732,6 +736,22 @@ export default function FantasyCommandCenter({
       }))
   }, [leagues])
 
+  const selected =
+    (leagues || []).find((lg) => lg.id === leagueId) ||
+    (leagues || []).find((lg) => lg.is_primary) ||
+    (leagues || [])[0] ||
+    null
+  const detail = selected ? details?.[selected.id] || null : null
+  const pages = useMemo(() => (detail ? matchupPages(detail) : []), [detail])
+  const safePage = pages.length ? Math.min(page, pages.length - 1) : 0
+  const current = pages[safePage] || null
+
+  const pickLeague = (id) => {
+    setLeagueId(id)
+    setPage(0)
+    void onSetPrimary?.(id)
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end gap-2">
@@ -752,58 +772,105 @@ export default function FantasyCommandCenter({
         </button>
       </div>
 
-      {loadingDetail ? <div className="py-6 text-center text-sm text-zinc-500">Loading leagues…</div> : null}
-
       {!loadingDetail && !(leagues || []).length ? (
         <div className="rounded-2xl border border-zinc-800 p-4 text-[13px] text-zinc-400">
           No leagues synced yet. Open Manage and sync after the league is live.
         </div>
       ) : null}
 
-      {groups.map((group) => (
-        <section key={group.sport} className="space-y-3">
-          <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">{group.label}</div>
-          {group.leagues.map((lg) => {
-            const detail = details?.[lg.id] || null
-            const pages = detail ? matchupPages(detail) : []
-            return (
-              <div key={lg.id} className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 truncate text-[13px] font-semibold text-zinc-200">{lg.name}</div>
-                  <button
-                    type="button"
-                    disabled={busy || lg.is_primary}
-                    onClick={() => void onSetPrimary?.(lg.id)}
-                    className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 disabled:opacity-100"
-                  >
-                    {lg.is_primary ? 'Hub pins' : 'Pin'}
-                  </button>
+      {groups.length ? (
+        <div className="space-y-2">
+          {groups.map((group) => (
+            <div key={group.sport} className="flex items-center gap-2">
+              {groups.length > 1 ? (
+                <div className="w-9 shrink-0 text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+                  {group.label}
                 </div>
-                {!detail && loadingDetail ? (
-                  <div className="text-[12px] text-zinc-500">Loading…</div>
-                ) : null}
-                {detail && !pages.length ? (
-                  <div className="rounded-2xl border border-zinc-800 px-3 py-3 text-[12px] text-zinc-500">
-                    No matchup synced for this week.
-                  </div>
-                ) : null}
-                {pages.map((page) => (
-                  <MatchupCard
-                    key={`${lg.id}-${page.key}`}
-                    page={page}
-                    teams={detail?.teams || []}
-                    week={detail?.week}
-                    provider={lg.provider || detail?.league?.provider}
-                    cards={cards}
-                    cardsLoading={cardsLoading}
-                    showLineup={page.yours || pages.length === 1}
-                  />
-                ))}
+              ) : null}
+              <div className="-mx-0 flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1">
+                {group.leagues.map((lg) => {
+                  const on = lg.id === selected?.id
+                  return (
+                    <button
+                      key={lg.id}
+                      type="button"
+                      onClick={() => pickLeague(lg.id)}
+                      className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold ${
+                        on
+                          ? 'border-sky-400 bg-sky-500 text-white'
+                          : 'border-zinc-700 bg-zinc-900 text-zinc-300'
+                      }`}
+                    >
+                      {lg.name}
+                    </button>
+                  )
+                })}
               </div>
-            )
-          })}
-        </section>
-      ))}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {selected && !detail && loadingDetail ? (
+        <div className="py-6 text-center text-sm text-zinc-500">Loading league…</div>
+      ) : null}
+
+      {detail && !pages.length ? (
+        <div className="rounded-2xl border border-zinc-800 px-3 py-3 text-[12px] text-zinc-500">
+          No matchup synced for this week.
+        </div>
+      ) : null}
+
+      {current ? (
+        <div
+          onTouchStart={(e) => {
+            touchX.current = e.changedTouches?.[0]?.clientX ?? null
+          }}
+          onTouchEnd={(e) => {
+            const start = touchX.current
+            const end = e.changedTouches?.[0]?.clientX
+            touchX.current = null
+            if (start == null || end == null || pages.length < 2) return
+            const dx = end - start
+            if (dx < -48) setPage((n) => Math.min(pages.length - 1, n + 1))
+            if (dx > 48) setPage((n) => Math.max(0, n - 1))
+          }}
+        >
+          <MatchupCard
+            page={current}
+            teams={detail?.teams || []}
+            week={detail?.week}
+            provider={selected?.provider || detail?.league?.provider}
+            cards={cards}
+            cardsLoading={cardsLoading}
+            showLineup
+          />
+        </div>
+      ) : null}
+
+      {pages.length > 1 ? (
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            disabled={safePage <= 0}
+            onClick={() => setPage((n) => Math.max(0, n - 1))}
+            className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-30"
+          >
+            Prev
+          </button>
+          <div className="text-[12px] text-zinc-500">
+            {safePage + 1} / {pages.length}
+          </div>
+          <button
+            type="button"
+            disabled={safePage >= pages.length - 1}
+            onClick={() => setPage((n) => Math.min(pages.length - 1, n + 1))}
+            className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-30"
+          >
+            Next
+          </button>
+        </div>
+      ) : null}
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {TOOLS.map((item) => {

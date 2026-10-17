@@ -71,7 +71,7 @@ Setup notes: **`supabase/functions/fantasy-yahoo-oauth-start/README.md`**.
 
 | Path | Role |
 | --- | --- |
-| `src/features/fantasy/FantasyHomeScreen.jsx` | Command center once a host is linked. Every league’s matchup is on the page, grouped by sport. Connect cards sit in Manage. |
+| `src/features/fantasy/FantasyHomeScreen.jsx` | Command center once a host is linked. League pills stay pills and group by sport. The open pill expands that matchup. Other games in the league are a swipe. Connect cards sit in Manage. |
 | `src/features/fantasy/fantasyApi.js` | invoke Edges + RLS reads; `setPrimaryFantasyLeague` is client RLS |
 | AppShell tab **`fantasy`** | `?tab=fantasy` + Yahoo OAuth handoff still wired (no hamburger entry). Entry tile lives on **NFL Hub** as Coming soon until Yahoo API approval + soft launch |
 | NFL Hub Fantasy tile | `data-sports-hub-fantasy="nfl-soon"` … Coming soon veil (not on Sports Hub home). Four taps within 600ms of each other set `?tab=fantasy` and close the slate portal |

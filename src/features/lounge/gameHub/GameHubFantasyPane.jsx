@@ -621,7 +621,6 @@ function FantasyMatchupStack({ matchups, game, gameStatus }) {
     <div data-fantasy-h2h className="space-y-2">
       <div
         className="relative touch-pan-y select-none"
-        style={{ minHeight: '14.5rem' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}

@@ -752,22 +752,35 @@ export default function FantasyCommandCenter({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void onSync()}
-          className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
-        >
-          {busy ? '…' : 'Sync'}
-        </button>
-        <button
-          type="button"
-          onClick={onOpenManage}
-          className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-semibold text-zinc-950"
-        >
-          Manage
-        </button>
+      <div className="flex items-center justify-between gap-2">
+        {leagueId ? (
+          <button
+            type="button"
+            onClick={() => setLeagueId(null)}
+            className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200"
+          >
+            Fantasy
+          </button>
+        ) : (
+          <span />
+        )}
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void onSync()}
+            className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
+          >
+            {busy ? '…' : 'Sync'}
+          </button>
+          <button
+            type="button"
+            onClick={onOpenManage}
+            className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-semibold text-zinc-950"
+          >
+            Manage
+          </button>
+        </div>
       </div>
 
       {!loadingDetail && !(leagues || []).length ? (
@@ -815,14 +828,6 @@ export default function FantasyCommandCenter({
         </>
       ) : (
         <>
-          <button
-            type="button"
-            onClick={() => setLeagueId(null)}
-            className="text-[12px] font-semibold text-zinc-400"
-          >
-            Matchups
-          </button>
-
           {selected && !detail && loadingDetail ? (
             <div className="py-6 text-center text-sm text-zinc-500">Loading league…</div>
           ) : null}

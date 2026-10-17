@@ -47,7 +47,7 @@ Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves 
 | `fantasy-cbs-link` | user JWT | `{ access_token, league_ids }` → store token, sync NFL leagues. Rejects `password`. |
 | `fantasy-cbs-sync` | user JWT | Re-read stored CBS token. |
 | `fantasy-espn-sync` | user JWT | re-sync using the stored ESPN cookie |
-| `fantasy-lineup-cards` | user JWT | `{ players: [{ sleeper_id, name, position, team }] }` → kickoff, season total / average, this-week projection, position rank, points-allowed matchup grade, and the biggest open Kalshi line. No new SQL. |
+| `fantasy-lineup-cards` | user JWT | `{ players: [{ sleeper_id, name, position, team }] }` → kickoff, season total / average, this-week projection, position rank, points-allowed matchup grade, and open Kalshi lines (`stat`, yes ask, no ask). No new SQL. |
 
 Shared: **`fantasySleeperSync.ts`**, **`fantasyYahooSync.ts`**, **`fantasyEspnSync.ts`**. `verify_jwt = false` (manual JWT via `userIdFromJwt` except the Yahoo callback).
 
@@ -71,7 +71,7 @@ Setup notes: **`supabase/functions/fantasy-yahoo-oauth-start/README.md`**.
 
 | Path | Role |
 | --- | --- |
-| `src/features/fantasy/FantasyHomeScreen.jsx` | Command center once a host is linked. Connect cards sit in Manage. Empty state is still the connect door. |
+| `src/features/fantasy/FantasyHomeScreen.jsx` | Command center once a host is linked. Every league’s matchup is on the page, grouped by sport. Connect cards sit in Manage. |
 | `src/features/fantasy/fantasyApi.js` | invoke Edges + RLS reads; `setPrimaryFantasyLeague` is client RLS |
 | AppShell tab **`fantasy`** | `?tab=fantasy` + Yahoo OAuth handoff still wired (no hamburger entry). Entry tile lives on **NFL Hub** as Coming soon until Yahoo API approval + soft launch |
 | NFL Hub Fantasy tile | `data-sports-hub-fantasy="nfl-soon"` … Coming soon veil (not on Sports Hub home). Four taps within 600ms of each other set `?tab=fantasy` and close the slate portal |

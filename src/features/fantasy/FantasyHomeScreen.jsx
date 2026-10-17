@@ -97,8 +97,8 @@ export default function FantasyHomeScreen({
   const [err, setErr] = useState('')
   const [info, setInfo] = useState('')
   const [snap, setSnap] = useState({ connections: [], leagues: [] })
-  const [leagueId, setLeagueId] = useState(null)
-  const [detail, setDetail] = useState(null)
+  const [details, setDetails] = useState({})
+  const [detailNonce, setDetailNonce] = useState(0)
   const [cards, setCards] = useState(null)
   const [cardsLoading, setCardsLoading] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
@@ -133,12 +133,6 @@ export default function FantasyHomeScreen({
     }
     const next = await loadFantasySnapshot(supabaseClient)
     setSnap(next)
-    const primary =
-      next.leagues.find((l) => l.is_primary)?.id ||
-      next.connections.find((c) => c.primary_league_id)?.primary_league_id ||
-      next.leagues[0]?.id ||
-      null
-    setLeagueId((cur) => cur || primary)
   }, [supabaseClient, signedIn])
 
   const applyYahooHandoffResult = useCallback(
@@ -207,19 +201,38 @@ export default function FantasyHomeScreen({
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [refresh])
 
+  const leagueKey = (snap.leagues || []).map((lg) => lg.id).join(',')
+
   useEffect(() => {
-    if (!supabaseClient || !leagueId || !signedIn) {
-      setDetail(null)
+    if (!supabaseClient || !signedIn) {
+      setDetails({})
+      return undefined
+    }
+    const ids = leagueKey ? leagueKey.split(',') : []
+    if (!ids.length) {
+      setDetails({})
+      setLoadingDetail(false)
       return undefined
     }
     let cancelled = false
     setLoadingDetail(true)
-    void loadLeagueDetail(supabaseClient, leagueId)
-      .then((d) => {
-        if (!cancelled) setDetail(d)
+    void Promise.all(
+      ids.map((id) =>
+        loadLeagueDetail(supabaseClient, id)
+          .then((d) => [id, d])
+          .catch(() => [id, null]),
+      ),
+    )
+      .then((pairs) => {
+        if (cancelled) return
+        const next = {}
+        for (const [id, d] of pairs) {
+          if (d) next[id] = d
+        }
+        setDetails(next)
       })
       .catch((e) => {
-        if (!cancelled) setErr(e?.message || 'Could not load league.')
+        if (!cancelled) setErr(e?.message || 'Could not load leagues.')
       })
       .finally(() => {
         if (!cancelled) setLoadingDetail(false)
@@ -227,27 +240,25 @@ export default function FantasyHomeScreen({
     return () => {
       cancelled = true
     }
-  }, [supabaseClient, leagueId, signedIn])
+  }, [supabaseClient, signedIn, leagueKey, detailNonce])
 
   useEffect(() => {
-    if (!supabaseClient || !detail) {
+    if (!supabaseClient || !signedIn) {
       setCards(null)
-      setCardsLoading(false)
-      return undefined
-    }
-    if (String(detail.league?.sport || 'nfl') !== 'nfl') {
-      setCards({})
       setCardsLoading(false)
       return undefined
     }
     const seen = new Set()
     const players = []
-    for (const rows of Object.values(detail.rostersByTeam || {})) {
-      for (const row of rows || []) {
-        const id = String(row?.sleeper_id || '').trim()
-        if (!id || seen.has(id)) continue
-        seen.add(id)
-        players.push(row)
+    for (const detail of Object.values(details || {})) {
+      if (String(detail?.league?.sport || 'nfl') !== 'nfl') continue
+      for (const rows of Object.values(detail.rostersByTeam || {})) {
+        for (const row of rows || []) {
+          const id = String(row?.sleeper_id || '').trim()
+          if (!id || seen.has(id)) continue
+          seen.add(id)
+          players.push(row)
+        }
       }
     }
     if (!players.length) {
@@ -270,7 +281,7 @@ export default function FantasyHomeScreen({
     return () => {
       cancelled = true
     }
-  }, [supabaseClient, detail])
+  }, [supabaseClient, signedIn, details])
 
   const onConnectCbs = async () => {
     if (!signedIn) {
@@ -445,9 +456,7 @@ export default function FantasyHomeScreen({
       const result = await syncAllFantasy(supabaseClient, snap.connections)
       if (result.warnings?.length) setInfo(result.warnings.join(' '))
       await refresh()
-      if (leagueId) {
-        setDetail(await loadLeagueDetail(supabaseClient, leagueId))
-      }
+      setDetailNonce((n) => n + 1)
     } catch (e) {
       setErr(e?.message || 'Sync failed.')
     } finally {
@@ -455,8 +464,7 @@ export default function FantasyHomeScreen({
     }
   }
 
-  const onPickLeague = async (id) => {
-    setLeagueId(id)
+  const onSetPrimary = async (id) => {
     if (!signedIn || !id) return
     setBusy(true)
     setErr('')
@@ -464,7 +472,7 @@ export default function FantasyHomeScreen({
       await setPrimaryFantasyLeague(supabaseClient, id)
       await refresh()
     } catch (e) {
-      setErr(e?.message || 'Could not set primary league.')
+      setErr(e?.message || 'Could not set the hub league.')
     } finally {
       setBusy(false)
     }
@@ -530,13 +538,12 @@ export default function FantasyHomeScreen({
         {signedIn && hasConnection ? (
           <FantasyCommandCenter
             leagues={snap.leagues}
-            leagueId={leagueId}
-            onPickLeague={onPickLeague}
-            detail={detail}
+            details={details}
             loadingDetail={loadingDetail}
             cards={cards}
             cardsLoading={cardsLoading}
             busy={busy}
+            onSetPrimary={onSetPrimary}
             onOpenManage={() => setManageOpen(true)}
             onSync={onSync}
           />

@@ -11799,6 +11799,15 @@ html.light [data-fantasy-home] .bg-black\/50 {
 html.light [data-fantasy-home] .fantasy-bench-row {
   background-color: #f4f4f5 !important;
 }
+html.light [data-fantasy-home] .fantasy-win-track {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-fantasy-home] .fantasy-yes {
+  color: #047857 !important;
+}
+html.light [data-fantasy-home] .fantasy-no {
+  color: #be123c !important;
+}
 
 /* Sports bet tracker (light mode) */
 html.light [data-sports-bet-progress] {

@@ -4,7 +4,8 @@
  * Position rank is season PPR among nfl_players at that position (Sleeper pos_rank_ppr is empty).
  * Matchup grade is points the opponent has allowed to that position in completed weeks.
  * Rank 1 is the easiest (most allowed). A/B/C/D are quartiles of that rank.
- * Main prop is the open Kalshi strike with the most liquidity for that player.
+ * Props are open Kalshi strikes. `stat` is the series (pass_yds, rush_yds, rec_yds, …).
+ * `price` is the yes ask and `no` is the no ask. The home screen picks the main line by position.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 
@@ -14,7 +15,15 @@ const CACHE_MS = 15 * 60 * 1000
 
 type PlayerIn = { sleeper_id?: string; name?: string; position?: string; team?: string }
 
-type PropOut = { label: string; price: number | null; volume: number }
+type PropOut = { label: string; price: number | null; no: number | null; volume: number; stat: string | null }
+
+const SERIES_STAT: Record<string, string> = {
+  KXNFLPASSYDS: 'pass_yds',
+  KXNFLRSHYDS: 'rush_yds',
+  KXNFLRECYDS: 'rec_yds',
+  KXNFLREC: 'rec',
+  KXNFLTD: 'td',
+}
 
 export type LineupCard = {
   sleeper_id: string
@@ -200,11 +209,17 @@ function liquidity(m: Record<string, unknown>): number {
   return n(m.volume_24h_fp ?? m.volume_24h) * 2 + n(m.volume_fp ?? m.volume) + n(m.open_interest_fp ?? m.open_interest)
 }
 
+function askPrice(m: Record<string, unknown>, side: 'yes' | 'no'): number | null {
+  const raw = Number(side === 'yes' ? (m.yes_ask_dollars ?? m.yes_ask) : (m.no_ask_dollars ?? m.no_ask))
+  if (!Number.isFinite(raw) || raw <= 0 || raw >= 1) return null
+  return Math.round(raw * 100) / 100
+}
+
 async function loadProps(): Promise<Map<string, Array<PropOut & { teams: string }>>> {
   const byName = new Map<string, Array<PropOut & { teams: string }>>()
   const pages = await Promise.all(
     PROP_SERIES.map(async (series) => {
-      const rows: Record<string, unknown>[] = []
+      const rows: Array<{ market: Record<string, unknown>; stat: string }> = []
       let cursor = ''
       for (let page = 0; page < 6; page++) {
         const q = new URLSearchParams({ series_ticker: series, status: 'open', limit: '200' })
@@ -215,7 +230,7 @@ async function loadProps(): Promise<Map<string, Array<PropOut & { teams: string 
             cursor?: string
           }
           const markets = Array.isArray(data.markets) ? data.markets : []
-          rows.push(...markets)
+          for (const market of markets) rows.push({ market, stat: SERIES_STAT[series] || '' })
           cursor = String(data.cursor || '')
           if (!cursor || markets.length === 0) break
         } catch {
@@ -226,7 +241,7 @@ async function loadProps(): Promise<Map<string, Array<PropOut & { teams: string 
     }),
   )
   for (const markets of pages) {
-    for (const m of markets) {
+    for (const { market: m, stat } of markets) {
       const title = String(m.title || '').trim()
       const cut = title.indexOf(':')
       if (cut <= 0) continue
@@ -235,12 +250,12 @@ async function loadProps(): Promise<Map<string, Array<PropOut & { teams: string 
       if (!player || !label || player.length > 48) continue
       const key = nameKey(player)
       if (!key) continue
-      const rawPrice = Number(m.yes_ask_dollars ?? m.yes_ask)
-      const price = Number.isFinite(rawPrice) && rawPrice > 0 ? Math.round(rawPrice * 100) / 100 : null
       const row: PropOut & { teams: string } = {
         label,
-        price,
+        price: askPrice(m, 'yes'),
+        no: askPrice(m, 'no'),
         volume: Math.round(liquidity(m)),
+        stat: stat || null,
         teams: String(m.event_ticker || '').toUpperCase(),
       }
       const list = byName.get(key) || []
@@ -392,7 +407,20 @@ function propsFor(board: Board, name: string, away: string, home: string): PropO
   const h = kalshiTeam(home)
   const matched = list.filter((p) => !a || !h || p.teams.includes(a + h) || p.teams.includes(h + a))
   const use = matched.length ? matched : []
-  return use.slice(0, 8).map(({ label, price, volume }) => ({ label, price, volume }))
+  const bestByStat = new Map<string, PropOut & { teams: string }>()
+  const rest: Array<PropOut & { teams: string }> = []
+  for (const row of use) {
+    const key = row.stat || row.label
+    if (!bestByStat.has(key)) bestByStat.set(key, row)
+    else rest.push(row)
+  }
+  return [...bestByStat.values(), ...rest].slice(0, 12).map(({ label, price, no, volume, stat }) => ({
+    label,
+    price,
+    no,
+    volume,
+    stat,
+  }))
 }
 
 export async function buildFantasyLineupCards(

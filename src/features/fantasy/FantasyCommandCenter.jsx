@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 const TOOLS = [
   {
@@ -66,13 +66,6 @@ function TeamLogo({ team }) {
       onError={() => setFailed(true)}
     />
   )
-}
-
-function scoreText(value) {
-  if (value == null || value === '') return '-'
-  const n = Number(value)
-  if (!Number.isFinite(n)) return '-'
-  return n.toFixed(1)
 }
 
 function injuryLabel(status) {
@@ -243,9 +236,155 @@ function pts(value) {
 
 function cents(price) {
   const n = Number(price)
-  if (!Number.isFinite(n)) return ''
+  if (!Number.isFinite(n) || n <= 0) return ''
   const p = n <= 1 ? n * 100 : n
   return `${Math.round(p)}¢`
+}
+
+function ordinal(n) {
+  const v = n % 100
+  if (v >= 11 && v <= 13) return `${n}th`
+  const tail = ['th', 'st', 'nd', 'rd']
+  return `${n}${tail[n % 10] || 'th'}`
+}
+
+function standingsRank(team, teams) {
+  if (!team) return null
+  const sorted = [...(teams || [])].sort((a, b) => {
+    const wins = (Number(b.wins) || 0) - (Number(a.wins) || 0)
+    if (wins) return wins
+    return (Number(b.points_for) || 0) - (Number(a.points_for) || 0)
+  })
+  const i = sorted.findIndex((t) => t.id === team.id)
+  return i < 0 ? null : i + 1
+}
+
+function gameStarted(card) {
+  if (!card || card.bye) return false
+  const st = String(card.game_status || '').toLowerCase()
+  if (['in_progress', 'inprogress', 'live', 'complete', 'closed', 'final', 'post'].includes(st)) return true
+  if (card.kickoff) {
+    const t = Date.parse(card.kickoff)
+    if (Number.isFinite(t) && t <= Date.now()) return true
+  }
+  return false
+}
+
+/** Starter total. Before kickoff this is the projection. After, live points so far plus remaining projections. */
+function sideOutlook(roster, cards) {
+  const starters = startersOf(roster)
+  let projected = 0
+  let projectedN = 0
+  let scored = 0
+  let started = false
+  let outlook = 0
+  let outlookOk = false
+  for (const row of starters) {
+    const card = row?.sleeper_id ? cards?.[row.sleeper_id] : null
+    if (!card) continue
+    const p = Number(card.projected)
+    const hasP = Number.isFinite(p)
+    if (hasP) {
+      projected += p
+      projectedN += 1
+    }
+    if (gameStarted(card)) {
+      started = true
+      const w = Number(card.week_pts)
+      const pts = Number.isFinite(w) ? w : 0
+      scored += pts
+      outlook += pts
+      outlookOk = true
+    } else if (hasP) {
+      outlook += p
+      outlookOk = true
+    }
+  }
+  return {
+    live: started,
+    projected: projectedN ? projected : null,
+    scored: started ? scored : null,
+    outlook: outlookOk ? outlook : null,
+  }
+}
+
+function displayScore(outlook, hostScore) {
+  if (!outlook?.live) {
+    if (outlook?.projected != null) return { text: outlook.projected.toFixed(1), live: false }
+    return { text: '–', live: false }
+  }
+  const host = Number(hostScore)
+  if (Number.isFinite(host) && host > 0) return { text: host.toFixed(1), live: true }
+  if (outlook.scored != null) return { text: outlook.scored.toFixed(1), live: true }
+  return { text: '0.0', live: true }
+}
+
+function normCdf(x) {
+  const sign = x < 0 ? -1 : 1
+  const a = Math.abs(x) / Math.SQRT2
+  const t = 1 / (1 + 0.3275911 * a)
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-a * a))
+  return 0.5 * (1 + sign * y)
+}
+
+/** Weekly win chance from the two outlooks. σ 28 is a typical fantasy margin, not a book price. */
+function winChance(left, right) {
+  if (left == null || right == null) return null
+  const p = normCdf((left - right) / 28)
+  return Math.min(0.97, Math.max(0.03, p))
+}
+
+const MAIN_STAT = { QB: 'pass_yds', RB: 'rush_yds', WR: 'rec_yds', TE: 'rec_yds' }
+
+function propStat(prop) {
+  if (prop?.stat) return prop.stat
+  const t = String(prop?.label || '').toLowerCase()
+  if (/rush/.test(t) && /rec/.test(t)) return 'rr_yds'
+  if (/pass/.test(t) && /yd/.test(t)) return 'pass_yds'
+  if (/rush/.test(t) && /yd/.test(t)) return 'rush_yds'
+  if (/rec/.test(t) && /yd/.test(t)) return 'rec_yds'
+  return ''
+}
+
+function pickMainProp(row, card) {
+  const want = MAIN_STAT[fantasyPos(row?.position)]
+  if (!want) return null
+  return (card?.props || []).find((p) => propStat(p) === want) || null
+}
+
+function extraProps(row, card, main) {
+  const list = card?.props || []
+  return list.filter((p) => p !== main)
+}
+
+function SiteBadge({ provider }) {
+  const tone =
+    {
+      espn: 'bg-[#e52534]',
+      sleeper: 'bg-[#0f8f6f]',
+      yahoo: 'bg-[#6001d2]',
+      cbs: 'bg-[#0b63ce]',
+    }[provider] || 'bg-zinc-700'
+  return (
+    <span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-black tracking-wide ${tone}`} style={{ color: '#fff' }}>
+      {providerLabel(provider) || 'League'}
+    </span>
+  )
+}
+
+function YesNoPills({ prop }) {
+  const yes = prop?.price
+  const no = prop?.no != null ? prop.no : yes != null ? Math.max(0, 1 - Number(yes)) : null
+  return (
+    <span className="inline-flex shrink-0 overflow-hidden rounded-lg ring-1 ring-inset ring-zinc-700/80">
+      <span className="fantasy-yes inline-flex min-w-[2rem] items-center justify-center bg-emerald-500/15 px-1.5 py-1 text-[12px] font-bold tabular-nums text-emerald-300">
+        {cents(yes) || '-'}
+      </span>
+      <span className="fantasy-no inline-flex min-w-[2rem] items-center justify-center border-l border-zinc-700/80 bg-rose-500/10 px-1.5 py-1 text-[12px] font-bold tabular-nums text-rose-300">
+        {cents(no) || '-'}
+      </span>
+    </span>
+  )
 }
 
 function gameWhen(card) {
@@ -277,12 +416,62 @@ function injuryPill(status) {
   )
 }
 
+function MarketLine({ prop, align }) {
+  if (!prop?.label) return null
+  const towardCenter = align === 'left'
+  return (
+    <div className={`mt-1 flex items-center gap-1.5 ${towardCenter ? 'justify-end' : 'justify-start'}`}>
+      {towardCenter ? (
+        <span className="min-w-0 truncate text-[10px] font-semibold text-sky-300">{prop.label}</span>
+      ) : null}
+      <YesNoPills prop={prop} />
+      {towardCenter ? null : (
+        <span className="min-w-0 truncate text-[10px] font-semibold text-sky-300">{prop.label}</span>
+      )}
+    </div>
+  )
+}
+
+function ExtraMarkets({ props, align }) {
+  const [open, setOpen] = useState(false)
+  if (!props?.length) return null
+  const towardCenter = align === 'left'
+  return (
+    <div className={`mt-1 ${towardCenter ? 'text-right' : 'text-left'}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="text-[10px] font-semibold text-zinc-500"
+      >
+        {open ? 'Hide markets' : 'Markets'}
+      </button>
+      {open
+        ? props.map((prop) => (
+            <div
+              key={prop.label}
+              className={`mt-1 flex items-center gap-1.5 ${towardCenter ? 'justify-end' : 'justify-start'}`}
+            >
+              {towardCenter ? (
+                <span className="min-w-0 truncate text-[10px] text-zinc-400">{prop.label}</span>
+              ) : null}
+              <YesNoPills prop={prop} />
+              {towardCenter ? null : (
+                <span className="min-w-0 truncate text-[10px] text-zinc-400">{prop.label}</span>
+              )}
+            </div>
+          ))
+        : null}
+    </div>
+  )
+}
+
 function VsSide({ row, card, align }) {
   if (!row) return <div />
   const when = gameWhen(card)
   const side = card?.bye ? 'Bye' : card?.opponent ? `${card.home ? 'vs' : '@'} ${card.opponent}` : ''
   const gameLine = [when, side].filter(Boolean).join(' ')
-  const prop = card?.main_prop
+  const main = pickMainProp(row, card)
+  const extras = extraProps(row, card, main)
   return (
     <div className={`min-w-0 ${align === 'right' ? 'text-right' : 'text-left'}`}>
       <div className={`flex items-center gap-1.5 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
@@ -301,42 +490,37 @@ function VsSide({ row, card, align }) {
         </div>
       </div>
       {gameLine ? <div className="mt-0.5 truncate text-[10px] text-zinc-500">{gameLine}</div> : null}
-      {prop?.label ? (
-        <div className="mt-0.5 truncate text-[10px] font-semibold text-sky-300">
-          {prop.label}
-          {cents(prop.price) ? ` · ${cents(prop.price)}` : ''}
-        </div>
-      ) : null}
+      <MarketLine prop={main} align={align} />
+      <ExtraMarkets props={extras} align={align} />
     </div>
   )
 }
 
+function playerPts(card, loading) {
+  if (card && gameStarted(card) && card.week_pts != null) return pts(card.week_pts) || '0.0'
+  const proj = pts(card?.projected)
+  if (proj) return proj
+  return loading ? '…' : '-'
+}
+
 function MatchupRows({ pairs, cards, cardsLoading, bench }) {
-  const [openKey, setOpenKey] = useState(null)
   if (!pairs.length) return null
   return (
     <>
       {pairs.map((pair) => {
         const rowKey = `${bench ? 'b' : 's'}-${pair.key}`
-        const open = openKey === rowKey
         const leftCard = pair.left?.sleeper_id ? cards?.[pair.left.sleeper_id] : null
         const rightCard = pair.right?.sleeper_id ? cards?.[pair.right.sleeper_id] : null
-        const leftProj = pts(leftCard?.projected)
-        const rightProj = pts(rightCard?.projected)
         return (
           <li
             key={rowKey}
             className={`border-b border-zinc-800/80 last:border-b-0 ${bench ? 'fantasy-bench-row' : ''}`}
           >
-            <button
-              type="button"
-              onClick={() => setOpenKey(open ? null : rowKey)}
-              className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-2 py-2.5 text-left"
-            >
+            <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1.5 px-2 py-2.5">
               <VsSide row={pair.left} card={leftCard} align="left" />
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 pt-1">
                 <span className="w-8 text-right text-[13px] font-bold tabular-nums text-zinc-100">
-                  {leftProj || (cardsLoading ? '…' : '-')}
+                  {playerPts(leftCard, cardsLoading)}
                 </span>
                 <span
                   className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
@@ -345,17 +529,11 @@ function MatchupRows({ pairs, cards, cardsLoading, bench }) {
                   {pair.label}
                 </span>
                 <span className="w-8 text-[13px] font-bold tabular-nums text-zinc-100">
-                  {rightProj || (cardsLoading ? '…' : '-')}
+                  {playerPts(rightCard, cardsLoading)}
                 </span>
               </div>
               <VsSide row={pair.right} card={rightCard} align="right" />
-            </button>
-            {open ? (
-              <div className="grid grid-cols-2 gap-3 px-3 pb-3 text-[12px] leading-snug text-zinc-400">
-                <PropList row={pair.left} card={leftCard} />
-                <PropList row={pair.right} card={rightCard} />
-              </div>
-            ) : null}
+            </div>
           </li>
         )
       })}
@@ -370,171 +548,211 @@ function VsMatchup({ mine, opp, cards, cardsLoading }) {
     return <p className="px-1 text-[13px] text-zinc-500">No players synced for this matchup.</p>
   }
   return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80">
-      <ul>
-        <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} />
-        <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench />
-      </ul>
+    <ul>
+      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} />
+      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench />
+    </ul>
+  )
+}
+
+function matchupPages(detail) {
+  const teams = detail?.teams || []
+  const byId = Object.fromEntries(teams.map((t) => [t.id, t]))
+  const byTeam = detail?.rostersByTeam || {}
+  const mine = teams.find((t) => t.is_mine) || null
+  const matchups = detail?.matchups || []
+  const usedTeams = new Set()
+  const out = []
+
+  const pushPair = (mu, preferLeftId) => {
+    if (!mu?.mine_team_id) return
+    const pairKey = [mu.mine_team_id, mu.opp_team_id].filter(Boolean).sort().join(':')
+    if (out.some((page) => page.key === pairKey)) return
+    let leftId = mu.mine_team_id
+    let rightId = mu.opp_team_id || null
+    let leftScore = mu.mine_score
+    let rightScore = mu.opp_score
+    if (preferLeftId && preferLeftId === rightId) {
+      leftId = rightId
+      rightId = mu.mine_team_id
+      leftScore = mu.opp_score
+      rightScore = mu.mine_score
+    }
+    usedTeams.add(leftId)
+    if (rightId) usedTeams.add(rightId)
+    out.push({
+      key: pairKey,
+      kind: rightId ? 'matchup' : 'bye',
+      left: byId[leftId] || null,
+      right: rightId ? byId[rightId] || null : null,
+      leftScore,
+      rightScore,
+      yours: Boolean(mine && (leftId === mine.id || rightId === mine.id)),
+      roster: byTeam[leftId] || [],
+      oppRoster: rightId ? byTeam[rightId] || [] : [],
+    })
+  }
+
+  const mineMu = matchups.find(
+    (mu) => mu.mine_team_id === mine?.id || mu.opp_team_id === mine?.id,
+  )
+  if (mineMu) pushPair(mineMu, mine?.id)
+  for (const mu of matchups) pushPair(mu, null)
+
+  const unpaired = teams.filter((t) => !usedTeams.has(t.id))
+  if (unpaired.length && unpaired.length < matchups.length) {
+    for (const t of unpaired) {
+      out.push({
+        key: `bye-${t.id}`,
+        kind: 'bye',
+        left: t,
+        right: null,
+        leftScore: null,
+        rightScore: null,
+        yours: Boolean(mine && t.id === mine.id),
+        roster: byTeam[t.id] || [],
+        oppRoster: [],
+      })
+    }
+  }
+  return out
+}
+
+const SPORT_ORDER = ['nfl', 'nba', 'mlb', 'nhl']
+const SPORT_LABEL = { nfl: 'NFL', nba: 'NBA', mlb: 'MLB', nhl: 'NHL' }
+
+function ScoreSide({ team, teams, outlook, hostScore, align }) {
+  const score = displayScore(outlook, hostScore)
+  const rank = standingsRank(team, teams)
+  const end = align === 'right'
+  return (
+    <div className={`min-w-0 px-3 py-3 ${end ? 'text-right' : 'text-left'}`}>
+      <div className={`flex items-center gap-2 ${end ? 'flex-row-reverse' : ''}`}>
+        <TeamLogo team={team} />
+        <div className="min-w-0">
+          <div className="truncate text-[15px] font-semibold">{team?.team_name || 'Team'}</div>
+          <div className="text-[11px] text-zinc-500">
+            {rank ? `${ordinal(rank)} · ` : ''}
+            {recordLine(team)}
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 text-[26px] font-bold tabular-nums leading-none">{score.text}</div>
+      <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        {score.live ? 'Live' : score.text === '–' ? '' : 'Proj'}
+      </div>
     </div>
   )
 }
 
-function PropList({ row, card }) {
-  if (!row) return <div />
-  const props = card?.props || []
-  if (!props.length) return <p>No open line on {shortName(row.player_name, row.position) || row.player_name}.</p>
+function WinBar({ left, right }) {
+  const p = winChance(left, right)
+  if (p == null) return null
+  const leftPct = Math.round(p * 100)
+  const rightPct = 100 - leftPct
   return (
-    <ul className="space-y-1">
-      {props.map((p) => (
-        <li key={p.label}>
-          {p.label}
-          {cents(p.price) ? ` · ${cents(p.price)}` : ''}
-        </li>
-      ))}
-    </ul>
+    <div className="border-t border-zinc-800 px-3 py-2">
+      <div className="mb-1 flex justify-between text-[11px] font-semibold tabular-nums text-zinc-300">
+        <span>{leftPct}%</span>
+        <span>{rightPct}%</span>
+      </div>
+      <div className="fantasy-win-track flex h-1.5 overflow-hidden rounded-full bg-zinc-800">
+        <div className="fantasy-win-fill h-full bg-sky-400" style={{ width: `${leftPct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function MatchupCard({ page, teams, week, provider, cards, cardsLoading, showLineup }) {
+  const leftOut = sideOutlook(page.roster, cards)
+  const rightOut = sideOutlook(page.oppRoster, cards)
+  return (
+    <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
+      <div className={`grid ${page.right ? 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'grid-cols-1'}`}>
+        <ScoreSide team={page.left} teams={teams} outlook={leftOut} hostScore={page.leftScore} align="left" />
+        {page.right ? (
+          <div className="flex flex-col items-center justify-center px-1 py-3">
+            <SiteBadge provider={provider} />
+            <div className="mt-1 text-[10px] font-semibold text-zinc-500">
+              {week != null ? `Week ${week}` : 'This week'}
+            </div>
+          </div>
+        ) : null}
+        {page.right ? (
+          <ScoreSide team={page.right} teams={teams} outlook={rightOut} hostScore={page.rightScore} align="right" />
+        ) : (
+          <p className="px-3 pb-3 text-[12px] text-zinc-500">Bye this week.</p>
+        )}
+      </div>
+      {page.right ? <WinBar left={leftOut.outlook} right={rightOut.outlook} /> : null}
+      {showLineup ? (
+        <div className="border-t border-zinc-800 p-2">
+          <VsMatchup mine={page.roster} opp={page.oppRoster} cards={cards} cardsLoading={cardsLoading} />
+        </div>
+      ) : null}
+    </div>
   )
 }
 
 /**
  * Connected fantasy home. Hosts live in the manage sheet, not on this page.
+ * Every league’s matchups sit on this screen, grouped by sport.
  */
 export default function FantasyCommandCenter({
   leagues,
-  leagueId,
-  onPickLeague,
-  detail,
+  details,
   loadingDetail,
   cards,
   cardsLoading,
   busy,
+  onSetPrimary,
   onOpenManage,
   onSync,
 }) {
-  const [page, setPage] = useState(0)
   const [tool, setTool] = useState('start')
-  const touchX = useRef(null)
-
-  const pages = useMemo(() => {
-    const teams = detail?.teams || []
-    const byId = Object.fromEntries(teams.map((t) => [t.id, t]))
-    const byTeam = detail?.rostersByTeam || {}
-    const mine = teams.find((t) => t.is_mine) || null
-    const matchups = detail?.matchups || []
-    const usedTeams = new Set()
-    const out = []
-
-    const pushPair = (mu, preferLeftId) => {
-      if (!mu?.mine_team_id) return
-      const pairKey = [mu.mine_team_id, mu.opp_team_id].filter(Boolean).sort().join(':')
-      if (out.some((page) => page.key === pairKey)) return
-      let leftId = mu.mine_team_id
-      let rightId = mu.opp_team_id || null
-      let leftScore = mu.mine_score
-      let rightScore = mu.opp_score
-      if (preferLeftId && preferLeftId === rightId) {
-        leftId = rightId
-        rightId = mu.mine_team_id
-        leftScore = mu.opp_score
-        rightScore = mu.mine_score
-      }
-      usedTeams.add(leftId)
-      if (rightId) usedTeams.add(rightId)
-      out.push({
-        key: pairKey,
-        kind: rightId ? 'matchup' : 'bye',
-        left: byId[leftId] || null,
-        right: rightId ? byId[rightId] || null : null,
-        leftScore,
-        rightScore,
-        yours: Boolean(mine && (leftId === mine.id || rightId === mine.id)),
-        roster: byTeam[leftId] || [],
-        oppRoster: rightId ? byTeam[rightId] || [] : [],
-      })
-    }
-
-    const mineMu = matchups.find(
-      (mu) => mu.mine_team_id === mine?.id || mu.opp_team_id === mine?.id,
-    )
-    if (mineMu) pushPair(mineMu, mine?.id)
-    for (const mu of matchups) pushPair(mu, null)
-
-    const unpaired = teams.filter((t) => !usedTeams.has(t.id))
-    if (unpaired.length && unpaired.length < matchups.length) {
-      for (const t of unpaired) {
-        out.push({
-          key: `bye-${t.id}`,
-          kind: 'bye',
-          left: t,
-          right: null,
-          leftScore: null,
-          rightScore: null,
-          yours: Boolean(mine && t.id === mine.id),
-          roster: byTeam[t.id] || [],
-          oppRoster: [],
-        })
-      }
-    }
-    return out
-  }, [detail])
-
-  const safePage = pages.length ? Math.min(page, pages.length - 1) : 0
-  const current = pages[safePage] || null
   const activeTool = TOOLS.find((t) => t.id === tool) || TOOLS[0]
-  const league = (leagues || []).find((lg) => lg.id === leagueId) || detail?.league || null
+
+  const groups = useMemo(() => {
+    const by = new Map()
+    for (const lg of leagues || []) {
+      const sport = String(lg.sport || 'nfl').toLowerCase()
+      if (!by.has(sport)) by.set(sport, [])
+      by.get(sport).push(lg)
+    }
+    return [...by.keys()]
+      .sort((a, b) => {
+        const ia = SPORT_ORDER.indexOf(a)
+        const ib = SPORT_ORDER.indexOf(b)
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)
+      })
+      .map((sport) => ({
+        sport,
+        label: SPORT_LABEL[sport] || sport.toUpperCase(),
+        leagues: by.get(sport),
+      }))
+  }, [leagues])
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0 text-[12px] text-zinc-500">
-          {detail?.week != null ? `Week ${detail.week}` : 'This week'}
-          {league?.sport && league.sport !== 'nfl' ? ` · ${String(league.sport).toUpperCase()}` : ''}
-          {league?.provider ? ` · ${providerLabel(league.provider)}` : ''}
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void onSync()}
-            className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
-          >
-            {busy ? '…' : 'Sync'}
-          </button>
-          <button
-            type="button"
-            onClick={onOpenManage}
-            className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-semibold text-zinc-950"
-          >
-            Manage
-          </button>
-        </div>
+      <div className="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void onSync()}
+          className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
+        >
+          {busy ? '…' : 'Sync'}
+        </button>
+        <button
+          type="button"
+          onClick={onOpenManage}
+          className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-semibold text-zinc-950"
+        >
+          Manage
+        </button>
       </div>
 
-      {(leagues || []).length ? (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          {leagues.map((lg) => {
-            const on = lg.id === leagueId
-            return (
-              <button
-                key={lg.id}
-                type="button"
-                onClick={() => {
-                  setPage(0)
-                  void onPickLeague(lg.id)
-                }}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold ${
-                  on
-                    ? 'border-sky-400 bg-sky-500 text-white'
-                    : 'border-zinc-700 bg-zinc-900 text-zinc-300'
-                }`}
-              >
-                {lg.sport && lg.sport !== 'nfl' ? `${lg.name} · ${String(lg.sport).toUpperCase()}` : lg.name}
-              </button>
-            )
-          })}
-        </div>
-      ) : null}
-
-      {loadingDetail ? <div className="py-6 text-center text-sm text-zinc-500">Loading league…</div> : null}
+      {loadingDetail ? <div className="py-6 text-center text-sm text-zinc-500">Loading leagues…</div> : null}
 
       {!loadingDetail && !(leagues || []).length ? (
         <div className="rounded-2xl border border-zinc-800 p-4 text-[13px] text-zinc-400">
@@ -542,79 +760,50 @@ export default function FantasyCommandCenter({
         </div>
       ) : null}
 
-      <div
-        onTouchStart={(e) => {
-          touchX.current = e.changedTouches?.[0]?.clientX ?? null
-        }}
-        onTouchEnd={(e) => {
-          const start = touchX.current
-          const end = e.changedTouches?.[0]?.clientX
-          touchX.current = null
-          if (start == null || end == null || pages.length < 2) return
-          const dx = end - start
-          if (dx < -48) setPage((n) => Math.min(pages.length - 1, n + 1))
-          if (dx > 48) setPage((n) => Math.max(0, n - 1))
-        }}
-      >
-      {current?.kind === 'matchup' || current?.kind === 'bye' ? (
-        <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
-          <div className={`grid ${current.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            <div className={`px-4 py-4 ${current.right ? 'border-r border-zinc-800' : ''}`}>
-              <div className="flex items-center gap-2">
-                <TeamLogo team={current.left} />
-                <div className="min-w-0">
-                  <div className="truncate text-[16px] font-semibold">{current.left?.team_name || 'Team'}</div>
-                  <div className="text-[12px] text-zinc-500">{recordLine(current.left)}</div>
+      {groups.map((group) => (
+        <section key={group.sport} className="space-y-3">
+          <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">{group.label}</div>
+          {group.leagues.map((lg) => {
+            const detail = details?.[lg.id] || null
+            const pages = detail ? matchupPages(detail) : []
+            return (
+              <div key={lg.id} className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 truncate text-[13px] font-semibold text-zinc-200">{lg.name}</div>
+                  <button
+                    type="button"
+                    disabled={busy || lg.is_primary}
+                    onClick={() => void onSetPrimary?.(lg.id)}
+                    className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 disabled:opacity-100"
+                  >
+                    {lg.is_primary ? 'Hub pins' : 'Pin'}
+                  </button>
                 </div>
-              </div>
-              <div className="mt-2 text-[28px] font-bold tabular-nums leading-none">
-                {scoreText(current.leftScore)}
-              </div>
-            </div>
-            {current.right ? (
-              <div className="px-4 py-4 text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <div className="min-w-0">
-                    <div className="truncate text-[16px] font-semibold">{current.right?.team_name || 'Team'}</div>
-                    <div className="text-[12px] text-zinc-500">{recordLine(current.right)}</div>
+                {!detail && loadingDetail ? (
+                  <div className="text-[12px] text-zinc-500">Loading…</div>
+                ) : null}
+                {detail && !pages.length ? (
+                  <div className="rounded-2xl border border-zinc-800 px-3 py-3 text-[12px] text-zinc-500">
+                    No matchup synced for this week.
                   </div>
-                  <TeamLogo team={current.right} />
-                </div>
-                <div className="mt-2 text-[28px] font-bold tabular-nums leading-none">
-                  {scoreText(current.rightScore)}
-                </div>
+                ) : null}
+                {pages.map((page) => (
+                  <MatchupCard
+                    key={`${lg.id}-${page.key}`}
+                    page={page}
+                    teams={detail?.teams || []}
+                    week={detail?.week}
+                    provider={lg.provider || detail?.league?.provider}
+                    cards={cards}
+                    cardsLoading={cardsLoading}
+                    showLineup={page.yours || pages.length === 1}
+                  />
+                ))}
               </div>
-            ) : (
-              <p className="px-4 pb-4 text-[12px] text-zinc-500">Bye this week.</p>
-            )}
-          </div>
-        </div>
-      ) : null}
-      </div>
-
-      {pages.length > 1 ? (
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            disabled={safePage <= 0}
-            onClick={() => setPage((n) => Math.max(0, n - 1))}
-            className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-30"
-          >
-            Prev
-          </button>
-          <div className="text-[12px] text-zinc-500">
-            {safePage + 1} / {pages.length}
-          </div>
-          <button
-            type="button"
-            disabled={safePage >= pages.length - 1}
-            onClick={() => setPage((n) => Math.min(pages.length - 1, n + 1))}
-            className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-30"
-          >
-            Next
-          </button>
-        </div>
-      ) : null}
+            )
+          })}
+        </section>
+      ))}
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {TOOLS.map((item) => {
@@ -634,15 +823,6 @@ export default function FantasyCommandCenter({
         })}
       </div>
       <p className="text-[13px] leading-snug text-zinc-400">{activeTool.body}</p>
-
-      {current ? (
-        <VsMatchup
-          mine={current.roster}
-          opp={current.oppRoster}
-          cards={cards}
-          cardsLoading={cardsLoading}
-        />
-      ) : null}
     </div>
   )
 }

@@ -1,10 +1,10 @@
 /**
  * Lineup card context for Fantasy home.
- * Body: { players: [{ sleeper_id, name?, position?, team? }] }
+ * Body: { sport?: 'nfl'|'nba'|'nhl'|'mlb', players: [{ sleeper_id, name?, position?, team? }] }
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { userIdFromJwt } from '../_shared/userJwt.ts'
-import { buildFantasyLineupCards } from '../_shared/fantasyLineupCards.ts'
+import { buildFantasyLineupCards, buildSportLineupCards } from '../_shared/fantasyLineupCards.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,12 +37,16 @@ Deno.serve(async (req) => {
   const userId = await userIdFromJwt(jwt, admin)
   if (!userId) return json(401, { error: 'Invalid session.' })
 
-  const body = (await req.json().catch(() => ({}))) as { players?: unknown }
+  const body = (await req.json().catch(() => ({}))) as { players?: unknown; sport?: unknown }
   const players = Array.isArray(body.players) ? body.players : []
   if (!players.length) return json(200, { ok: true, cards: {} })
+  const sport = String(body.sport || 'nfl').toLowerCase()
 
   try {
-    const result = await buildFantasyLineupCards(admin, players as Array<Record<string, string>>)
+    const list = players as Array<Record<string, string>>
+    const result = sport === 'nba' || sport === 'nhl' || sport === 'mlb'
+      ? await buildSportLineupCards(list, sport)
+      : await buildFantasyLineupCards(admin, list)
     return json(200, { ok: true, ...result })
   } catch (err) {
     return json(502, { error: err instanceof Error ? err.message : 'Lineup cards failed.' })

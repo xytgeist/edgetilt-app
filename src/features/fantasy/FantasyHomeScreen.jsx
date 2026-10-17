@@ -12,6 +12,7 @@ import {
   startYahooOAuth,
   syncAllFantasy,
 } from './fantasyApi.js'
+import { cardIsLive } from './fantasyBoxScore.js'
 import {
   canStartCbsFantasyLogin,
   canStartEdgeWebAuthSession,
@@ -101,6 +102,8 @@ export default function FantasyHomeScreen({
   const [detailNonce, setDetailNonce] = useState(0)
   const [cards, setCards] = useState(null)
   const [cardsLoading, setCardsLoading] = useState(false)
+  const cardsRef = useRef(null)
+  cardsRef.current = cards
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [manageOpen, setManageOpen] = useState(false)
   /** EdgeiOS ASWebAuth / Safari fallback … refresh when the user returns. */
@@ -248,38 +251,52 @@ export default function FantasyHomeScreen({
       setCardsLoading(false)
       return undefined
     }
-    const seen = new Set()
-    const players = []
+    const bySport = new Map()
     for (const detail of Object.values(details || {})) {
-      if (String(detail?.league?.sport || 'nfl') !== 'nfl') continue
+      const sport = String(detail?.league?.sport || 'nfl').toLowerCase()
+      if (!['nfl', 'nba', 'nhl', 'mlb'].includes(sport)) continue
+      const seen = bySport.get(sport) || new Set()
+      const list = bySport.get(`${sport}:rows`) || []
       for (const rows of Object.values(detail.rostersByTeam || {})) {
         for (const row of rows || []) {
           const id = String(row?.sleeper_id || '').trim()
           if (!id || seen.has(id)) continue
           seen.add(id)
-          players.push(row)
+          list.push(row)
         }
       }
+      bySport.set(sport, seen)
+      bySport.set(`${sport}:rows`, list)
     }
-    if (!players.length) {
+    const sports = ['nfl', 'nba', 'nhl', 'mlb'].filter((sport) => (bySport.get(`${sport}:rows`) || []).length)
+    if (!sports.length) {
       setCards({})
       setCardsLoading(false)
       return undefined
     }
     let cancelled = false
-    setCardsLoading(true)
-    void loadLineupCards(supabaseClient, players)
-      .then((map) => {
-        if (!cancelled) setCards(map)
-      })
-      .catch(() => {
-        if (!cancelled) setCards(null)
-      })
-      .finally(() => {
-        if (!cancelled) setCardsLoading(false)
-      })
+    const pull = (quiet) => {
+      if (!quiet) setCardsLoading(true)
+      return Promise.all(
+        sports.map((sport) => loadLineupCards(supabaseClient, bySport.get(`${sport}:rows`), sport).catch(() => ({}))),
+      )
+        .then((maps) => {
+          if (cancelled) return
+          const next = {}
+          for (const map of maps) Object.assign(next, map || {})
+          setCards(next)
+        })
+        .finally(() => {
+          if (!cancelled && !quiet) setCardsLoading(false)
+        })
+    }
+    void pull(false)
+    const timer = setInterval(() => {
+      if (Object.values(cardsRef.current || {}).some((card) => cardIsLive(card))) void pull(true)
+    }, 30_000)
     return () => {
       cancelled = true
+      clearInterval(timer)
     }
   }, [supabaseClient, signedIn, details])
 

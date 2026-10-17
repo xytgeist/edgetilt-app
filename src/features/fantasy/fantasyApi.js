@@ -183,7 +183,7 @@ export async function loadFantasySnapshot(supabase) {
 
   const { data: leagues, error: lErr } = await supabase
     .from('fantasy_leagues')
-    .select('id, connection_id, name, season, is_primary, provider, sport, external_league_id')
+    .select('id, connection_id, name, season, is_primary, provider, sport, external_league_id, scoring')
     .order('name', { ascending: true })
   if (lErr) throw new Error(lErr.message)
 
@@ -193,7 +193,7 @@ export async function loadFantasySnapshot(supabase) {
   }
 }
 
-export async function loadLineupCards(supabase, players) {
+export async function loadLineupCards(supabase, players, sport = 'nfl') {
   const list = (Array.isArray(players) ? players : [])
     .map((p) => ({
       sleeper_id: String(p?.sleeper_id || '').trim(),
@@ -205,7 +205,7 @@ export async function loadLineupCards(supabase, players) {
     .slice(0, 250)
   if (!list.length) return {}
   const { data, error } = await supabase.functions.invoke('fantasy-lineup-cards', {
-    body: { players: list },
+    body: { players: list, sport: String(sport || 'nfl').toLowerCase() },
   })
   const result = await finishEdge(data, error, 'Could not load lineup cards.')
   return result?.cards && typeof result.cards === 'object' ? result.cards : {}
@@ -255,7 +255,7 @@ export async function loadLeagueDetail(supabase, leagueId) {
 
   const { data: league, error: lgErr } = await supabase
     .from('fantasy_leagues')
-    .select('id, name, season, is_primary, provider, sport, connection_id')
+    .select('id, name, season, is_primary, provider, sport, connection_id, scoring')
     .eq('id', id)
     .maybeSingle()
   if (lgErr) throw new Error(lgErr.message)

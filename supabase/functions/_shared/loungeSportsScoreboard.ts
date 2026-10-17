@@ -323,6 +323,8 @@ export type LoungeSportsPlayerBox = {
   /** Made FG distances from `scoringPlays` (fantasy distance tiers). */
   fg_yds: number[]
   xp_made: number
+  /** Counting stats for NBA, NHL, MLB, and MLS. Football rows leave this off. */
+  stats?: Record<string, number>
 }
 
 export type LoungeSportsPlayerBoxes = { home: LoungeSportsPlayerBox[]; away: LoungeSportsPlayerBox[] }
@@ -3167,12 +3169,97 @@ async function fetchEspnFootballLivePack(
   }
 }
 
+function blankPlayerBox(id: string, name: string, headshot: string, jersey: string): LoungeSportsPlayerBox {
+  return {
+    id,
+    name,
+    headshot,
+    jersey,
+    groups: [],
+    pass_yds: 0,
+    pass_td: 0,
+    pass_int: 0,
+    pass_cmp: 0,
+    pass_att: 0,
+    rush_yds: 0,
+    rush_td: 0,
+    rush_att: 0,
+    rush_lng: 0,
+    rec: 0,
+    rec_yds: 0,
+    rec_td: 0,
+    rec_tgt: 0,
+    rec_lng: 0,
+    fum_lost: 0,
+    ret_td: 0,
+    fg_made: 0,
+    fg_att: 0,
+    fg_yds: [],
+    xp_made: 0,
+    stats: {},
+  }
+}
+
+/** NBA / NHL / MLB / MLS `boxscore.players`. Football counters stay 0 so the football rails ignore these rows. */
+function espnCountedPlayerBoxes(
+  box: Record<string, unknown> | null,
+  sideForEspnTeamId: (id: string) => 'home' | 'away' | null,
+): LoungeSportsPlayerBoxes {
+  const out: LoungeSportsPlayerBoxes = { home: [], away: [] }
+  const numStat = (value: unknown): number | null => {
+    const s = String(value ?? '').trim()
+    if (!s || s.includes(':')) return null
+    const n = Number(s.replace(/^\+/, ''))
+    return Number.isFinite(n) ? n : null
+  }
+  for (const t of Array.isArray(box?.players) ? box!.players as Array<Record<string, unknown>> : []) {
+    const team = (t.team && typeof t.team === 'object') ? t.team as Record<string, unknown> : null
+    const side = sideForEspnTeamId(String(team?.id || '').trim())
+    if (!side) continue
+    const byId = new Map<string, LoungeSportsPlayerBox>()
+    for (const g of Array.isArray(t.statistics) ? t.statistics as Array<Record<string, unknown>> : []) {
+      const group = String(g.name || 'line')
+      const keys = Array.isArray(g.keys) ? (g.keys as unknown[]).map(String) : []
+      for (const a of Array.isArray(g.athletes) ? g.athletes as Array<Record<string, unknown>> : []) {
+        const ath = (a.athlete && typeof a.athlete === 'object') ? a.athlete as Record<string, unknown> : {}
+        const id = String(ath.id || '').trim()
+        const name = String(ath.displayName || '').trim()
+        if (!id || !name) continue
+        let row = byId.get(id)
+        if (!row) {
+          const hs = (ath.headshot && typeof ath.headshot === 'object') ? ath.headshot as Record<string, unknown> : {}
+          row = blankPlayerBox(id, name, String(hs.href || ''), String(ath.jersey || ''))
+          byId.set(id, row)
+        }
+        if (!row.groups.includes(group)) row.groups.push(group)
+        const stats = Array.isArray(a.stats) ? a.stats as unknown[] : []
+        keys.forEach((key, i) => {
+          const raw = stats[i]
+          const made = String(raw ?? '').match(/^(\d+)\s*-\s*(\d+)$/)
+          if (made && key.includes('-')) {
+            const [madeKey, attKey] = key.split('-')
+            if (madeKey) row!.stats![madeKey] = Number(made[1])
+            if (attKey) row!.stats![attKey] = Number(made[2])
+            return
+          }
+          const n = numStat(raw)
+          if (n == null || !key) return
+          row!.stats![key] = n
+        })
+      }
+    }
+    out[side] = [...byId.values()].filter((row) => Object.keys(row.stats || {}).length > 0)
+  }
+  return out
+}
+
 async function fetchEspnMajorLeagueLivePack(
   game: LoungeSportsGame,
 ): Promise<{
   live: LoungeSportsLiveState | null
   plays: LoungeSportsPlay[]
   team_stats?: LoungeSportsTeamStats | null
+  player_box?: LoungeSportsPlayerBoxes | null
 }> {
   const path = majorLeaguePathForSportKey(String(game.sport_key || ''))
   if (!path) return { live: null, plays: [] }
@@ -3298,10 +3385,12 @@ async function fetchEspnMajorLeagueLivePack(
       }
     }
 
+    const playerBox = espnCountedPlayerBoxes(box, sideForEspnTeamId)
     return {
       live,
       plays: plays.slice(-80),
       team_stats: teamStats.home.length || teamStats.away.length ? teamStats : null,
+      player_box: playerBox.home.length || playerBox.away.length ? playerBox : null,
     }
   } catch {
     return { live: liveFromEspnBoard(statusObj), plays: [] }
@@ -4128,6 +4217,7 @@ export async function fetchLoungeSportsGameDetail(
     if (espn.plays.length) playsOut = espn.plays
     if (espn.live) liveOut = mergeLiveState(espn.live, liveOut)
     teamStats = espn.team_stats ?? null
+    playerBox = espn.player_box ?? null
   }
 
   const statRows: unknown[] = Array.isArray(statsRaw)

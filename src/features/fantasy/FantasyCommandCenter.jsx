@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { scoreLine } from './fantasyBoxScore.js'
 
 const TOOLS = [
   {
@@ -19,7 +20,7 @@ const TOOLS = [
   {
     id: 'live',
     label: 'Live',
-    body: 'Live week scores for your starters sit on the NFL game hubs. A fantasy week board is next.',
+    body: 'Starter points follow this league’s scoring off the live box. Before tip, the row stays on the projection.',
   },
   {
     id: 'fliers',
@@ -270,13 +271,24 @@ function gameStarted(card) {
   return false
 }
 
+/** Our box × this league's rules, else the host/Sleeper number once the game has started. */
+function pointsOf(card, scoring, sport) {
+  if (!card || !gameStarted(card)) return null
+  const scored = scoreLine(card.line, scoring, sport)
+  if (scored != null) return { pts: scored, fromLine: true }
+  const w = Number(card.week_pts)
+  if (Number.isFinite(w)) return { pts: w, fromLine: false }
+  return { pts: 0, fromLine: false }
+}
+
 /** Starter total. Before kickoff this is the projection. After, live points so far plus remaining projections. */
-function sideOutlook(roster, cards) {
+function sideOutlook(roster, cards, scoring, sport) {
   const starters = startersOf(roster)
   let projected = 0
   let projectedN = 0
   let scored = 0
   let started = false
+  let fromLine = false
   let outlook = 0
   let outlookOk = false
   for (const row of starters) {
@@ -288,12 +300,12 @@ function sideOutlook(roster, cards) {
       projected += p
       projectedN += 1
     }
-    if (gameStarted(card)) {
+    const livePts = pointsOf(card, scoring, sport)
+    if (livePts) {
       started = true
-      const w = Number(card.week_pts)
-      const pts = Number.isFinite(w) ? w : 0
-      scored += pts
-      outlook += pts
+      if (livePts.fromLine) fromLine = true
+      scored += livePts.pts
+      outlook += livePts.pts
       outlookOk = true
     } else if (hasP) {
       outlook += p
@@ -302,6 +314,7 @@ function sideOutlook(roster, cards) {
   }
   return {
     live: started,
+    fromLine,
     projected: projectedN ? projected : null,
     scored: started ? scored : null,
     outlook: outlookOk ? outlook : null,
@@ -313,6 +326,7 @@ function displayScore(outlook, hostScore) {
     if (outlook?.projected != null) return { text: outlook.projected.toFixed(1), live: false }
     return { text: '–', live: false }
   }
+  if (outlook.fromLine && outlook.scored != null) return { text: outlook.scored.toFixed(1), live: true }
   const host = Number(hostScore)
   if (Number.isFinite(host) && host > 0) return { text: host.toFixed(1), live: true }
   if (outlook.scored != null) return { text: outlook.scored.toFixed(1), live: true }
@@ -496,14 +510,15 @@ function VsSide({ row, card, align }) {
   )
 }
 
-function playerPts(card, loading) {
-  if (card && gameStarted(card) && card.week_pts != null) return pts(card.week_pts) || '0.0'
+function playerPts(card, loading, scoring, sport) {
+  const livePts = pointsOf(card, scoring, sport)
+  if (livePts) return pts(livePts.pts) || '0.0'
   const proj = pts(card?.projected)
   if (proj) return proj
   return loading ? '…' : '-'
 }
 
-function MatchupRows({ pairs, cards, cardsLoading, bench }) {
+function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
   if (!pairs.length) return null
   return (
     <>
@@ -520,7 +535,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench }) {
               <VsSide row={pair.left} card={leftCard} align="left" />
               <div className="flex items-center gap-1 pt-1">
                 <span className="w-8 text-right text-[13px] font-bold tabular-nums text-zinc-100">
-                  {playerPts(leftCard, cardsLoading)}
+                  {playerPts(leftCard, cardsLoading, scoring, sport)}
                 </span>
                 <span
                   className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
@@ -529,7 +544,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench }) {
                   {pair.label}
                 </span>
                 <span className="w-8 text-[13px] font-bold tabular-nums text-zinc-100">
-                  {playerPts(rightCard, cardsLoading)}
+                  {playerPts(rightCard, cardsLoading, scoring, sport)}
                 </span>
               </div>
               <VsSide row={pair.right} card={rightCard} align="right" />
@@ -541,7 +556,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench }) {
   )
 }
 
-function VsMatchup({ mine, opp, cards, cardsLoading }) {
+function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport }) {
   const starters = pairStarters(mine, opp)
   const bench = pairBench(mine, opp)
   if (!starters.length && !bench.length) {
@@ -549,8 +564,8 @@ function VsMatchup({ mine, opp, cards, cardsLoading }) {
   }
   return (
     <ul>
-      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} />
-      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench />
+      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} />
+      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} />
     </ul>
   )
 }
@@ -663,9 +678,9 @@ function WinBar({ left, right }) {
   )
 }
 
-function MatchupCard({ page, teams, week, provider, cards }) {
-  const leftOut = sideOutlook(page.roster, cards)
-  const rightOut = sideOutlook(page.oppRoster, cards)
+function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
+  const leftOut = sideOutlook(page.roster, cards, scoring, sport)
+  const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport)
   return (
     <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
       <div className={`grid ${page.right ? 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'grid-cols-1'}`}>
@@ -819,6 +834,8 @@ export default function FantasyCommandCenter({
                       week={leagueDetail.week}
                       provider={lg.provider || leagueDetail.league?.provider}
                       cards={cards}
+                      scoring={leagueDetail.league?.scoring}
+                      sport={group.sport}
                     />
                   </button>
                 ))}
@@ -859,6 +876,8 @@ export default function FantasyCommandCenter({
                 week={detail?.week}
                 provider={selected?.provider || detail?.league?.provider}
                 cards={cards}
+                scoring={detail?.league?.scoring}
+                sport={selected?.sport || detail?.league?.sport}
               />
             </div>
           ) : null}
@@ -912,6 +931,8 @@ export default function FantasyCommandCenter({
               opp={current.oppRoster}
               cards={cards}
               cardsLoading={cardsLoading}
+              scoring={detail?.league?.scoring}
+              sport={selected?.sport || detail?.league?.sport}
             />
           ) : null}
         </>

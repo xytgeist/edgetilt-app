@@ -8,6 +8,7 @@
  * `price` is the yes ask and `no` is the no ask. The home screen picks the main line by position.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { loadFantasyLiveMap, lookupLive } from './fantasyLiveLines.ts'
 
 const KALSHI_BASE = 'https://external-api.kalshi.com/trade-api/v2'
 const PROP_SERIES = ['KXNFLPASSYDS', 'KXNFLRSHYDS', 'KXNFLRECYDS', 'KXNFLREC', 'KXNFLTD'] as const
@@ -45,6 +46,8 @@ export type LineupCard = {
   matchup_of: number | null
   main_prop: PropOut | null
   props: PropOut[]
+  /** Counting stats for this league's scoring rules. Null until the ESPN box has the player. */
+  line?: Record<string, number> | null
 }
 
 type GameRow = {
@@ -470,7 +473,78 @@ export async function buildFantasyLineupCards(
       matchup_of: mu?.of ?? null,
       main_prop: props[0] || null,
       props,
+      line: null,
     }
   }
+  await mergeLiveLines(cards, players, 'nfl', { season: board.season, week: board.week })
   return { season: board.season, week: board.week, cards }
+}
+
+function emptyCard(id: string): LineupCard {
+  return {
+    sleeper_id: id,
+    opponent: null,
+    home: null,
+    bye: false,
+    kickoff: null,
+    game_date: null,
+    game_status: null,
+    total: null,
+    avg: null,
+    gp: null,
+    projected: null,
+    week_pts: null,
+    pos_rank: null,
+    pos_rank_of: null,
+    matchup_grade: null,
+    matchup_rank: null,
+    matchup_of: null,
+    main_prop: null,
+    props: [],
+    line: null,
+  }
+}
+
+async function mergeLiveLines(
+  cards: Record<string, LineupCard>,
+  players: PlayerIn[],
+  sport: string,
+  opts: { season?: string; week?: number },
+) {
+  const live = await loadFantasyLiveMap(sport, opts)
+  if (!live.size) return
+  for (const raw of players) {
+    const id = String(raw?.sleeper_id || '').trim()
+    const card = id ? cards[id] : null
+    if (!card) continue
+    const hit = lookupLive(live, String(raw.name || ''), raw.team)
+    if (!hit) continue
+    if (hit.line) card.line = hit.line
+    if (hit.kickoff) card.kickoff = hit.kickoff
+    if (hit.opponent) {
+      card.opponent = hit.opponent
+      card.home = hit.home
+    }
+    if (hit.game_status === 'in_progress' || hit.game_status === 'final') card.game_status = hit.game_status
+  }
+}
+
+/** NBA, NHL, and MLB have no Sleeper football board. The card is the ESPN line plus the tip time. */
+export async function buildSportLineupCards(
+  players: PlayerIn[],
+  sport: string,
+): Promise<{ season: string; week: number; cards: Record<string, LineupCard> }> {
+  const cards: Record<string, LineupCard> = {}
+  const seen = new Set<string>()
+  const list: PlayerIn[] = []
+  for (const raw of players) {
+    const id = String(raw?.sleeper_id || '').trim()
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    if (seen.size > 250) break
+    list.push({ ...raw, sleeper_id: id })
+    cards[id] = emptyCard(id)
+  }
+  await mergeLiveLines(cards, list, sport, {})
+  return { season: '', week: 0, cards }
 }

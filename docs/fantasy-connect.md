@@ -47,7 +47,7 @@ Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves 
 | `fantasy-cbs-link` | user JWT | `{ access_token, league_ids }` → store token, sync NFL leagues. Rejects `password`. |
 | `fantasy-cbs-sync` | user JWT | Re-read stored CBS token. |
 | `fantasy-espn-sync` | user JWT | re-sync using the stored ESPN cookie |
-| `fantasy-lineup-cards` | user JWT | `{ sport?, players: [{ sleeper_id, name, position, team }] }` → kickoff, season total / average, this-week projection, position rank, points-allowed matchup grade, open Kalshi lines (`stat`, yes ask, no ask), and a raw `line` from the ESPN box (NFL, NBA, NHL, MLB). The client multiplies `line` by `fantasy_leagues.scoring`. No new SQL. |
+| `fantasy-lineup-cards` | user JWT | `{ sport?, players: [{ sleeper_id, name, position, team }] }` → kickoff, season total / average, this-week projection, position rank, points-allowed matchup grade, open Kalshi lines (`stat`, yes ask, no ask), and a raw `line` from the ESPN box (NFL, NBA, NHL, MLB). The client multiplies `line` by `fantasy_leagues.scoring`. Sleeper and ESPN save that map on sync. Yahoo reads `/league/{key}/settings` and CBS reads `league/rules`, then stores the same flat keys (`pass_yd`, `rec`, …). A rules miss leaves `scoring` empty and the host total stays the fallback. No new SQL. |
 
 Shared: **`fantasySleeperSync.ts`**, **`fantasyYahooSync.ts`**, **`fantasyEspnSync.ts`**. `verify_jwt = false` (manual JWT via `userIdFromJwt` except the Yahoo callback).
 

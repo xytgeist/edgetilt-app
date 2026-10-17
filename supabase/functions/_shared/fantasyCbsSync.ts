@@ -3,6 +3,7 @@
  * League reads: api.cbssports.com/fantasy v3. League ids come from the login sheet (My Teams).
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { cbsScoringFromRules } from './fantasyScoringRules.ts'
 
 const API = 'https://api.cbssports.com/fantasy'
 
@@ -286,6 +287,14 @@ async function syncCbsConnection(
       const detailBody = bodyOf(details)
       const detailRow = asRecord(detailBody.league_details) || asRecord(detailBody.league) || detailBody
       const name = String(detailRow.name || detailRow.league_name || `CBS ${worked}`).trim() || `CBS ${worked}`
+      let scoring: Record<string, number> = {}
+      try {
+        const rulesRaw = await cbsGet('league/rules', session.accessToken, { league_id: worked })
+        scoring = cbsScoringFromRules(rulesRaw)
+        if (!Object.keys(scoring).length) scoring = cbsScoringFromRules(details)
+      } catch {
+        scoring = {}
+      }
       const teams = findNamedArray(bodyOf(teamsRaw), new Set(['teams']))
       const rosterTeams = findNamedArray(bodyOf(rostersRaw), new Set(['teams', 'rosters']))
 
@@ -300,7 +309,7 @@ async function syncCbsConnection(
             name,
             season,
             sport: 'nfl',
-            scoring: {},
+            scoring,
             settings: { source_id: rawId },
           },
           { onConflict: 'connection_id,external_league_id' },

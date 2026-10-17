@@ -6,6 +6,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { resolvePublicAppOrigin } from './publicAppOrigin.ts'
 import { fetchNflState, type SyncResult } from './fantasySleeperSync.ts'
+import { yahooScoringFromSettings } from './fantasyScoringRules.ts'
 
 const YAHOO_AUTH = 'https://api.login.yahoo.com/oauth2'
 const YAHOO_FANTASY = 'https://fantasysports.yahooapis.com/fantasy/v2'
@@ -555,6 +556,13 @@ export async function syncYahooConnection(
       week = leagueWeek || week
       const leagueSeason = num(lg.season) || season
       const leagueName = str(lg.name) || 'Yahoo League'
+      let scoring: Record<string, number> = {}
+      try {
+        const settingsPayload = await yahooGet(access, `/league/${encodeURIComponent(leagueKey)}/settings`)
+        scoring = yahooScoringFromSettings(settingsPayload)
+      } catch {
+        scoring = {}
+      }
 
       const { data: leagueRow, error: lgErr } = await admin
         .from('fantasy_leagues')
@@ -567,7 +575,7 @@ export async function syncYahooConnection(
             name: leagueName,
             season: leagueSeason,
             sport: 'nfl',
-            scoring: {},
+            scoring,
             settings: {
               current_week: week,
               num_teams: num(lg.num_teams),

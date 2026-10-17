@@ -38,7 +38,7 @@ Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves 
 
 | Function | Auth | Behavior |
 | --- | --- | --- |
-| `fantasy-sleeper-link` | user JWT | `{ username }` → upsert Sleeper connection + sync |
+| `fantasy-sleeper-link` | user JWT | `{ username }` → upsert Sleeper connection + sync current NFL and NBA seasons. NBA does not replace an existing NFL primary (game-hub pins stay football). |
 | `fantasy-sleeper-sync` | user JWT | sync / `{ primary_league_id }` / `{ hub_pins: true }` (provider-agnostic pins) |
 | `fantasy-yahoo-oauth-start` | user JWT | returns Yahoo authorize `url`. Body `{ returnMode?: 'native'\|'web' }` encodes return channel in OAuth `state` (`n.*` / `w.*`) |
 | `fantasy-yahoo-oauth-callback` | browser redirect | exchange code, store tokens, sync; **native** → `edgetilt://yahoo-oauth?tab=fantasy&yahoo=…`; **web** → `/fantasy-yahoo-return.html?…` |

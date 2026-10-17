@@ -110,7 +110,36 @@ function shortName(name, position) {
   return `${parts[0].charAt(0).toUpperCase()}. ${parts.slice(1).join(' ').toUpperCase()}`
 }
 
+function slotPill(row, index) {
+  const raw = String(row?.slot_label || '')
+  const named = raw.includes(':') ? raw.split(':').slice(1).join(':') : raw
+  if (named && !/^\d+$/.test(named)) return named
+  return fantasyPos(row?.position) || `${index + 1}`
+}
+
+function pairBySlot(leftRows, rightRows) {
+  const left = startersOf(leftRows)
+  const right = startersOf(rightRows)
+  const n = Math.max(left.length, right.length)
+  const pairs = []
+  for (let i = 0; i < n; i += 1) {
+    const label = slotPill(left[i] || right[i], i)
+    pairs.push({
+      key: `${label}-${i}`,
+      label,
+      left: left[i] || null,
+      right: right[i] || null,
+    })
+  }
+  return pairs
+}
+
 function pairStarters(leftRows, rightRows) {
+  const nfl = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
+  const sample = startersOf(leftRows).concat(startersOf(rightRows))
+  if (sample.length && !sample.some((row) => nfl.has(fantasyPos(row.position)))) {
+    return pairBySlot(leftRows, rightRows)
+  }
   const order = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
   const bucket = (rows) => {
     const map = {}
@@ -454,6 +483,7 @@ export default function FantasyCommandCenter({
           </div>
           <div className="mt-0.5 text-[12px] text-zinc-500">
             {detail?.week != null ? `Week ${detail.week}` : 'This week'}
+            {league?.sport && league.sport !== 'nfl' ? ` · ${String(league.sport).toUpperCase()}` : ''}
             {league?.provider ? ` · ${providerLabel(league.provider)}` : ''}
           </div>
         </div>
@@ -494,7 +524,7 @@ export default function FantasyCommandCenter({
                     : 'border-zinc-700 bg-zinc-900 text-zinc-300'
                 }`}
               >
-                {lg.name}
+                {lg.sport && lg.sport !== 'nfl' ? `${lg.name} · ${String(lg.sport).toUpperCase()}` : lg.name}
               </button>
             )
           })}
@@ -505,7 +535,7 @@ export default function FantasyCommandCenter({
 
       {!loadingDetail && !(leagues || []).length ? (
         <div className="rounded-2xl border border-zinc-800 p-4 text-[13px] text-zinc-400">
-          No NFL leagues synced yet. Open Manage and sync after the league is live.
+          No leagues synced yet. Open Manage and sync after the league is live.
         </div>
       ) : null}
 

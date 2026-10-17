@@ -183,7 +183,7 @@ export async function loadFantasySnapshot(supabase) {
 
   const { data: leagues, error: lErr } = await supabase
     .from('fantasy_leagues')
-    .select('id, connection_id, name, season, is_primary, provider, external_league_id')
+    .select('id, connection_id, name, season, is_primary, provider, sport, external_league_id')
     .order('name', { ascending: true })
   if (lErr) throw new Error(lErr.message)
 
@@ -255,7 +255,7 @@ export async function loadLeagueDetail(supabase, leagueId) {
 
   const { data: league, error: lgErr } = await supabase
     .from('fantasy_leagues')
-    .select('id, name, season, is_primary, provider, connection_id')
+    .select('id, name, season, is_primary, provider, sport, connection_id')
     .eq('id', id)
     .maybeSingle()
   if (lgErr) throw new Error(lgErr.message)
@@ -334,7 +334,8 @@ export async function loadLeagueDetail(supabase, leagueId) {
     list.sort((a, b) => {
       const as = a.slot === 'starter' ? 0 : 1
       const bs = b.slot === 'starter' ? 0 : 1
-      return as - bs
+      if (as !== bs) return as - bs
+      return String(a.slot_label || '').localeCompare(String(b.slot_label || ''))
     })
   }
 

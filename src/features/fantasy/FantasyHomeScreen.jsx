@@ -235,6 +235,11 @@ export default function FantasyHomeScreen({
       setCardsLoading(false)
       return undefined
     }
+    if (String(detail.league?.sport || 'nfl') !== 'nfl') {
+      setCards({})
+      setCardsLoading(false)
+      return undefined
+    }
     const seen = new Set()
     const players = []
     for (const rows of Object.values(detail.rostersByTeam || {})) {

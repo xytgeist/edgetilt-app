@@ -45,6 +45,44 @@ export async function fetchNflState(): Promise<{ season: string; week: number; s
   return sleeperGet(`/state/nfl`)
 }
 
+type NamedPlayer = { full_name: string; position: string; team: string }
+
+async function loadNbaPlayers(ids: string[]): Promise<Map<string, NamedPlayer>> {
+  const map = new Map<string, NamedPlayer>()
+  const unique = [...new Set(ids.filter((id) => id && id !== '0'))]
+  let cursor = 0
+  async function worker() {
+    while (cursor < unique.length) {
+      const id = unique[cursor++]
+      try {
+        const p = await sleeperGet<{
+          full_name?: string
+          first_name?: string
+          last_name?: string
+          first?: string
+          last?: string
+          position?: string
+          pos?: string
+          team?: string | null
+        }>(`/players/nba/${encodeURIComponent(id)}`)
+        const name = String(
+          p?.full_name || `${p?.first_name || p?.first || ''} ${p?.last_name || p?.last || ''}`,
+        ).trim()
+        map.set(id, {
+          full_name: name || id,
+          position: String(p?.position || p?.pos || ''),
+          team: String(p?.team || ''),
+        })
+      } catch {
+        map.set(id, { full_name: id, position: '', team: '' })
+      }
+    }
+  }
+  const workers = Math.min(8, unique.length)
+  if (workers > 0) await Promise.all(Array.from({ length: workers }, () => worker()))
+  return map
+}
+
 type SleeperLeague = {
   league_id: string
   name?: string
@@ -140,20 +178,13 @@ export async function syncSleeperConnection(
   sleeperUserId: string,
 ): Promise<SyncResult> {
   try {
-    const state = await fetchNflState()
-    const season = Number(state.season)
-    const week = Math.max(1, Number(state.week) || 1)
-    if (!Number.isFinite(season)) {
-      return { ok: false, error: 'Sleeper NFL state missing season.' }
-    }
-
-    const leagues = await sleeperGet<SleeperLeague[]>(
-      `/user/${encodeURIComponent(sleeperUserId)}/leagues/nfl/${season}`,
-    )
-    const list = Array.isArray(leagues) ? leagues : []
-
-    // Drop stale season rows for this connection (re-insert fresh).
-    await admin.from('fantasy_leagues').delete().eq('connection_id', connectionId).neq('season', season)
+    const { data: primaryRows } = await admin
+      .from('fantasy_leagues')
+      .select('id')
+      .eq('user_id', edgeUserId)
+      .eq('is_primary', true)
+      .limit(1)
+    const userHasPrimary = Boolean(primaryRows?.length)
 
     let primaryLeagueId: string | null = null
     const { data: existingConn } = await admin
@@ -162,6 +193,27 @@ export async function syncSleeperConnection(
       .eq('id', connectionId)
       .maybeSingle()
     primaryLeagueId = existingConn?.primary_league_id ? String(existingConn.primary_league_id) : null
+
+    let leaguesFound = 0
+    let season = new Date().getFullYear()
+    let week = 1
+
+    for (const sport of ['nfl', 'nba'] as const) {
+      const state = sport === 'nfl'
+        ? await fetchNflState()
+        : await sleeperGet<{ season: string; week: number }>(`/state/${sport}`)
+      season = Number(state.season)
+      week = Math.max(1, Number(state.week) || 1)
+      if (!Number.isFinite(season)) continue
+
+      const leagues = await sleeperGet<SleeperLeague[]>(
+        `/user/${encodeURIComponent(sleeperUserId)}/leagues/${sport}/${season}`,
+      )
+      const list = Array.isArray(leagues) ? leagues : []
+      leaguesFound += list.length
+
+      // Drop this sport's other seasons. Leave the other sport's rows alone.
+      await admin.from('fantasy_leagues').delete().eq('connection_id', connectionId).eq('sport', sport).neq('season', season)
 
     for (const lg of list) {
       const externalLeagueId = String(lg.league_id || '').trim()
@@ -177,7 +229,7 @@ export async function syncSleeperConnection(
             external_league_id: externalLeagueId,
             name: String(lg.name || 'League').trim() || 'League',
             season,
-            sport: 'nfl',
+            sport,
             scoring: lg.scoring_settings && typeof lg.scoring_settings === 'object' ? lg.scoring_settings : {},
             settings: {
               ...(lg.settings && typeof lg.settings === 'object' ? lg.settings : {}),
@@ -207,6 +259,14 @@ export async function syncSleeperConnection(
 
       const teamIdByRoster = new Map<number, string>()
       let mineTeamId: string | null = null
+      let nbaById = new Map<string, NamedPlayer>()
+      if (sport === 'nba') {
+        const ids: string[] = []
+        for (const roster of rosters || []) {
+          for (const id of roster.players || []) ids.push(String(id))
+        }
+        nbaById = await loadNbaPlayers(ids)
+      }
 
       for (const r of rosters || []) {
         const ownerId = r.owner_id != null ? String(r.owner_id) : ''
@@ -246,35 +306,55 @@ export async function syncSleeperConnection(
         // Replace this week's roster rows for the team.
         await admin.from('fantasy_rosters').delete().eq('team_id', teamRow.id).eq('week', week)
 
-        const starters = new Set((r.starters || []).map(String).filter((id) => id && id !== '0'))
+        const starterOrder = (r.starters || []).map(String)
+        const starters = new Set(starterOrder.filter((id) => id && id !== '0'))
         const reserve = new Set((r.reserve || []).map(String).filter(Boolean))
         const taxi = new Set((r.taxi || []).map(String).filter(Boolean))
         const players = (r.players || []).map(String).filter((id) => id && id !== '0')
+        const slotNames = Array.isArray(lg.roster_positions) ? lg.roster_positions.map((s) => String(s || 'UTIL')) : []
+        const lineupLabel = (pid: string) => {
+          const idx = starterOrder.indexOf(pid)
+          if (idx < 0) return 'BN'
+          const name = slotNames[idx] || 'UTIL'
+          const earlier = starterOrder.slice(0, idx).filter((id, i) => id !== '0' && (slotNames[i] || 'UTIL') === name).length
+          const label = earlier ? `${name}${earlier + 1}` : name
+          return `${String(idx).padStart(2, '0')}:${label}`
+        }
 
-        // Enrich names from nfl_players when we have them.
-        const { data: nflRows } = players.length
-          ? await admin
-              .from('nfl_players')
-              .select('sleeper_id, full_name, position, team')
-              .in('sleeper_id', players)
-          : { data: [] as Array<{ sleeper_id: string; full_name: string; position: string; team: string }> }
-        const nflById = new Map(
-          (nflRows || []).map((p) => [String(p.sleeper_id), p]),
-        )
+        // NFL names come from nfl_players. NBA ids are a different set, so look them up on Sleeper.
+        const named = new Map<string, NamedPlayer>()
+        if (sport === 'nba') {
+          for (const id of players) {
+            const row = nbaById.get(id)
+            if (row) named.set(id, row)
+          }
+        } else if (players.length) {
+          const { data: nflRows } = await admin
+            .from('nfl_players')
+            .select('sleeper_id, full_name, position, team')
+            .in('sleeper_id', players)
+          for (const p of nflRows || []) {
+            named.set(String(p.sleeper_id), {
+              full_name: String(p.full_name || ''),
+              position: String(p.position || ''),
+              team: String(p.team || ''),
+            })
+          }
+        }
 
         const rosterInserts = players.map((pid, idx) => {
-          const nfl = nflById.get(pid)
+          const meta = named.get(pid)
           const slot = slotForPlayer(pid, starters, reserve, taxi)
           return {
             team_id: teamRow.id,
             user_id: edgeUserId,
             week,
             sleeper_id: pid,
-            player_name: nfl?.full_name || pid,
-            position: nfl?.position || null,
-            nfl_team: nfl?.team || null,
+            player_name: meta?.full_name || pid,
+            position: meta?.position || null,
+            nfl_team: meta?.team || null,
             slot,
-            slot_label: `${slot}:${idx}`,
+            slot_label: sport === 'nba' ? lineupLabel(pid) : `${slot}:${idx}`,
           }
         })
         if (rosterInserts.length) {
@@ -314,7 +394,9 @@ export async function syncSleeperConnection(
         if (muErr) throw new Error(muErr.message)
       }
 
-      if (!primaryLeagueId && mineTeamId) primaryLeagueId = leagueId
+      // NBA must not steal the NFL primary used for game-hub pins.
+      if (!primaryLeagueId && mineTeamId && (sport === 'nfl' || !userHasPrimary)) primaryLeagueId = leagueId
+    }
     }
 
     // Mark primary: keep existing if still present, else first league with my team.
@@ -338,7 +420,7 @@ export async function syncSleeperConnection(
       connectionId,
       season,
       week,
-      leagues: list.length,
+      leagues: leaguesFound,
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -360,12 +442,13 @@ export async function hubPinsForUser(
 
   const { data: primaryLeague } = await admin
     .from('fantasy_leagues')
-    .select('id')
+    .select('id, sport')
     .eq('user_id', edgeUserId)
     .eq('is_primary', true)
     .maybeSingle()
 
   let leagueId = primaryLeague?.id ? String(primaryLeague.id) : null
+  if (primaryLeague?.sport && primaryLeague.sport !== 'nfl') leagueId = null
   if (!leagueId) {
     const { data: conn } = await admin
       .from('fantasy_connections')

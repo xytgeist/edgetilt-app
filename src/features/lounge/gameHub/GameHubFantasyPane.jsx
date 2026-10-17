@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { LoungeSportsTeamLogo, useLoungeSportsPillWashAndLogos } from '../loungeSportsPillPaint.jsx'
+import { leaguePointsForBox } from '../../fantasy/fantasyBoxScore.js'
 import {
   FANTASY_SCORING_OPTIONS,
   fantasyScoringLabel,
   playerFantasyPts,
   setFantasyScoring,
-  useFantasyScoring,
 } from './gameHubFantasyScoring.js'
+import { useHubPointFormat, useNflLeagueRules } from './gameHubLeagueRules.js'
 import {
   getFantasyPinIds,
   getFantasyPinRole,
@@ -395,7 +396,7 @@ function MatchupHalf({
   gameStatus = 'pre',
   meshSrc,
 }) {
-  const scoring = useFantasyScoring()
+  const scoring = useHubPointFormat()
   const isDef = slotPos === 'DEF' || normalizeFantasyPos(player) === 'DEF'
   const points = matchupPointsBox(player, gameStatus, scoring)
   const empty = !player
@@ -713,9 +714,9 @@ function toneVsProj(value, proj) {
  * in  → LIVE pts + paced live proj (green/red vs original)
  * post → GAME pts + original proj (muted green/red beat/miss)
  */
-function restBoardPointsColumn(player, gameStatus, live, scoring) {
+function restBoardPointsColumn(player, gameStatus, live, scoring, leaguePoints = null) {
   const proj = playerFantasyPts(player, 'projected', scoring)
-  const scored = playerFantasyPts(player, 'game', scoring)
+  const scored = leaguePoints != null ? leaguePoints : playerFantasyPts(player, 'game', scoring)
 
   if (gameStatus === 'pre') {
     return { main: proj, under: null, underTone: 'muted', underMuted: false }
@@ -763,9 +764,52 @@ function fantasyAccentColor(player, game, paint) {
   return paint.homeColor || paint.awayColor || '#3f3f46'
 }
 
-/** Scoring format toggle (Std / Half / PPR, per device) + what the numbers mean right now. */
-function FantasyScoringBar({ scoring, status }) {
+function leagueShortName(name) {
+  const text = String(name || 'League').trim()
+  return text.length > 16 ? `${text.slice(0, 15)}…` : text
+}
+
+/** Connected league when one is synced. Otherwise the device Std / Half / PPR toggle. */
+function FantasyScoringBar({ scoring, status, leagues, league, onSelectLeague }) {
   const caption = status === 'post' ? 'Final · pts' : status === 'in' ? 'Live · pts' : 'Projected · pts'
+  if (leagues?.length) {
+    return (
+      <div data-fantasy-scoring-bar className="flex items-center justify-between gap-3 px-1">
+        {leagues.length === 1 ? (
+          <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
+            {leagues[0].name}
+          </span>
+        ) : (
+          <div
+            role="radiogroup"
+            aria-label="Fantasy league"
+            className="flex min-w-0 rounded-full bg-zinc-900 p-0.5 ring-1 ring-zinc-800"
+          >
+            {leagues.map((row) => {
+              const on = row.id === league?.id
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  aria-label={row.name}
+                  data-on={on || undefined}
+                  onClick={() => onSelectLeague(row.id)}
+                  className={`max-w-[7.5rem] truncate rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide touch-manipulation transition-colors ${
+                    on ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 active:text-zinc-200'
+                  }`}
+                >
+                  {leagueShortName(row.name)}
+                </button>
+              )
+            })}
+          </div>
+        )}
+        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{caption}</span>
+      </div>
+    )
+  }
   return (
     <div data-fantasy-scoring-bar className="flex items-center justify-between gap-3 px-1">
       <div
@@ -823,7 +867,8 @@ export default function GameHubFantasyPane({
   const liveOrFinal = status === 'in' || status === 'post'
   const gameColTitle = status === 'post' ? 'Game' : status === 'in' ? 'Live' : 'Proj'
   const paint = useLoungeSportsPillWashAndLogos(game)
-  const scoring = useFantasyScoring()
+  const { league, leagues, selectLeague } = useNflLeagueRules()
+  const scoring = useHubPointFormat()
   const pins = useFantasyPins()
   const pinIds = useMemo(() => getFantasyPinIds(pins), [pins])
   const pinSet = useMemo(() => new Set(pinIds), [pinIds])
@@ -861,8 +906,8 @@ export default function GameHubFantasyPane({
         return pinIds.indexOf(String(a.sleeper_id)) - pinIds.indexOf(String(b.sleeper_id))
       }
       if (liveOrFinal) {
-        const ga = playerFantasyPts(a, 'game', scoring) ?? -1
-        const gb = playerFantasyPts(b, 'game', scoring) ?? -1
+        const ga = (league ? leaguePointsForBox(boxForPlayer(boxIndex, a), league.scoring, 'nfl') : null) ?? playerFantasyPts(a, 'game', scoring) ?? -1
+        const gb = (league ? leaguePointsForBox(boxForPlayer(boxIndex, b), league.scoring, 'nfl') : null) ?? playerFantasyPts(b, 'game', scoring) ?? -1
         if (gb !== ga) return gb - ga
       }
       const pa = a.projected_ppr ?? a.fantasypros_pts ?? -1
@@ -875,7 +920,7 @@ export default function GameHubFantasyPane({
     })
 
     return { matchups: slots, rest: board }
-  }, [players, liveOrFinal, scoring, pinSet, pinIds])
+  }, [players, liveOrFinal, scoring, pinSet, pinIds, league, boxIndex])
 
   if (loading) return <div className="py-10 text-center text-sm text-zinc-500">Loading fantasy…</div>
   if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
@@ -890,7 +935,13 @@ export default function GameHubFantasyPane({
 
   return (
     <div data-lounge-game-fantasy className="space-y-4 py-3">
-      <FantasyScoringBar scoring={scoring} status={status} />
+      <FantasyScoringBar
+        scoring={scoring}
+        status={status}
+        leagues={leagues}
+        league={league}
+        onSelectLeague={selectLeague}
+      />
       {liveOrFinal ? null : <FantasyMatchupStack matchups={matchups} game={game} gameStatus={status} />}
 
       {rest.length ? (
@@ -910,7 +961,8 @@ export default function GameHubFantasyPane({
               const detail = liveOrFinal
                 ? liveDetailLine(box, p.position, { boxLoaded })
                 : seasonDetailLine(p)
-              const col = restBoardPointsColumn(p, status, live, scoring)
+              const leaguePoints = league ? leaguePointsForBox(box, league.scoring, 'nfl') : null
+              const col = restBoardPointsColumn(p, status, live, scoring, leaguePoints)
               const pinRole = getFantasyPinRole(p.sleeper_id, pins)
               const pinned = Boolean(pinRole)
               const enemy = pinRole === 'enemy'

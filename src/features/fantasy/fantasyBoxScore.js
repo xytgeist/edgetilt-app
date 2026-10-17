@@ -113,7 +113,7 @@ function dedupeFg(rates) {
   return next
 }
 
-function ratesFrom(scoring, sport) {
+export function leagueRates(scoring, sport = 'nfl') {
   const flat = flatRates(scoring)
   const known = Object.keys(flat).some((key) => isKnownRule(key))
   if (known) return dedupeFg(flat)
@@ -137,7 +137,7 @@ function lineValue(line, key) {
 /** Points for one player, or null when this league's rules cannot be applied. */
 export function scoreLine(line, scoring, sport = 'nfl') {
   if (!line || typeof line !== 'object') return null
-  const rates = ratesFrom(scoring, sport)
+  const rates = leagueRates(scoring, sport)
   if (!rates || !Object.keys(rates).length) return null
   let total = 0
   let used = false
@@ -149,6 +149,67 @@ export function scoreLine(line, scoring, sport = 'nfl') {
   }
   if (!used) return null
   return Math.round(total * 10) / 10
+}
+
+function addCount(line, key, value) {
+  const n = Number(value)
+  if (!Number.isFinite(n) || n === 0) return
+  line[key] = (line[key] || 0) + n
+}
+
+function applyBonuses(line) {
+  const at = (key, stat, min) => {
+    if ((line[stat] || 0) >= min) line[key] = 1
+  }
+  at('bonus_pass_yd_300', 'pass_yd', 300)
+  at('bonus_pass_yd_400', 'pass_yd', 400)
+  at('bonus_rush_yd_100', 'rush_yd', 100)
+  at('bonus_rush_yd_200', 'rush_yd', 200)
+  at('bonus_rec_yd_100', 'rec_yd', 100)
+  at('bonus_rec_yd_200', 'rec_yd', 200)
+}
+
+/** Hub football box (`pass_yds`, `fg_yds`) → the counting line `scoreLine` already multiplies. */
+export function footballBoxLine(box) {
+  if (!box || typeof box !== 'object') return null
+  const line = {}
+  addCount(line, 'pass_yd', box.pass_yds)
+  addCount(line, 'pass_td', box.pass_td)
+  addCount(line, 'pass_int', box.pass_int)
+  addCount(line, 'rush_yd', box.rush_yds)
+  addCount(line, 'rush_td', box.rush_td)
+  addCount(line, 'rec', box.rec)
+  addCount(line, 'rec_yd', box.rec_yds)
+  addCount(line, 'rec_td', box.rec_td)
+  addCount(line, 'fum_lost', box.fum_lost)
+  addCount(line, 'ret_td', box.ret_td)
+  addCount(line, 'xpm', box.xp_made)
+  const yards = Array.isArray(box.fg_yds) ? box.fg_yds.map(Number).filter((n) => Number.isFinite(n)) : []
+  const made = Number(box.fg_made) || 0
+  const att = Number(box.fg_att) || 0
+  if (yards.length) {
+    for (const y of yards) {
+      addCount(line, 'fgm', 1)
+      if (y < 20) addCount(line, 'fgm_0_19', 1)
+      else if (y < 30) addCount(line, 'fgm_20_29', 1)
+      else if (y < 40) addCount(line, 'fgm_30_39', 1)
+      else if (y < 50) addCount(line, 'fgm_40_49', 1)
+      else addCount(line, 'fgm_50p', 1)
+      if (y < 40) addCount(line, 'fgm_0_39', 1)
+      if (y >= 50 && y < 60) addCount(line, 'fgm_50_59', 1)
+      if (y >= 60) addCount(line, 'fgm_60p', 1)
+    }
+  } else if (made) {
+    addCount(line, 'fgm', made)
+  }
+  addCount(line, 'fgmiss', Math.max(0, att - Math.max(made, yards.length)))
+  applyBonuses(line)
+  return Object.keys(line).length ? line : null
+}
+
+/** League points for one hub box row, or null when the rules cannot score it. */
+export function leaguePointsForBox(box, scoring, sport = 'nfl') {
+  return scoreLine(footballBoxLine(box), scoring, sport)
 }
 
 export function cardIsLive(card) {

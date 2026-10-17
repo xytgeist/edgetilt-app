@@ -1,8 +1,9 @@
 /**
- * Fantasy points a single PBP row earned each player on it, calculated from the play text (full PPR default):
- * rush / rec 0.1 per yd, rec +`recPoints` (1 / 0.5 / 0), rush / rec / return TD 6, pass 0.04 per yd, pass TD 4, INT -2,
- * FG 3 (<40) / 4 (40-49) / 5 (50+), FG miss -1, plus a team DEF row (`playDefenseFantasyPoints`).
- * Player fumbles, 2-pt tries and IDP are not scored.
+ * Fantasy points a single PBP row earned each player on it, calculated from the play text.
+ * Without `rates`, full PPR: rush / rec 0.1 per yd, rec +`recPoints` (1 / 0.5 / 0), rush / rec / return TD 6,
+ * pass 0.04 per yd, pass TD 4, INT -2, FG 3 (<40) / 4 (40-49) / 5 (50+), FG miss -1.
+ * With `rates` (the connected league's map), each of those uses the league value. A missing key scores 0.
+ * Team DEF stays on the standard row (`playDefenseFantasyPoints`). Fumbles, 2-pt tries and IDP are not scored.
  */
 import {
   matchRushPlayer,
@@ -95,7 +96,7 @@ export function playDefenseFantasyPoints(text, { defenseAbbrev = '', turnover = 
 
 /**
  * @param {string} text PBP row
- * @param {{ players?: object[], offenseAbbrev?: string, defenseAbbrev?: string, defenseLogo?: string, turnover?: boolean, recPoints?: number }} ctx
+ * @param {{ players?: object[], offenseAbbrev?: string, defenseAbbrev?: string, defenseLogo?: string, turnover?: boolean, recPoints?: number, rates?: Record<string, number> | null }} ctx
  * @returns {{ key: string, name: string, position: string, headshotUrl: string, sleeperId?: string, points: number }[]}
  */
 export function playFantasyPoints(text, ctx = {}) {
@@ -109,24 +110,54 @@ export function playFantasyPoints(text, ctx = {}) {
   return out
 }
 
-function playerFantasyPoints(text, { players = [], offenseAbbrev = '', defenseAbbrev = '', recPoints = 1 } = {}) {
+function rateOf(rates, key, fallback) {
+  if (!rates) return fallback
+  const n = Number(rates[key])
+  return Number.isFinite(n) ? n : 0
+}
+
+function tier(rates, key) {
+  const n = Number(rates?.[key])
+  return Number.isFinite(n) ? n : null
+}
+
+function fgPlayPoints(fg, rates) {
+  if (!rates) {
+    return fg.made ? (fg.yards != null && fg.yards >= 50 ? 5 : fg.yards != null && fg.yards >= 40 ? 4 : 3) : -1
+  }
+  if (!fg.made) return rateOf(rates, 'fgmiss', 0)
+  const y = fg.yards
+  if (y == null) return rateOf(rates, 'fgm', 0)
+  if (y >= 60 && tier(rates, 'fgm_60p') != null) return tier(rates, 'fgm_60p')
+  if (y >= 50 && y < 60 && tier(rates, 'fgm_50_59') != null) return tier(rates, 'fgm_50_59')
+  if (y >= 50 && tier(rates, 'fgm_50p') != null) return tier(rates, 'fgm_50p')
+  if (y >= 40 && y < 50 && tier(rates, 'fgm_40_49') != null) return tier(rates, 'fgm_40_49')
+  if (y < 20 && tier(rates, 'fgm_0_19') != null) return tier(rates, 'fgm_0_19')
+  if (y >= 20 && y < 30 && tier(rates, 'fgm_20_29') != null) return tier(rates, 'fgm_20_29')
+  if (y >= 30 && y < 40 && tier(rates, 'fgm_30_39') != null) return tier(rates, 'fgm_30_39')
+  if (y < 40 && tier(rates, 'fgm_0_39') != null) return tier(rates, 'fgm_0_39')
+  return rateOf(rates, 'fgm', 0)
+}
+
+function playerFantasyPoints(text, { players = [], offenseAbbrev = '', defenseAbbrev = '', recPoints = 1, rates = null } = {}) {
   const raw = String(text || '').trim()
   if (!raw) return []
   const out = []
   const push = (r) => {
     if (r) out.push(r)
   }
+  const rules = rates && typeof rates === 'object' ? rates : null
 
   const fg = parseFieldGoalPlay(raw)
   if (fg) {
-    const pts = fg.made ? (fg.yards != null && fg.yards >= 50 ? 5 : fg.yards != null && fg.yards >= 40 ? 4 : 3) : -1
-    push(row(fg.playerHint, pts, players, offenseAbbrev))
+    push(row(fg.playerHint, fgPlayPoints(fg, rules), players, offenseAbbrev))
     return out
   }
 
   const rush = parseRushPlay(raw)
   if (rush) {
-    push(row(rush.playerHint, rush.yards * 0.1 + (rush.isTouchdown ? 6 : 0), players, offenseAbbrev))
+    const pts = rush.yards * rateOf(rules, 'rush_yd', 0.1) + (rush.isTouchdown ? rateOf(rules, 'rush_td', 6) : 0)
+    push(row(rush.playerHint, pts, players, offenseAbbrev))
     return out
   }
 
@@ -138,18 +169,20 @@ function playerFantasyPoints(text, { players = [], offenseAbbrev = '', defenseAb
       const lead = raw.match(/^((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,2}?)\s+\d+\s*-?\s*yds?\s+pass\b/i)
       if (lead) receiver = lead[1].trim()
     }
-    push(row(receiver, recPoints + pass.yards * 0.1 + (td ? 6 : 0), players, offenseAbbrev))
-    push(row(parsePasserHint(raw), pass.yards * 0.04 + (td ? 4 : 0), players, offenseAbbrev))
+    const recPts = rateOf(rules, 'rec', recPoints) + pass.yards * rateOf(rules, 'rec_yd', 0.1) + (td ? rateOf(rules, 'rec_td', 6) : 0)
+    const passPts = pass.yards * rateOf(rules, 'pass_yd', 0.04) + (td ? rateOf(rules, 'pass_td', 4) : 0)
+    push(row(receiver, recPts, players, offenseAbbrev))
+    push(row(parsePasserHint(raw), passPts, players, offenseAbbrev))
     return out
   }
 
   if (parseInterceptionReturn(raw) || parseInterceptionPlay(raw)) {
-    push(row(parsePasserHint(raw), -2, players, offenseAbbrev))
+    push(row(parsePasserHint(raw), rateOf(rules, 'pass_int', -2), players, offenseAbbrev))
     return out
   }
 
   const ret = parseKickoffReturn(raw) || parsePuntReturn(raw)
-  if (ret?.isTouchdown) push(row(ret.playerHint, 6, players, defenseAbbrev))
+  if (ret?.isTouchdown) push(row(ret.playerHint, rateOf(rules, 'ret_td', 6), players, defenseAbbrev))
   return out
 }
 

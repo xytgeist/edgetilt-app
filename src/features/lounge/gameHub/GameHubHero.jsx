@@ -30,6 +30,7 @@ import {
   setFantasyScoring,
   useFantasyScoring,
 } from './gameHubFantasyScoring.js'
+import { getActiveNflLeague, useNflLeagueRules } from './gameHubLeagueRules.js'
 import { getFantasyPinIds, getFantasyPinRole, useFantasyPins } from './gameHubFantasyPins.js'
 import {
   CATCH_HANDS_LOCAL,
@@ -3100,6 +3101,9 @@ function FieldViz({
     const defenseAbbrev = hasSide ? String(ctx.game?.[defense]?.abbrev || '') : ''
     const defenseLogoRaw = hasSide ? String(ctx.game?.[defense]?.logo || '') : ''
     const logoKey = defenseAbbrev.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '')
+    const nflLeague = String(ctx.game?.sport_key || '').includes('americanfootball_nfl')
+      ? getActiveNflLeague()
+      : null
     const rows = playFantasyPoints(ctx.lastPlayText, {
       players: ctx.players,
       offenseAbbrev: hasSide ? String(ctx.game?.[offense]?.abbrev || '') : '',
@@ -3111,6 +3115,7 @@ function FieldViz({
           : '',
       turnover: ctx.turnover === true,
       recPoints: receptionPoints(getFantasyScoring()),
+      rates: nflLeague?.rates || null,
     })
     if (!rows.length) return undefined
     setFantasyToast({ key: `${animKey}:${Date.now()}`, rows })
@@ -4393,9 +4398,11 @@ function railScrollRoom(target) {
   return { up: el.scrollTop > 1, down: el.scrollTop + el.clientHeight < el.scrollHeight - 1 }
 }
 
-function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, props }) {
+function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, props, fantasyLeague = null }) {
   const left = align === 'left'
   const scoring = useFantasyScoring()
+  const league = fantasyLeague?.league || null
+  const leagueChoices = fantasyLeague?.leagues || []
   const touchRef = useRef(null)
   const wheelAtRef = useRef(0)
   const idx = Math.max(0, pages.indexOf(page))
@@ -4457,11 +4464,27 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
           {page === 'fantasy' ? (
             <button
               type="button"
-              onClick={() => setFantasyScoring(nextFantasyScoring(scoring))}
-              aria-label={`Fantasy scoring ${fantasyScoringLabel(scoring)}, tap to change`}
+              onClick={() => {
+                if (league && leagueChoices.length > 1) {
+                  const i = leagueChoices.findIndex((row) => row.id === league.id)
+                  const next = leagueChoices[(i + 1) % leagueChoices.length]
+                  fantasyLeague.selectLeague(next.id)
+                  return
+                }
+                if (league) return
+                setFantasyScoring(nextFantasyScoring(scoring))
+              }}
+              aria-label={
+                league
+                  ? `Fantasy scoring ${league.name}`
+                  : `Fantasy scoring ${fantasyScoringLabel(scoring)}, tap to change`
+              }
               className="-mx-1 -my-1.5 truncate px-1 py-1.5 text-[8px] font-semibold uppercase leading-none tracking-[0.14em] text-white/45 touch-manipulation [-webkit-tap-highlight-color:transparent] active:text-white/80"
             >
-              {RAIL_PAGE_LABEL[page]} · <span className="text-white/75">{fantasyScoringLabel(scoring)}</span>
+              {RAIL_PAGE_LABEL[page]} ·{' '}
+              <span className="text-white/75">
+                {league ? (league.name.length > 14 ? `${league.name.slice(0, 13)}…` : league.name) : fantasyScoringLabel(scoring)}
+              </span>
             </button>
           ) : (
             <span className="truncate text-[8px] font-semibold uppercase leading-none tracking-[0.14em] text-white/45">
@@ -5043,12 +5066,17 @@ export default function GameHubHero({
   playerBox = null,
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(feedGame)
-  const isNflGame = String(feedGame?.sport_key || '').includes('nfl')
+  const isNflGame = String(feedGame?.sport_key || '').includes('americanfootball_nfl')
   const fantasyScoring = useFantasyScoring()
+  const nflLeagueRules = useNflLeagueRules()
+  const fantasyLeague = isNflGame ? nflLeagueRules : null
   const { legalState } = useLegalBooks()
   const fantasyRails = useMemo(
-    () => (fullscreen ? liveFantasyRails(playerBox, players, 5, fantasyScoring) : { away: [], home: [] }),
-    [fullscreen, playerBox, players, fantasyScoring],
+    () =>
+      fullscreen
+        ? liveFantasyRails(playerBox, players, 5, fantasyScoring, fantasyLeague?.league?.scoring || null)
+        : { away: [], home: [] },
+    [fullscreen, playerBox, players, fantasyScoring, fantasyLeague?.league?.scoring],
   )
   const propRails = useMemo(
     () => (fullscreen && isNflGame ? livePropRails(marketProps, players, playerBox) : { away: [], home: [] }),
@@ -5466,6 +5494,7 @@ export default function GameHubHero({
             stats={teamStats?.away}
             fantasy={fantasyRails.away}
             props={propRails.away}
+            fantasyLeague={fantasyLeague}
           />
         ) : null}
         <HeroPublicBetting
@@ -5523,6 +5552,7 @@ export default function GameHubHero({
             stats={teamStats?.home}
             fantasy={fantasyRails.home}
             props={propRails.home}
+            fantasyLeague={fantasyLeague}
           />
         ) : null}
       </div>

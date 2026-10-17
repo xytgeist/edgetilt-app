@@ -30,6 +30,7 @@ import {
 } from './gameHub/gameHubWhistle.js'
 import GameHubPlayersPane from './gameHub/GameHubPlayersPane.jsx'
 import GameHubFantasyPane from './gameHub/GameHubFantasyPane.jsx'
+import { loadNflLeagueRules } from './gameHub/gameHubLeagueRules.js'
 import GameHubChatPane from './gameHub/GameHubChatPane.jsx'
 import GameHubNewsPane from './gameHub/GameHubNewsPane.jsx'
 import { GAME_CHAT_MAX_CHARS } from './gameHub/gameHubChatApi.js'
@@ -395,6 +396,11 @@ function LoungeMatchupGameHubModal({
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient, hubOpenNonce])
+
+  useEffect(() => {
+    if (!game || !supabaseClient || !showFantasyTab) return
+    loadNflLeagueRules(supabaseClient)
+  }, [game?.id, showFantasyTab, supabaseClient, hubOpenNonce])
 
   // Auto Watch (mine) + Enemy pins from primary Sleeper league for players in this NFL game.
   const fantasyPresentKey = useMemo(() => {

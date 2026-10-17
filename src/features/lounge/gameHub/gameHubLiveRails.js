@@ -3,6 +3,7 @@
  * `player_box` on the scoreboard detail) and each player's headline prop with live progress toward the line.
  */
 import { playerFantasyPts, receptionPoints } from './gameHubFantasyScoring.js'
+import { leaguePointsForBox } from '../../fantasy/fantasyBoxScore.js'
 import { pregamePlayerPropRails } from './gameHubPregameProps.js'
 
 function nameKey(name) {
@@ -70,14 +71,15 @@ function rosterIndex(players) {
 /**
  * Top `limit` fantasy scorers per side in the `scoring` format: `{ key, name, position, points, proj }`.
  */
-export function liveFantasyRails(playerBox, players, limit = 5, scoring = 'ppr') {
+export function liveFantasyRails(playerBox, players, limit = 5, scoring = 'ppr', leagueScoring = null) {
   const roster = rosterIndex(players)
   const out = { away: [], home: [] }
   for (const side of ['away', 'home']) {
     const rows = []
     for (const b of Array.isArray(playerBox?.[side]) ? playerBox[side] : []) {
       const pl = roster.get(nameKey(b.name))
-      const points = boxFantasyPoints(b, receptionPoints(scoring))
+      const fromLeague = leagueScoring ? leaguePointsForBox(b, leagueScoring, 'nfl') : null
+      const points = fromLeague != null ? fromLeague : boxFantasyPoints(b, receptionPoints(scoring))
       const projRaw = playerFantasyPts(pl, 'projected', scoring)
       const proj = projRaw != null && Number.isFinite(Number(projRaw)) ? round1(Number(projRaw)) : null
       if (!points && proj == null) continue

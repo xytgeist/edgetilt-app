@@ -1,6 +1,7 @@
 /**
- * Game Hub fantasy scoring format (Standard / Half PPR / Full PPR), remembered per device. One choice drives
- * the Fantasy tab, H2H cards, YTD, post-play toasts and the landscape Fantasy rail.
+ * Game Hub fantasy scoring format (Standard / Half PPR / Full PPR), remembered per device.
+ * Used when no NFL league is connected. A connected league's rules replace it on the Fantasy tab,
+ * the play pills, and the landscape Fantasy rail (`gameHubLeagueRules.js`).
  */
 import { useEffect, useState } from 'react'
 

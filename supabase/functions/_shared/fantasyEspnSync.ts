@@ -177,7 +177,11 @@ function normalizeLeagues(raw: unknown): Record<string, unknown>[] {
 type PlayerRow = { sleeper_id: string; full_name: string; team: string; position: string }
 
 function nameKey(value: string): string {
-  return value.toLowerCase().replace(/[^a-z]/g, '')
+  // ESPN writes "Travis Etienne Jr." Sleeper stores "Travis Etienne".
+  return value
+    .toLowerCase()
+    .replace(/\b(jr|sr|iii|ii|iv|v)\b/g, '')
+    .replace(/[^a-z]/g, '')
 }
 
 async function loadPlayerIndex(admin: SupabaseClient): Promise<Map<string, PlayerRow[]>> {

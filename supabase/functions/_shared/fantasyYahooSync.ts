@@ -253,8 +253,10 @@ async function resolveSleeperId(
   team: string,
   position: string,
 ): Promise<string | null> {
-  const name = fullName.trim()
-  if (!name) return null
+  const raw = fullName.trim()
+  if (!raw) return null
+  const stripped = raw.replace(/\b(jr|sr|iii|ii|iv|v)\b\.?/gi, ' ').replace(/\s+/g, ' ').trim()
+  const name = stripped || raw
   const teamAbbrev = normalizeTeamAbbrev(team)
   const pos = position.toUpperCase().replace(/[^A-Z]/g, '')
 

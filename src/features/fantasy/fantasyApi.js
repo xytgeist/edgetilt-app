@@ -211,6 +211,44 @@ export async function loadLineupCards(supabase, players) {
   return result?.cards && typeof result.cards === 'object' ? result.cards : {}
 }
 
+function loosePlayerName(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/\b(jr|sr|iii|ii|iv|v)\b/g, '')
+    .replace(/[^a-z]/g, '')
+}
+
+/** ESPN/CBS names keep "Jr." Sleeper's row often does not, so the roster id is blank and the photo never joins. */
+async function attachMissingSleeperIds(supabase, rows) {
+  const missing = (rows || []).some((row) => !row?.sleeper_id && loosePlayerName(row?.player_name))
+  if (!missing) return rows || []
+  const { data: players } = await supabase
+    .from('nfl_players')
+    .select('sleeper_id, full_name, team, position')
+    .limit(2000)
+  const index = new Map()
+  for (const player of players || []) {
+    const key = loosePlayerName(player.full_name)
+    if (!key || !player.sleeper_id) continue
+    const list = index.get(key) || []
+    list.push(player)
+    index.set(key, list)
+  }
+  return (rows || []).map((row) => {
+    if (row?.sleeper_id) return row
+    const hits = index.get(loosePlayerName(row?.player_name)) || []
+    if (!hits.length) return row
+    const pos = String(row.position || '').toUpperCase()
+    const team = String(row.nfl_team || '').toUpperCase()
+    const byPos = pos ? hits.filter((player) => String(player.position || '').toUpperCase() === pos) : hits
+    const pool = byPos.length ? byPos : hits
+    const byTeam = team ? pool.filter((player) => String(player.team || '').toUpperCase() === team) : []
+    const pick = byTeam.length === 1 ? byTeam[0] : pool.length === 1 ? pool[0] : null
+    if (!pick?.sleeper_id) return row
+    return { ...row, sleeper_id: String(pick.sleeper_id) }
+  })
+}
+
 export async function loadLeagueDetail(supabase, leagueId) {
   const id = String(leagueId || '').trim()
   if (!id) return null
@@ -252,6 +290,8 @@ export async function loadLeagueDetail(supabase, leagueId) {
     if (rErr) throw new Error(rErr.message)
     rosterRows = rows || []
   }
+
+  rosterRows = await attachMissingSleeperIds(supabase, rosterRows)
 
   const sleeperIds = [...new Set(rosterRows.map((r) => r.sleeper_id).filter(Boolean))]
   const injuryById = {}

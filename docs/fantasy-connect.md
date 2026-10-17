@@ -86,7 +86,7 @@ Setup notes: **`supabase/functions/fantasy-yahoo-oauth-start/README.md`**.
 | `mine` | Blue **Watch**, unless the player is on your roster | Manual tap. Rostered players show the league name instead |
 | `enemy` | Rose **Enemy** | Primary-league opponent starters in this game |
 
-On NFL hub open, the Fantasy list reads every NFL league the user owns. Those players are highlighted and sorted to the top. The pill is that league's name, with a trailing **+** when the same player is owned in more than one. The opponent roster for the league named on that bar is red and sits directly under them. `hub_pins: true` still marks primary-league starter enemies for the Players tab. The league bar hides the pregame "Projected · pts" caption. The fantasy home and a game screen stay blank until that first load is in, then paint once. Live refreshes update in place.
+On NFL hub open, the Fantasy list reads every NFL league the user owns. Those players are highlighted and sorted to the top. The pill is that league's name, with a trailing **+** when the same player is owned in more than one. The opponent roster for the league named on that bar is red and sits directly under them. `hub_pins: true` still marks primary-league starter enemies for the Players tab. The league bar hides the pregame "Projected · pts" caption. The fantasy home and a game screen show a spinner until that first load is in, then paint once. Live refreshes update in place.
 
 ## EdgeiOS note
 

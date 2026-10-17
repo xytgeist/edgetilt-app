@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import {
@@ -550,7 +551,13 @@ export default function FantasyHomeScreen({
       contentClassName="px-4 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
     >
       <div data-fantasy-home className="text-white">
-        {!shown ? null : (<>
+        {!shown ? (
+          signedIn ? (
+            <div className="flex items-center justify-center py-24 text-zinc-500" role="status" aria-label="Loading fantasy">
+              <Loader2 className="h-7 w-7 animate-spin" aria-hidden />
+            </div>
+          ) : null
+        ) : (<>
         {err ? (
           <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-950/30 px-3 py-2 text-[13px] text-rose-200">
             {err}

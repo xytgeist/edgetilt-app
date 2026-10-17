@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Loader2 } from 'lucide-react'
 import {
   loungeCfbGamePlayers,
   loungeGameNews,
@@ -710,6 +710,9 @@ function LoungeMatchupGameHubModal({
         >
           <ChevronLeft className="h-6 w-6" />
         </button>
+        <div className="flex flex-1 items-center justify-center text-zinc-500" role="status" aria-label="Loading game">
+          <Loader2 className="h-7 w-7 animate-spin" aria-hidden />
+        </div>
       </div>
     )
     if (embedded) return hold

@@ -130,7 +130,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 **I am Windows Theo.** Offsite `pg_dump` → private R2 for **production only** (`docs/db-r2-backups.md`). Test keeps Supabase daily backups. Script `scripts/db-dump-to-r2.mjs`, 14-day prune, Windows task daily 3:15 AM. Needs Ryan: create private bucket + `DB_BACKUP_R2_*` in `.env.master`, install `pg_dump`, first `npm run db:dump:r2:production` to size egress, then `npm run db:dump:r2:install-windows-task`. Before scary prod SQL: `--tag=pre-migrate`.
 
 ### Mac Theo ACTIVE TRACK 2026-10-15 ... Lounge Mod hub + report triage
-**I am Mac Theo.** Staff inbox **`/?tab=mod`**. **`1.4.1204`:** new reports start pending (`needs_human=false`); bot / never-auto / classify failure elevates. Landing filter stays Needs human. SQL **`20261015240000`** on test. Ban / SLA clock still open. Do not apply SQL or Edge on prod. Do not bump iOS **1.4.97**.
+**I am Mac Theo.** Staff inbox **`/?tab=mod`**. New reports start pending (`needs_human=false`); bot / never-auto / classify failure elevates. SQL **`20261015220000`** + **`20261015240000`** and Edge **`lounge-report-triage`** are on **test + prod** (prod 2026-10-17). Ban / SLA clock still open. Do not bump iOS **1.4.97**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-15 ... Platform ops todos (Denk iceberg)
 **I am Mac Theo.** Ryan asked to park the beehiiv-post follow-ups. Canonical list: backlog **Planned (Platform ops — Denk iceberg)**. Do **not** build an ESP / newsletter stack. Next real items when Ryan picks one: DMCA agent (Limestone), UGC SLA clock + ban (hub is on test), Digiverse W-9 / Apple Finance.

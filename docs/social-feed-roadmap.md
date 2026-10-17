@@ -285,7 +285,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 ## Phase I - Moderation + strikes + bans
 
 - **Shipped (2026-09-11):** `lounge_reports` + member Report sheet (post / comment / profile) + staff queue on **Monitor → Product**. Staff can hide the reported post/comment and mark actioned / dismissed. Ban / strikes UI still open.
-- **Shipped (2026-10-15, test):** Staff **Mod hub** `/?tab=mod` (`LoungeModQueueScreen`) with warn / hide / delete / dismiss + in-app `lounge_staff_notices`. Silent Edge **`lounge-report-triage`** auto-dismisses obvious spam only (never auto-hide; sexual / illegal / impersonation / other / harassment / hate stay human). New reports start pending (`needs_human=false`) and are elevated by the bot (`1.4.1204`). Monitor → Product embeds the same panel. Ban / strikes + SLA clock still open.
+- **Shipped (2026-10-15, test; prod SQL/Edge 2026-10-17):** Staff **Mod hub** `/?tab=mod` (`LoungeModQueueScreen`) with warn / hide / delete / dismiss + in-app `lounge_staff_notices`. Silent Edge **`lounge-report-triage`** auto-dismisses obvious spam only (never auto-hide; sexual / illegal / impersonation / other / harassment / hate stay human). New reports start pending (`needs_human=false`) and are elevated by the bot (`1.4.1204`). Monitor → Product embeds the same panel. Ban / strikes + SLA clock still open.
 - Moderator hide action sets `hidden_at` (+ review metadata as needed).
 - Ban behavior enforced in RLS (`profiles.banned_at` blocks mutations).
 

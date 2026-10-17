@@ -28,4 +28,4 @@ Same `OPENAI_API_KEY` as `process-offer-uploads` / `w2g-vision-extract`. Optiona
 npx supabase functions deploy lounge-report-triage --project-ref kcosfvmreeiosdjdzycb
 ```
 
-Do not deploy to prod until Ryan asks.
+Prod (`jtjgtucumuoswnbauxry`) deployed **2026-10-17** with SQL **`20261015220000`** + **`20261015240000`**.

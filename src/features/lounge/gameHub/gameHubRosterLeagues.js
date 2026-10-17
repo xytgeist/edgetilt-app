@@ -8,7 +8,10 @@ import { useEffect, useState } from 'react'
 const CHANGE_EVENT = 'edgetilt:game-hub-roster-leagues'
 
 /** @type {Record<string, { leagues: { id: string, name: string, primary: boolean }[] }>} */
-let snapshot = {}
+let ownedSnapshot = {}
+/** @type {Record<string, Record<string, true>>} league id → sleeper ids on that week's opponent roster */
+let opponentSnapshot = {}
+const EMPTY_OPPONENTS = {}
 let loadSeq = 0
 
 function emit() {
@@ -17,7 +20,15 @@ function emit() {
 
 export function getRosterLeague(sleeperId) {
   const id = String(sleeperId || '').trim()
-  return id ? snapshot[id] || null : null
+  return id ? ownedSnapshot[id] || null : null
+}
+
+/** 0 owned, 1 opponent, 2 manual watch, 3 everyone else. */
+export function fantasyBoardTier({ owned = false, enemy = false, watch = false } = {}) {
+  if (owned) return 0
+  if (enemy) return 1
+  if (watch) return 2
+  return 3
 }
 
 /** Primary league name, then the rest. "+" when they own him in more than one. */
@@ -40,7 +51,18 @@ export function useRosterLeagues() {
     window.addEventListener(CHANGE_EVENT, onChange)
     return () => window.removeEventListener(CHANGE_EVENT, onChange)
   }, [])
-  return snapshot
+  return ownedSnapshot
+}
+
+export function useLeagueOpponents(leagueId) {
+  const [, bump] = useState(0)
+  useEffect(() => {
+    const onChange = () => bump((n) => n + 1)
+    window.addEventListener(CHANGE_EVENT, onChange)
+    return () => window.removeEventListener(CHANGE_EVENT, onChange)
+  }, [])
+  const id = String(leagueId || '')
+  return (id && opponentSnapshot[id]) || EMPTY_OPPONENTS
 }
 
 /**
@@ -50,7 +72,8 @@ export function useRosterLeagues() {
 export function loadGameRosterLeagues(supabase, sleeperIds) {
   const ids = [...new Set((sleeperIds || []).map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 200)
   if (!supabase || !ids.length) {
-    snapshot = {}
+    ownedSnapshot = {}
+    opponentSnapshot = {}
     emit()
     return
   }
@@ -62,7 +85,8 @@ export function loadGameRosterLeagues(supabase, sleeperIds) {
       .eq('is_mine', true)
     if (seq !== loadSeq) return
     if (teamErr) {
-      snapshot = {}
+      ownedSnapshot = {}
+      opponentSnapshot = {}
       emit()
       return
     }
@@ -73,7 +97,8 @@ export function loadGameRosterLeagues(supabase, sleeperIds) {
     const teamById = new Map(nflTeams.map((team) => [String(team.id), team]))
     const teamIds = [...teamById.keys()]
     if (!teamIds.length) {
-      snapshot = {}
+      ownedSnapshot = {}
+      opponentSnapshot = {}
       emit()
       return
     }
@@ -87,7 +112,8 @@ export function loadGameRosterLeagues(supabase, sleeperIds) {
     if (seq !== loadSeq) return
     const week = Number(latest?.week)
     if (weekErr || !Number.isFinite(week)) {
-      snapshot = {}
+      ownedSnapshot = {}
+      opponentSnapshot = {}
       emit()
       return
     }
@@ -99,7 +125,8 @@ export function loadGameRosterLeagues(supabase, sleeperIds) {
       .eq('week', week)
     if (seq !== loadSeq) return
     if (rowErr) {
-      snapshot = {}
+      ownedSnapshot = {}
+      opponentSnapshot = {}
       emit()
       return
     }
@@ -125,7 +152,49 @@ export function loadGameRosterLeagues(supabase, sleeperIds) {
         return a.name.localeCompare(b.name)
       })
     }
-    snapshot = next
+    const leagueIds = [...new Set(nflTeams.map((team) => String(team.league.id)))]
+    const { data: matchups, error: matchErr } = await supabase
+      .from('fantasy_matchups')
+      .select('league_id, opp_team_id')
+      .in('league_id', leagueIds)
+      .eq('week', week)
+    if (seq !== loadSeq) return
+    const opponents = {}
+    if (!matchErr) {
+      const leaguesByOpp = new Map()
+      for (const matchup of matchups || []) {
+        const oppId = String(matchup?.opp_team_id || '').trim()
+        const leagueId = String(matchup?.league_id || '').trim()
+        if (!oppId || !leagueId) continue
+        const list = leaguesByOpp.get(oppId) || []
+        if (!list.includes(leagueId)) list.push(leagueId)
+        leaguesByOpp.set(oppId, list)
+      }
+      const oppTeamIds = [...leaguesByOpp.keys()]
+      if (oppTeamIds.length) {
+        const { data: oppRows, error: oppErr } = await supabase
+          .from('fantasy_rosters')
+          .select('sleeper_id, team_id')
+          .in('team_id', oppTeamIds)
+          .in('sleeper_id', ids)
+          .eq('week', week)
+        if (seq !== loadSeq) return
+        if (!oppErr) {
+          for (const row of oppRows || []) {
+            const playerId = String(row?.sleeper_id || '').trim()
+            const leaguesForOpp = leaguesByOpp.get(String(row?.team_id || '')) || []
+            if (!playerId) continue
+            for (const leagueId of leaguesForOpp) {
+              const bucket = opponents[leagueId] || {}
+              bucket[playerId] = true
+              opponents[leagueId] = bucket
+            }
+          }
+        }
+      }
+    }
+    ownedSnapshot = next
+    opponentSnapshot = opponents
     emit()
   })()
 }

@@ -785,7 +785,9 @@ export default function FantasyCommandCenter({
             const matchups = group.leagues.flatMap((lg) => {
               const leagueDetail = details?.[lg.id]
               if (!leagueDetail) return []
-              return matchupPages(leagueDetail).map((item) => ({ lg, item, leagueDetail }))
+              return matchupPages(leagueDetail)
+                .filter((item) => item.yours)
+                .map((item) => ({ lg, item, leagueDetail }))
             })
             if (!matchups.length && !loadingDetail) return null
             return (

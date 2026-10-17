@@ -11793,6 +11793,12 @@ html.light [data-fantasy-home] .text-amber-300 {
 html.light [data-fantasy-home] .bg-black\/50 {
   background-color: rgb(0 0 0 / 0.35) !important;
 }
+[data-fantasy-home] .fantasy-bench-row {
+  background-color: rgb(9 9 11 / 0.35);
+}
+html.light [data-fantasy-home] .fantasy-bench-row {
+  background-color: #f4f4f5 !important;
+}
 
 /* Sports bet tracker (light mode) */
 html.light [data-sports-bet-progress] {

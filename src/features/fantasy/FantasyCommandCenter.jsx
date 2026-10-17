@@ -117,9 +117,7 @@ function slotPill(row, index) {
   return fantasyPos(row?.position) || `${index + 1}`
 }
 
-function pairBySlot(leftRows, rightRows) {
-  const left = startersOf(leftRows)
-  const right = startersOf(rightRows)
+function pairBySlot(left, right) {
   const n = Math.max(left.length, right.length)
   const pairs = []
   for (let i = 0; i < n; i += 1) {
@@ -134,28 +132,34 @@ function pairBySlot(leftRows, rightRows) {
   return pairs
 }
 
-function pairStarters(leftRows, rightRows) {
+function benchOf(rows) {
+  return (rows || []).filter((r) => r.slot !== 'starter')
+}
+
+function pairLineup(leftRows, rightRows) {
+  const left = leftRows || []
+  const right = rightRows || []
   const nfl = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
-  const sample = startersOf(leftRows).concat(startersOf(rightRows))
+  const sample = left.concat(right)
   if (sample.length && !sample.some((row) => nfl.has(fantasyPos(row.position)))) {
-    return pairBySlot(leftRows, rightRows)
+    return pairBySlot(left, right)
   }
   const order = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
   const bucket = (rows) => {
     const map = {}
-    for (const row of startersOf(rows)) {
+    for (const row of rows) {
       const pos = fantasyPos(row.position)
       if (!map[pos]) map[pos] = []
       map[pos].push(row)
     }
     return map
   }
-  const left = bucket(leftRows)
-  const right = bucket(rightRows)
+  const leftBuckets = bucket(left)
+  const rightBuckets = bucket(right)
   const pairs = []
   for (const pos of order) {
-    const a = left[pos] || []
-    const b = right[pos] || []
+    const a = leftBuckets[pos] || []
+    const b = rightBuckets[pos] || []
     const n = Math.max(a.length, b.length)
     for (let i = 0; i < n; i++) {
       pairs.push({
@@ -167,6 +171,14 @@ function pairStarters(leftRows, rightRows) {
     }
   }
   return pairs
+}
+
+function pairStarters(leftRows, rightRows) {
+  return pairLineup(startersOf(leftRows), startersOf(rightRows))
+}
+
+function pairBench(leftRows, rightRows) {
+  return pairLineup(benchOf(leftRows), benchOf(rightRows))
 }
 
 function isDefense(row) {
@@ -190,32 +202,27 @@ function PlayerAvatar({ row, size = 'md' }) {
 
   if (isDefense(row) && team && !failed) {
     return (
-      <span className={`flex ${box} shrink-0 items-center justify-center rounded-full bg-zinc-800 p-1.5 ring-1 ring-zinc-700/60`}>
-        <img
-          src={`/sports/nfl/logos/${team}.png`}
-          alt=""
-          className="h-full w-full object-contain"
-          loading="lazy"
-          decoding="async"
-          onError={() => setFailed(true)}
-        />
-      </span>
+      <img
+        src={`/sports/nfl/logos/${team}.png`}
+        alt=""
+        className={`${box} shrink-0 object-contain`}
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
     )
   }
 
   if (!row?.headshot_url || failed) {
     return (
-      <span
-        className={`flex ${box} shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold ring-1 ring-zinc-700/60`}
-        style={{ color: '#fff' }}
-      >
+      <span className={`flex ${box} shrink-0 items-center justify-center text-xs font-bold text-zinc-400`}>
         {letter}
       </span>
     )
   }
 
   return (
-    <span className={`relative ${box} shrink-0 overflow-hidden rounded-full bg-zinc-800 ring-1 ring-zinc-700/60`}>
+    <span className={`relative ${box} shrink-0 overflow-hidden`}>
       <img
         src={row.headshot_url}
         alt=""
@@ -304,69 +311,70 @@ function VsSide({ row, card, align }) {
   )
 }
 
-function VsMatchup({ mine, opp, cards, cardsLoading, leftLabel, rightLabel }) {
+function MatchupRows({ pairs, cards, cardsLoading, bench }) {
   const [openKey, setOpenKey] = useState(null)
-  const pairs = pairStarters(mine, opp)
-  const bench = (rows) => (rows || []).filter((r) => r.slot !== 'starter')
-  const mineBench = bench(mine)
-  const oppBench = bench(opp)
-  if (!pairs.length) {
-    return <p className="px-1 text-[13px] text-zinc-500">No starters synced for this matchup.</p>
+  if (!pairs.length) return null
+  return (
+    <>
+      {pairs.map((pair) => {
+        const rowKey = `${bench ? 'b' : 's'}-${pair.key}`
+        const open = openKey === rowKey
+        const leftCard = pair.left?.sleeper_id ? cards?.[pair.left.sleeper_id] : null
+        const rightCard = pair.right?.sleeper_id ? cards?.[pair.right.sleeper_id] : null
+        const leftProj = pts(leftCard?.projected)
+        const rightProj = pts(rightCard?.projected)
+        return (
+          <li
+            key={rowKey}
+            className={`border-b border-zinc-800/80 last:border-b-0 ${bench ? 'fantasy-bench-row' : ''}`}
+          >
+            <button
+              type="button"
+              onClick={() => setOpenKey(open ? null : rowKey)}
+              className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-2 py-2.5 text-left"
+            >
+              <VsSide row={pair.left} card={leftCard} align="left" />
+              <div className="flex items-center gap-1">
+                <span className="w-8 text-right text-[13px] font-bold tabular-nums text-zinc-100">
+                  {leftProj || (cardsLoading ? '…' : '-')}
+                </span>
+                <span
+                  className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
+                  style={{ color: '#fff' }}
+                >
+                  {pair.label}
+                </span>
+                <span className="w-8 text-[13px] font-bold tabular-nums text-zinc-100">
+                  {rightProj || (cardsLoading ? '…' : '-')}
+                </span>
+              </div>
+              <VsSide row={pair.right} card={rightCard} align="right" />
+            </button>
+            {open ? (
+              <div className="grid grid-cols-2 gap-3 px-3 pb-3 text-[12px] leading-snug text-zinc-400">
+                <PropList row={pair.left} card={leftCard} />
+                <PropList row={pair.right} card={rightCard} />
+              </div>
+            ) : null}
+          </li>
+        )
+      })}
+    </>
+  )
+}
+
+function VsMatchup({ mine, opp, cards, cardsLoading }) {
+  const starters = pairStarters(mine, opp)
+  const bench = pairBench(mine, opp)
+  if (!starters.length && !bench.length) {
+    return <p className="px-1 text-[13px] text-zinc-500">No players synced for this matchup.</p>
   }
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80">
       <ul>
-        {pairs.map((pair) => {
-          const open = openKey === pair.key
-          const leftCard = pair.left?.sleeper_id ? cards?.[pair.left.sleeper_id] : null
-          const rightCard = pair.right?.sleeper_id ? cards?.[pair.right.sleeper_id] : null
-          const leftProj = pts(leftCard?.projected)
-          const rightProj = pts(rightCard?.projected)
-          return (
-            <li key={pair.key} className="border-b border-zinc-800/80 last:border-b-0">
-              <button
-                type="button"
-                onClick={() => setOpenKey(open ? null : pair.key)}
-                className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-2 py-2.5 text-left"
-              >
-                <VsSide row={pair.left} card={leftCard} align="left" />
-                <div className="flex items-center gap-1">
-                  <span className="w-8 text-right text-[13px] font-bold tabular-nums text-zinc-100">
-                    {leftProj || (cardsLoading ? '…' : '-')}
-                  </span>
-                  <span
-                    className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
-                    style={{ color: '#fff' }}
-                  >
-                    {pair.label}
-                  </span>
-                  <span className="w-8 text-[13px] font-bold tabular-nums text-zinc-100">
-                    {rightProj || (cardsLoading ? '…' : '-')}
-                  </span>
-                </div>
-                <VsSide row={pair.right} card={rightCard} align="right" />
-              </button>
-              {open ? (
-                <div className="grid grid-cols-2 gap-3 px-3 pb-3 text-[12px] leading-snug text-zinc-400">
-                  <PropList row={pair.left} card={leftCard} />
-                  <PropList row={pair.right} card={rightCard} />
-                </div>
-              ) : null}
-            </li>
-          )
-        })}
+        <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} />
+        <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench />
       </ul>
-      {mineBench.length || oppBench.length ? (
-        <p className="border-t border-zinc-800 px-3 py-2 text-[12px] text-zinc-500">
-          {mineBench.length
-            ? `${leftLabel || 'Bench'} ${mineBench.map((r) => r.player_name).filter(Boolean).slice(0, 4).join(', ')}`
-            : ''}
-          {mineBench.length && oppBench.length ? ' · ' : ''}
-          {oppBench.length
-            ? `${rightLabel || 'Bench'} ${oppBench.map((r) => r.player_name).filter(Boolean).slice(0, 4).join(', ')}`
-            : ''}
-        </p>
-      ) : null}
     </div>
   )
 }
@@ -476,16 +484,11 @@ export default function FantasyCommandCenter({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-[18px] font-semibold text-zinc-100">
-            {league?.name || 'Fantasy'}
-          </div>
-          <div className="mt-0.5 text-[12px] text-zinc-500">
-            {detail?.week != null ? `Week ${detail.week}` : 'This week'}
-            {league?.sport && league.sport !== 'nfl' ? ` · ${String(league.sport).toUpperCase()}` : ''}
-            {league?.provider ? ` · ${providerLabel(league.provider)}` : ''}
-          </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 text-[12px] text-zinc-500">
+          {detail?.week != null ? `Week ${detail.week}` : 'This week'}
+          {league?.sport && league.sport !== 'nfl' ? ` · ${String(league.sport).toUpperCase()}` : ''}
+          {league?.provider ? ` · ${providerLabel(league.provider)}` : ''}
         </div>
         <div className="flex shrink-0 gap-2">
           <button
@@ -506,7 +509,7 @@ export default function FantasyCommandCenter({
         </div>
       </div>
 
-      {(leagues || []).length > 1 ? (
+      {(leagues || []).length ? (
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {leagues.map((lg) => {
             const on = lg.id === leagueId
@@ -557,10 +560,7 @@ export default function FantasyCommandCenter({
         <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
           <div className={`grid ${current.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <div className={`px-4 py-4 ${current.right ? 'border-r border-zinc-800' : ''}`}>
-              {current.yours && current.left?.is_mine ? (
-                <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-sky-300">You</div>
-              ) : null}
-              <div className="mt-1 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <TeamLogo team={current.left} />
                 <div className="min-w-0">
                   <div className="truncate text-[16px] font-semibold">{current.left?.team_name || 'Team'}</div>
@@ -573,10 +573,7 @@ export default function FantasyCommandCenter({
             </div>
             {current.right ? (
               <div className="px-4 py-4 text-right">
-                {current.yours && current.right?.is_mine ? (
-                  <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-sky-300">You</div>
-                ) : null}
-                <div className="mt-1 flex items-center justify-end gap-2">
+                <div className="flex items-center justify-end gap-2">
                   <div className="min-w-0">
                     <div className="truncate text-[16px] font-semibold">{current.right?.team_name || 'Team'}</div>
                     <div className="text-[12px] text-zinc-500">{recordLine(current.right)}</div>
@@ -644,8 +641,6 @@ export default function FantasyCommandCenter({
           opp={current.oppRoster}
           cards={cards}
           cardsLoading={cardsLoading}
-          leftLabel={current.yours && current.left?.is_mine ? 'Your bench' : `${current.left?.team_name || 'Bench'} bench`}
-          rightLabel={current.yours && current.right?.is_mine ? 'Your bench' : `${current.right?.team_name || 'Bench'} bench`}
         />
       ) : null}
     </div>

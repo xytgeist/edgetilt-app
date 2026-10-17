@@ -54,6 +54,32 @@ function botPostsDirectToLounge(bot: { review_mode?: string | null }) {
   return String(bot.review_mode || '').toLowerCase() === 'automatic'
 }
 
+/** Random gaps for a burst found on one 8h poll. First post is immediate (offset 0). */
+function burstScheduleOffsetsMs(count: number): number[] {
+  if (count <= 1) return [0]
+  const windowMs = 7 * 60 * 60 * 1000
+  const minGap = 20 * 60 * 1000
+  const maxGap = 150 * 60 * 1000
+  const gaps: number[] = []
+  for (let i = 0; i < count - 1; i += 1) {
+    gaps.push(minGap + Math.random() * (maxGap - minGap))
+  }
+  const total = gaps.reduce((sum, gap) => sum + gap, 0)
+  if (total > windowMs) {
+    const floor = minGap * gaps.length
+    if (floor >= windowMs) {
+      const even = windowMs / gaps.length
+      for (let i = 0; i < gaps.length; i += 1) gaps[i] = even
+    } else {
+      const scale = (windowMs - floor) / (total - floor)
+      for (let i = 0; i < gaps.length; i += 1) gaps[i] = minGap + (gaps[i] - minGap) * scale
+    }
+  }
+  const offsets = [0]
+  for (const gap of gaps) offsets.push(offsets[offsets.length - 1] + gap)
+  return offsets
+}
+
 async function enqueueXDraft(
   admin: SupabaseClient,
   opts: {
@@ -69,8 +95,10 @@ async function enqueueXDraft(
     sourcePostedAt: string | null
     draftCaption: string
     sourcePayload: unknown
+    scheduledAt?: string | null
   },
 ): Promise<{ queueId: string | null; publishedPostId: string | null; error: string | null }> {
+  const scheduledAt = opts.scheduledAt || null
   const { data: inserted, error: insErr } = await admin
     .from('lounge_bot_queue')
     .insert({
@@ -84,7 +112,8 @@ async function enqueueXDraft(
       draft_caption: opts.draftCaption,
       category_pills: opts.bot.category_pills_default || [],
       attach_source_link: false,
-      status: 'pending_review',
+      status: scheduledAt ? 'scheduled' : 'pending_review',
+      scheduled_at: scheduledAt,
       source_payload: opts.sourcePayload,
     })
     .select('id, bot_user_id, draft_caption, draft_image_urls, category_pills, attach_source_link, source_url, status')
@@ -94,7 +123,7 @@ async function enqueueXDraft(
     return { queueId: null, publishedPostId: null, error: insErr?.message || 'Queue insert failed.' }
   }
 
-  if (!botPostsDirectToLounge(opts.bot)) {
+  if (scheduledAt || !botPostsDirectToLounge(opts.bot)) {
     return { queueId: inserted.id, publishedPostId: null, error: null }
   }
 
@@ -372,6 +401,13 @@ Deno.serve(async (req) => {
           let skippedNotTopLevel = 0
           let skippedDup = 0
           let skippedStale = 0
+          const ready: Array<{
+            tweetId: string
+            text: string
+            createdAt: string | null
+            createdMs: number
+            sourcePayload: unknown
+          }> = []
           for (const twRaw of tweets) {
             const tw = twRaw as {
               id?: string
@@ -387,12 +423,10 @@ Deno.serve(async (req) => {
             const tweetId = String(tw.id || '')
             const text = expandTweetTextUrls(String(tw.text || '').trim(), tw.entities)
             if (!text || !tweetId) continue
-            if (firstPoll && tw.created_at) {
-              const postedMs = new Date(tw.created_at).getTime()
-              if (Number.isFinite(postedMs) && postedMs < firstPollCutoff) {
-                skippedStale += 1
-                continue
-              }
+            const postedMs = tw.created_at ? new Date(tw.created_at).getTime() : Number.NaN
+            if (firstPoll && Number.isFinite(postedMs) && postedMs < firstPollCutoff) {
+              skippedStale += 1
+              continue
             }
 
             const { data: existing } = await admin
@@ -406,8 +440,26 @@ Deno.serve(async (req) => {
               continue
             }
 
+            ready.push({
+              tweetId,
+              text,
+              createdAt: tw.created_at || null,
+              createdMs: Number.isFinite(postedMs) ? postedMs : Number.POSITIVE_INFINITY,
+              sourcePayload: twRaw,
+            })
+          }
+
+          // Oldest first so the lounge ends in the same order as X. A single new
+          // tweet still posts now. A burst waits on random gaps (5 min drain).
+          ready.sort((a, b) => a.createdMs - b.createdMs)
+          const spaceBurst = botPostsDirectToLounge(bot) && ready.length > 1
+          const offsets = spaceBurst ? burstScheduleOffsetsMs(ready.length) : ready.map(() => 0)
+          const burstStarted = Date.now()
+
+          for (let i = 0; i < ready.length; i += 1) {
+            const item = ready[i]
             const draft = await rewriteTweetForBot({
-              sourceText: text,
+              sourceText: item.text,
               xHandle: src.x_handle,
               voicePrompt,
             })
@@ -418,21 +470,25 @@ Deno.serve(async (req) => {
               continue
             }
 
+            const delayMs = offsets[i] || 0
             const enqueued = await enqueueXDraft(admin, {
               bot,
               sourceId: src.id,
-              externalKey: tweetId,
-              sourceText: text,
-              sourceUrl: `https://x.com/${src.x_handle}/status/${tweetId}`,
-              sourcePostedAt: tw.created_at || null,
+              externalKey: item.tweetId,
+              sourceText: item.text,
+              sourceUrl: `https://x.com/${src.x_handle}/status/${item.tweetId}`,
+              sourcePostedAt: item.createdAt,
               draftCaption: draft,
-              sourcePayload: twRaw,
+              sourcePayload: item.sourcePayload,
+              scheduledAt: spaceBurst && delayMs > 0
+                ? new Date(burstStarted + delayMs).toISOString()
+                : null,
             })
             if (enqueued.error && !enqueued.queueId) {
               console.error('[lounge-x-ingest] enqueue failed', {
                 bot: bot.slug,
                 handle: src.x_handle,
-                tweetId,
+                tweetId: item.tweetId,
                 error: enqueued.error,
               })
               continue
@@ -441,7 +497,7 @@ Deno.serve(async (req) => {
               console.error('[lounge-x-ingest] auto-publish failed', {
                 bot: bot.slug,
                 handle: src.x_handle,
-                tweetId,
+                tweetId: item.tweetId,
                 queueId: enqueued.queueId,
                 error: enqueued.error,
               })
@@ -451,6 +507,7 @@ Deno.serve(async (req) => {
           }
 
           diag.kept = kept
+          diag.spaced = spaceBurst ? ready.length : 0
           diag.skippedNotTopLevel = skippedNotTopLevel
           diag.skippedDup = skippedDup
           diag.skippedStale = skippedStale

@@ -27,7 +27,7 @@ Both modes (plus farm) use **one Edge profile per niche** and **`lounge_bot_acco
 - **Many unique Edge profiles**, each a **specialist** ... not one generic bot posting everything.
 - **One primary niche per X account:** crypto bot → crypto handles only; poker bot → poker handles only; etc.
 - **Human-imitating:** LLM rewrite in that account's voice ... not verbatim syndication; optional link preview to source tweet.
-- **Default: editorial inbox.** Per-bot toggle **Lounge direct** (`review_mode=automatic`) publishes on ingest (still writes a queue row for dedupe). Inbox has **Delete all** for the current status (+ bot filter).
+- **Default: editorial inbox.** Per-bot toggle **Lounge direct** (`review_mode=automatic`) publishes on ingest (still writes a queue row for dedupe). One new tweet posts immediately. Two or more new tweets from the same poll post oldest-first, with a random gap of about 20 minutes to 2.5 hours between them (squeezed so the batch finishes inside 7 hours, before the next poll). The existing 5-minute scheduled drain publishes those. Inbox has **Delete all** for the current status (+ bot filter).
 
 ---
 
@@ -98,7 +98,7 @@ Self-contained bots **bypass** steps 2–3 above ... they use their own ingest +
 | Status | Meaning |
 | --- | --- |
 | `pending_review` | In Ryan's morning inbox |
-| `scheduled` | Approved with `scheduled_at` set |
+| `scheduled` | Approved with `scheduled_at` set, or a Lounge-direct burst waiting out its random gap |
 | `published` | Live; `published_post_id` set |
 | `skipped` | Rejected; keep for audit |
 | `failed` | Publish error; retry from admin |

@@ -663,30 +663,6 @@ function WinBar({ left, right }) {
   )
 }
 
-function VsPill({ page, onClick }) {
-  const left = page.left?.team_name || 'Team'
-  const right = page.right?.team_name || ''
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-left"
-    >
-      <TeamLogo team={page.left} />
-      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-zinc-100">{left}</span>
-      <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-        {page.right ? 'vs' : 'Bye'}
-      </span>
-      {page.right ? (
-        <>
-          <span className="min-w-0 flex-1 truncate text-right text-[13px] font-semibold text-zinc-100">{right}</span>
-          <TeamLogo team={page.right} />
-        </>
-      ) : null}
-    </button>
-  )
-}
-
 function MatchupCard({ page, teams, week, provider, cards }) {
   const leftOut = sideOutlook(page.roster, cards)
   const rightOut = sideOutlook(page.oppRoster, cards)
@@ -715,7 +691,7 @@ function MatchupCard({ page, teams, week, provider, cards }) {
 
 /**
  * Connected fantasy home. Hosts live in the manage sheet, not on this page.
- * Home is team-vs-team pills, grouped by sport. A tap opens that league:
+ * Home is the matchup cards, grouped by sport. A tap opens that league:
  * the matchup stays on top, the lineup sits under it, and the other games are a swipe.
  */
 export default function FantasyCommandCenter({
@@ -806,21 +782,30 @@ export default function FantasyCommandCenter({
             <div className="py-6 text-center text-sm text-zinc-500">Loading matchups…</div>
           ) : null}
           {groups.map((group) => {
-            const pills = group.leagues.flatMap((lg) => {
+            const matchups = group.leagues.flatMap((lg) => {
               const leagueDetail = details?.[lg.id]
               if (!leagueDetail) return []
-              return matchupPages(leagueDetail).map((item) => ({ lg, item }))
+              return matchupPages(leagueDetail).map((item) => ({ lg, item, leagueDetail }))
             })
-            if (!pills.length && !loadingDetail) return null
+            if (!matchups.length && !loadingDetail) return null
             return (
               <section key={group.sport} className="space-y-2">
                 <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{group.label}</div>
-                {pills.map(({ lg, item }) => (
-                  <VsPill
+                {matchups.map(({ lg, item, leagueDetail }) => (
+                  <button
                     key={`${lg.id}-${item.key}`}
-                    page={item}
+                    type="button"
                     onClick={() => openMatchup(lg.id, item.key)}
-                  />
+                    className="block w-full border-0 bg-transparent p-0 text-left"
+                  >
+                    <MatchupCard
+                      page={item}
+                      teams={leagueDetail.teams}
+                      week={leagueDetail.week}
+                      provider={lg.provider || leagueDetail.league?.provider}
+                      cards={cards}
+                    />
+                  </button>
                 ))}
               </section>
             )

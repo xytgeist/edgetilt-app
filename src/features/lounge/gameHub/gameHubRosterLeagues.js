@@ -75,10 +75,10 @@ export function loadGameRosterLeagues(supabase, sleeperIds) {
     ownedSnapshot = {}
     opponentSnapshot = {}
     emit()
-    return
+    return Promise.resolve()
   }
   const seq = ++loadSeq
-  void (async () => {
+  return (async () => {
     const { data: teams, error: teamErr } = await supabase
       .from('fantasy_teams')
       .select('id, league:fantasy_leagues!league_id(id, name, sport, is_primary)')

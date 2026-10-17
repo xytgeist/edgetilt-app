@@ -98,6 +98,10 @@ export default function FantasyHomeScreen({
   const [err, setErr] = useState('')
   const [info, setInfo] = useState('')
   const [snap, setSnap] = useState({ connections: [], leagues: [] })
+  const [booted, setBooted] = useState(false)
+  const [shown, setShown] = useState(false)
+  const [detailEpoch, setDetailEpoch] = useState(null)
+  const [cardsEpoch, setCardsEpoch] = useState(null)
   const [details, setDetails] = useState({})
   const [detailNonce, setDetailNonce] = useState(0)
   const [cards, setCards] = useState(null)
@@ -157,9 +161,13 @@ export default function FantasyHomeScreen({
 
   useEffect(() => {
     let cancelled = false
-    void refresh().catch((e) => {
-      if (!cancelled) setErr(e?.message || 'Could not load fantasy.')
-    })
+    void refresh()
+      .catch((e) => {
+        if (!cancelled) setErr(e?.message || 'Could not load fantasy.')
+      })
+      .finally(() => {
+        if (!cancelled) setBooted(true)
+      })
     return () => {
       cancelled = true
     }
@@ -209,12 +217,14 @@ export default function FantasyHomeScreen({
   useEffect(() => {
     if (!supabaseClient || !signedIn) {
       setDetails({})
+      setDetailEpoch('')
       return undefined
     }
     const ids = leagueKey ? leagueKey.split(',') : []
     if (!ids.length) {
       setDetails({})
       setLoadingDetail(false)
+      setDetailEpoch(leagueKey)
       return undefined
     }
     let cancelled = false
@@ -238,7 +248,10 @@ export default function FantasyHomeScreen({
         if (!cancelled) setErr(e?.message || 'Could not load leagues.')
       })
       .finally(() => {
-        if (!cancelled) setLoadingDetail(false)
+        if (!cancelled) {
+          setLoadingDetail(false)
+          setDetailEpoch(leagueKey)
+        }
       })
     return () => {
       cancelled = true
@@ -269,9 +282,11 @@ export default function FantasyHomeScreen({
       bySport.set(`${sport}:rows`, list)
     }
     const sports = ['nfl', 'nba', 'nhl', 'mlb'].filter((sport) => (bySport.get(`${sport}:rows`) || []).length)
+    const detailSig = Object.keys(details || {}).sort().join(',')
     if (!sports.length) {
       setCards({})
       setCardsLoading(false)
+      setCardsEpoch(detailSig)
       return undefined
     }
     let cancelled = false
@@ -287,7 +302,10 @@ export default function FantasyHomeScreen({
           setCards(next)
         })
         .finally(() => {
-          if (!cancelled && !quiet) setCardsLoading(false)
+          if (!cancelled && !quiet) {
+            setCardsLoading(false)
+            setCardsEpoch(detailSig)
+          }
         })
     }
     void pull(false)
@@ -495,6 +513,15 @@ export default function FantasyHomeScreen({
     }
   }
 
+  const detailSig = Object.keys(details || {}).sort().join(',')
+  const fantasyReady =
+    !signedIn ||
+    (booted && (!hasConnection || (detailEpoch === leagueKey && cardsEpoch === detailSig)))
+
+  useEffect(() => {
+    if (fantasyReady) setShown(true)
+  }, [fantasyReady])
+
   const connectPanel = (
     <FantasyConnectPanel
       sleeper={sleeper}
@@ -523,6 +550,7 @@ export default function FantasyHomeScreen({
       contentClassName="px-4 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
     >
       <div data-fantasy-home className="text-white">
+        {!shown ? null : (<>
         {err ? (
           <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-950/30 px-3 py-2 text-[13px] text-rose-200">
             {err}
@@ -584,6 +612,7 @@ export default function FantasyHomeScreen({
             </div>
           </div>
         ) : null}
+        </>)}
       </div>
     </ScrollLinkedEdgeTitleBarShell>
   )

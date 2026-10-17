@@ -90,9 +90,9 @@ export function useHubPointFormat() {
 
 /** Reload on each NFL hub open so a sync that just saved rules is picked up. */
 export function loadNflLeagueRules(supabase) {
-  if (!supabase) return
+  if (!supabase) return Promise.resolve()
   const seq = ++loadSeq
-  void supabase
+  return supabase
     .from('fantasy_leagues')
     .select('id, name, sport, is_primary, scoring')
     .then(({ data, error }) => {

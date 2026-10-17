@@ -57,6 +57,10 @@ import { applyFantasyPinsFromLeague } from './gameHub/gameHubFantasyPins.js'
 const EMPTY_DETAIL = { odds: [], plays: [], stats: [], live: null, splits: null }
 
 /** Both sides filled … only then is it safe to ask the server to stop resending rosters. */
+function hasRosterIds(players) {
+  return (players || []).some((player) => String(player?.sleeper_id || '').trim())
+}
+
 function hasRosterRows(rosters) {
   return Boolean(
     rosters
@@ -131,6 +135,22 @@ function LoungeMatchupGameHubModal({
   const isCfbGame = sportKey.includes('ncaaf')
   // Fantasy is NFL-only … do not show an empty Fantasy tab for CFB / NHL / NBA / MLB.
   const showFantasyTab = Boolean(game) && sportKey.includes('americanfootball_nfl') && !isCfbGame
+  const hubBitsRef = useRef({ id: '', detail: false, fantasy: false, roster: false })
+  const presentedRef = useRef('')
+  const [presentedId, setPresentedId] = useState('')
+  const markHubReady = useCallback((id, patch) => {
+    const key = String(id || '')
+    if (!key) return
+    if (hubBitsRef.current.id !== key) {
+      hubBitsRef.current = { id: key, detail: false, fantasy: false, roster: false }
+    }
+    Object.assign(hubBitsRef.current, patch)
+    const bits = hubBitsRef.current
+    if (bits.detail && bits.fantasy && bits.roster && presentedRef.current !== key) {
+      presentedRef.current = key
+      setPresentedId(key)
+    }
+  }, [])
   const showNewsTab = Boolean(game) && isFootballGame
   // Players needs football roster Edges … hide until NHL/NBA/MLB have their own.
   const showPlayersTab = Boolean(game) && isFootballGame
@@ -250,6 +270,7 @@ function LoungeMatchupGameHubModal({
   useEffect(() => {
     if (!detailGameId || !supabaseClient) {
       setDetail(EMPTY_DETAIL)
+      if (detailGameId) markHubReady(detailGameId, { detail: true })
       return undefined
     }
     const cachedDetail = readGameHubCache(detailGameId)?.detail
@@ -279,6 +300,8 @@ function LoungeMatchupGameHubModal({
         setDetail(next)
       }, () => {
         inflight = false
+      }).finally(() => {
+        if (!cancelled) markHubReady(detailGameId, { detail: true })
       })
     }
     load()
@@ -297,7 +320,7 @@ function LoungeMatchupGameHubModal({
       clearInterval(id)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [detailGameId, detailGameLive, supabaseClient, hubOpenNonce])
+  }, [detailGameId, detailGameLive, supabaseClient, hubOpenNonce, markHubReady])
 
   useEffect(() => {
     if (!game || !supabaseClient) return undefined
@@ -308,6 +331,7 @@ function LoungeMatchupGameHubModal({
       setFantasyLoading(false)
       setFantasyErr('')
       fantasyRefreshRef.current = null
+      markHubReady(game.id, { fantasy: true, roster: true })
       return undefined
     }
     const cfb = sk.includes('ncaaf')
@@ -345,6 +369,12 @@ function LoungeMatchupGameHubModal({
               setFantasyErr(String(data.error))
               setFantasy({ players: [], props: [], season: null, week: null, sources: [] })
             }
+            markHubReady(
+              game.id,
+              showLoading || !hasRosterIds(cachedFantasy?.players)
+                ? { fantasy: true, roster: true }
+                : { fantasy: true },
+            )
             return
           }
           setFantasyErr('')
@@ -358,12 +388,20 @@ function LoungeMatchupGameHubModal({
           }
           writeGameHubCache(gameId, { fantasy: next })
           setFantasy(next)
+          const waitForRoster = !cfb && sk.includes('americanfootball_nfl') && hasRosterIds(next.players)
+          markHubReady(game.id, waitForRoster ? { fantasy: true } : { fantasy: true, roster: true })
         })
         .catch((err) => {
           if (cancelled) return
           if (showLoading) {
             setFantasyErr(err?.message || (cfb ? 'Roster request failed.' : 'Fantasy request failed.'))
           }
+          markHubReady(
+            game.id,
+            showLoading || !hasRosterIds(cachedFantasy?.players)
+              ? { fantasy: true, roster: true }
+              : { fantasy: true },
+          )
         })
         .finally(() => {
           if (!cancelled && showLoading) setFantasyLoading(false)
@@ -396,7 +434,7 @@ function LoungeMatchupGameHubModal({
       fantasyRefreshRef.current = null
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient, hubOpenNonce])
+  }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient, hubOpenNonce, markHubReady])
 
   useEffect(() => {
     if (!game || !supabaseClient || !showFantasyTab) return
@@ -416,11 +454,17 @@ function LoungeMatchupGameHubModal({
     const sk = String(game.sport_key || '')
     if (!sk.includes('americanfootball') || sk.includes('ncaaf')) {
       loadGameRosterLeagues(null, [])
+      markHubReady(game.id, { roster: true })
       return undefined
     }
     const present = fantasyPresentKey.split(',')
-    loadGameRosterLeagues(supabaseClient, present)
     let cancelled = false
+    void Promise.all([
+      loadNflLeagueRules(supabaseClient),
+      loadGameRosterLeagues(supabaseClient, present),
+    ]).finally(() => {
+      if (!cancelled) markHubReady(game.id, { roster: true })
+    })
     void fetchHubFantasyPins(supabaseClient)
       .then((data) => {
         if (cancelled || !data?.ok) return
@@ -435,7 +479,7 @@ function LoungeMatchupGameHubModal({
     return () => {
       cancelled = true
     }
-  }, [game?.id, game?.sport_key, fantasyPresentKey, supabaseClient, hubOpenNonce])
+  }, [game?.id, game?.sport_key, fantasyPresentKey, supabaseClient, hubOpenNonce, markHubReady])
 
   const newsGameId = showNewsTab ? game?.id || null : null
   useEffect(() => {
@@ -645,6 +689,32 @@ function LoungeMatchupGameHubModal({
   useEffect(() => () => window.clearTimeout(tabSettleRef.current), [])
 
   if (!game || typeof document === 'undefined') return null
+
+  if (presentedId !== game.id) {
+    const hold = (
+      <div
+        data-lounge-game-hub
+        className={
+          embedded
+            ? 'flex h-full min-h-0 flex-col bg-zinc-950 text-white'
+            : 'fixed inset-0 flex flex-col bg-zinc-950 text-white'
+        }
+        style={embedded ? undefined : { zIndex: Z_APP_MODAL }}
+      >
+        <button
+          type="button"
+          onClick={() => sports.closeHub?.()}
+          aria-label="Back"
+          data-lounge-game-glass-chip
+          className={`m-3 inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation`}
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+      </div>
+    )
+    if (embedded) return hold
+    return createPortal(hold, document.body)
+  }
 
   const sendChat = async () => {
     const body = draft.trim()

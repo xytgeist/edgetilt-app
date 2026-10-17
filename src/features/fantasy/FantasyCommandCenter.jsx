@@ -663,6 +663,30 @@ function WinBar({ left, right }) {
   )
 }
 
+function VsPill({ page, onClick }) {
+  const left = page.left?.team_name || 'Team'
+  const right = page.right?.team_name || ''
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-left"
+    >
+      <TeamLogo team={page.left} />
+      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-zinc-100">{left}</span>
+      <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+        {page.right ? 'vs' : 'Bye'}
+      </span>
+      {page.right ? (
+        <>
+          <span className="min-w-0 flex-1 truncate text-right text-[13px] font-semibold text-zinc-100">{right}</span>
+          <TeamLogo team={page.right} />
+        </>
+      ) : null}
+    </button>
+  )
+}
+
 function MatchupCard({ page, teams, week, provider, cards }) {
   const leftOut = sideOutlook(page.roster, cards)
   const rightOut = sideOutlook(page.oppRoster, cards)
@@ -691,8 +715,8 @@ function MatchupCard({ page, teams, week, provider, cards }) {
 
 /**
  * Connected fantasy home. Hosts live in the manage sheet, not on this page.
- * The page opens on the league pills only. A tap expands that league’s matchup.
- * Players sit under the card, not inside it. Other games are a swipe.
+ * Home is team-vs-team pills, grouped by sport. A tap opens that league:
+ * the matchup stays on top, the lineup sits under it, and the other games are a swipe.
  */
 export default function FantasyCommandCenter({
   leagues,
@@ -706,8 +730,7 @@ export default function FantasyCommandCenter({
   onSync,
 }) {
   const [leagueId, setLeagueId] = useState(null)
-  const [opened, setOpened] = useState(false)
-  const [page, setPage] = useState(0)
+  const [pageKey, setPageKey] = useState(null)
   const [tool, setTool] = useState('start')
   const touchX = useRef(null)
   const activeTool = TOOLS.find((t) => t.id === tool) || TOOLS[0]
@@ -732,21 +755,23 @@ export default function FantasyCommandCenter({
       }))
   }, [leagues])
 
-  const selected = opened ? (leagues || []).find((lg) => lg.id === leagueId) || null : null
+  const selected = leagueId ? (leagues || []).find((lg) => lg.id === leagueId) || null : null
   const detail = selected ? details?.[selected.id] || null : null
   const pages = useMemo(() => (detail ? matchupPages(detail) : []), [detail])
-  const safePage = pages.length ? Math.min(page, pages.length - 1) : 0
+  const keyed = pages.findIndex((item) => item.key === pageKey)
+  const safePage = keyed >= 0 ? keyed : 0
   const current = pages[safePage] || null
 
-  const pickLeague = (id) => {
-    if (opened && id === leagueId) {
-      setOpened(false)
-      return
-    }
+  const openMatchup = (id, key) => {
     setLeagueId(id)
-    setOpened(true)
-    setPage(0)
+    setPageKey(key)
     void onSetPrimary?.(id)
+  }
+
+  const stepPage = (dir) => {
+    const next = Math.min(pages.length - 1, Math.max(0, safePage + dir))
+    const item = pages[next]
+    if (item) setPageKey(item.key)
   }
 
   return (
@@ -775,94 +800,101 @@ export default function FantasyCommandCenter({
         </div>
       ) : null}
 
-      {groups.map((group) => (
-        <div key={group.sport} className="space-y-1.5">
-          {groups.length > 1 ? (
-            <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{group.label}</div>
-          ) : null}
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-            {group.leagues.map((lg) => {
-              const on = opened && lg.id === selected?.id
-              return (
-                <button
-                  key={lg.id}
-                  type="button"
-                  onClick={() => pickLeague(lg.id)}
-                  className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold ${
-                    on
-                      ? 'border-sky-400 bg-sky-500 text-white'
-                      : 'border-zinc-700 bg-zinc-900 text-zinc-300'
-                  }`}
-                >
-                  {lg.sport && lg.sport !== 'nfl' ? `${lg.name} · ${String(lg.sport).toUpperCase()}` : lg.name}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      ))}
-
-      {selected && !detail && loadingDetail ? (
-        <div className="py-6 text-center text-sm text-zinc-500">Loading league…</div>
-      ) : null}
-
-      {detail && !pages.length ? (
-        <div className="rounded-2xl border border-zinc-800 px-3 py-3 text-[12px] text-zinc-500">
-          No matchup synced for this week.
-        </div>
-      ) : null}
-
-      {current ? (
-        <div
-          onTouchStart={(e) => {
-            touchX.current = e.changedTouches?.[0]?.clientX ?? null
-          }}
-          onTouchEnd={(e) => {
-            const start = touchX.current
-            const end = e.changedTouches?.[0]?.clientX
-            touchX.current = null
-            if (start == null || end == null || pages.length < 2) return
-            const dx = end - start
-            if (dx < -48) setPage((n) => Math.min(pages.length - 1, n + 1))
-            if (dx > 48) setPage((n) => Math.max(0, n - 1))
-          }}
-        >
-          <MatchupCard
-            page={current}
-            teams={detail?.teams || []}
-            week={detail?.week}
-            provider={selected?.provider || detail?.league?.provider}
-            cards={cards}
-          />
-        </div>
-      ) : null}
-
-      {pages.length > 1 ? (
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            disabled={safePage <= 0}
-            onClick={() => setPage((n) => Math.max(0, n - 1))}
-            className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-30"
-          >
-            Prev
-          </button>
-          <div className="text-[12px] text-zinc-500">
-            {safePage + 1} / {pages.length}
-          </div>
-          <button
-            type="button"
-            disabled={safePage >= pages.length - 1}
-            onClick={() => setPage((n) => Math.min(pages.length - 1, n + 1))}
-            className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-30"
-          >
-            Next
-          </button>
-        </div>
-      ) : null}
-
-      {opened ? (
+      {!leagueId ? (
         <>
+          {loadingDetail && !(leagues || []).some((lg) => details?.[lg.id]) ? (
+            <div className="py-6 text-center text-sm text-zinc-500">Loading matchups…</div>
+          ) : null}
+          {groups.map((group) => {
+            const pills = group.leagues.flatMap((lg) => {
+              const leagueDetail = details?.[lg.id]
+              if (!leagueDetail) return []
+              return matchupPages(leagueDetail).map((item) => ({ lg, item }))
+            })
+            if (!pills.length && !loadingDetail) return null
+            return (
+              <section key={group.sport} className="space-y-2">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{group.label}</div>
+                {pills.map(({ lg, item }) => (
+                  <VsPill
+                    key={`${lg.id}-${item.key}`}
+                    page={item}
+                    onClick={() => openMatchup(lg.id, item.key)}
+                  />
+                ))}
+              </section>
+            )
+          })}
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => setLeagueId(null)}
+            className="text-[12px] font-semibold text-zinc-400"
+          >
+            Matchups
+          </button>
+
+          {selected && !detail && loadingDetail ? (
+            <div className="py-6 text-center text-sm text-zinc-500">Loading league…</div>
+          ) : null}
+
+          {detail && !pages.length ? (
+            <div className="rounded-2xl border border-zinc-800 px-3 py-3 text-[12px] text-zinc-500">
+              No matchup synced for this week.
+            </div>
+          ) : null}
+
+          {current ? (
+            <div
+              onTouchStart={(e) => {
+                touchX.current = e.changedTouches?.[0]?.clientX ?? null
+              }}
+              onTouchEnd={(e) => {
+                const start = touchX.current
+                const end = e.changedTouches?.[0]?.clientX
+                touchX.current = null
+                if (start == null || end == null || pages.length < 2) return
+                const dx = end - start
+                if (dx < -48) stepPage(1)
+                if (dx > 48) stepPage(-1)
+              }}
+            >
+              <MatchupCard
+                page={current}
+                teams={detail?.teams || []}
+                week={detail?.week}
+                provider={selected?.provider || detail?.league?.provider}
+                cards={cards}
+              />
+            </div>
+          ) : null}
+
+          {pages.length > 1 ? (
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                disabled={safePage <= 0}
+                onClick={() => stepPage(-1)}
+                className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-30"
+              >
+                Prev
+              </button>
+              <div className="text-[12px] text-zinc-500">
+                {safePage + 1} / {pages.length}
+              </div>
+              <button
+                type="button"
+                disabled={safePage >= pages.length - 1}
+                onClick={() => stepPage(1)}
+                className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-30"
+              >
+                Next
+              </button>
+            </div>
+          ) : null}
+
           <div className="flex gap-2 overflow-x-auto pb-1">
             {TOOLS.map((item) => {
               const on = item.id === tool
@@ -881,17 +913,17 @@ export default function FantasyCommandCenter({
             })}
           </div>
           <p className="text-[13px] leading-snug text-zinc-400">{activeTool.body}</p>
-        </>
-      ) : null}
 
-      {current ? (
-        <VsMatchup
-          mine={current.roster}
-          opp={current.oppRoster}
-          cards={cards}
-          cardsLoading={cardsLoading}
-        />
-      ) : null}
+          {current ? (
+            <VsMatchup
+              mine={current.roster}
+              opp={current.oppRoster}
+              cards={cards}
+              cardsLoading={cardsLoading}
+            />
+          ) : null}
+        </>
+      )}
     </div>
   )
 }

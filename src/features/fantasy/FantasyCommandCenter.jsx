@@ -195,7 +195,7 @@ function teamAbbrev(row) {
 
 /**
  * Full 600x436 ESPN bust (contain, never cropped at the shoulders) on the bottom of the collapsed card,
- * a little past the outer edge. Names keep clear of the head; market text may run over the shoulders.
+ * tucked past the outer edge. Names keep clear of the head; market text may run over the shoulders.
  * Logos and letter fallbacks keep the round mark, centered in the same lane.
  */
 function SideBust({ row, align, live }) {
@@ -206,7 +206,7 @@ function SideBust({ row, align, live }) {
   return (
     <span
       aria-hidden
-      className={`pointer-events-none absolute bottom-0 h-[96%] aspect-[600/436] ${right ? '-right-2' : '-left-2'}`}
+      className={`pointer-events-none absolute bottom-0 h-[96%] aspect-[600/436] ${right ? '-right-6' : '-left-6'}`}
     >
       {live ? <span className="fantasy-live-glow absolute -inset-x-10 -top-4 bottom-0" /> : null}
       {bust ? (
@@ -778,7 +778,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
             >
               <SideBust row={pair.left} align="left" live={leftLive} />
               <SideBust row={pair.right} align="right" live={rightLive} />
-              <div className="relative z-[1] grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-12">
+              <div className="relative z-[1] grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-8">
                 <VsHead row={pair.left} align="left" />
                 <div className="flex items-center gap-1">
                   <span className={`w-8 text-right text-[13px] font-bold tabular-nums ${leftLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>

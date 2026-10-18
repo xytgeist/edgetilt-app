@@ -30,7 +30,7 @@ function SkeletonCard() {
         </div>
         <SkeletonSide align="right" />
       </div>
-      <div className="border-t border-zinc-800 px-3 py-2">
+      <div className="px-3 pb-2.5">
         <div className="mb-1.5 flex justify-between">
           <Bar className="h-2.5 w-7" />
           <Bar className="h-2.5 w-7" />

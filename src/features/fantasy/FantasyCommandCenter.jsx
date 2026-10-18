@@ -797,7 +797,7 @@ function WinBar({ left, right }) {
   const leftPct = Math.round(p * 100)
   const rightPct = 100 - leftPct
   return (
-    <div className="border-t border-zinc-800 px-3 py-2">
+    <div className="px-3 pb-2.5">
       <div className="mb-1 flex justify-between text-[11px] font-semibold tabular-nums text-zinc-300">
         <span>{leftPct}%</span>
         <span>{rightPct}%</span>

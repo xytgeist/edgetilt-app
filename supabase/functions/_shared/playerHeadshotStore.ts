@@ -120,10 +120,19 @@ export async function storeHeadshotVariant(
   fullUrl: string,
   objectKey: string,
   px: number,
+  espn: { league: string; id: string } | null = null,
 ): Promise<boolean> {
-  const res = await fetch(`${cfg.publicBaseUrl}/cdn-cgi/image/width=${px},quality=75,format=webp/${fullUrl}`, {
+  let res = await fetch(`${cfg.publicBaseUrl}/cdn-cgi/image/width=${px},quality=75,format=webp/${fullUrl}`, {
     headers: { Accept: 'image/webp,image/*' },
   })
+  // Some ESPN masters are slightly damaged PNGs our resizer will not decode (9516). ESPN's own thumbnailer reads them.
+  if (!res.ok && espn) {
+    const h = Math.round((px * 436) / 600)
+    res = await fetch(
+      `https://a.espncdn.com/combiner/i?img=/i/headshots/${espn.league}/players/full/${espn.id}.png&w=${px}&h=${h}&scale=crop&cquality=70`,
+      { headers: ESPN_HEADERS },
+    )
+  }
   if (!res.ok) return false
   const type = String(res.headers.get('content-type') || '').split(';')[0].trim()
   if (!type.startsWith('image/')) return false
@@ -158,8 +167,8 @@ async function copyOne(admin: SupabaseClient, cfg: LoungeCfR2Config, league: str
   const fullKey = headshotFullKey(league, id)
   await loungeCfR2PutObject(cfg, fullKey, bytes, 'image/png')
   const fullUrl = loungeCfR2PublicUrl(cfg, fullKey)
-  await storeHeadshotVariant(cfg, fullUrl, headshotVariantKey(league, id, 'thumb'), HEADSHOT_THUMB_PX)
-  await storeHeadshotVariant(cfg, fullUrl, headshotVariantKey(league, id, 'card'), HEADSHOT_CARD_PX)
+  await storeHeadshotVariant(cfg, fullUrl, headshotVariantKey(league, id, 'thumb'), HEADSHOT_THUMB_PX, { league, id })
+  await storeHeadshotVariant(cfg, fullUrl, headshotVariantKey(league, id, 'card'), HEADSHOT_CARD_PX, { league, id })
   await recordHeadshot(admin, league, id, 'ok', fullUrl)
 }
 
@@ -243,8 +252,9 @@ export async function backfillNflHeadshotVariants(
     const id = String(row.espn_id).replace(/\D/g, '')
     const full = String(row.headshot_url)
     try {
-      const thumb = await storeHeadshotVariant(cfg, full, headshotVariantKey('nfl', id, 'thumb'), HEADSHOT_THUMB_PX)
-      const card = await storeHeadshotVariant(cfg, full, headshotVariantKey('nfl', id, 'card'), HEADSHOT_CARD_PX)
+      const espn = { league: 'nfl', id }
+      const thumb = await storeHeadshotVariant(cfg, full, headshotVariantKey('nfl', id, 'thumb'), HEADSHOT_THUMB_PX, espn)
+      const card = await storeHeadshotVariant(cfg, full, headshotVariantKey('nfl', id, 'card'), HEADSHOT_CARD_PX, espn)
       if (thumb && card) {
         await recordHeadshot(admin, 'nfl', id, 'ok', full)
         made += 1

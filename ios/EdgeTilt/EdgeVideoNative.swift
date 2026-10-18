@@ -506,11 +506,26 @@ private enum EdgeVideoProbe {
     let clamped = min(max(0, timeSec), max(0, duration))
     let primary = CMTime(seconds: clamped > 0.02 ? clamped : min(0.15, max(0, duration)), preferredTimescale: 600)
     let fallback = CMTime(seconds: min(0.15, max(0, duration)), preferredTimescale: 600)
-    if let cg = try? generator.copyCGImage(at: primary, actualTime: nil)
-      ?? (try? generator.copyCGImage(at: fallback, actualTime: nil)),
-       let jpeg = UIImage(cgImage: cg).jpegData(compressionQuality: 0.82) {
+    var still: CGImage?
+    do {
+      still = try generator.copyCGImage(at: primary, actualTime: nil)
+    } catch {
+      NSLog("EdgeVideo poster grab failed at \(primary.seconds)s: \(error.localizedDescription)")
+    }
+    if still == nil {
+      still = try? generator.copyCGImage(at: fallback, actualTime: nil)
+    }
+    if still == nil {
+      do {
+        still = try await generator.image(at: fallback).image
+      } catch {
+        NSLog("EdgeVideo poster async grab failed: \(error.localizedDescription)")
+      }
+    }
+    if let still, let jpeg = UIImage(cgImage: still).jpegData(compressionQuality: 0.82) {
       poster = jpeg.base64EncodedString()
     }
+    NSLog("EdgeVideo probe duration=\(duration) size=\(width)x\(height) posterChars=\(poster?.count ?? 0)")
     return Result(duration: duration, width: width, height: height, posterJpegBase64: poster)
   }
 
@@ -1101,17 +1116,6 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     return URLSession(configuration: config, delegate: self, delegateQueue: nil)
   }()
 
-  /// iOS 27 beta fails every background-session upload to Cloudflare with -1200 a few seconds in.
-  /// iOS 26+ already holds a continued-processing task through a lock, so it can use a normal session.
-  private lazy var foregroundSession: URLSession = {
-    URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-  }()
-
-  private var uploadSession: URLSession {
-    if #available(iOS 26.0, *) { return foregroundSession }
-    return session
-  }
-
   private final class Waiter {
     var continuation: CheckedContinuation<Void, Error>?
     var assetId = ""
@@ -1315,7 +1319,7 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
   }
 
   private func send(request: URLRequest, fileURL: URL, assetId: String, byteSize: Int64, sentBefore: Int64 = 0) async throws {
-    let task = uploadSession.uploadTask(with: request, fromFile: fileURL)
+    let task = session.uploadTask(with: request, fromFile: fileURL)
     let waiter = Waiter()
     waiter.assetId = assetId
     waiter.byteSize = byteSize

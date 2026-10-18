@@ -194,31 +194,32 @@ function teamAbbrev(row) {
 }
 
 /**
- * ESPN bust anchored to the bottom of the collapsed card, tucked past the outer edge (the card clips it).
+ * Full 600x436 ESPN bust (contain, never cropped at the shoulders) on the bottom of the collapsed card,
+ * a little past the outer edge. Names keep clear of the head; market text may run over the shoulders.
  * Logos and letter fallbacks keep the round mark, centered in the same lane.
  */
 function SideBust({ row, align, live }) {
-  const shot = useHeadshotSrc(row?.headshot_url, 192)
+  const shot = useHeadshotSrc(row?.headshot_url, 384)
   if (!row) return null
   const right = align === 'right'
   const bust = !isDefense(row) && !shot.failed
   return (
     <span
       aria-hidden
-      className={`pointer-events-none absolute bottom-0 h-[80%] w-14 ${right ? '-right-4' : '-left-4'}`}
+      className={`pointer-events-none absolute bottom-0 h-[96%] aspect-[600/436] ${right ? '-right-2' : '-left-2'}`}
     >
       {live ? <span className="fantasy-live-glow absolute -inset-x-10 -top-4 bottom-0" /> : null}
       {bust ? (
         <img
           src={shot.src}
           alt=""
-          className="relative h-full w-full object-cover object-bottom"
+          className="relative h-full w-full object-contain object-bottom"
           loading="lazy"
           decoding="async"
           onError={shot.onError}
         />
       ) : (
-        <span className={`absolute top-1/2 -translate-y-1/2 ${right ? 'left-1' : 'right-1'}`}>
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           <PlayerAvatar row={row} size="md" />
         </span>
       )}
@@ -773,11 +774,11 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                   toggle(rowKey)
                 }
               }}
-              className="relative block w-full cursor-pointer px-11 py-2 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+              className="relative block w-full cursor-pointer px-2 py-2 touch-manipulation [-webkit-tap-highlight-color:transparent]"
             >
               <SideBust row={pair.left} align="left" live={leftLive} />
               <SideBust row={pair.right} align="right" live={rightLive} />
-              <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
+              <div className="relative z-[1] grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-12">
                 <VsHead row={pair.left} align="left" />
                 <div className="flex items-center gap-1">
                   <span className={`w-8 text-right text-[13px] font-bold tabular-nums ${leftLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>
@@ -805,7 +806,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                 <VsHead row={pair.right} align="right" />
               </div>
               {leftMain?.label || rightMain?.label ? (
-                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                <div className="relative z-[1] mt-1.5 grid grid-cols-2 gap-1.5 px-1">
                   <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />
                   <CenterMarket prop={rightMain} align="right" row={pair.right} card={rightCard} />
                 </div>

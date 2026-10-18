@@ -32,7 +32,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**App Store (2026-10-15):** live **1.4.96** (`20261008181941`). **1.4.97** (`20261018004742`, resubmitted 2026-10-17) is **Waiting for Review**. Do not attach Cloud **242** / **243** (Test Fast). Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*. W-9 still with Apple Finance.
+**App Store (2026-10-18):** **1.4.97** (`20261018004742`) approved (expedited) and **Ready for Distribution**, auto-release. Next store version is **1.4.98**. Do not attach Cloud **242** / **243** (Test Fast). Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*. W-9 still with Apple Finance.
 
 **Scorebug taste (2026-10-17):** Ryan likes the stacked two-row team-color score card (Auburn 27 / #1 Georgia 24, `FINAL` pill, muted losing row). North star for future Lounge / hub score chrome. Not a build request. Image + notes in his personal store (`ryan-scorebug-taste.md`).
 
@@ -51,7 +51,7 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal (Mac):** _**1.4.97** is Waiting for Review (`20261018004742`, resubmitted 2026-10-17). Live store stays **1.4.96** until Apple approves. Play APK stays parked._
+**Goal (Mac):** _**1.4.97** (`20261018004742`) is approved and live (2026-10-18). Next store version is **1.4.98**. Play APK stays parked._
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + sports pill / live-data track + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
@@ -141,7 +141,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 **I am Mac Theo.** Ryan asked to park the beehiiv-post follow-ups. Canonical list: backlog **Planned (Platform ops — Denk iceberg)**. Do **not** build an ESP / newsletter stack. Next real items when Ryan picks one: DMCA agent (Limestone), UGC SLA clock + ban (hub is on test), Digiverse W-9 / Apple Finance.
 
 ### Mac Theo ACTIVE TRACK 2026-10-15 ... App Store 1.4.97
-**I am Mac Theo.** **1.4.97** (`20261015175413`) is **Waiting for Review**. Export compliance cleared (HTTPS / none of the listed algorithms). Apple warned Cloud **243** was newer; we kept Prod DTG, not Test Fast. Do **not** attach **242** / **243**. First DTG `20261015162433` Failed ITMS-90683 (purpose strings restored `061da8ba`). Live store stays **1.4.96**. W-9 still with Apple Finance. **Play APK stays parked.** Windows leftover still AASA `/lounge/g/*` + `?game=`.
+**I am Mac Theo.** **1.4.97** shipped as `20261018004742` (approved 2026-10-18; `20261015175413` was pulled from review). Export compliance cleared (HTTPS / none of the listed algorithms). Apple warned Cloud **243** was newer; we kept Prod DTG, not Test Fast. Do **not** attach **242** / **243**. First DTG `20261015162433` Failed ITMS-90683 (purpose strings restored `061da8ba`). Live store stays **1.4.96**. W-9 still with Apple Finance. **Play APK stays parked.** Windows leftover still AASA `/lounge/g/*` + `?game=`.
 
 ### Windows Theo 2026-10-15 ... Android SDK + Play Internal 25
 **I am Windows Theo.** Windows Android toolchain live (Scoop Temurin 17 + `android-clt`, platform 36). Keystore on PC. **Play Internal 25 (1.3.21)** published 2026-10-15 (shortcuts + live-session widget). AAB path stays `android/app/build/outputs/bundle/prodRelease/app-prod-release.aab` (do not copy to Downloads). Mac optional for Play assemble/upload.

@@ -366,11 +366,6 @@ function pickMainProp(row, card) {
   return (card?.props || []).find((p) => propStat(p) === want) || null
 }
 
-function extraProps(row, card, main) {
-  const list = card?.props || []
-  return list.filter((p) => p !== main)
-}
-
 function SiteBadge({ provider }) {
   const tone =
     {
@@ -390,11 +385,11 @@ function YesNoPills({ prop }) {
   const yes = prop?.price
   const no = prop?.no != null ? prop.no : yes != null ? Math.max(0, 1 - Number(yes)) : null
   return (
-    <span className="inline-flex shrink-0 overflow-hidden rounded-lg ring-1 ring-inset ring-zinc-700/80">
-      <span className="fantasy-yes inline-flex min-w-[2rem] items-center justify-center bg-emerald-500/15 px-1.5 py-1 text-[12px] font-bold tabular-nums text-emerald-300">
+    <span className="inline-flex shrink-0 overflow-hidden rounded ring-1 ring-inset ring-zinc-700/80 text-[10px] font-bold leading-[14px] tabular-nums">
+      <span className="fantasy-yes inline-flex min-w-[1.6rem] items-center justify-center bg-emerald-500/15 px-1 text-emerald-300">
         {cents(yes) || '-'}
       </span>
-      <span className="fantasy-no inline-flex min-w-[2rem] items-center justify-center border-l border-zinc-700/80 bg-rose-500/10 px-1.5 py-1 text-[12px] font-bold tabular-nums text-rose-300">
+      <span className="fantasy-no inline-flex min-w-[1.6rem] items-center justify-center border-l border-zinc-700/80 bg-rose-500/10 px-1 text-rose-300">
         {cents(no) || '-'}
       </span>
     </span>
@@ -430,82 +425,175 @@ function injuryPill(status) {
   )
 }
 
-function MarketLine({ prop, align }) {
-  if (!prop?.label) return null
-  const towardCenter = align === 'left'
+/** Main market under the row. The pill sits against the card's center line, label outward. */
+function CenterMarket({ prop, align }) {
+  if (!prop?.label) return <div />
+  const left = align === 'left'
   return (
-    <div className={`mt-1 flex items-center gap-1.5 ${towardCenter ? 'justify-end' : 'justify-start'}`}>
-      {towardCenter ? (
-        <span className="min-w-0 truncate text-[10px] font-semibold text-sky-300">{prop.label}</span>
-      ) : null}
+    <div className={`flex min-w-0 items-center gap-1 ${left ? 'justify-end' : 'justify-start'}`}>
+      {left ? <span className="min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{prop.label}</span> : null}
       <YesNoPills prop={prop} />
-      {towardCenter ? null : (
-        <span className="min-w-0 truncate text-[10px] font-semibold text-sky-300">{prop.label}</span>
-      )}
+      {left ? null : <span className="min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{prop.label}</span>}
     </div>
   )
 }
 
-function ExtraMarkets({ props, align }) {
-  const [open, setOpen] = useState(false)
-  if (!props?.length) return null
-  const towardCenter = align === 'left'
-  return (
-    <div className={`mt-1 ${towardCenter ? 'text-right' : 'text-left'}`}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="text-[10px] font-semibold text-zinc-500"
-      >
-        {open ? 'Hide markets' : 'Markets'}
-      </button>
-      {open
-        ? props.map((prop) => (
-            <div
-              key={prop.label}
-              className={`mt-1 flex items-center gap-1.5 ${towardCenter ? 'justify-end' : 'justify-start'}`}
-            >
-              {towardCenter ? (
-                <span className="min-w-0 truncate text-[10px] text-zinc-400">{prop.label}</span>
-              ) : null}
-              <YesNoPills prop={prop} />
-              {towardCenter ? null : (
-                <span className="min-w-0 truncate text-[10px] text-zinc-400">{prop.label}</span>
-              )}
-            </div>
-          ))
-        : null}
-    </div>
-  )
-}
-
-function VsSide({ row, card, align }) {
+function VsHead({ row, align }) {
   if (!row) return <div />
+  return (
+    <div className={`flex min-w-0 items-center gap-1.5 ${align === 'right' ? 'flex-row-reverse text-right' : 'text-left'}`}>
+      <PlayerAvatar row={row} size="sm" />
+      <div className="min-w-0">
+        <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
+          <span className="truncate text-[12px] font-bold tracking-wide text-zinc-100">
+            {shortName(row.player_name, row.position)}
+          </span>
+          {injuryPill(row.injury_status)}
+        </div>
+        <div className="truncate text-[10px] text-zinc-500">
+          {fantasyPos(row.position) || row.position}
+          {row.nfl_team ? ` · ${row.nfl_team}` : ''}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const STAT_LABEL = {
+  pass_yd: 'Pass yds',
+  pass_td: 'Pass TD',
+  pass_int: 'INT',
+  rush_yd: 'Rush yds',
+  rush_td: 'Rush TD',
+  rec: 'Rec',
+  rec_yd: 'Rec yds',
+  rec_td: 'Rec TD',
+  fum_lost: 'Fum lost',
+  ret_td: 'Return TD',
+  fgm: 'FG',
+  fgmiss: 'FG miss',
+  xpm: 'XP',
+  pts: 'PTS',
+  reb: 'REB',
+  ast: 'AST',
+  stl: 'STL',
+  blk: 'BLK',
+  tpm: '3PM',
+  to: 'TO',
+  goals: 'G',
+  assists: 'A',
+  shots: 'SOG',
+  hits: 'HIT',
+  saves: 'SV',
+  goals_against: 'GA',
+  h: 'H',
+  hr: 'HR',
+  rbi: 'RBI',
+  r: 'R',
+  sb: 'SB',
+  bb: 'BB',
+  k: 'K',
+  ip: 'IP',
+  er: 'ER',
+  w: 'W',
+  sv: 'SV',
+}
+
+const STAT_ORDER = {
+  QB: ['pass_yd', 'pass_td', 'pass_int', 'rush_yd', 'rush_td', 'fum_lost'],
+  RB: ['rush_yd', 'rush_td', 'rec', 'rec_yd', 'rec_td', 'fum_lost'],
+  WR: ['rec', 'rec_yd', 'rec_td', 'rush_yd', 'rush_td', 'fum_lost'],
+  TE: ['rec', 'rec_yd', 'rec_td', 'rush_yd', 'fum_lost'],
+  K: ['fgm', 'fgmiss', 'xpm'],
+}
+
+/** Counting stats worth showing for this player, in position order. FG distance buckets fold into FG. */
+function statRows(line, position) {
+  if (!line || typeof line !== 'object') return []
+  const merged = { ...line }
+  const buckets = Object.keys(line).filter((key) => /^fgm_/.test(key))
+  if (buckets.length) merged.fgm = (Number(line.fgm) || 0) + buckets.reduce((sum, key) => sum + (Number(line[key]) || 0), 0)
+  const order = STAT_ORDER[fantasyPos(position)] || Object.keys(STAT_LABEL)
+  const rows = []
+  for (const key of order) {
+    if (!STAT_LABEL[key]) continue
+    const v = Number(merged[key])
+    if (!Number.isFinite(v)) continue
+    const keep = v !== 0 || ['pass_yd', 'rush_yd', 'rec', 'rec_yd', 'pts', 'fgm'].includes(key)
+    if (!keep) continue
+    rows.push({ key, label: STAT_LABEL[key], value: Number.isInteger(v) ? String(v) : v.toFixed(1) })
+  }
+  return rows.slice(0, 6)
+}
+
+function sideStatus(card) {
+  const st = String(card?.game_status || '').toLowerCase()
+  if (['complete', 'closed', 'final', 'post'].includes(st)) return 'Final'
+  if (gameStarted(card)) return 'Live'
+  return 'Proj'
+}
+
+/** Expanded player panel. Page 1 is this game's totals (or projection), swipe left for every market. */
+function SidePanel({ row, card }) {
+  const [page, setPage] = useState(0)
+  if (!row) return <div />
+  const status = sideStatus(card)
+  const live = status !== 'Proj'
+  const stats = statRows(live ? card?.line : card?.proj_line, row.position)
+  const props = card?.props || []
   const when = gameWhen(card)
   const side = card?.bye ? 'Bye' : card?.opponent ? `${card.home ? 'vs' : '@'} ${card.opponent}` : ''
   const gameLine = [when, side].filter(Boolean).join(' ')
-  const main = pickMainProp(row, card)
-  const extras = extraProps(row, card, main)
+  const pages = props.length ? 2 : 1
   return (
-    <div className={`min-w-0 ${align === 'right' ? 'text-right' : 'text-left'}`}>
-      <div className={`flex items-center gap-1.5 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
-        <PlayerAvatar row={row} size="sm" />
-        <div className="min-w-0">
-          <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
-            <span className="truncate text-[12px] font-bold tracking-wide text-zinc-100">
-              {shortName(row.player_name, row.position)}
-            </span>
-            {injuryPill(row.injury_status)}
+    <div data-fantasy-side-panel className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950/60">
+      <div
+        className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onScroll={(e) => {
+          const el = e.currentTarget
+          const w = el.clientWidth || 1
+          setPage(Math.round(el.scrollLeft / w))
+        }}
+      >
+        <div className="w-full min-w-full shrink-0 snap-start px-2 py-1.5">
+          <div className="flex items-center justify-between gap-1 text-[9px] font-bold uppercase tracking-wide text-zinc-500">
+            <span className={live ? 'text-rose-300' : ''}>{status}</span>
+            {gameLine ? <span className="min-w-0 truncate font-semibold normal-case tracking-normal">{gameLine}</span> : null}
           </div>
-          <div className="truncate text-[10px] text-zinc-500">
-            {fantasyPos(row.position) || row.position}
-            {row.nfl_team ? ` · ${row.nfl_team}` : ''}
-          </div>
+          {stats.length ? (
+            <div className="mt-1 space-y-0.5">
+              {stats.map((s) => (
+                <div key={s.key} className="flex items-baseline justify-between gap-2 text-[11px] leading-tight">
+                  <span className="text-zinc-400">{s.label}</span>
+                  <span className="font-bold tabular-nums text-zinc-100">{s.value}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-1 text-[10px] text-zinc-500">{card?.bye ? 'On bye this week.' : 'No stat line yet.'}</p>
+          )}
         </div>
+        {props.length ? (
+          <div className="w-full min-w-full shrink-0 snap-start px-2 py-1.5">
+            <div className="text-[9px] font-bold uppercase tracking-wide text-zinc-500">Markets</div>
+            <div className="mt-1 space-y-1">
+              {props.map((prop) => (
+                <div key={prop.label} className="flex items-center justify-between gap-1.5">
+                  <span className="min-w-0 truncate text-[10px] leading-[14px] text-zinc-300">{prop.label}</span>
+                  <YesNoPills prop={prop} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
-      {gameLine ? <div className="mt-0.5 truncate text-[10px] text-zinc-500">{gameLine}</div> : null}
-      <MarketLine prop={main} align={align} />
-      <ExtraMarkets props={extras} align={align} />
+      {pages > 1 ? (
+        <div className="flex justify-center gap-1 pb-1.5" aria-hidden="true">
+          {[0, 1].map((i) => (
+            <span key={i} className={`h-1 w-1 rounded-full ${page === i ? 'bg-zinc-300' : 'bg-zinc-700'}`} />
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -519,6 +607,7 @@ function playerPts(card, loading, scoring, sport) {
 }
 
 function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
+  const [openKey, setOpenKey] = useState(null)
   if (!pairs.length) return null
   return (
     <>
@@ -526,29 +615,58 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
         const rowKey = `${bench ? 'b' : 's'}-${pair.key}`
         const leftCard = pair.left?.sleeper_id ? cards?.[pair.left.sleeper_id] : null
         const rightCard = pair.right?.sleeper_id ? cards?.[pair.right.sleeper_id] : null
+        const leftMain = pair.left ? pickMainProp(pair.left, leftCard) : null
+        const rightMain = pair.right ? pickMainProp(pair.right, rightCard) : null
+        const open = openKey === rowKey
         return (
           <li
             key={rowKey}
             className={`border-b border-zinc-800/80 last:border-b-0 ${bench ? 'fantasy-bench-row' : ''}`}
           >
-            <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-1.5 px-2 py-2.5">
-              <VsSide row={pair.left} card={leftCard} align="left" />
-              <div className="flex items-center gap-1 pt-1">
-                <span className="w-8 text-right text-[13px] font-bold tabular-nums text-zinc-100">
-                  {playerPts(leftCard, cardsLoading, scoring, sport)}
-                </span>
-                <span
-                  className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
-                  style={{ color: '#fff' }}
-                >
-                  {pair.label}
-                </span>
-                <span className="w-8 text-[13px] font-bold tabular-nums text-zinc-100">
-                  {playerPts(rightCard, cardsLoading, scoring, sport)}
-                </span>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-expanded={open}
+              onClick={() => setOpenKey(open ? null : rowKey)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setOpenKey(open ? null : rowKey)
+                }
+              }}
+              className="block w-full cursor-pointer px-2 py-2 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+            >
+              <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
+                <VsHead row={pair.left} align="left" />
+                <div className="flex items-center gap-1">
+                  <span className="w-8 text-right text-[13px] font-bold tabular-nums text-zinc-100">
+                    {playerPts(leftCard, cardsLoading, scoring, sport)}
+                  </span>
+                  <span
+                    className="fantasy-slot-pill rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
+                    style={{ color: '#fff' }}
+                  >
+                    {pair.label}
+                  </span>
+                  <span className="w-8 text-[13px] font-bold tabular-nums text-zinc-100">
+                    {playerPts(rightCard, cardsLoading, scoring, sport)}
+                  </span>
+                </div>
+                <VsHead row={pair.right} align="right" />
               </div>
-              <VsSide row={pair.right} card={rightCard} align="right" />
+              {leftMain?.label || rightMain?.label ? (
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                  <CenterMarket prop={leftMain} align="left" />
+                  <CenterMarket prop={rightMain} align="right" />
+                </div>
+              ) : null}
             </div>
+            {open ? (
+              <div className="grid grid-cols-2 gap-1.5 px-2 pb-2.5">
+                <SidePanel row={pair.left} card={leftCard} />
+                <SidePanel row={pair.right} card={rightCard} />
+              </div>
+            ) : null}
           </li>
         )
       })}

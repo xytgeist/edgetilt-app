@@ -11859,6 +11859,10 @@ html.light [data-fantasy-home] .fantasy-yes {
 html.light [data-fantasy-home] .fantasy-no {
   color: #be123c !important;
 }
+html.light [data-fantasy-home] .fantasy-slot-pill {
+  background-color: #27272a !important;
+  color: #fafafa !important;
+}
 
 /* Sports bet tracker (light mode) */
 html.light [data-sports-bet-progress] {

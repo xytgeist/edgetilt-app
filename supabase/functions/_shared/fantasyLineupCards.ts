@@ -48,6 +48,8 @@ export type LineupCard = {
   props: PropOut[]
   /** Counting stats for this league's scoring rules. Null until the ESPN box has the player. */
   line?: Record<string, number> | null
+  /** Sleeper's projected counting stats for this week (same keys as `line`). */
+  proj_line?: Record<string, number> | null
 }
 
 type GameRow = {
@@ -67,6 +69,7 @@ type Board = {
   total: Map<string, number>
   gp: Map<string, number>
   projected: Map<string, number>
+  projLine: Map<string, Record<string, number>>
   weekPts: Map<string, number>
   posRank: Map<string, { rank: number; of: number }>
   matchup: Map<string, { rank: number; of: number; grade: 'A' | 'B' | 'C' | 'D' }>
@@ -148,6 +151,18 @@ function statMap(raw: unknown): Map<string, Record<string, unknown>> {
     out.set(String(id), stats)
   }
   return out
+}
+
+const PROJ_LINE_KEYS = ['pass_yd', 'pass_td', 'pass_int', 'rush_yd', 'rush_td', 'rec', 'rec_yd', 'rec_td', 'fgm', 'xpm']
+
+function projStatLine(stats: Record<string, unknown> | undefined): Record<string, number> | null {
+  if (!stats) return null
+  const out: Record<string, number> = {}
+  for (const key of PROJ_LINE_KEYS) {
+    const v = num(stats[key])
+    if (v != null && v > 0) out[key] = Math.round(v * 10) / 10
+  }
+  return Object.keys(out).length ? out : null
 }
 
 function ptsOf(stats: Record<string, unknown> | undefined): number | null {
@@ -320,9 +335,12 @@ async function loadBoard(admin: SupabaseClient): Promise<Board> {
   }
 
   const projected = new Map<string, number>()
+  const projLine = new Map<string, Record<string, number>>()
   for (const [id, stats] of projections) {
     const pts = ptsOf(stats)
     if (pts != null) projected.set(id, pts)
+    const line = projStatLine(stats)
+    if (line) projLine.set(id, line)
   }
 
   const weekPts = new Map<string, number>()
@@ -393,6 +411,7 @@ async function loadBoard(admin: SupabaseClient): Promise<Board> {
     total,
     gp,
     projected,
+    projLine,
     weekPts,
     posRank,
     matchup,
@@ -474,6 +493,7 @@ export async function buildFantasyLineupCards(
       main_prop: props[0] || null,
       props,
       line: null,
+      proj_line: board.projLine?.get(id) || null,
     }
   }
   await mergeLiveLines(cards, players, 'nfl', { season: board.season, week: board.week })

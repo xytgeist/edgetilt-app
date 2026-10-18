@@ -1,5 +1,5 @@
 function Bar({ className }) {
-  return <span className={`fantasy-skel block rounded-md ${className}`} aria-hidden="true" />
+  return <span className={`edge-skel block rounded-md ${className}`} aria-hidden="true" />
 }
 
 function SkeletonSide({ align }) {
@@ -7,7 +7,7 @@ function SkeletonSide({ align }) {
   return (
     <div className={`min-w-0 px-3 py-3 ${end ? 'flex flex-col items-end' : ''}`}>
       <div className={`flex items-center gap-2 ${end ? 'flex-row-reverse' : ''}`}>
-        <span className="fantasy-skel block h-9 w-9 shrink-0 rounded-full" aria-hidden="true" />
+        <span className="edge-skel block h-9 w-9 shrink-0 rounded-full" aria-hidden="true" />
         <div className={`flex min-w-0 flex-col gap-1.5 ${end ? 'items-end' : ''}`}>
           <Bar className="h-3.5 w-24" />
           <Bar className="h-2.5 w-14" />

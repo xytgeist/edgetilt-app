@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, Loader2 } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import {
   loungeCfbGamePlayers,
   loungeGameNews,
@@ -30,6 +30,7 @@ import {
 } from './gameHub/gameHubWhistle.js'
 import GameHubPlayersPane from './gameHub/GameHubPlayersPane.jsx'
 import GameHubFantasyPane from './gameHub/GameHubFantasyPane.jsx'
+import GameHubPaneSkeleton from './gameHub/GameHubPaneSkeleton.jsx'
 import { loadNflLeagueRules } from './gameHub/gameHubLeagueRules.js'
 import { loadGameRosterLeagues } from './gameHub/gameHubRosterLeagues.js'
 import GameHubChatPane from './gameHub/GameHubChatPane.jsx'
@@ -690,34 +691,7 @@ function LoungeMatchupGameHubModal({
 
   if (!game || typeof document === 'undefined') return null
 
-  if (presentedId !== game.id) {
-    const hold = (
-      <div
-        data-lounge-game-hub
-        className={
-          embedded
-            ? 'flex h-full min-h-0 flex-col bg-zinc-950 text-white'
-            : 'fixed inset-0 flex flex-col bg-zinc-950 text-white'
-        }
-        style={embedded ? undefined : { zIndex: Z_APP_MODAL }}
-      >
-        <button
-          type="button"
-          onClick={() => sports.closeHub?.()}
-          aria-label="Back"
-          data-lounge-game-glass-chip
-          className={`m-3 inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation`}
-        >
-          <ChevronLeft className="h-6 w-6" />
-        </button>
-        <div className="flex flex-1 items-center justify-center text-zinc-500" role="status" aria-label="Loading game">
-          <Loader2 className="h-7 w-7 animate-spin" aria-hidden />
-        </div>
-      </div>
-    )
-    if (embedded) return hold
-    return createPortal(hold, document.body)
-  }
+  const panesReady = presentedId === game.id
 
   const sendChat = async () => {
     const body = draft.trim()
@@ -749,6 +723,7 @@ function LoungeMatchupGameHubModal({
   }
 
   const renderHubTabPane = (id) => {
+    if (!panesReady) return <GameHubPaneSkeleton />
     if (id === 'news') {
       return <GameHubNewsPane news={news} loading={newsLoading} error={newsErr} game={game} />
     }

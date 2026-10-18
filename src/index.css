@@ -11744,7 +11744,8 @@ html.light [data-fantasy-home] {
   background-color: #fafafa !important;
   color: #18181b !important;
 }
-@keyframes fantasy-skeleton-sweep {
+/* Loading skeleton blocks with a light sweep (fantasy home, game hub panes). */
+@keyframes edge-skeleton-sweep {
   0% {
     transform: translateX(-100%);
   }
@@ -11752,27 +11753,27 @@ html.light [data-fantasy-home] {
     transform: translateX(100%);
   }
 }
-[data-fantasy-skeleton] .fantasy-skel {
+.edge-skel {
   position: relative;
   overflow: hidden;
   background-color: rgb(39 39 42);
 }
-[data-fantasy-skeleton] .fantasy-skel::after {
+.edge-skel::after {
   content: '';
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
   background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.07), transparent);
-  animation: fantasy-skeleton-sweep 1.4s ease-in-out infinite;
+  animation: edge-skeleton-sweep 1.4s ease-in-out infinite;
 }
-html.light [data-fantasy-skeleton] .fantasy-skel {
+html.light .edge-skel {
   background-color: #e4e4e7;
 }
-html.light [data-fantasy-skeleton] .fantasy-skel::after {
+html.light .edge-skel::after {
   background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.75), transparent);
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-fantasy-skeleton] .fantasy-skel::after {
+  .edge-skel::after {
     animation: none;
   }
 }

@@ -1,3 +1,4 @@
+import { useHeadshotSrc } from '../../../utils/playerHeadshot.js'
 import { useEffect, useMemo, useState, Fragment } from 'react'
 import { KalshiPlayerPropsBoard } from './GameHubKalshiProps.jsx'
 import { injuryTag } from './GameHubFantasyPane.jsx'
@@ -42,6 +43,7 @@ function logoTeamKey(team) {
 
 function PlayerAvatar({ player, accentColor, logoBase = '/sports/nfl/logos' }) {
   const [failed, setFailed] = useState(false)
+  const shot = useHeadshotSrc(player?.headshot_url, 256)
   const team = logoTeamKey(player?.team)
   const letter = String(player?.name || team || '?').slice(0, 1).toUpperCase()
   const fill = accentColor ? { backgroundColor: accentColor } : undefined
@@ -64,7 +66,7 @@ function PlayerAvatar({ player, accentColor, logoBase = '/sports/nfl/logos' }) {
     )
   }
 
-  if (!player?.headshot_url || failed) {
+  if (shot.failed || failed) {
     return (
       <span
         className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-base font-bold text-white ring-1 ring-zinc-700/80"
@@ -80,12 +82,12 @@ function PlayerAvatar({ player, accentColor, logoBase = '/sports/nfl/logos' }) {
       style={fill || undefined}
     >
       <img
-        src={player.headshot_url}
+        src={shot.src}
         alt=""
         className="absolute inset-0 h-full w-full origin-[center_22%] scale-[1.42] object-cover object-[center_18%]"
         loading="lazy"
         decoding="async"
-        onError={() => setFailed(true)}
+        onError={shot.onError}
       />
     </span>
   )

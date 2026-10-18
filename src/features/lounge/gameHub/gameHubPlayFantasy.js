@@ -1,3 +1,4 @@
+import { smallHeadshotUrl } from '../../../utils/playerHeadshot.js'
 /**
  * Fantasy points a single PBP row earned each player on it, calculated from the play text.
  * Without `rates`, full PPR: rush / rec 0.1 per yd, rec +`recPoints` (1 / 0.5 / 0), rush / rec / return TD 6,
@@ -51,7 +52,7 @@ function row(hint, points, players, sideAbbrev) {
     key: `${name}:${points}`,
     name,
     position: String(matched?.position || '').toUpperCase(),
-    headshotUrl: matched?.headshot_url ? String(matched.headshot_url) : '',
+    headshotUrl: matched?.headshot_url ? smallHeadshotUrl(String(matched.headshot_url), 96) : '',
     sleeperId: matched?.sleeper_id != null ? String(matched.sleeper_id) : '',
     points: round1(points),
   }

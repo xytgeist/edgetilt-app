@@ -1,3 +1,4 @@
+import { useHeadshotSrc } from '../../../utils/playerHeadshot.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { LoungeSportsTeamLogo, useLoungeSportsPillWashAndLogos } from '../loungeSportsPillPaint.jsx'
 import { leaguePointsForBox } from '../../fantasy/fantasyBoxScore.js'
@@ -32,6 +33,7 @@ function isDefOrDst(player) {
 
 function PlayerAvatar({ player, accentColor }) {
   const [failed, setFailed] = useState(false)
+  const shot = useHeadshotSrc(player?.headshot_url, 160)
   const team = String(player?.team || '')
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
@@ -56,7 +58,7 @@ function PlayerAvatar({ player, accentColor }) {
     )
   }
 
-  if (!player?.headshot_url || failed) {
+  if (shot.failed || failed) {
     return (
       <span
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ring-1 ring-zinc-700/60"
@@ -72,12 +74,12 @@ function PlayerAvatar({ player, accentColor }) {
       style={fill || undefined}
     >
       <img
-        src={player.headshot_url}
+        src={shot.src}
         alt=""
         className="absolute inset-0 h-full w-full origin-[center_22%] scale-[1.42] object-cover object-[center_18%]"
         loading="lazy"
         decoding="async"
-        onError={() => setFailed(true)}
+        onError={shot.onError}
       />
     </span>
   )
@@ -87,9 +89,8 @@ function PlayerAvatar({ player, accentColor }) {
  * Sources are landscape busts (~1.4:1). Use contain + bottom so shoulders/arms aren't
  * sliced by a tall object-cover crop (see 3d22164c). */
 function MatchupPortrait({ player, isDef, align = 'left' }) {
-  const [failed, setFailed] = useState(false)
-  const src = player?.headshot_url
-  const showPhoto = Boolean(src) && !failed && !isDef
+  const shot = useHeadshotSrc(player?.headshot_url, 512)
+  const showPhoto = !shot.failed && !isDef
   // Soft inside bias without cover-zoom crop.
   const objectPos = align === 'right' ? 'object-left-bottom' : 'object-right-bottom'
 
@@ -108,10 +109,10 @@ function MatchupPortrait({ player, isDef, align = 'left' }) {
 
   return (
     <img
-      src={src}
+      src={shot.src}
       alt=""
       className={`h-full w-full object-contain ${objectPos}`}
-      onError={() => setFailed(true)}
+      onError={shot.onError}
     />
   )
 }

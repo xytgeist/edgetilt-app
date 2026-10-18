@@ -1,3 +1,4 @@
+import { useHeadshotSrc } from '../../../utils/playerHeadshot.js'
 import { useMemo, useState } from 'react'
 import { kalshiCents, kalshiContracts } from './gameHubFormatters.js'
 import { GameStrikeLaddersBoard } from './GameHubStrikeLadders.jsx'
@@ -196,11 +197,11 @@ function sumField(props, key) {
 }
 
 function PlayerAvatar({ player, name, size = 'md' }) {
-  const [failed, setFailed] = useState(false)
+  const shot = useHeadshotSrc(player?.headshot_url, 144)
   const letter = String(name || player?.name || '?').slice(0, 1).toUpperCase()
   const box = size === 'lg' ? 'h-11 w-11' : 'h-9 w-9'
   const text = size === 'lg' ? 'text-sm' : 'text-xs'
-  if (!player?.headshot_url || failed) {
+  if (shot.failed) {
     return (
       <span
         className={`flex ${box} shrink-0 items-center justify-center rounded-full bg-zinc-800 ${text} font-bold text-zinc-300`}
@@ -211,10 +212,10 @@ function PlayerAvatar({ player, name, size = 'md' }) {
   }
   return (
     <img
-      src={player.headshot_url}
+      src={shot.src}
       alt=""
       className={`${box} shrink-0 rounded-full object-cover bg-zinc-800`}
-      onError={() => setFailed(true)}
+      onError={shot.onError}
     />
   )
 }

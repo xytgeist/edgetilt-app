@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { scoreLine } from './fantasyBoxScore.js'
+import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 
 const TOOLS = [
   {
@@ -193,6 +194,7 @@ function PlayerAvatar({ row, size = 'md' }) {
   const team = teamAbbrev(row)
   const letter = String(row?.player_name || team || '?').slice(0, 1).toUpperCase()
   const box = size === 'sm' ? 'h-7 w-7' : 'h-9 w-9'
+  const shot = useHeadshotSrc(row?.headshot_url, 160)
 
   if (isDefense(row) && team && !failed) {
     return (
@@ -207,7 +209,7 @@ function PlayerAvatar({ row, size = 'md' }) {
     )
   }
 
-  if (!row?.headshot_url || failed) {
+  if (shot.failed || failed) {
     return (
       <span className={`flex ${box} shrink-0 items-center justify-center text-xs font-bold text-zinc-400`}>
         {letter}
@@ -218,12 +220,12 @@ function PlayerAvatar({ row, size = 'md' }) {
   return (
     <span className={`relative ${box} shrink-0 overflow-hidden`}>
       <img
-        src={row.headshot_url}
+        src={shot.src}
         alt=""
         className="absolute inset-0 h-full w-full origin-[center_22%] scale-[1.42] object-cover object-[center_18%]"
         loading="lazy"
         decoding="async"
-        onError={() => setFailed(true)}
+        onError={shot.onError}
       />
     </span>
   )

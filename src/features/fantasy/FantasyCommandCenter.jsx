@@ -193,6 +193,53 @@ function teamAbbrev(row) {
     .replace(/[^A-Z]/g, '')
 }
 
+/**
+ * ESPN bust anchored to the bottom of the collapsed card, tucked past the outer edge (the card clips it).
+ * Logos and letter fallbacks keep the round mark, centered in the same lane.
+ */
+function SideBust({ row, align, live }) {
+  const shot = useHeadshotSrc(row?.headshot_url, 192)
+  if (!row) return null
+  const right = align === 'right'
+  const bust = !isDefense(row) && !shot.failed
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute bottom-0 h-[80%] w-14 ${right ? '-right-4' : '-left-4'}`}
+    >
+      {live ? <span className="fantasy-live-glow absolute -inset-x-10 -top-4 bottom-0" /> : null}
+      {bust ? (
+        <img
+          src={shot.src}
+          alt=""
+          className="relative h-full w-full object-cover object-bottom"
+          loading="lazy"
+          decoding="async"
+          onError={shot.onError}
+        />
+      ) : (
+        <span className={`absolute top-1/2 -translate-y-1/2 ${right ? 'left-1' : 'right-1'}`}>
+          <PlayerAvatar row={row} size="md" />
+        </span>
+      )}
+    </span>
+  )
+}
+
+const PROP_LABEL_SHORT = [
+  [/\bpassing yards\b/i, 'pass yds'],
+  [/\brushing yards\b/i, 'rush yds'],
+  [/\breceiving yards\b/i, 'rec yds'],
+  [/\breceptions?\b/i, 'rec'],
+  [/\btouchdowns?\b/i, 'TD'],
+]
+
+function shortPropLabel(label) {
+  let out = String(label || '')
+  for (const [re, short] of PROP_LABEL_SHORT) out = out.replace(re, short)
+  return out
+}
+
 function PlayerAvatar({ row, size = 'md' }) {
   const [failed, setFailed] = useState(false)
   const team = teamAbbrev(row)
@@ -511,9 +558,9 @@ function CenterMarket({ prop, align, row, card }) {
   const left = align === 'left'
   return (
     <div className={`flex min-w-0 items-center gap-1 ${left ? 'justify-end' : 'justify-start'}`}>
-      {left ? <span className="min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{prop.label}</span> : null}
+      {left ? <span className="min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{shortPropLabel(prop.label)}</span> : null}
       <YesNoPills prop={prop} row={row} card={card} />
-      {left ? null : <span className="min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{prop.label}</span>}
+      {left ? null : <span className="min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{shortPropLabel(prop.label)}</span>}
     </div>
   )
 }
@@ -521,8 +568,7 @@ function CenterMarket({ prop, align, row, card }) {
 function VsHead({ row, align }) {
   if (!row) return <div />
   return (
-    <div className={`flex min-w-0 items-center gap-1.5 ${align === 'right' ? 'flex-row-reverse text-right' : 'text-left'}`}>
-      <PlayerAvatar row={row} size="sm" />
+    <div className={`flex min-w-0 items-center ${align === 'right' ? 'flex-row-reverse text-right' : 'text-left'}`}>
       <div className="min-w-0">
         <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
           <span className="truncate text-[12px] font-bold tracking-wide text-zinc-100">
@@ -659,7 +705,7 @@ function SidePanel({ row, card }) {
             <div className="mt-1 space-y-1">
               {props.map((prop) => (
                 <div key={prop.label} className="flex items-center justify-between gap-1.5">
-                  <span className="min-w-0 truncate text-[10px] leading-[14px] text-zinc-300">{prop.label}</span>
+                  <span className="min-w-0 truncate text-[10px] leading-[14px] text-zinc-300">{shortPropLabel(prop.label)}</span>
                   <YesNoPills prop={prop} row={row} card={card} />
                 </div>
               ))}
@@ -710,14 +756,8 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
         return (
           <li
             key={rowKey}
-            className={`fantasy-card-lift relative rounded-xl border border-zinc-800 bg-zinc-900/60 ${bench ? 'fantasy-bench-row' : ''}`}
+            className={`fantasy-card-lift relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/60 ${bench ? 'fantasy-bench-row' : ''}`}
           >
-            {leftLive ? (
-              <span aria-hidden className="fantasy-live-half pointer-events-none absolute inset-y-0 left-0 w-1/2 rounded-l-[11px]" />
-            ) : null}
-            {rightLive ? (
-              <span aria-hidden className="fantasy-live-half pointer-events-none absolute inset-y-0 right-0 w-1/2 rounded-r-[11px]" />
-            ) : null}
             <span
               aria-hidden
               className="fantasy-row-divider pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2"
@@ -733,8 +773,10 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                   toggle(rowKey)
                 }
               }}
-              className="relative block w-full cursor-pointer px-2 py-2 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+              className="relative block w-full cursor-pointer px-11 py-2 touch-manipulation [-webkit-tap-highlight-color:transparent]"
             >
+              <SideBust row={pair.left} align="left" live={leftLive} />
+              <SideBust row={pair.right} align="right" live={rightLive} />
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
                 <VsHead row={pair.left} align="left" />
                 <div className="flex items-center gap-1">

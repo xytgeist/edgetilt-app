@@ -536,7 +536,8 @@ export default function AppShell({
   useEffect(() => {
     const prev = prevTabForFantasyRef.current
     prevTabForFantasyRef.current = tab
-    if (tab === 'fantasy' && prev !== 'fantasy') {
+    // Coming back from a bet logged off a lineup pill keeps the original origin.
+    if (tab === 'fantasy' && prev !== 'fantasy' && prev !== 'sports-bets') {
       fantasyReturnRef.current = { tab: prev || 'home', hubFilter: takeFantasyHubReturn() }
     }
   }, [tab])

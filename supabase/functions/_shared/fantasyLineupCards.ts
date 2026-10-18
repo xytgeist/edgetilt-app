@@ -9,6 +9,7 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { loadFantasyLiveMap, lookupLive } from './fantasyLiveLines.ts'
+import { kalshiMarketUrls } from './loungeNflGameFantasy.ts'
 
 const KALSHI_BASE = 'https://external-api.kalshi.com/trade-api/v2'
 const PROP_SERIES = ['KXNFLPASSYDS', 'KXNFLRSHYDS', 'KXNFLRECYDS', 'KXNFLREC', 'KXNFLTD'] as const
@@ -16,7 +17,17 @@ const CACHE_MS = 15 * 60 * 1000
 
 type PlayerIn = { sleeper_id?: string; name?: string; position?: string; team?: string }
 
-type PropOut = { label: string; price: number | null; no: number | null; volume: number; stat: string | null }
+type PropOut = {
+  label: string
+  price: number | null
+  no: number | null
+  volume: number
+  stat: string | null
+  source: 'kalshi'
+  url_market: string
+  url_yes: string
+  url_no: string
+}
 
 const SERIES_STAT: Record<string, string> = {
   KXNFLPASSYDS: 'pass_yds',
@@ -237,7 +248,7 @@ async function loadProps(): Promise<Map<string, Array<PropOut & { teams: string 
   const byName = new Map<string, Array<PropOut & { teams: string }>>()
   const pages = await Promise.all(
     PROP_SERIES.map(async (series) => {
-      const rows: Array<{ market: Record<string, unknown>; stat: string }> = []
+      const rows: Array<{ market: Record<string, unknown>; stat: string; series: string }> = []
       let cursor = ''
       for (let page = 0; page < 6; page++) {
         const q = new URLSearchParams({ series_ticker: series, status: 'open', limit: '200' })
@@ -248,7 +259,7 @@ async function loadProps(): Promise<Map<string, Array<PropOut & { teams: string 
             cursor?: string
           }
           const markets = Array.isArray(data.markets) ? data.markets : []
-          for (const market of markets) rows.push({ market, stat: SERIES_STAT[series] || '' })
+          for (const market of markets) rows.push({ market, stat: SERIES_STAT[series] || '', series })
           cursor = String(data.cursor || '')
           if (!cursor || markets.length === 0) break
         } catch {
@@ -259,7 +270,7 @@ async function loadProps(): Promise<Map<string, Array<PropOut & { teams: string 
     }),
   )
   for (const markets of pages) {
-    for (const { market: m, stat } of markets) {
+    for (const { market: m, stat, series } of markets) {
       const title = String(m.title || '').trim()
       const cut = title.indexOf(':')
       if (cut <= 0) continue
@@ -268,12 +279,17 @@ async function loadProps(): Promise<Map<string, Array<PropOut & { teams: string 
       if (!player || !label || player.length > 48) continue
       const key = nameKey(player)
       if (!key) continue
+      const urls = kalshiMarketUrls(series, String(m.event_ticker || ''), String(m.ticker || ''))
       const row: PropOut & { teams: string } = {
         label,
         price: askPrice(m, 'yes'),
         no: askPrice(m, 'no'),
         volume: Math.round(liquidity(m)),
         stat: stat || null,
+        source: 'kalshi',
+        url_market: urls.marketUrl,
+        url_yes: urls.yesUrl,
+        url_no: urls.noUrl,
         teams: String(m.event_ticker || '').toUpperCase(),
       }
       const list = byName.get(key) || []
@@ -436,13 +452,7 @@ function propsFor(board: Board, name: string, away: string, home: string): PropO
     if (!bestByStat.has(key)) bestByStat.set(key, row)
     else rest.push(row)
   }
-  return [...bestByStat.values(), ...rest].slice(0, 12).map(({ label, price, no, volume, stat }) => ({
-    label,
-    price,
-    no,
-    volume,
-    stat,
-  }))
+  return [...bestByStat.values(), ...rest].slice(0, 12).map(({ teams: _teams, ...prop }) => prop)
 }
 
 export async function buildFantasyLineupCards(

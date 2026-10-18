@@ -26,6 +26,10 @@ import {
 import FantasyCommandCenter from './FantasyCommandCenter.jsx'
 import FantasyConnectPanel from './FantasyConnectPanel.jsx'
 import FantasyHomeSkeleton from './FantasyHomeSkeleton.jsx'
+import { SportsBetLogGameProvider } from '../sports-bet-tracker/sportsBetLogContext.jsx'
+
+/** Each lineup pill carries its own game fields; the provider only needs a non-null game to enable logging. */
+const FANTASY_BET_GAME = {}
 
 const YAHOO_HANDOFF_KEY = 'edge.fantasy.yahooHandoff'
 
@@ -584,17 +588,19 @@ export default function FantasyHomeScreen({
         {signedIn && !hasConnection ? connectPanel : null}
 
         {signedIn && hasConnection ? (
-          <FantasyCommandCenter
-            leagues={snap.leagues}
-            details={details}
-            loadingDetail={loadingDetail}
-            cards={cards}
-            cardsLoading={cardsLoading}
-            busy={busy}
-            onSetPrimary={onSetPrimary}
-            onOpenManage={() => setManageOpen(true)}
-            onSync={onSync}
-          />
+          <SportsBetLogGameProvider game={FANTASY_BET_GAME} supabaseClient={supabaseClient}>
+            <FantasyCommandCenter
+              leagues={snap.leagues}
+              details={details}
+              loadingDetail={loadingDetail}
+              cards={cards}
+              cardsLoading={cardsLoading}
+              busy={busy}
+              onSetPrimary={onSetPrimary}
+              onOpenManage={() => setManageOpen(true)}
+              onSync={onSync}
+            />
+          </SportsBetLogGameProvider>
         ) : null}
 
         {signedIn && manageOpen ? (

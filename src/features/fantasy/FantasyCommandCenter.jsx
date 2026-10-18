@@ -2,6 +2,9 @@ import { useMemo, useRef, useState } from 'react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
+import { openExternalUrl } from '../../utils/edgeNative.js'
+import { sportsBetPropTapPayload, useSportsBetOddsActions } from '../sports-bet-tracker/sportsBetLogContext.jsx'
+import { useOddsLogPress } from '../sports-bet-tracker/useOddsLogPress.js'
 
 const TOOLS = [
   {
@@ -384,17 +387,91 @@ function SiteBadge({ provider }) {
   )
 }
 
-function YesNoPills({ prop }) {
+const PROP_STAT_NAME = {
+  pass_yds: 'Passing yards',
+  rush_yds: 'Rushing yards',
+  rec_yds: 'Receiving yards',
+  rec: 'Receptions',
+  td: 'Touchdowns',
+}
+
+/** Bet Tracker fields for this player's game (each fantasy row is a different game). */
+function playerBetGame(row, card) {
+  const team = String(row?.nfl_team || '').toUpperCase()
+  const opp = String(card?.opponent || '').toUpperCase()
+  const out = { sport_key: 'americanfootball_nfl', sport_label: 'NFL', commence_time: card?.kickoff || undefined }
+  if (team && opp && card?.home != null) {
+    out.home_team = card.home ? team : opp
+    out.away_team = card.home ? opp : team
+  }
+  return out
+}
+
+function propStrike(label) {
+  const m = String(label || '').match(/^(\d+(?:\.\d+)?)\+/)
+  return m ? Number(m[1]) : null
+}
+
+/** Tap opens the Yes / No ticket on the book (and records the tap). Hold logs it in the Bet Tracker. */
+function YesNoPills({ prop, row, card }) {
+  const { logOdds, recordTap } = useSportsBetOddsActions()
   const yes = prop?.price
   const no = prop?.no != null ? prop.no : yes != null ? Math.max(0, 1 - Number(yes)) : null
+  const base = {
+    playerName: row?.player_name || '',
+    stat: PROP_STAT_NAME[prop?.stat] || prop?.stat || '',
+    line: propStrike(prop?.label),
+    book: prop?.source || 'kalshi',
+    selectionLabel: prop?.label || '',
+  }
+  const game = playerBetGame(row, card)
+  const yesPayload = { ...game, ...sportsBetPropTapPayload({ ...base, price: yes, side: 'over' }) }
+  const noPayload = { ...game, ...sportsBetPropTapPayload({ ...base, price: no, side: 'under' }) }
+  const yesHref = prop?.url_yes || prop?.url_market
+  const noHref = prop?.url_no || prop?.url_market
+  const canAct = Boolean(prop && row && (logOdds || recordTap))
+  const yesPress = useOddsLogPress({
+    enabled: canAct,
+    onLog: logOdds ? () => logOdds(yesPayload) : null,
+    onOpen: yesHref
+      ? () => {
+          recordTap?.(yesPayload)
+          void openExternalUrl(yesHref)
+        }
+      : null,
+  })
+  const noPress = useOddsLogPress({
+    enabled: canAct,
+    onLog: logOdds ? () => logOdds(noPayload) : null,
+    onOpen: noHref
+      ? () => {
+          recordTap?.(noPayload)
+          void openExternalUrl(noHref)
+        }
+      : null,
+  })
+  const stopKeys = (e) => e.stopPropagation()
+  const who = row?.player_name || 'Player'
   return (
     <span className="inline-flex shrink-0 overflow-hidden rounded ring-1 ring-inset ring-zinc-700/80 text-[10px] font-bold leading-[14px] tabular-nums">
-      <span className="fantasy-yes inline-flex min-w-[1.6rem] items-center justify-center bg-emerald-500/15 px-1 text-emerald-300">
+      <button
+        type="button"
+        {...yesPress}
+        onKeyDown={stopKeys}
+        aria-label={`${who} ${prop?.label || ''}, Yes`}
+        className="fantasy-yes inline-flex min-w-[1.6rem] items-center justify-center bg-emerald-500/15 px-1 text-emerald-300 touch-manipulation active:opacity-80 [-webkit-tap-highlight-color:transparent]"
+      >
         {cents(yes) || '-'}
-      </span>
-      <span className="fantasy-no inline-flex min-w-[1.6rem] items-center justify-center border-l border-zinc-700/80 bg-rose-500/10 px-1 text-rose-300">
+      </button>
+      <button
+        type="button"
+        {...noPress}
+        onKeyDown={stopKeys}
+        aria-label={`${who} ${prop?.label || ''}, No`}
+        className="fantasy-no inline-flex min-w-[1.6rem] items-center justify-center border-l border-zinc-700/80 bg-rose-500/10 px-1 text-rose-300 touch-manipulation active:opacity-80 [-webkit-tap-highlight-color:transparent]"
+      >
         {cents(no) || '-'}
-      </span>
+      </button>
     </span>
   )
 }
@@ -429,13 +506,13 @@ function injuryPill(status) {
 }
 
 /** Main market under the row. The pill sits against the card's center line, label outward. */
-function CenterMarket({ prop, align }) {
+function CenterMarket({ prop, align, row, card }) {
   if (!prop?.label) return <div />
   const left = align === 'left'
   return (
     <div className={`flex min-w-0 items-center gap-1 ${left ? 'justify-end' : 'justify-start'}`}>
       {left ? <span className="min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{prop.label}</span> : null}
-      <YesNoPills prop={prop} />
+      <YesNoPills prop={prop} row={row} card={card} />
       {left ? null : <span className="min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{prop.label}</span>}
     </div>
   )
@@ -583,7 +660,7 @@ function SidePanel({ row, card }) {
               {props.map((prop) => (
                 <div key={prop.label} className="flex items-center justify-between gap-1.5">
                   <span className="min-w-0 truncate text-[10px] leading-[14px] text-zinc-300">{prop.label}</span>
-                  <YesNoPills prop={prop} />
+                  <YesNoPills prop={prop} row={row} card={card} />
                 </div>
               ))}
             </div>
@@ -687,8 +764,8 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               </div>
               {leftMain?.label || rightMain?.label ? (
                 <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                  <CenterMarket prop={leftMain} align="left" />
-                  <CenterMarket prop={rightMain} align="right" />
+                  <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />
+                  <CenterMarket prop={rightMain} align="right" row={pair.right} card={rightCard} />
                 </div>
               ) : null}
             </div>

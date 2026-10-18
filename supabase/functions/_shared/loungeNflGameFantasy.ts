@@ -395,7 +395,7 @@ function kalshiEventPageUrl(seriesKey: string, eventTicker: string): string {
  * path renders "Something went wrong". Order tickets open on the matchup's game page via
  * `op_market_ticker` + `op_order_side` (same shape kalshi.com uses when you tap Yes/No).
  */
-function kalshiMarketUrls(series: string, eventTicker: string, ticker: string) {
+export function kalshiMarketUrls(series: string, eventTicker: string, ticker: string) {
   const seriesKey = String(series || '').trim().toUpperCase()
   const eventKey = String(eventTicker || '').trim().toUpperCase()
   const tickerKey = String(ticker || '').trim().toUpperCase()

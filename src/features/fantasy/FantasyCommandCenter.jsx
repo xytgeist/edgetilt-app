@@ -4,7 +4,8 @@ import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { leagueLineupSlots, optimizeLineup } from './fantasyStartSit.js'
 import { rankWaivers } from './fantasyWaivers.js'
-import { loadLeagueValues, loadWaivers } from './fantasyApi.js'
+import { loadLeagueValues, loadSniper, loadWaivers } from './fantasyApi.js'
+import { rankBoom, rankHandcuffs } from './fantasySniper.js'
 import { composeOfferMessage, findTrades } from './fantasyTrades.js'
 import { openExternalUrl, shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
@@ -979,11 +980,129 @@ function WaiverAvatar({ url, pos, team }) {
   )
 }
 
+function SniperView({ supabaseClient, detail, sport }) {
+  const leagueId = detail?.league?.id || null
+  const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
+  useEffect(() => {
+    if (!supabaseClient || !leagueId) return undefined
+    let alive = true
+    loadSniper(supabaseClient, leagueId)
+      .then((data) => alive && setLoaded({ id: leagueId, data, error: '' }))
+      .catch((err) => alive && setLoaded({ id: leagueId, data: null, error: err?.message || 'Could not load sniper picks.' }))
+    return () => {
+      alive = false
+    }
+  }, [supabaseClient, leagueId])
+  const state = loaded.id === leagueId ? { ...loaded, loading: false } : { data: null, error: '', loading: true }
+  const scoring = detail?.league?.scoring
+  const boom = useMemo(() => rankBoom({ sniper: state.data?.sniper, scoring, sport }).slice(0, 6), [state.data, scoring, sport])
+  const cuffs = useMemo(() => rankHandcuffs({ sniper: state.data?.sniper, scoring, sport }), [state.data, scoring, sport])
+  const week = state.data?.sniper?.week
+  const anyProps = (state.data?.sniper?.boom || []).some((b) => b.props?.length)
+
+  if (state.loading) {
+    return (
+      <div className="mt-2 space-y-1.5" data-edge-skeleton aria-label="Loading sniper picks">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="edge-skel block h-12 rounded-xl" />
+        ))}
+      </div>
+    )
+  }
+  if (state.error) return <p className="mt-2 text-[12px] text-rose-300">{state.error}</p>
+
+  const cuffRow = (h, verb) => (
+    <li key={`${h.starter.sleeper_id}-${h.backup.sleeper_id}`} className="flex items-center gap-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
+      <WaiverAvatar url={h.backup.headshot_url} pos={h.backup.position} team={h.backup.team} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-1.5">
+          <span className="truncate text-[12px] font-bold text-zinc-100">{shortName(h.backup.name, h.backup.position)}</span>
+          {injuryPill(h.backup.injury_status)}
+          <span className="shrink-0 text-[10px] text-zinc-500">
+            RB{h.backup.depth_rank || 2} · {h.backup.team}
+          </span>
+        </div>
+        <div className="truncate text-[10px] text-zinc-400">
+          {verb} {h.starter.name}
+          {h.starter.injury_status ? ` (${h.starter.injury_status})` : ''}
+        </div>
+      </div>
+      <span className="shrink-0 text-[12px] font-bold tabular-nums text-zinc-100">{h.proj.toFixed(1)}</span>
+    </li>
+  )
+
+  return (
+    <div className="mt-2 space-y-3">
+      <div>
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Boom picks{week ? ` · wk ${week}` : ''}</span>
+          <span className="text-[10px] text-zinc-500">Upside, not a start</span>
+        </div>
+        {boom.length ? (
+          <ul className="space-y-1.5">
+            {boom.map((pick) => (
+              <li key={pick.entry.sleeper_id} className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
+                <div className="flex items-center gap-2.5">
+                  <WaiverAvatar url={pick.entry.headshot_url} pos={pick.entry.position} team={pick.entry.team} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="truncate text-[12px] font-bold text-zinc-100">{shortName(pick.entry.name, pick.entry.position)}</span>
+                      {injuryPill(pick.entry.injury_status)}
+                      <span className="shrink-0 text-[10px] text-zinc-500">
+                        {pick.entry.position} · {pick.entry.team}
+                        {pick.entry.opponent ? ` ${pick.entry.home ? 'vs' : '@'} ${pick.entry.opponent}` : ''}
+                      </span>
+                    </div>
+                    <div className="line-clamp-2 text-[10px] leading-snug text-zinc-400">{pick.reasons.join(' · ')}</div>
+                  </div>
+                  <span className="shrink-0 text-[12px] font-bold tabular-nums text-zinc-100">{pick.proj.toFixed(1)}</span>
+                </div>
+                {pick.prop ? (
+                  <div className="mt-1.5 flex items-center justify-end gap-1.5">
+                    <span className="fantasy-prop-label min-w-0 truncate text-[10px] font-semibold text-sky-300">{shortPropLabel(pick.prop.label)}</span>
+                    <YesNoPills
+                      prop={pick.prop}
+                      row={{ player_name: pick.entry.name, nfl_team: pick.entry.team }}
+                      card={{ opponent: pick.entry.opponent, home: pick.entry.home }}
+                    />
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[12px] text-zinc-500">No available player stands out for this week yet.</p>
+        )}
+        {!anyProps ? (
+          <p className="mt-1 text-[10px] text-zinc-500">Kalshi player markets for wk {week} are not open yet; picks use the depth chart and matchups until they are.</p>
+        ) : null}
+      </div>
+      <div>
+        <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Handcuffs</div>
+        {cuffs.mine.length || cuffs.block.length ? (
+          <div className="space-y-2">
+            {cuffs.mine.length ? <ul className="space-y-1.5">{cuffs.mine.map((h) => cuffRow(h, 'Next up behind your'))}</ul> : null}
+            {cuffs.block.length ? (
+              <div>
+                <div className="mb-1 text-[10px] text-zinc-500">Block a rival</div>
+                <ul className="space-y-1.5">{cuffs.block.map((h) => cuffRow(h, 'Backup to'))}</ul>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-[12px] text-zinc-500">No free handcuffs behind rostered RB1s.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /** Waivers: best adds available in this league for your lineup, with a safe drop. Claims happen on the host. */
 function WaiversPanel({ supabaseClient, detail, sport }) {
   const leagueId = detail?.league?.id || null
   const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
   const [pos, setPos] = useState('All')
+  const [view, setView] = useState('adds')
   useEffect(() => {
     if (!supabaseClient || !leagueId) return undefined
     let alive = true
@@ -1012,10 +1131,29 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
 
   return (
     <div data-fantasy-waivers className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <div className="text-[13px] font-bold text-zinc-100">Waiver targets</div>
-        <div className="text-[10px] text-zinc-500">Available in your league{span ? ` · ${span} avg` : ''}</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[13px] font-bold text-zinc-100">Waivers</div>
+        <div className="flex rounded-full border border-zinc-800 p-0.5">
+          {[
+            ['adds', 'Adds'],
+            ['sniper', 'Sniper'],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setView(id)}
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${view === id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
+      {view === 'sniper' ? (
+        <SniperView supabaseClient={supabaseClient} detail={detail} sport={sport} />
+      ) : (
+      <>
+      <div className="mt-1 text-[10px] text-zinc-500">Available in your league{span ? ` · ${span} avg` : ''}</div>
       <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {WAIVER_POS.map((p) => (
           <button
@@ -1079,6 +1217,8 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
             </li>
           ))}
         </ul>
+      )}
+      </>
       )}
       <p className="mt-2 text-[10px] text-zinc-500">
         Not on any roster in this league. Waiver order and pending claims are not visible here; claim on {host}.

@@ -227,6 +227,14 @@ export async function loadLeagueValues(supabase, leagueId) {
   return finishEdge(data, error, 'Could not load trade values.')
 }
 
+/** Waiver pool plus sniper inputs (boom candidates with Kalshi / depth / matchup, RB handcuffs). */
+export async function loadSniper(supabase, leagueId) {
+  const id = String(leagueId || '').trim()
+  if (!id) return null
+  const { data, error } = await supabase.functions.invoke('fantasy-waivers', { body: { league_id: id, mode: 'sniper' } })
+  return finishEdge(data, error, 'Could not load sniper picks.')
+}
+
 function loosePlayerName(value) {
   return String(value || '')
     .toLowerCase()

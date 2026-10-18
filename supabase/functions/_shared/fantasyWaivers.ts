@@ -5,7 +5,18 @@
  * user's own roster. Host waiver order and pending claims are not visible here.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { fantasyPos, fetchJson, loadGames, normTeam, projStatLine, ptsOf, statMap, type GameRow } from './fantasyLineupCards.ts'
+import {
+  fantasyPos,
+  fetchJson,
+  loadBoard,
+  loadGames,
+  normTeam,
+  projStatLine,
+  propsFor,
+  ptsOf,
+  statMap,
+  type GameRow,
+} from './fantasyLineupCards.ts'
 
 const WEEKS_AHEAD = 4
 const CACHE_MS = 20 * 60 * 1000
@@ -110,6 +121,7 @@ export async function buildFantasyWaivers(
   opts: { mode?: string } = {},
 ): Promise<Record<string, unknown>> {
   const withLeague = opts.mode === 'trades'
+  const withSniper = opts.mode === 'sniper'
   const { data: league, error: lgErr } = await admin
     .from('fantasy_leagues')
     .select('id, sport')
@@ -150,7 +162,7 @@ export async function buildFantasyWaivers(
     loadProjBoard(),
     admin
       .from('nfl_players')
-      .select('sleeper_id, full_name, position, team, status, injury_status, headshot_url, local_headshot_path')
+      .select('sleeper_id, full_name, position, team, status, injury_status, headshot_url, local_headshot_path, depth_chart_order')
       .in('position', POSITIONS)
       .limit(3000),
   ])
@@ -193,6 +205,10 @@ export async function buildFantasyWaivers(
     for (const { p } of list.slice(0, SHORTLIST[pos] || 10)) players.push(p)
   }
 
+  const sniper = withSniper
+    ? await buildSniper(admin, board, playersRes.data || [], rostered, mineIds)
+    : null
+
   return {
     supported: true,
     season: board.season,
@@ -201,5 +217,130 @@ export async function buildFantasyWaivers(
     players,
     roster,
     ...(withLeague ? { league_players: leaguePlayers } : {}),
+    ...(sniper ? { sniper } : {}),
   }
+}
+
+type PlayerRow = {
+  sleeper_id: string | null
+  full_name: string | null
+  position: string | null
+  team: string | null
+  status: string | null
+  injury_status: string | null
+  headshot_url: string | null
+  local_headshot_path: string | null
+  depth_chart_order: number | null
+}
+
+const SNIPER_POS = ['QB', 'RB', 'WR', 'TE']
+/** Real-world starters per position; next man up only counts if the injuries ahead lift him into this group. */
+const STARTERS_AT: Record<string, number> = { QB: 1, RB: 2, WR: 3, TE: 1 }
+
+function hurt(status: string | null | undefined): string {
+  const s = String(status || '').trim().toLowerCase()
+  if (!s) return ''
+  if (/^(ir|pup|sus|suspended|nfi|na|o|out)$/.test(s) || s.includes('reserve')) return 'out'
+  if (/^d(oubtful)?$/.test(s)) return 'doubtful'
+  if (/^q(uestionable)?$/.test(s)) return 'questionable'
+  return ''
+}
+
+/**
+ * Sniper inputs for the target week (first horizon week): every available QB / RB / WR / TE with a
+ * Kalshi market, a starter ahead of him who is out / doubtful, or a top matchup; plus handcuffs (the next
+ * healthy back behind a rostered RB1) split into yours and other teams'. Scoring and ranking stay in the app.
+ */
+async function buildSniper(
+  admin: SupabaseClient,
+  proj: ProjBoard,
+  rows: PlayerRow[],
+  rostered: Set<string>,
+  mineIds: Set<string>,
+) {
+  const lineup = await loadBoard(admin).catch(() => null)
+  const week = proj.weeks[0]
+  const depth = new Map<string, PlayerRow[]>()
+  for (const row of rows) {
+    const pos = fantasyPos(row.position)
+    const team = row.team ? normTeam(row.team) : ''
+    if (!team || !SNIPER_POS.includes(pos) || row.depth_chart_order == null) continue
+    const key = `${team}|${pos}`
+    const list = depth.get(key) || []
+    list.push(row)
+    depth.set(key, list)
+  }
+  for (const list of depth.values()) list.sort((a, b) => Number(a.depth_chart_order) - Number(b.depth_chart_order))
+
+  const out = (row: PlayerRow) => {
+    const id = String(row.sleeper_id || '')
+    const team = row.team ? normTeam(row.team) : null
+    const game = team ? proj.games.find((g) => g.week === week && (g.home === team || g.away === team)) || null : null
+    const pos = fantasyPos(row.position)
+    const key = team ? `${team}|${pos}` : ''
+    const list = key ? depth.get(key) || [] : []
+    const rank = list.findIndex((r) => String(r.sleeper_id) === id) + 1
+    const ahead = rank > 1 ? list.slice(0, rank - 1) : []
+    const opponent = game ? (game.home === team ? game.away : game.home) : null
+    const mu = lineup && opponent ? lineup.matchup.get(`${opponent}|${pos}`) || null : null
+    return {
+      sleeper_id: id,
+      name: String(row.full_name || ''),
+      position: pos,
+      team,
+      injury_status: row.injury_status || null,
+      headshot_url: row.headshot_url || row.local_headshot_path || null,
+      weeks: weeksFor(proj, id, row.team),
+      depth_rank: rank || null,
+      starters_ahead: ahead.map((r) => ({ name: String(r.full_name || ''), injury_status: r.injury_status || null })),
+      opponent,
+      home: game ? game.home === team : null,
+      matchup_grade: mu?.grade || null,
+      matchup_rank: mu?.rank || null,
+      props: lineup && game ? propsFor(lineup, String(row.full_name || ''), game.away, game.home) : [],
+    }
+  }
+
+  const boom = []
+  for (const row of rows) {
+    const id = String(row.sleeper_id || '')
+    if (!id || rostered.has(id)) continue
+    const pos = fantasyPos(row.position)
+    if (!SNIPER_POS.includes(pos)) continue
+    const status = String(row.status || '').toLowerCase()
+    if (status && status !== 'active') continue
+    if (hurt(row.injury_status) === 'out') continue
+    const entry = out(row)
+    const missing = entry.starters_ahead.filter((s) => hurt(s.injury_status) === 'out' || hurt(s.injury_status) === 'doubtful')
+    const effective = entry.starters_ahead.length - missing.length + 1
+    const nextUp = missing.length > 0 && effective <= (STARTERS_AT[pos] || 1)
+    ;(entry as Record<string, unknown>).next_up = nextUp ? missing.map((s) => s.name) : []
+    const goodMatchup = entry.matchup_grade === 'A'
+    const weekPpr = Number(entry.weeks[0]?.ppr) || 0
+    if (!entry.props.length && !nextUp && !(goodMatchup && weekPpr >= 6)) continue
+    if (weekPpr < 3 && !nextUp) continue
+    boom.push(entry)
+  }
+
+  const handcuffs = []
+  for (const [key, list] of depth) {
+    if (!key.endsWith('|RB')) continue
+    const lead = list[0]
+    const leadId = String(lead?.sleeper_id || '')
+    if (!leadId || !rostered.has(leadId)) continue
+    const backup = list.slice(1).find((r) => r.sleeper_id && !rostered.has(String(r.sleeper_id)) && hurt(r.injury_status) !== 'out')
+    if (!backup) continue
+    handcuffs.push({
+      starter: {
+        sleeper_id: leadId,
+        name: String(lead.full_name || ''),
+        mine: mineIds.has(leadId),
+        injury_status: lead.injury_status || null,
+        horizon_ppr: horizonPpr(weeksFor(proj, leadId, lead.team)),
+      },
+      backup: out(backup),
+    })
+  }
+
+  return { week, boom, handcuffs }
 }

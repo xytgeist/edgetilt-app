@@ -73,7 +73,7 @@ export type GameRow = {
   date: string
 }
 
-type Board = {
+export type Board = {
   at: number
   season: string
   week: number
@@ -312,7 +312,7 @@ async function loadProps(): Promise<Map<string, Array<PropOut & { teams: string 
   return byName
 }
 
-async function loadBoard(admin: SupabaseClient): Promise<Board> {
+export async function loadBoard(admin: SupabaseClient): Promise<Board> {
   if (boardCache && Date.now() - boardCache.at < CACHE_MS) return boardCache
 
   const state = (await fetchJson('https://api.sleeper.app/v1/state/nfl')) as {
@@ -450,7 +450,7 @@ async function loadBoard(admin: SupabaseClient): Promise<Board> {
   return boardCache
 }
 
-function propsFor(board: Board, name: string, away: string, home: string): PropOut[] {
+export function propsFor(board: Board, name: string, away: string, home: string): PropOut[] {
   const list = board.propsByName.get(nameKey(name)) || []
   const a = kalshiTeam(away)
   const h = kalshiTeam(home)

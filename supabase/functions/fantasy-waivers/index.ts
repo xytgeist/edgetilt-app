@@ -1,6 +1,7 @@
 /**
  * Waiver pool for one of the caller's leagues (available = not rostered by any team in that league).
- * Body: { league_id, mode? } … mode `trades` also returns `league_players` (every rostered player's weekly lines).
+ * Body: { league_id, mode? } … mode `trades` also returns `league_players` (every rostered player's weekly lines);
+ * mode `sniper` adds boom candidates (Kalshi props / next man up / matchup) and RB handcuffs.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { userIdFromJwt } from '../_shared/userJwt.ts'

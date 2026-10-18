@@ -962,25 +962,31 @@ function matchupPages(detail) {
 const SPORT_ORDER = ['nfl', 'nba', 'mlb', 'nhl']
 const SPORT_LABEL = { nfl: 'NFL', nba: 'NBA', mlb: 'MLB', nhl: 'NHL' }
 
-function ScoreSide({ team, teams, outlook, hostScore, align, lead, projUp, projFinal: finish }) {
-  const score = displayScore(outlook, hostScore)
-  const projFinal = score.live && finish != null ? finish.toFixed(1) : null
+function TeamHead({ team, teams, align }) {
   const rank = standingsRank(team, teams)
   const end = align === 'right'
   return (
-    <div className={`min-w-0 px-3 py-3 ${end ? 'text-right' : 'text-left'}`}>
-      <div className={`flex items-center gap-2 ${end ? 'flex-row-reverse' : ''}`}>
-        <TeamLogo team={team} />
-        <div className="min-w-0">
-          <div className="truncate text-[15px] font-semibold">{team?.team_name || 'Team'}</div>
-          <div className="text-[11px] text-zinc-500">
-            {rank ? `${ordinal(rank)} · ` : ''}
-            {recordLine(team)}
-          </div>
+    <div className={`flex min-w-0 items-center gap-2 ${end ? 'flex-row-reverse text-right' : 'text-left'}`}>
+      <TeamLogo team={team} />
+      <div className="min-w-0">
+        <div className="truncate text-[15px] font-semibold">{team?.team_name || 'Team'}</div>
+        <div className="truncate text-[11px] text-zinc-500">
+          {rank ? `${ordinal(rank)} · ` : ''}
+          {recordLine(team)}
         </div>
       </div>
+    </div>
+  )
+}
+
+function ScoreLine({ outlook, hostScore, align, lead, projUp, projFinal: finish }) {
+  const score = displayScore(outlook, hostScore)
+  const projFinal = score.live && finish != null ? finish.toFixed(1) : null
+  const end = align === 'right'
+  return (
+    <div className={`min-w-0 ${end ? 'text-right' : 'text-left'}`}>
       <div
-        className={`mt-2 text-[26px] font-bold tabular-nums leading-none transition-colors ${
+        className={`text-[26px] font-bold tabular-nums leading-none transition-colors ${
           lead === 'trail' ? 'fantasy-vs-trail' : lead === 'lead' ? 'fantasy-vs-lead' : ''
         }`}
       >
@@ -1055,10 +1061,17 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
       }}
     >
       <span aria-hidden className="fantasy-vs-glow pointer-events-none absolute inset-0" />
-      <div className={`relative grid ${page.right ? 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'grid-cols-1'}`}>
-        <ScoreSide
-          team={page.left}
-          teams={teams}
+      {/* Names get the full width on top; the site badge sits between the scores below. */}
+      <div className={`relative grid gap-3 px-3 pt-3 ${page.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <TeamHead team={page.left} teams={teams} align="left" />
+        {page.right ? <TeamHead team={page.right} teams={teams} align="right" /> : null}
+      </div>
+      <div
+        className={`relative grid items-center gap-1 px-3 pb-3 pt-2 ${
+          page.right ? 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'grid-cols-1'
+        }`}
+      >
+        <ScoreLine
           outlook={leftOut}
           hostScore={page.leftScore}
           align="left"
@@ -1067,7 +1080,7 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
           projFinal={lo}
         />
         {page.right ? (
-          <div className="flex flex-col items-center justify-center px-1 py-3">
+          <div className="flex flex-col items-center justify-center px-1">
             <SiteBadge provider={provider} />
             <div className="mt-1 text-[10px] font-semibold text-zinc-500">
               {week != null ? `Week ${week}` : 'This week'}
@@ -1075,9 +1088,7 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
           </div>
         ) : null}
         {page.right ? (
-          <ScoreSide
-            team={page.right}
-            teams={teams}
+          <ScoreLine
             outlook={rightOut}
             hostScore={page.rightScore}
             align="right"
@@ -1086,7 +1097,7 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
             projFinal={ro}
           />
         ) : (
-          <p className="px-3 pb-3 text-[12px] text-zinc-500">Bye this week.</p>
+          <p className="text-[12px] text-zinc-500">Bye this week.</p>
         )}
       </div>
       {page.right ? (

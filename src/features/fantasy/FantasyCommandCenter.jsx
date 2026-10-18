@@ -4,7 +4,7 @@ import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { fantasyPosition, leagueLineupSlots, optimizeLineup } from './fantasyStartSit.js'
 import { rankWaivers, rowId } from './fantasyWaivers.js'
-import { loadLeagueValues, loadSniper, loadWaivers } from './fantasyApi.js'
+import { loadLeagueValues, loadPendingTrades, loadSniper, loadWaivers } from './fantasyApi.js'
 import { rankBoom, rankHandcuffs } from './fantasySniper.js'
 import { claimOdds, waiverWindow } from './fantasyWaiverWindow.js'
 import {
@@ -1503,8 +1503,95 @@ function rosterChoices(rows) {
     .sort((a, b) => (order[fantasyPosition(a.position)] ?? 4) - (order[fantasyPosition(b.position)] ?? 4))
 }
 
+/** Host proposals turned into reviewer input: which side is yours, the other team, and whether rosters still match. */
+function pendingOfferInputs(offer, detail) {
+  const mine = (detail?.teams || []).find((t) => t.is_mine)
+  if (!mine) return null
+  const items = offer?.items || []
+  const give = items.filter((i) => i.from_team_id === mine.id).map((i) => rowId(i)).filter(Boolean)
+  const get = items.filter((i) => i.to_team_id === mine.id).map((i) => rowId(i)).filter(Boolean)
+  const other = items.map((i) => (i.from_team_id === mine.id ? i.to_team_id : i.from_team_id)).find(Boolean) || null
+  return {
+    teamId: other,
+    giveIds: give,
+    getIds: get,
+    complete: give.length + get.length === items.length,
+    fromMe: offer.proposer_team_id === mine.id,
+  }
+}
+
+function hoursLeftLabel(iso) {
+  const ms = Date.parse(iso || '') - Date.now()
+  if (!Number.isFinite(ms)) return ''
+  if (ms <= 0) return 'expired'
+  const h = Math.round(ms / 3600000)
+  return h < 1 ? 'under 1h left' : h < 48 ? `${h}h left` : `${Math.round(h / 24)}d left`
+}
+
+function PendingOfferCard({ offer, detail, values, sport, onOpen }) {
+  const input = pendingOfferInputs(offer, detail)
+  const team = (detail?.teams || []).find((t) => t.id === input?.teamId)
+  const review = useMemo(() => {
+    const inp = pendingOfferInputs(offer, detail)
+    const me = (detail?.teams || []).find((t) => t.is_mine)
+    if (!inp?.complete || !values?.league_players?.length || !me) return null
+    const { slots } = leagueLineupSlots(detail?.league, detail?.rostersByTeam?.[me.id] || [])
+    return reviewOffer({ values, detail, scoring: detail?.league?.scoring, slots, sport, teamId: inp.teamId, giveIds: inp.giveIds, getIds: inp.getIds })
+  }, [offer, values, detail, sport])
+  const stale = !input?.complete || (review && review.give.length + review.get.length !== input.giveIds.length + input.getIds.length)
+  const left = hoursLeftLabel(offer.expires_at)
+
+  return (
+    <button
+      type="button"
+      onClick={() => !stale && review && onOpen(input)}
+      className="block w-full rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2 text-left"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="min-w-0 truncate text-[12px] font-bold text-zinc-100">
+          {input?.fromMe ? `You sent ${team?.team_name || 'a team'}` : `From ${team?.team_name || 'a team'}`}
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          {left ? <span className="text-[10px] text-zinc-500">{left}</span> : null}
+          {review && !stale ? (
+            <span data-verdict={review.verdict} className="fantasy-verdict rounded-full px-2 py-0.5 text-[10px] font-bold">
+              {review.verdict}
+            </span>
+          ) : null}
+        </span>
+      </div>
+      {review && !stale ? (
+        <>
+          <div className="mt-1.5 grid grid-cols-2 gap-2">
+            <TradeSide label="You give" players={review.give} />
+            <TradeSide label="You get" players={review.get} />
+          </div>
+          <div className="mt-1.5 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold tabular-nums">
+              <span className={review.myGain >= 0 ? 'fantasy-sit-in' : 'fantasy-sit-out'}>
+                {review.myGain >= 0 ? '+' : ''}
+                {review.myGain.toFixed(1)}/wk you
+              </span>
+              <span className="text-zinc-500">
+                {' · '}
+                {review.theirGain >= 0 ? '+' : ''}
+                {review.theirGain.toFixed(1)} them
+              </span>
+            </span>
+            <span className="text-[10px] font-semibold text-zinc-400">Details</span>
+          </div>
+        </>
+      ) : (
+        <p className="mt-1 text-[11px] text-zinc-500">
+          {(offer.items || []).map((i) => i.player_name || 'Unknown player').join(', ')}. Sync this league to grade it with current rosters.
+        </p>
+      )}
+    </button>
+  )
+}
+
 /** Offer Review: grade an offer someone sent you (pick the players or paste the host's trade notice). */
-function OfferReview({ values, detail, sport, myName }) {
+function OfferReview({ values, detail, sport, myName, pending }) {
   const teams = detail?.teams || []
   const mine = teams.find((t) => t.is_mine) || null
   const others = teams.filter((t) => !t.is_mine)
@@ -1550,8 +1637,38 @@ function OfferReview({ values, detail, sport, myName }) {
     return reviewOffer({ values, detail, scoring: detail?.league?.scoring, slots, sport, teamId, giveIds: give, getIds: get })
   }, [values, detail, teamId, give, get, sport])
 
+  const openPending = (input) => {
+    setTeamId(input.teamId)
+    setGive(new Set(input.giveIds))
+    setGet(new Set(input.getIds))
+    setEditing(false)
+    setNote('')
+  }
+  const host = providerLabel(detail?.league?.provider)
+  const offers = pending?.data?.offers || []
+
   return (
     <div data-fantasy-offer-review className="mt-2 space-y-2.5">
+      {pending?.data?.supported || pending?.loading ? (
+        <div>
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Open offers on {host}</div>
+          {pending.loading ? (
+            <span className="edge-skel block h-16 rounded-xl" data-edge-skeleton aria-label="Loading offers" />
+          ) : offers.length ? (
+            <div className="space-y-1.5">
+              {offers.map((o) => (
+                <PendingOfferCard key={o.id} offer={o} detail={detail} values={values} sport={sport} onOpen={openPending} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-[11px] text-zinc-500">No open trade offers right now. New ones show up here automatically.</p>
+          )}
+        </div>
+      ) : pending?.error ? (
+        <p className="text-[11px] text-zinc-500">Couldn&apos;t read offers from {host} ({pending.error}). Paste the notice below.</p>
+      ) : pending?.data ? (
+        <p className="text-[11px] text-zinc-500">{host} doesn&apos;t share pending offers with apps. Paste the notice below.</p>
+      ) : null}
       <div>
         <textarea
           value={paste}
@@ -1651,7 +1768,7 @@ function OfferReview({ values, detail, sport, myName }) {
             {review.drops.length ? (
               <div className="text-zinc-400">
                 <span className="font-bold text-zinc-300">Roster spot:</span> you&apos;d drop{' '}
-                {review.drops.map((p) => p.name).join(' and ')}.
+                {review.drops.map((p) => p.name).join(' and ').replace(/\.?$/, '.')}
               </div>
             ) : null}
           </div>
@@ -1691,6 +1808,19 @@ function TradesPanel({ supabaseClient, detail, sport }) {
   const leagueId = detail?.league?.id || null
   const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
   const [view, setView] = useState('find')
+  const [pendingLoaded, setPendingLoaded] = useState({ id: null, data: null, error: '' })
+  useEffect(() => {
+    if (!supabaseClient || !leagueId) return undefined
+    let alive = true
+    loadPendingTrades(supabaseClient, leagueId)
+      .then((data) => alive && setPendingLoaded({ id: leagueId, data, error: '' }))
+      .catch((err) => alive && setPendingLoaded({ id: leagueId, data: null, error: err?.message || 'Could not load offers.' }))
+    return () => {
+      alive = false
+    }
+  }, [supabaseClient, leagueId])
+  const pending = pendingLoaded.id === leagueId ? { ...pendingLoaded, loading: false } : { data: null, error: '', loading: true }
+  const offerCount = pending.data?.offers?.length || 0
   useEffect(() => {
     if (!supabaseClient || !leagueId) return undefined
     let alive = true
@@ -1729,6 +1859,11 @@ function TradesPanel({ supabaseClient, detail, sport }) {
               className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${view === id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'}`}
             >
               {label}
+              {id === 'review' && offerCount ? (
+                <span data-fantasy-offer-count className="ml-1 rounded-full px-1.5 text-[10px] font-bold">
+                  {offerCount}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
@@ -1747,7 +1882,7 @@ function TradesPanel({ supabaseClient, detail, sport }) {
         ) : state.error ? (
           <p className="mt-2 text-[12px] text-rose-300">{state.error}</p>
         ) : (
-          <OfferReview values={state.data} detail={detail} sport={sport} myName={myName} />
+          <OfferReview values={state.data} detail={detail} sport={sport} myName={myName} pending={pending} />
         )
       ) : state.loading ? (
         <div className="mt-2 space-y-1.5" data-edge-skeleton aria-label="Loading trade ideas">

@@ -11968,6 +11968,10 @@ html.light [data-fantasy-home] .fantasy-sit-out {
   color: #be123c;
 }
 /* Offer Review verdict */
+[data-fantasy-home] [data-fantasy-offer-count] {
+  background-color: #f43f5e;
+  color: #ffffff;
+}
 [data-fantasy-home] .fantasy-verdict[data-verdict='Accept'] {
   background-color: rgb(16 185 129 / 0.18);
   color: #6ee7b7;

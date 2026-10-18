@@ -76,6 +76,9 @@ verify_jwt = false
 [functions.fantasy-waivers]
 verify_jwt = false
 
+[functions.fantasy-pending-trades]
+verify_jwt = false
+
 [functions.fantasy-cbs-link]
 verify_jwt = false
 

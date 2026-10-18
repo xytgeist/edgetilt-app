@@ -44,6 +44,7 @@ Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves 
 | `fantasy-yahoo-oauth-callback` | browser redirect | exchange code, store tokens, sync; **native** → `edgetilt://yahoo-oauth?tab=fantasy&yahoo=…`; **web** → `/fantasy-yahoo-return.html?…` |
 | `fantasy-yahoo-sync` | user JWT | refresh token if needed, re-sync Yahoo leagues |
 | `fantasy-espn-link` | user JWT | `{ espn_s2, swid }` → store cookie, sync NFL leagues. League ids come from `fan.api.espn.com` (the season URL is empty). A league still drafting is included. Rejects `password`. |
+| `fantasy-pending-trades` | user JWT | `{ league_id }` → `{ provider, supported, offers: [{ id, proposer_team_id, proposed_at, expires_at, accepted_by, items: [{ from_team_id, to_team_id, external_player_id, sleeper_id, player_name, position, nfl_team }] }] }`. ESPN only: `view=mTransactions2` for the current and previous scoring period, `TRADE_PROPOSAL` + `PENDING` + unexpired + two teams incl. yours; players map through roster `slot_label` (`slot:espnPlayerId`). Other hosts return `supported: false`. |
 | `fantasy-cbs-link` | user JWT | `{ access_token, league_ids }` → store token, sync NFL leagues. Rejects `password`. |
 | `fantasy-cbs-sync` | user JWT | Re-read stored CBS token. |
 | `fantasy-espn-sync` | user JWT | re-sync using the stored ESPN cookie |

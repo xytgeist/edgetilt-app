@@ -589,3 +589,118 @@ async function syncEspnConnection(
     return { ok: false, connectionId, error: message }
   }
 }
+
+export type PendingTradeItem = {
+  from_team_id: string | null
+  to_team_id: string | null
+  external_player_id: string
+  sleeper_id: string | null
+  player_name: string | null
+  position: string | null
+  nfl_team: string | null
+}
+
+export type PendingTrade = {
+  id: string
+  proposer_team_id: string | null
+  proposed_at: string | null
+  expires_at: string | null
+  accepted_by: string[]
+  items: PendingTradeItem[]
+}
+
+/**
+ * Live trade proposals that involve the caller's team. ESPN files proposals under the scoring period they were
+ * made in, so read this week and last week, keep PENDING ones that have not expired, and map ESPN player ids to
+ * the synced roster rows (`slot_label` = `slot:espnPlayerId`).
+ */
+export async function espnPendingTrades(
+  admin: SupabaseClient,
+  edgeUserId: string,
+  league: { id: string; connection_id: string; external_league_id: string; season: number },
+): Promise<PendingTrade[]> {
+  const { data: token } = await admin
+    .from('fantasy_provider_tokens')
+    .select('access_token, refresh_token, token_type')
+    .eq('connection_id', league.connection_id)
+    .maybeSingle()
+  const session = normalizeEspnSession(String(token?.access_token || ''), String(token?.refresh_token || ''))
+  if (!session || token?.token_type !== 'espn_cookie') throw new Error('ESPN session missing. Connect ESPN again.')
+
+  const base = `/seasons/${league.season}/segments/0/leagues/${encodeURIComponent(league.external_league_id)}`
+  const head = asRecord(await espnGet(`${base}?view=mTransactions2&view=mTeam`, session)) || {}
+  const period = Number(head.scoringPeriodId) || 1
+  const txs: Record<string, unknown>[] = (Array.isArray(head.transactions) ? head.transactions : []).map(asRecord).filter(Boolean) as Record<string, unknown>[]
+  if (period > 1) {
+    const prev = asRecord(await espnGet(`${base}?scoringPeriodId=${period - 1}&view=mTransactions2`, session).catch(() => null))
+    for (const t of Array.isArray(prev?.transactions) ? prev.transactions : []) {
+      const rec = asRecord(t)
+      if (rec) txs.push(rec)
+    }
+  }
+
+  const mineKey = swidKey(session.swid)
+  const espnTeams = (Array.isArray(head.teams) ? head.teams : []).map(asRecord).filter(Boolean) as Record<string, unknown>[]
+  const myEspnTeam = espnTeams.find((t) =>
+    swidKey(String(t.primaryOwner || '')) === mineKey ||
+    (Array.isArray(t.owners) && t.owners.some((o) => swidKey(String(o)) === mineKey)))
+  const myExt = myEspnTeam ? String(myEspnTeam.id) : null
+  if (!myExt) return []
+
+  const now = Date.now()
+  const seen = new Set<string>()
+  const open = txs.filter((t) => {
+    const id = String(t.id || '')
+    if (!id || seen.has(id)) return false
+    seen.add(id)
+    if (t.type !== 'TRADE_PROPOSAL' || t.status !== 'PENDING') return false
+    const exp = Number(t.expirationDate)
+    if (Number.isFinite(exp) && exp > 0 && exp < now) return false
+    const items = Array.isArray(t.items) ? t.items.map(asRecord).filter(Boolean) as Record<string, unknown>[] : []
+    const sides = new Set(items.flatMap((i) => [String(i.fromTeamId), String(i.toTeamId)]))
+    return sides.has(myExt) && sides.size === 2
+  })
+  if (!open.length) return []
+
+  const { data: teams } = await admin.from('fantasy_teams').select('id, external_team_id').eq('league_id', league.id)
+  const teamByExt = new Map((teams || []).map((t) => [String(t.external_team_id), String(t.id)]))
+  const teamIds = (teams || []).map((t) => t.id)
+  const { data: rows } = teamIds.length
+    ? await admin
+        .from('fantasy_rosters')
+        .select('team_id, week, sleeper_id, player_name, position, nfl_team, slot_label')
+        .in('team_id', teamIds)
+    : { data: [] as Record<string, unknown>[] }
+  const latest = Math.max(0, ...(rows || []).map((r) => Number(r.week) || 0))
+  const byEspn = new Map<string, Record<string, unknown>>()
+  for (const r of rows || []) {
+    if (Number(r.week) !== latest) continue
+    const pid = String(r.slot_label || '').split(':')[1]
+    if (pid) byEspn.set(pid, r)
+  }
+
+  return open.map((t) => {
+    const items = (Array.isArray(t.items) ? t.items : []).map(asRecord).filter(Boolean) as Record<string, unknown>[]
+    const actions = asRecord(t.teamActions) || {}
+    return {
+      id: String(t.id),
+      proposer_team_id: teamByExt.get(String(t.teamId)) || null,
+      proposed_at: Number(t.proposedDate) ? new Date(Number(t.proposedDate)).toISOString() : null,
+      expires_at: Number(t.expirationDate) ? new Date(Number(t.expirationDate)).toISOString() : null,
+      accepted_by: Object.entries(actions).filter(([, v]) => v === 'ACCEPTED').map(([k]) => teamByExt.get(k) || k),
+      items: items.map((i) => {
+        const pid = String(i.playerId ?? '')
+        const row = byEspn.get(pid)
+        return {
+          from_team_id: teamByExt.get(String(i.fromTeamId)) || null,
+          to_team_id: teamByExt.get(String(i.toTeamId)) || null,
+          external_player_id: pid,
+          sleeper_id: row?.sleeper_id ? String(row.sleeper_id) : null,
+          player_name: row?.player_name ? String(row.player_name) : null,
+          position: row?.position ? String(row.position) : null,
+          nfl_team: row?.nfl_team ? String(row.nfl_team) : null,
+        }
+      }),
+    }
+  })
+}

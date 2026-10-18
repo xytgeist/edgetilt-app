@@ -837,7 +837,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
             >
               <SideBust row={pair.left} align="left" live={leftLive} />
               <SideBust row={pair.right} align="right" live={rightLive} />
-              <div className="relative z-[1] grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-9">
+              <div className="relative z-[1] grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-10">
                 <VsHead row={pair.left} align="left" />
                 <div className="flex items-center gap-1">
                   <span className={`w-8 text-right text-[13px] font-bold tabular-nums ${leftLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>

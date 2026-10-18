@@ -1101,6 +1101,17 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     return URLSession(configuration: config, delegate: self, delegateQueue: nil)
   }()
 
+  /// iOS 27 beta fails every background-session upload to Cloudflare with -1200 a few seconds in.
+  /// iOS 26+ already holds a continued-processing task through a lock, so it can use a normal session.
+  private lazy var foregroundSession: URLSession = {
+    URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+  }()
+
+  private var uploadSession: URLSession {
+    if #available(iOS 26.0, *) { return foregroundSession }
+    return session
+  }
+
   private final class Waiter {
     var continuation: CheckedContinuation<Void, Error>?
     var assetId = ""
@@ -1109,7 +1120,7 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
   }
 
   private let lock = NSLock()
-  private var waiters: [Int: Waiter] = [:]
+  private var waiters: [ObjectIdentifier: Waiter] = [:]
   private var tasksByAsset: [String: URLSessionUploadTask] = [:]
 
   func cancel() {
@@ -1304,13 +1315,13 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
   }
 
   private func send(request: URLRequest, fileURL: URL, assetId: String, byteSize: Int64, sentBefore: Int64 = 0) async throws {
-    let task = session.uploadTask(with: request, fromFile: fileURL)
+    let task = uploadSession.uploadTask(with: request, fromFile: fileURL)
     let waiter = Waiter()
     waiter.assetId = assetId
     waiter.byteSize = byteSize
     waiter.sentBefore = sentBefore
     lock.lock()
-    waiters[task.taskIdentifier] = waiter
+    waiters[ObjectIdentifier(task)] = waiter
     tasksByAsset[assetId] = task
     lock.unlock()
     let app = UIApplication.shared
@@ -1333,7 +1344,7 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
 
   func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
     lock.lock()
-    let waiter = waiters[task.taskIdentifier]
+    let waiter = waiters[ObjectIdentifier(task)]
     lock.unlock()
     guard let waiter else { return }
     let total = waiter.byteSize > 0 ? waiter.byteSize : totalBytesExpectedToSend
@@ -1345,8 +1356,8 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
 
   func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
     lock.lock()
-    let waiter = waiters.removeValue(forKey: task.taskIdentifier)
-    if let waiter, tasksByAsset[waiter.assetId]?.taskIdentifier == task.taskIdentifier {
+    let waiter = waiters.removeValue(forKey: ObjectIdentifier(task))
+    if let waiter, tasksByAsset[waiter.assetId] === task {
       tasksByAsset.removeValue(forKey: waiter.assetId)
     }
     lock.unlock()
@@ -1356,7 +1367,8 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
       if ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled {
         waiter.continuation?.resume(throwing: EdgeVideoError.cancelled)
       } else {
-        waiter.continuation?.resume(throwing: EdgeVideoError.uploadFailed("Video upload failed. Try again."))
+        NSLog("EdgeVideo upload failed \(ns.domain) \(ns.code) \(ns.localizedDescription)")
+        waiter.continuation?.resume(throwing: EdgeVideoError.uploadFailed("Video upload failed (\(ns.code)). Try again."))
       }
       return
     }

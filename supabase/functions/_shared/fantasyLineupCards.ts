@@ -164,14 +164,23 @@ export function statMap(raw: unknown): Map<string, Record<string, unknown>> {
   return out
 }
 
-const PROJ_LINE_KEYS = ['pass_yd', 'pass_td', 'pass_int', 'rush_yd', 'rush_td', 'rec', 'rec_yd', 'rec_td', 'fgm', 'xpm']
+const PROJ_LINE_KEYS = [
+  'pass_yd', 'pass_td', 'pass_int', 'rush_yd', 'rush_td', 'rec', 'rec_yd', 'rec_td', 'fum_lost',
+  'xpm', 'xpmiss',
+  // D/ST: counting stats plus expected points / yards allowed (the app derives the scoring tier).
+  'sack', 'int', 'fum_rec', 'def_td', 'def_fum_td', 'pass_int_td', 'safe', 'blk_kick', 'st_td', 'def_kr_td', 'def_pr_td',
+  'pts_allow', 'yds_allow',
+]
+/** Kicker distance buckets (`fgm_40_49`, `fgmiss_50p`, `fgm_yds`) and Sleeper's projected allowed tiers. */
+const PROJ_LINE_PREFIX = /^(fgm|fgmiss|pts_allow_|yds_allow_)/
 
-function projStatLine(stats: Record<string, unknown> | undefined): Record<string, number> | null {
+export function projStatLine(stats: Record<string, unknown> | undefined): Record<string, number> | null {
   if (!stats) return null
   const out: Record<string, number> = {}
-  for (const key of PROJ_LINE_KEYS) {
-    const v = num(stats[key])
-    if (v != null && v > 0) out[key] = Math.round(v * 10) / 10
+  for (const [key, raw] of Object.entries(stats)) {
+    if (!PROJ_LINE_KEYS.includes(key) && !PROJ_LINE_PREFIX.test(key)) continue
+    const v = num(raw)
+    if (v != null && v > 0) out[key] = Math.round(v * 100) / 100
   }
   return Object.keys(out).length ? out : null
 }

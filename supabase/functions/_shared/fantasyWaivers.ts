@@ -5,13 +5,12 @@
  * user's own roster. Host waiver order and pending claims are not visible here.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { fantasyPos, fetchJson, loadGames, normTeam, ptsOf, statMap, type GameRow } from './fantasyLineupCards.ts'
+import { fantasyPos, fetchJson, loadGames, normTeam, projStatLine, ptsOf, statMap, type GameRow } from './fantasyLineupCards.ts'
 
 const WEEKS_AHEAD = 4
 const CACHE_MS = 20 * 60 * 1000
 const POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 const SHORTLIST: Record<string, number> = { QB: 20, RB: 35, WR: 40, TE: 20, K: 10, DEF: 12 }
-const LINE_KEYS = ['pass_yd', 'pass_td', 'pass_int', 'rush_yd', 'rush_td', 'rec', 'rec_yd', 'rec_td', 'fum_lost', 'fgm', 'xpm']
 
 type WeekOut = { week: number; bye: boolean; opp: string | null; home: boolean | null; ppr: number | null; line: Record<string, number> | null }
 
@@ -83,16 +82,6 @@ async function loadProjBoard(): Promise<ProjBoard> {
   return boardCache
 }
 
-function lineOf(stats: Record<string, unknown> | undefined): Record<string, number> | null {
-  if (!stats) return null
-  const out: Record<string, number> = {}
-  for (const key of LINE_KEYS) {
-    const v = Number(stats[key])
-    if (Number.isFinite(v) && v !== 0) out[key] = Math.round(v * 10) / 10
-  }
-  return Object.keys(out).length ? out : null
-}
-
 function weeksFor(board: ProjBoard, id: string, team: string | null): WeekOut[] {
   const t = normTeam(team)
   return board.weeks.map((week) => {
@@ -105,7 +94,7 @@ function weeksFor(board: ProjBoard, id: string, team: string | null): WeekOut[] 
       opp: game ? (game.home === t ? game.away : game.home) : null,
       home: game ? game.home === t : null,
       ppr: bye ? 0 : ptsOf(stats),
-      line: bye ? null : lineOf(stats),
+      line: bye ? null : projStatLine(stats),
     }
   })
 }

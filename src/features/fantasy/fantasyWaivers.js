@@ -37,7 +37,7 @@ export function horizonValue(entry, scoring, injuryStatus, sport = 'nfl') {
   const known = (entry?.weeks || []).some((w) => !w.bye && (w.ppr != null || w.line))
   const weeks = (entry?.weeks || []).map((w, i) => {
     if (w.bye) return { week: w.week, pts: 0, bye: true, opp: null }
-    const scored = pos === 'K' || pos === 'DEF' || !w.line ? null : scoreLine(w.line, scoring, sport)
+    const scored = w.line ? scoreLine(w.line, scoring, sport, pos) : null
     let pts = Number.isFinite(scored) ? scored : Number(w.ppr) || 0
     if (kind === 'long') pts = 0
     else if (i === 0 && kind in FIRST_WEEK_FACTOR) pts *= FIRST_WEEK_FACTOR[kind]
@@ -49,7 +49,7 @@ export function horizonValue(entry, scoring, injuryStatus, sport = 'nfl') {
   let games = 0
   for (const w of entry?.weeks || []) {
     if (w.bye || (w.ppr == null && !w.line)) continue
-    const scored = pos === 'K' || pos === 'DEF' || !w.line ? null : scoreLine(w.line, scoring, sport)
+    const scored = w.line ? scoreLine(w.line, scoring, sport, pos) : null
     sum += Number.isFinite(scored) ? scored : Number(w.ppr) || 0
     games += 1
   }

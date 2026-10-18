@@ -107,7 +107,7 @@ export function gameLocked(card) {
 
 /** This week's projection in league scoring (projected stat line when we have it), then injury and bye. */
 export function weekValue(row, card, scoring, sport = 'nfl') {
-  const fromLine = card?.proj_line ? scoreLine(card.proj_line, scoring, sport) : null
+  const fromLine = card?.proj_line ? scoreLine(card.proj_line, scoring, sport, fantasyPosition(row?.position)) : null
   const base = Number.isFinite(fromLine) ? fromLine : Number(card?.projected)
   const proj = Number.isFinite(base) ? base : 0
   if (card?.bye) return { value: 0, proj, why: 'bye' }

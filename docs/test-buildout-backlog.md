@@ -4647,3 +4647,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - 2026-10-18 (1.4.1250): Fantasy matchup score card drops the divider above the win-probability bar (card + skeleton).
 - 2026-10-18 (1.4.1251): Fantasy home light root `#fafafa` -> white (it painted a gray square inside the page padding behind the Slots-style cards).
 - 2026-10-18 (1.4.1252): Fantasy lineup cards show live players: green wash on that player's half of the card + green live points (`.fantasy-live-half` / `.fantasy-live-pts`, both modes). Final and pre-game stay plain. Game clock / score line deferred (lineup cards carry only status + kickoff).
+- 2026-10-18 (1.4.1253): Fantasy lineup center slot pills use the game hub Fantasy tab position colors (QB/RB/WR/TE/K/DEF). Shared `src/utils/fantasyPositionPill.js` (`positionPillClass`, `slotPillPosition`); FLEX and other mixed slots keep the neutral pill.

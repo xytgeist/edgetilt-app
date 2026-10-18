@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
+import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
 
 const TOOLS = [
   {
@@ -663,12 +664,20 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                   <span className={`w-8 text-right text-[13px] font-bold tabular-nums ${leftLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>
                     {playerPts(leftCard, cardsLoading, scoring, sport)}
                   </span>
-                  <span
-                    className="fantasy-slot-pill rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
-                    style={{ color: '#fff' }}
-                  >
-                    {pair.label}
-                  </span>
+                  {slotPillPosition(pair.label) ? (
+                    <span
+                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${positionPillClass(slotPillPosition(pair.label))}`}
+                    >
+                      {pair.label}
+                    </span>
+                  ) : (
+                    <span
+                      className="fantasy-slot-pill rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
+                      style={{ color: '#fff' }}
+                    >
+                      {pair.label}
+                    </span>
+                  )}
                   <span className={`w-8 text-[13px] font-bold tabular-nums ${rightLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>
                     {playerPts(rightCard, cardsLoading, scoring, sport)}
                   </span>

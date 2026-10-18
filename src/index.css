@@ -11967,6 +11967,31 @@ html.light [data-fantasy-home] .fantasy-sit-in {
 html.light [data-fantasy-home] .fantasy-sit-out {
   color: #be123c;
 }
+/* Offer Review verdict */
+[data-fantasy-home] .fantasy-verdict[data-verdict='Accept'] {
+  background-color: rgb(16 185 129 / 0.18);
+  color: #6ee7b7;
+}
+[data-fantasy-home] .fantasy-verdict[data-verdict='Counter'] {
+  background-color: rgb(245 158 11 / 0.18);
+  color: #fcd34d;
+}
+[data-fantasy-home] .fantasy-verdict[data-verdict='Decline'] {
+  background-color: rgb(244 63 94 / 0.18);
+  color: #fda4af;
+}
+html.light [data-fantasy-home] .fantasy-verdict[data-verdict='Accept'] {
+  background-color: #059669;
+  color: #ffffff;
+}
+html.light [data-fantasy-home] .fantasy-verdict[data-verdict='Counter'] {
+  background-color: #d97706;
+  color: #ffffff;
+}
+html.light [data-fantasy-home] .fantasy-verdict[data-verdict='Decline'] {
+  background-color: #e11d48;
+  color: #ffffff;
+}
 [data-fantasy-home] .fantasy-proj-up {
   color: #34d399;
 }

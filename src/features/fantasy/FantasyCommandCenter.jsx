@@ -2,12 +2,20 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
-import { leagueLineupSlots, optimizeLineup } from './fantasyStartSit.js'
-import { rankWaivers } from './fantasyWaivers.js'
+import { fantasyPosition, leagueLineupSlots, optimizeLineup } from './fantasyStartSit.js'
+import { rankWaivers, rowId } from './fantasyWaivers.js'
 import { loadLeagueValues, loadSniper, loadWaivers } from './fantasyApi.js'
 import { rankBoom, rankHandcuffs } from './fantasySniper.js'
 import { claimOdds, waiverWindow } from './fantasyWaiverWindow.js'
-import { composeFlipMessage, composeOfferMessage, findFlips, findTrades } from './fantasyTrades.js'
+import {
+  composeCounterMessage,
+  composeFlipMessage,
+  composeOfferMessage,
+  findFlips,
+  findTrades,
+  parseOfferText,
+  reviewOffer,
+} from './fantasyTrades.js'
 import { openExternalUrl, shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
 import { sportsBetPropTapPayload, useSportsBetOddsActions } from '../sports-bet-tracker/sportsBetLogContext.jsx'
@@ -1415,7 +1423,7 @@ function ComposeOffer({ offer, myTeamName, initialText }) {
   )
 }
 
-function OfferCard({ offer, myTeamName, compact = false }) {
+function OfferCard({ offer, myTeamName, compact = false, composeText }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
@@ -1456,7 +1464,224 @@ function OfferCard({ offer, myTeamName, compact = false }) {
           {open ? 'Close' : 'Compose offer'}
         </button>
       </div>
-      {open ? <ComposeOffer offer={offer} myTeamName={myTeamName} /> : null}
+      {open ? <ComposeOffer offer={offer} myTeamName={myTeamName} initialText={composeText} /> : null}
+    </div>
+  )
+}
+
+function PickChips({ rows, picked, onToggle }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {rows.map((row) => {
+        const on = picked.has(row.id)
+        return (
+          <button
+            key={row.id}
+            type="button"
+            onClick={() => onToggle(row.id)}
+            aria-pressed={on}
+            className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+              on ? 'bg-zinc-100 text-zinc-950' : 'border border-zinc-800 bg-zinc-900 text-zinc-300'
+            }`}
+          >
+            {shortName(row.player_name, row.position)}
+            {fantasyPosition(row.position) !== 'DEF' ? (
+              <span className={on ? 'text-zinc-600' : 'text-zinc-500'}> {fantasyPosition(row.position)}</span>
+            ) : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function rosterChoices(rows) {
+  const order = { QB: 0, RB: 1, WR: 2, TE: 3, K: 5, DEF: 6 }
+  return (rows || [])
+    .filter((row) => rowId(row) && (row.slot === 'starter' || row.slot === 'bench' || row.slot === 'ir'))
+    .map((row) => ({ ...row, id: rowId(row) }))
+    .sort((a, b) => (order[fantasyPosition(a.position)] ?? 4) - (order[fantasyPosition(b.position)] ?? 4))
+}
+
+/** Offer Review: grade an offer someone sent you (pick the players or paste the host's trade notice). */
+function OfferReview({ values, detail, sport, myName }) {
+  const teams = detail?.teams || []
+  const mine = teams.find((t) => t.is_mine) || null
+  const others = teams.filter((t) => !t.is_mine)
+  const [teamId, setTeamId] = useState(null)
+  const [give, setGive] = useState(() => new Set())
+  const [get, setGet] = useState(() => new Set())
+  const [paste, setPaste] = useState('')
+  const [note, setNote] = useState('')
+  const [editing, setEditing] = useState(true)
+  const activeTeam = others.find((t) => t.id === teamId) || null
+
+  const toggle = (setter) => (id) =>
+    setter((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const pickTeam = (id) => {
+    setTeamId(id)
+    setGet(new Set())
+  }
+  const readPaste = () => {
+    const parsed = parseOfferText(paste, detail)
+    if (!parsed?.teamId || !parsed.getIds.length || !parsed.giveIds.length) {
+      setNote("Couldn't match both sides to rosters. Pick the players below.")
+      if (parsed?.teamId) setTeamId(parsed.teamId)
+      if (parsed?.giveIds.length) setGive(new Set(parsed.giveIds))
+      if (parsed?.getIds.length) setGet(new Set(parsed.getIds))
+      return
+    }
+    setNote('')
+    setTeamId(parsed.teamId)
+    setGive(new Set(parsed.giveIds))
+    setGet(new Set(parsed.getIds))
+    setEditing(false)
+  }
+
+  const review = useMemo(() => {
+    const me = (detail?.teams || []).find((t) => t.is_mine)
+    if (!values?.league_players?.length || !me || !teamId || !give.size || !get.size) return null
+    const { slots } = leagueLineupSlots(detail?.league, detail?.rostersByTeam?.[me.id] || [])
+    return reviewOffer({ values, detail, scoring: detail?.league?.scoring, slots, sport, teamId, giveIds: give, getIds: get })
+  }, [values, detail, teamId, give, get, sport])
+
+  return (
+    <div data-fantasy-offer-review className="mt-2 space-y-2.5">
+      <div>
+        <textarea
+          value={paste}
+          onChange={(e) => setPaste(e.target.value)}
+          rows={2}
+          placeholder="Paste the trade notice (optional)"
+          className="w-full resize-none rounded-xl border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-[12px] leading-snug text-zinc-100 outline-none placeholder:text-zinc-500"
+          aria-label="Trade notice"
+        />
+        <div className="mt-1 flex items-center gap-2">
+          <button
+            type="button"
+            disabled={!paste.trim()}
+            onClick={readPaste}
+            className="rounded-full border border-zinc-700 px-2.5 py-1 text-[11px] font-semibold text-zinc-200 disabled:opacity-40"
+          >
+            Read offer
+          </button>
+          {note ? <span className="text-[10px] text-zinc-500">{note}</span> : null}
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Offer from</div>
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {others.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => pickTeam(t.id)}
+              className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                t.id === teamId ? 'bg-zinc-100 text-zinc-950' : 'border border-zinc-800 bg-zinc-900 text-zinc-300'
+              }`}
+            >
+              {t.team_name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTeam && review && !editing ? (
+        <div className="flex items-start justify-between gap-2 rounded-xl border border-zinc-800 px-2.5 py-2">
+          <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
+            <TradeSide label="You give" players={review.give} />
+            <TradeSide label="You get" players={review.get} />
+          </div>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="shrink-0 rounded-full border border-zinc-700 px-2.5 py-1 text-[11px] font-semibold text-zinc-200"
+          >
+            Edit
+          </button>
+        </div>
+      ) : activeTeam ? (
+        <>
+          <div>
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">You give</div>
+            <PickChips rows={rosterChoices(detail?.rostersByTeam?.[mine?.id])} picked={give} onToggle={toggle(setGive)} />
+          </div>
+          <div>
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">You get from {activeTeam.team_name}</div>
+            <PickChips rows={rosterChoices(detail?.rostersByTeam?.[activeTeam.id])} picked={get} onToggle={toggle(setGet)} />
+          </div>
+        </>
+      ) : null}
+
+      {review ? (
+        <div data-fantasy-offer-verdict className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
+          <div className="flex items-center justify-between gap-2">
+            <span data-verdict={review.verdict} className="fantasy-verdict rounded-full px-2.5 py-0.5 text-[12px] font-bold">
+              {review.verdict}
+            </span>
+            <span className="text-[10px] font-semibold text-zinc-500">{review.confidence} confidence</span>
+          </div>
+          <div className="mt-1.5 text-[12px] font-bold tabular-nums">
+            <span className={review.myGain >= 0 ? 'fantasy-sit-in' : 'fantasy-sit-out'}>
+              {review.myGain >= 0 ? '+' : ''}
+              {review.myGain.toFixed(1)}/wk you
+            </span>
+            <span className="text-zinc-500">
+              {' · '}
+              {review.theirGain >= 0 ? '+' : ''}
+              {review.theirGain.toFixed(1)} them
+            </span>
+          </div>
+          <div className="mt-1.5 space-y-1 text-[10px] leading-snug">
+            <div className="text-zinc-300">
+              <span className="font-bold text-zinc-200">Your best lineup:</span> {review.needYou}
+            </div>
+            <div className="text-zinc-300">
+              <span className="font-bold text-zinc-200">Value:</span> {review.valueNote}
+            </div>
+            <div className="text-zinc-400">
+              <span className="font-bold text-zinc-300">Their angle:</span> {review.theirAngle}
+            </div>
+            {review.drops.length ? (
+              <div className="text-zinc-400">
+                <span className="font-bold text-zinc-300">Roster spot:</span> you&apos;d drop{' '}
+                {review.drops.map((p) => p.name).join(' and ')}.
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : activeTeam ? (
+        <p className="text-[11px] text-zinc-500">Pick at least one player on each side.</p>
+      ) : null}
+
+      {review?.counters.length ? (
+        <div>
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Counter with</div>
+          <div className="space-y-1.5">
+            {review.counters.map((c) => (
+              <OfferCard
+                key={c.key}
+                offer={{ ...c, forYou: `${c.why} (+${c.myGain.toFixed(1)}/wk for you)` }}
+                myTeamName={myName}
+                composeText={composeCounterMessage(c, myName)}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {review?.betterAsk ? (
+        <div>
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Better ask them for</div>
+          <OfferCard offer={review.betterAsk} myTeamName={myName} />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1465,6 +1690,7 @@ function OfferCard({ offer, myTeamName, compact = false }) {
 function TradesPanel({ supabaseClient, detail, sport }) {
   const leagueId = detail?.league?.id || null
   const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
+  const [view, setView] = useState('find')
   useEffect(() => {
     if (!supabaseClient || !leagueId) return undefined
     let alive = true
@@ -1489,11 +1715,41 @@ function TradesPanel({ supabaseClient, detail, sport }) {
 
   return (
     <div data-fantasy-trades className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <div className="text-[13px] font-bold text-zinc-100">Trade ideas</div>
-        <div className="text-[10px] text-zinc-500">Slightly aggressive{span ? ` · ${span}` : ''}</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[13px] font-bold text-zinc-100">Trades</div>
+        <div className="flex rounded-full border border-zinc-800 p-0.5">
+          {[
+            ['find', 'Find'],
+            ['review', 'Review'],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setView(id)}
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${view === id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
-      {state.loading ? (
+      <div className="mt-1 text-[10px] text-zinc-500">
+        {view === 'review' ? 'Grade an offer you got' : 'Slightly aggressive'}
+        {span ? ` · ${span}` : ''}
+      </div>
+      {view === 'review' ? (
+        state.loading ? (
+          <div className="mt-2 space-y-1.5" data-edge-skeleton aria-label="Loading trade values">
+            {[0, 1].map((i) => (
+              <span key={i} className="edge-skel block h-16 rounded-xl" />
+            ))}
+          </div>
+        ) : state.error ? (
+          <p className="mt-2 text-[12px] text-rose-300">{state.error}</p>
+        ) : (
+          <OfferReview values={state.data} detail={detail} sport={sport} myName={myName} />
+        )
+      ) : state.loading ? (
         <div className="mt-2 space-y-1.5" data-edge-skeleton aria-label="Loading trade ideas">
           {[0, 1, 2].map((i) => (
             <span key={i} className="edge-skel block h-20 rounded-xl" />

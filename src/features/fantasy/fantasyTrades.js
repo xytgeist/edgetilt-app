@@ -286,3 +286,212 @@ export function composeFlipMessage(flip, myTeamName) {
     'Open to tweaks if you want to counter.',
   ].join('\n')
 }
+
+/** Who moves into and out of the best starting lineup, with their weekly projection. */
+function lineupMoves(before, after) {
+  const inn = after.seats.filter((s) => !before.seated.has(s.p.id)).map((s) => s.p)
+  const out = before.seats.filter((s) => !after.seated.has(s.p.id)).map((s) => s.p)
+  return { inn, out }
+}
+
+function moveLine({ inn, out }, whose) {
+  if (!inn.length && !out.length) return whose === 'you' ? 'Your starting lineup stays the same.' : 'Their starting lineup stays the same.'
+  const fmt = (list) => list.map((p) => `${p.name} (${p.pos === 'DEF' ? 'D/ST' : p.pos} ${p.value.toFixed(1)})`).join(', ')
+  return [inn.length ? `In: ${fmt(inn)}` : '', out.length ? `Out: ${fmt(out)}` : ''].filter(Boolean).join('. ')
+}
+
+function evaluate({ myPlayers, theirs, giveIds, getIds, slots }) {
+  const give = myPlayers.filter((p) => giveIds.has(p.id))
+  const get = theirs.filter((p) => getIds.has(p.id))
+  const myBefore = bestSeats(myPlayers, slots)
+  const theirBefore = bestSeats(theirs, slots)
+  const myAfter = bestSeats([...myPlayers.filter((p) => !giveIds.has(p.id)), ...get], slots)
+  const theirAfter = bestSeats([...theirs.filter((p) => !getIds.has(p.id)), ...give], slots)
+  const giveKeep = give.reduce((a, p) => a + p.keep, 0)
+  const getKeep = get.reduce((a, p) => a + p.keep, 0)
+  return {
+    give,
+    get,
+    myGain: myAfter.total - myBefore.total,
+    theirGain: theirAfter.total - theirBefore.total,
+    valueEdge: getKeep - giveKeep,
+    myMoves: lineupMoves(myBefore, myAfter),
+    theirMoves: lineupMoves(theirBefore, theirAfter),
+    myAfter,
+    theirAfter,
+  }
+}
+
+/**
+ * Offer Review: grade an inbound (or any typed-in) offer in league scoring. `giveIds` are your players going
+ * out, `getIds` are theirs coming in. Verdict leans on the weekly lineup gain over the next few weeks; counters
+ * stay inside the Finder's "they could accept it" band.
+ */
+export function reviewOffer({ values, detail, scoring, slots, sport = 'nfl', teamId, giveIds, getIds }) {
+  const byId = new Map((values?.league_players || []).map((p) => [String(p.sleeper_id), p]))
+  const teams = detail?.teams || []
+  const mine = teams.find((t) => t.is_mine)
+  const team = teams.find((t) => t.id === teamId)
+  if (!mine || !team || !slots?.length) return null
+  const myPlayers = teamPlayers(detail.rostersByTeam?.[mine.id], byId, scoring, sport)
+  const theirs = teamPlayers(detail.rostersByTeam?.[team.id], byId, scoring, sport)
+  const give = new Set([...giveIds].map(String))
+  const get = new Set([...getIds].map(String))
+  if (!give.size || !get.size) return null
+  const ev = evaluate({ myPlayers, theirs, giveIds: give, getIds: get, slots })
+
+  // Receiving more bodies than you send means a cut; name the weakest bench player that keeps slots legal.
+  const extra = ev.get.length - ev.give.length
+  const drops =
+    extra > 0
+      ? [...myPlayers.filter((p) => !give.has(p.id)), ...ev.get]
+          .filter((p) => !ev.myAfter.seated.has(p.id) && p.h.injury !== 'long')
+          .sort((a, b) => a.keep - b.keep)
+          .slice(0, extra)
+      : []
+
+  const counters = []
+  const tryCounter = (g, t, why) => {
+    if (!g.size || !t.size) return
+    const c = evaluate({ myPlayers, theirs, giveIds: g, getIds: t, slots })
+    if (c.myGain < Math.max(ev.myGain + 0.75, 1) || c.theirGain < THEIR_FLOOR) return
+    const key = `${[...g].sort().join(',')}|${[...t].sort().join(',')}`
+    if (counters.some((x) => x.key === key)) return
+    counters.push({
+      key,
+      why,
+      team,
+      give: c.give,
+      get: c.get,
+      myGain: c.myGain,
+      theirGain: c.theirGain,
+      fairness: fairnessFor(c.theirGain, -c.valueEdge),
+      forThem: describeFor(c.give, c.theirAfter.seats),
+      score: c.myGain + 0.4 * Math.min(c.theirGain, 3),
+    })
+  }
+  const theirExtras = theirs
+    .filter((p) => !get.has(p.id) && p.pos !== 'K' && p.pos !== 'DEF' && p.keep > 0)
+    .sort((a, b) => b.keep - a.keep)
+    .slice(0, 8)
+  for (const z of theirExtras) tryCounter(give, new Set([...get, z.id]), `Ask for ${z.name} too`)
+  if (give.size > 1) for (const id of give) {
+    const p = ev.give.find((x) => x.id === id)
+    tryCounter(new Set([...give].filter((x) => x !== id)), get, `Keep ${p?.name || 'one of yours'}`)
+  }
+  for (const id of give) {
+    const out = ev.give.find((x) => x.id === id)
+    if (!out) continue
+    const cheaper = myPlayers
+      .filter((p) => !give.has(p.id) && p.pos === out.pos && p.keep < out.keep && p.keep > 0)
+      .sort((a, b) => b.keep - a.keep)[0]
+    if (cheaper) tryCounter(new Set([...[...give].filter((x) => x !== id), cheaper.id]), get, `Send ${cheaper.name} instead of ${out.name}`)
+  }
+  counters.sort((a, b) => b.score - a.score)
+
+  let verdict
+  let confidence
+  if (ev.myGain >= 1 && ev.myGain < 2.5 && ev.valueEdge < -4) {
+    verdict = counters.length ? 'Counter' : 'Accept'
+    confidence = 'Low'
+  } else if (ev.myGain >= 1) {
+    verdict = 'Accept'
+    confidence = ev.myGain >= 2.5 ? 'High' : 'Medium'
+  } else if (ev.myGain > -1) {
+    verdict = counters.length ? 'Counter' : ev.myGain >= 0 ? 'Accept' : 'Decline'
+    confidence = 'Low'
+  } else {
+    verdict = counters.length && ev.myGain > -2.5 ? 'Counter' : 'Decline'
+    confidence = ev.myGain <= -2.5 ? 'High' : 'Medium'
+  }
+
+  let betterAsk = null
+  if (verdict === 'Decline') {
+    const alt = findTrades({ values, detail: { ...detail, teams: [mine, team] }, scoring, slots, sport })
+    betterAsk = alt.best
+  }
+
+  const theirAngle =
+    ev.theirGain >= 0.25
+      ? `Their lineup gains ${ev.theirGain.toFixed(1)}/wk: ${moveLine(ev.theirMoves, 'them')}`
+      : ev.valueEdge < -1
+        ? `They get more total value (+${(-ev.valueEdge).toFixed(1)} pts/gm across the players) even if their lineup ${ev.theirGain >= -0.25 ? 'holds steady' : 'dips'}.`
+        : `Their lineup ${ev.theirGain >= -0.25 ? 'holds steady' : `drops ${(-ev.theirGain).toFixed(1)}/wk`}: ${moveLine(ev.theirMoves, 'them')}`
+
+  const stashes = ev.give.filter((p) => p.h.injury === 'long' || p.h.injury === 'out').map((p) => p.name)
+  const valueNote =
+    ev.valueEdge <= -2
+      ? `You send ${(-ev.valueEdge).toFixed(1)} more pts/gm of player value than you get${stashes.length ? ` (${stashes.join(' and ')} ${stashes.length > 1 ? 'are stashes' : 'is a stash'} for when healthy)` : ''}.`
+      : ev.valueEdge >= 2
+        ? `You get ${ev.valueEdge.toFixed(1)} more pts/gm of player value than you send.`
+        : 'Player value is about even.'
+
+  return {
+    team,
+    verdict,
+    confidence,
+    valueNote,
+    give: ev.give,
+    get: ev.get,
+    myGain: ev.myGain,
+    theirGain: ev.theirGain,
+    valueEdge: ev.valueEdge,
+    needYou: moveLine(ev.myMoves, 'you'),
+    theirAngle,
+    drops,
+    counters: verdict === 'Accept' && confidence !== 'Low' ? [] : counters.slice(0, 2),
+    betterAsk,
+  }
+}
+
+function nameKeys(name) {
+  const clean = String(name || '').toLowerCase().replace(/[.'’]/g, '').replace(/\s+(jr|sr|ii|iii|iv)$/, '').trim()
+  const parts = clean.split(/\s+/)
+  return { full: clean, last: parts[parts.length - 1] || '', initial: parts.length > 1 ? `${parts[0][0]} ${parts[parts.length - 1]}` : clean }
+}
+
+/**
+ * Paste the host's trade notice (or any text naming the players). Players are matched to the two rosters by
+ * full name, then "F. Last", then a unique last name. Your players are the ones you'd give.
+ */
+export function parseOfferText(text, detail) {
+  const teams = detail?.teams || []
+  const mine = teams.find((t) => t.is_mine)
+  if (!mine || !text) return null
+  const hay = ` ${String(text).toLowerCase().replace(/[.'’]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ')} `
+  const rows = []
+  for (const team of teams) {
+    for (const row of detail.rostersByTeam?.[team.id] || []) {
+      const id = rowId(row)
+      if (id && row.player_name) rows.push({ team, id, keys: nameKeys(row.player_name) })
+    }
+  }
+  const lastCount = {}
+  for (const r of rows) lastCount[r.keys.last] = (lastCount[r.keys.last] || 0) + 1
+  const hits = rows.filter(
+    (r) =>
+      hay.includes(` ${r.keys.full} `) ||
+      hay.includes(` ${r.keys.initial} `) ||
+      (lastCount[r.keys.last] === 1 && r.keys.last.length > 3 && hay.includes(` ${r.keys.last} `)),
+  )
+  const giveIds = hits.filter((r) => r.team.id === mine.id).map((r) => r.id)
+  const others = hits.filter((r) => r.team.id !== mine.id)
+  const tally = {}
+  for (const r of others) tally[r.team.id] = (tally[r.team.id] || 0) + 1
+  const teamId = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0] || null
+  return { teamId, giveIds, getIds: others.filter((r) => r.team.id === teamId).map((r) => r.id) }
+}
+
+/** Counter pitch for an offer they sent you. */
+export function composeCounterMessage(counter, myTeamName) {
+  if (!counter) return ''
+  const them = counter.team?.team_name || 'there'
+  return [
+    `Hey ${them}, thanks for the offer. ${myTeamName || 'I'} would do this instead:`,
+    '',
+    `You get: ${counter.give.map(playerLine).join(' + ')}`,
+    `I get: ${counter.get.map(playerLine).join(' + ')}`,
+    '',
+    `Why it still works for you: ${counter.forThem}${counter.theirGain >= 0.25 ? `, about +${counter.theirGain.toFixed(1)} projected pts a week for your lineup` : ''}.`,
+  ].join('\n')
+}

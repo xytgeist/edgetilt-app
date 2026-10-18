@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
+import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
 import { openExternalUrl } from '../../utils/edgeNative.js'
 import { sportsBetPropTapPayload, useSportsBetOddsActions } from '../sports-bet-tracker/sportsBetLogContext.jsx'
@@ -961,8 +962,9 @@ function matchupPages(detail) {
 const SPORT_ORDER = ['nfl', 'nba', 'mlb', 'nhl']
 const SPORT_LABEL = { nfl: 'NFL', nba: 'NBA', mlb: 'MLB', nhl: 'NHL' }
 
-function ScoreSide({ team, teams, outlook, hostScore, align }) {
+function ScoreSide({ team, teams, outlook, hostScore, align, lead, projUp, projFinal: finish }) {
   const score = displayScore(outlook, hostScore)
+  const projFinal = score.live && finish != null ? finish.toFixed(1) : null
   const rank = standingsRank(team, teams)
   const end = align === 'right'
   return (
@@ -977,9 +979,22 @@ function ScoreSide({ team, teams, outlook, hostScore, align }) {
           </div>
         </div>
       </div>
-      <div className="mt-2 text-[26px] font-bold tabular-nums leading-none">{score.text}</div>
-      <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-        {score.live ? 'Live' : score.text === '–' ? '' : 'Proj'}
+      <div
+        className={`mt-2 text-[26px] font-bold tabular-nums leading-none transition-colors ${
+          lead === 'trail' ? 'fantasy-vs-trail' : lead === 'lead' ? 'fantasy-vs-lead' : ''
+        }`}
+      >
+        {score.text}
+      </div>
+      <div className={`mt-1 flex items-baseline gap-1.5 ${end ? 'justify-end' : ''}`}>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          {score.live ? 'Live' : score.text === '–' ? '' : 'Proj'}
+        </span>
+        {projFinal ? (
+          <span className={`text-[11px] font-bold tabular-nums ${projUp ? 'fantasy-proj-up' : 'fantasy-proj-down'}`}>
+            {projFinal}
+          </span>
+        ) : null}
       </div>
     </div>
   )
@@ -996,20 +1011,61 @@ function WinBar({ left, right }) {
         <span>{leftPct}%</span>
         <span>{rightPct}%</span>
       </div>
-      <div className="fantasy-win-track flex h-1.5 overflow-hidden rounded-full bg-zinc-800">
-        <div className="fantasy-win-fill h-full bg-sky-400" style={{ width: `${leftPct}%` }} />
+      <div data-team-colors className="fantasy-win-track flex h-1.5 overflow-hidden rounded-full">
+        <div className="fantasy-win-fill h-full transition-[width] duration-500" style={{ width: `${leftPct}%` }} />
       </div>
     </div>
   )
 }
 
+function scoreValue(outlook, hostScore) {
+  const n = Number(displayScore(outlook, hostScore).text)
+  return Number.isFinite(n) ? n : null
+}
+
+/** Projected finish: the score on the card plus what the players still to play are projected for. */
+function projectedFinish(outlook, hostScore) {
+  if (!outlook) return null
+  const shown = scoreValue(outlook, hostScore)
+  if (!outlook.live) return outlook.projected ?? null
+  if (shown == null || outlook.outlook == null) return outlook.outlook ?? null
+  const remaining = Math.max(0, outlook.outlook - (outlook.scored ?? 0))
+  return shown + remaining
+}
+
 function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
   const leftOut = sideOutlook(page.roster, cards, scoring, sport)
   const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport)
+  const leftAccent = useTeamAccent(page.left?.avatar_url, page.left?.id || page.left?.team_name)
+  const rightRaw = useTeamAccent(page.right?.avatar_url, page.right?.id || page.right?.team_name)
+  const rightAccent = distinctTeamAccent(rightRaw, leftAccent, page.right?.id || page.right?.team_name)
+  const ls = scoreValue(leftOut, page.leftScore)
+  const rs = scoreValue(rightOut, page.rightScore)
+  const lead = page.right && ls != null && rs != null && ls !== rs ? (ls > rs ? 'left' : 'right') : null
+  const lo = projectedFinish(leftOut, page.leftScore)
+  const ro = page.right ? projectedFinish(rightOut, page.rightScore) : null
   return (
-    <div className="fantasy-card-lift overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
-      <div className={`grid ${page.right ? 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'grid-cols-1'}`}>
-        <ScoreSide team={page.left} teams={teams} outlook={leftOut} hostScore={page.leftScore} align="left" />
+    <div
+      className="fantasy-card-lift relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900"
+      style={{
+        '--vs-left': leftAccent.dark,
+        '--vs-left-l': leftAccent.light,
+        '--vs-right': page.right ? rightAccent.dark : 'transparent',
+        '--vs-right-l': page.right ? rightAccent.light : 'transparent',
+      }}
+    >
+      <span aria-hidden className="fantasy-vs-glow pointer-events-none absolute inset-0" />
+      <div className={`relative grid ${page.right ? 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'grid-cols-1'}`}>
+        <ScoreSide
+          team={page.left}
+          teams={teams}
+          outlook={leftOut}
+          hostScore={page.leftScore}
+          align="left"
+          lead={lead === 'left' ? 'lead' : lead === 'right' ? 'trail' : null}
+          projUp={lo != null && ro != null ? lo >= ro : true}
+          projFinal={lo}
+        />
         {page.right ? (
           <div className="flex flex-col items-center justify-center px-1 py-3">
             <SiteBadge provider={provider} />
@@ -1019,21 +1075,29 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
           </div>
         ) : null}
         {page.right ? (
-          <ScoreSide team={page.right} teams={teams} outlook={rightOut} hostScore={page.rightScore} align="right" />
+          <ScoreSide
+            team={page.right}
+            teams={teams}
+            outlook={rightOut}
+            hostScore={page.rightScore}
+            align="right"
+            lead={lead === 'right' ? 'lead' : lead === 'left' ? 'trail' : null}
+            projUp={lo != null && ro != null ? ro > lo : true}
+            projFinal={ro}
+          />
         ) : (
           <p className="px-3 pb-3 text-[12px] text-zinc-500">Bye this week.</p>
         )}
       </div>
-      {page.right ? <WinBar left={leftOut.outlook} right={rightOut.outlook} /> : null}
+      {page.right ? (
+        <div className="relative">
+          <WinBar left={lo} right={ro} />
+        </div>
+      ) : null}
     </div>
   )
 }
 
-/**
- * Connected fantasy home. Hosts live in the manage sheet, not on this page.
- * Home is the matchup cards, grouped by sport. A tap opens that league:
- * the matchup stays on top, the lineup sits under it, and the other games are a swipe.
- */
 /**
  * Matchups as a snap carousel: the current card centered, neighbors peeking 20px on each side.
  * Bleeds to the screen edge (-mx-4 matches the page gutter). `onSettle` fires once a swipe comes to rest.
@@ -1099,6 +1163,11 @@ function MatchupCarousel({ pages, index, onSettle, renderCard }) {
   )
 }
 
+/**
+ * Connected fantasy home. Hosts live in the manage sheet, not on this page.
+ * Home is the matchup cards, grouped by sport. A tap opens that league:
+ * the matchup stays on top, the lineup sits under it, and the other games are a swipe.
+ */
 export default function FantasyCommandCenter({
   leagues,
   details,

@@ -11901,6 +11901,55 @@ html.light [data-fantasy-home] .fantasy-row-divider {
 html.light [data-fantasy-home] .fantasy-win-track {
   background-color: #e4e4e7 !important;
 }
+/* Team-vs-team card: each side glows in its logo color; win bar is a two-color tug of war. */
+[data-fantasy-home] .fantasy-vs-glow {
+  background:
+    radial-gradient(ellipse 65% 120% at 0% 0%, color-mix(in srgb, var(--vs-left) 30%, transparent), transparent 70%),
+    radial-gradient(ellipse 65% 120% at 100% 0%, color-mix(in srgb, var(--vs-right) 30%, transparent), transparent 70%);
+}
+html.light [data-fantasy-home] .fantasy-vs-glow {
+  background:
+    radial-gradient(ellipse 65% 120% at 0% 0%, color-mix(in srgb, var(--vs-left-l) 28%, transparent), transparent 70%),
+    radial-gradient(ellipse 65% 120% at 100% 0%, color-mix(in srgb, var(--vs-right-l) 28%, transparent), transparent 70%);
+}
+[data-fantasy-home] .fantasy-win-track[data-team-colors] {
+  background-color: var(--vs-right);
+}
+[data-fantasy-home] .fantasy-win-track[data-team-colors] .fantasy-win-fill {
+  background-color: var(--vs-left);
+  box-shadow: 2px 0 0 rgb(9 9 11);
+}
+html.light [data-fantasy-home] .fantasy-win-track[data-team-colors] {
+  background-color: var(--vs-right-l) !important;
+}
+html.light [data-fantasy-home] .fantasy-win-track[data-team-colors] .fantasy-win-fill {
+  background-color: var(--vs-left-l);
+  box-shadow: 2px 0 0 #f4f4f5;
+}
+[data-fantasy-home] .fantasy-vs-lead {
+  color: #ffffff;
+}
+[data-fantasy-home] .fantasy-vs-trail {
+  color: rgb(161 161 170);
+}
+html.light [data-fantasy-home] .fantasy-vs-lead {
+  color: #09090b;
+}
+html.light [data-fantasy-home] .fantasy-vs-trail {
+  color: #a1a1aa;
+}
+[data-fantasy-home] .fantasy-proj-up {
+  color: #34d399;
+}
+[data-fantasy-home] .fantasy-proj-down {
+  color: #fb7185;
+}
+html.light [data-fantasy-home] .fantasy-proj-up {
+  color: #047857;
+}
+html.light [data-fantasy-home] .fantasy-proj-down {
+  color: #be123c;
+}
 html.light [data-fantasy-home] .fantasy-yes {
   color: #047857 !important;
 }

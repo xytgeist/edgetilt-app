@@ -7,6 +7,10 @@ import {
   CHAT_MESSAGE_COLUMN_WIDTH_CLASS,
   chatVideoTileStyle,
 } from './chatVideoTileLayout.js'
+import {
+  LOUNGE_NETWORK_UPLOAD_SHORT_MESSAGE,
+  isLoungeNetworkUploadFailure,
+} from '../../utils/loungeVideoUpload.js'
 
 /**
  * ChatVideoPrepBubble - looks exactly like a sent video chat bubble while a
@@ -189,7 +193,9 @@ export default function ChatVideoPrepBubble({ job, onCancel, onRetry }) {
             {isError && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-3">
                 <div className="text-center text-[12px] font-semibold leading-snug text-white/90 drop-shadow">
-                  {errorMessage || 'Upload failed.'}
+                  {isLoungeNetworkUploadFailure(errorMessage)
+                    ? LOUNGE_NETWORK_UPLOAD_SHORT_MESSAGE
+                    : errorMessage || 'Upload failed.'}
                 </div>
                 <div className="flex gap-2">
                   <button

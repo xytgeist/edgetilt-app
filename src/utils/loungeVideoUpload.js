@@ -1093,6 +1093,30 @@ export function mapGenericNetworkErrorMessage(raw, fallback) {
   return s || String(fallback || '').trim()
 }
 
+/** NSURLError codes the IPA puts in "Video upload failed (code)." when the connection itself broke. */
+const LOUNGE_NETWORK_UPLOAD_CODES = new Set(['-1001', '-1003', '-1004', '-1005', '-1009', '-1020', '-1200'])
+
+/**
+ * True when an upload failed because the connection broke (not a server rejection).
+ * HTTP failures arrive as positive codes like "(409)" and stay false.
+ * @param {unknown} message
+ */
+export function isLoungeNetworkUploadFailure(message) {
+  const s = String(message || '')
+  const code = /\((-1\d{3})\)/.exec(s)?.[1]
+  if (code) return LOUNGE_NETWORK_UPLOAD_CODES.has(code)
+  return /connection was interrupted|\bload failed|failed to fetch|network ?error|network request failed|network connection was lost|timed out|unable to resolve host|connection reset|connection abort|broken pipe|failed to connect|ssl handshake/i.test(
+    s,
+  )
+}
+
+/** NSURLError code from a native upload failure, or ''. */
+export function loungeNetworkUploadFailureCode(message) {
+  return /\((-1\d{3})\)/.exec(String(message || ''))?.[1] || ''
+}
+
+export const LOUNGE_NETWORK_UPLOAD_SHORT_MESSAGE = 'Connection dropped. Try cellular or wait for a stronger signal.'
+
 /**
  * When `functions.invoke` fails with HTTP 4xx/5xx, Supabase sets `error` to `FunctionsHttpError`
  * with message "Edge Function returned a non-2xx status code" - the JSON body from our Edge

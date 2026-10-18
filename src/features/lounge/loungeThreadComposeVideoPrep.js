@@ -1,5 +1,6 @@
 import { loungeVideoSlotAfterPrep, runComposerStreamVideoPrepWithRetries } from './loungeComposerVideoPrep.js'
 import { isLoungeSessionPosterSrc, resolveLoungeSessionPosterFromSlot } from './loungeStreamSessionPoster.js'
+import { LOUNGE_NETWORK_UPLOAD_SHORT_MESSAGE, isLoungeNetworkUploadFailure } from '../../utils/loungeVideoUpload'
 
 /** @typedef {'queued' | 'preparing' | 'ready' | 'failed'} ThreadComposeVideoPrepStatus */
 
@@ -360,7 +361,11 @@ export function createThreadComposeVideoPrepController({
       updatePartVideoSlot(partIdx, (prev) =>
         prev?.prepJobId === jobId ? { ...prev, prepStatus: 'failed', prepError: msg } : prev,
       )
-      setHud(partIdx, { progress: 0, status: 'Failed', detail: msg })
+      setHud(partIdx, {
+        progress: 0,
+        status: 'Failed',
+        detail: isLoungeNetworkUploadFailure(msg) ? LOUNGE_NETWORK_UPLOAD_SHORT_MESSAGE : msg,
+      })
     }
   }
 

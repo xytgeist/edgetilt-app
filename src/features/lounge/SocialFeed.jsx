@@ -97,7 +97,10 @@ import {
   loungeAndroidOversizedTrimSourceMessage,
   loungeAndroidOversizedTrimSourceTitle,
   probeVideoFileDurationSeconds,
+  isLoungeNetworkUploadFailure,
+  loungeNetworkUploadFailureCode,
 } from '../../utils/loungeVideoUpload'
+import { WifiOff } from 'lucide-react'
 import {
   buildLoungePostShareUrl,
   buildLoungeProfileShareUrl,
@@ -21311,6 +21314,54 @@ export default function SocialFeed({
             data-lounge-upload-failed-panel
             className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-700/85 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-md"
           >
+            {loungePostUploadFailureDetails?.kind !== 'cfProcessingFailed' &&
+            isLoungeNetworkUploadFailure(loungePostUploadFailureDetails?.message) ? (
+              <div data-lounge-upload-network>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-amber-500/15 text-amber-300">
+                    <WifiOff className="h-5 w-5" aria-hidden />
+                  </span>
+                  <h2 id="lounge-upload-failed-title" className="text-[17px] font-bold leading-snug text-white">
+                    Your connection dropped the upload
+                  </h2>
+                </div>
+                <p className="mt-3 text-[14px] leading-relaxed text-zinc-300">
+                  The network cut your video off before it finished. Your post is still here.
+                </p>
+                <p className="mt-2 text-[14px] leading-relaxed text-zinc-300">
+                  Switch to cellular, or wait until you're on a stronger connection, then try again.
+                </p>
+                {loungeNetworkUploadFailureCode(loungePostUploadFailureDetails?.message) ? (
+                  <p className="mt-2 text-[11px] tabular-nums text-zinc-500">
+                    Error {loungeNetworkUploadFailureCode(loungePostUploadFailureDetails?.message)}
+                  </p>
+                ) : null}
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => retryLoungePostUpload()}
+                    className="min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation sm:order-1"
+                  >
+                    Try again
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void onLoungePostUploadSaveDraft()}
+                    className="min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-2"
+                  >
+                    Save as draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onLoungePostUploadFailureCancel()}
+                    className="min-h-11 rounded-xl bg-zinc-800 px-4 text-[15px] font-semibold text-zinc-100 hover:bg-zinc-700 touch-manipulation sm:order-3"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+            <>
             <h2 id="lounge-upload-failed-title" className="text-[17px] font-bold text-white">
               {loungePostUploadFailureDetails?.dialogTitle ||
                 (loungePostUploadFailureDetails?.kind === 'mediaPrep'
@@ -21392,6 +21443,8 @@ export default function SocialFeed({
                 </div>
               </>
             ) : null}
+            </>
+            )}
           </div>
         </div>
       ) : null}

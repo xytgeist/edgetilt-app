@@ -1278,6 +1278,15 @@ html.light [data-lounge-upload-failed-panel] button.bg-zinc-800 {
 html.light [data-lounge-upload-failed-panel] button.bg-zinc-800:hover {
   background-color: rgb(212 212 216);
 }
+html.light [data-lounge-upload-network] .text-zinc-300 {
+  color: rgb(63 63 70);
+}
+html.light [data-lounge-upload-network] .bg-amber-500\/15 {
+  background-color: rgb(254 243 199);
+}
+html.light [data-lounge-upload-network] .text-amber-300 {
+  color: rgb(180 83 9);
+}
 
 /* Chat → Private Subs tab (creator fan rooms). */
 html.light [data-chat-private-subs] .text-zinc-100 {

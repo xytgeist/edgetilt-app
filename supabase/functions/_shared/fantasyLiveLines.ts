@@ -280,6 +280,72 @@ function competitors(event: Record<string, unknown>): { home: Side; away: Side; 
   }
 }
 
+function groupTotal(groups: Array<Record<string, unknown>>, name: string, key: string): number {
+  const g = groups.find((x) => String(x.name || '') === name)
+  if (!g) return 0
+  const keys = Array.isArray(g.keys) ? (g.keys as unknown[]).map(String) : []
+  const totals = Array.isArray(g.totals) ? (g.totals as unknown[]) : []
+  return numStat(totals[keys.indexOf(key)]) || 0
+}
+
+function teamStat(boxTeams: Array<Record<string, unknown>>, abbrev: string, name: string): number | null {
+  const row = boxTeams.find((t) => {
+    const team = (t.team && typeof t.team === 'object') ? t.team as Record<string, unknown> : {}
+    return normTeam(String(team.abbreviation || '')) === abbrev
+  })
+  const stats = Array.isArray(row?.statistics) ? row!.statistics as Array<Record<string, unknown>> : []
+  const hit = stats.find((s) => String(s.name || '') === name)
+  return hit ? numStat(String(hit.displayValue ?? hit.value ?? '').split('-')[0]) : null
+}
+
+/**
+ * Team D/ST line in the same keys the scoring map reads: points / yards allowed from the opponent, sacks /
+ * INT / return TDs from this team's player groups, fumble recoveries from the opponent's fumbles lost,
+ * safeties from scoring plays. Points-allowed tiers are derived in the app from `pts_allow`.
+ */
+function defenseLine(
+  summary: Record<string, unknown>,
+  playerTeams: Array<Record<string, unknown>>,
+  abbrev: string,
+  opp: string,
+): FantasyLiveLine {
+  const box = (summary.boxscore && typeof summary.boxscore === 'object') ? summary.boxscore as Record<string, unknown> : {}
+  const boxTeams = Array.isArray(box.teams) ? box.teams as Array<Record<string, unknown>> : []
+  const mine = playerTeams.find((t) => {
+    const team = (t.team && typeof t.team === 'object') ? t.team as Record<string, unknown> : {}
+    return normTeam(String(team.abbreviation || '')) === abbrev
+  })
+  const groups = Array.isArray(mine?.statistics) ? mine!.statistics as Array<Record<string, unknown>> : []
+  const header = (summary.header && typeof summary.header === 'object') ? summary.header as Record<string, unknown> : {}
+  const comp = (header.competitions as Array<Record<string, unknown>> | undefined)?.[0]
+  const sides = Array.isArray(comp?.competitors) ? comp!.competitors as Array<Record<string, unknown>> : []
+  const oppSide = sides.find((c) => {
+    const team = (c.team && typeof c.team === 'object') ? c.team as Record<string, unknown> : {}
+    return normTeam(String(team.abbreviation || '')) === opp
+  })
+  let safeties = 0
+  for (const sp of Array.isArray(summary.scoringPlays) ? summary.scoringPlays as Array<Record<string, unknown>> : []) {
+    const type = (sp.type && typeof sp.type === 'object') ? String((sp.type as Record<string, unknown>).text || '') : ''
+    const team = (sp.team && typeof sp.team === 'object') ? sp.team as Record<string, unknown> : {}
+    if (/safety/i.test(type) && normTeam(String(team.abbreviation || '')) === abbrev) safeties += 1
+  }
+  const pickSix = groupTotal(groups, 'interceptions', 'interceptionTouchdowns')
+  const defTd = groupTotal(groups, 'defensive', 'defensiveTouchdowns')
+  const line: FantasyLiveLine = {
+    pts_allow: numStat(oppSide?.score) ?? 0,
+    sack: groupTotal(groups, 'defensive', 'sacks'),
+    int: groupTotal(groups, 'interceptions', 'interceptions'),
+    fum_rec: teamStat(boxTeams, opp, 'fumblesLost') ?? 0,
+    pass_int_td: pickSix,
+    def_fum_td: Math.max(0, defTd - pickSix),
+    ret_td: groupTotal(groups, 'kickReturns', 'kickReturnTouchdowns') + groupTotal(groups, 'puntReturns', 'puntReturnTouchdowns'),
+    safe: safeties,
+  }
+  const yards = teamStat(boxTeams, opp, 'totalYards')
+  if (yards != null) line.yds_allow = yards
+  return line
+}
+
 function remember(
   map: Map<string, FantasyLiveHit>,
   name: string,
@@ -371,6 +437,16 @@ async function loadLiveMap(
         const team = (t.team && typeof t.team === 'object') ? t.team as Record<string, unknown> : {}
         const abbrev = normTeam(String(team.abbreviation || ''))
         const groups = Array.isArray(t.statistics) ? t.statistics as Array<Record<string, unknown>> : []
+        if (sport === 'nfl' && abbrev) {
+          const opp = abbrev === game.pack.home.abbrev ? game.pack.away.abbrev : game.pack.home.abbrev
+          map.set(`def|${abbrev}`, {
+            line: defenseLine(summary, teams, abbrev, opp),
+            game_status: game.pack.status === 'pre' ? 'in_progress' : game.pack.status,
+            kickoff: game.pack.kickoff,
+            opponent: opp || null,
+            home: abbrev === game.pack.home.abbrev,
+          })
+        }
         const seenAth = new Set<string>()
         for (const g of groups) {
           const athletes = Array.isArray(g.athletes) ? g.athletes as Array<Record<string, unknown>> : []
@@ -413,6 +489,12 @@ export function lookupLive(
   if (!key) return null
   const t = normTeam(team)
   return (t && map.get(`${key}|${t}`)) || map.get(key) || null
+}
+
+/** Team D/ST live line (keyed by team abbreviation, e.g. HOU). */
+export function lookupLiveDefense(map: Map<string, FantasyLiveHit>, team: string | null | undefined): FantasyLiveHit | null {
+  const t = normTeam(team)
+  return t ? map.get(`def|${t}`) || null : null
 }
 
 export async function loadFantasyLiveMap(

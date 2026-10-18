@@ -328,7 +328,7 @@ function gameStarted(card) {
 /** Our box × this league's rules, else the host/Sleeper number once the game has started. */
 function pointsOf(card, scoring, sport) {
   if (!card || !gameStarted(card)) return null
-  const scored = scoreLine(card.line, scoring, sport)
+  const scored = scoreLine(card.line, scoring, sport, card.pos || null)
   if (scored != null) return { pts: scored, fromLine: true }
   const w = Number(card.week_pts)
   if (Number.isFinite(w)) return { pts: w, fromLine: false }

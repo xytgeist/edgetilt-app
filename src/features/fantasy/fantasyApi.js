@@ -227,6 +227,16 @@ function loosePlayerName(value) {
 }
 
 /** ESPN/CBS names keep "Jr." Sleeper's row often does not, so the roster id is blank and the photo never joins. */
+const DEF_TEAM_ALIAS = { WSH: 'WAS', JAC: 'JAX' }
+
+/** Sleeper keys team defenses by abbreviation (HOU); host D/ST rows ("Texans D/ST") never name-match. */
+function defenseSleeperId(row) {
+  const pos = String(row?.position || '').toUpperCase().replace(/[^A-Z]/g, '')
+  if (pos !== 'DEF' && pos !== 'DST' && pos !== 'D') return ''
+  const team = String(row?.nfl_team || '').toUpperCase().replace(/[^A-Z]/g, '')
+  return team ? DEF_TEAM_ALIAS[team] || team : ''
+}
+
 async function attachMissingSleeperIds(supabase, rows) {
   const missing = (rows || []).some((row) => !row?.sleeper_id && loosePlayerName(row?.player_name))
   if (!missing) return rows || []
@@ -244,6 +254,8 @@ async function attachMissingSleeperIds(supabase, rows) {
   }
   return (rows || []).map((row) => {
     if (row?.sleeper_id) return row
+    const def = defenseSleeperId(row)
+    if (def) return { ...row, sleeper_id: def }
     const hits = index.get(loosePlayerName(row?.player_name)) || []
     if (!hits.length) return row
     const pos = String(row.position || '').toUpperCase()

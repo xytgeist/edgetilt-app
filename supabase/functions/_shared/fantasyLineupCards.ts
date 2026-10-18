@@ -8,7 +8,7 @@
  * `price` is the yes ask and `no` is the no ask. The home screen picks the main line by position.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { loadFantasyLiveMap, lookupLive } from './fantasyLiveLines.ts'
+import { loadFantasyLiveMap, lookupLive, lookupLiveDefense } from './fantasyLiveLines.ts'
 import { kalshiMarketUrls } from './loungeNflGameFantasy.ts'
 
 const KALSHI_BASE = 'https://external-api.kalshi.com/trade-api/v2'
@@ -39,6 +39,8 @@ const SERIES_STAT: Record<string, string> = {
 
 export type LineupCard = {
   sleeper_id: string
+  /** QB / RB / WR / TE / K / DEF … the app scores D/ST and K with ESPN per-slot overrides. */
+  pos: string | null
   opponent: string | null
   home: boolean | null
   bye: boolean
@@ -493,6 +495,7 @@ export async function buildFantasyLineupCards(
     const props = game && name ? propsFor(board, name, game.away, game.home) : []
     cards[id] = {
       sleeper_id: id,
+      pos: pos || null,
       opponent,
       home,
       bye,
@@ -522,6 +525,7 @@ export async function buildFantasyLineupCards(
 function emptyCard(id: string): LineupCard {
   return {
     sleeper_id: id,
+    pos: null,
     opponent: null,
     home: null,
     bye: false,
@@ -556,7 +560,7 @@ async function mergeLiveLines(
     const id = String(raw?.sleeper_id || '').trim()
     const card = id ? cards[id] : null
     if (!card) continue
-    const hit = lookupLive(live, String(raw.name || ''), raw.team)
+    const hit = card.pos === 'DEF' ? lookupLiveDefense(live, raw.team || id) : lookupLive(live, String(raw.name || ''), raw.team)
     if (!hit) continue
     if (hit.line) card.line = hit.line
     if (hit.kickoff) card.kickoff = hit.kickoff

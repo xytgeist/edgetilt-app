@@ -11756,7 +11756,7 @@ html.light [data-play-logbook-ledger-settled] .text-zinc-300 {
 
 /* Fantasy Connect home (light mode) */
 html.light [data-fantasy-home] {
-  background-color: #fafafa !important;
+  background-color: #ffffff !important;
   color: #18181b !important;
 }
 /* Loading skeleton blocks with a light sweep (fantasy home, game hub panes). */

@@ -177,6 +177,10 @@ Projection source v1: provider projections where available (e.g. Sleeper) + Edge
 - Blend ROS value + upcoming schedule / SOS
 - Optional: drop candidates from my bench
 
+### B2b … Waiver Sniper (shipped 2026-10-18)
+
+Waivers → Sniper: **Snipe & flip** (a rival lost a starter to out / IR / doubtful, claim the best free fill-in, then offer him alone or with one of your surplus players for one of theirs that helps your lineup, with a composed pitch), **Boom picks** (Kalshi TD / yardage ladders, next man up, matchup), **Handcuffs** (yours + block a rival). Next: sync each host's waiver order / FAAB and process time so snipes say whether you can land the claim, and show the snipe window from week-end until waivers clear.
+
 ### B3 … Trade Analyzer (Finder + Offer Review)
 
 One module, two doors:

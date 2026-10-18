@@ -6,7 +6,7 @@ import { leagueLineupSlots, optimizeLineup } from './fantasyStartSit.js'
 import { rankWaivers } from './fantasyWaivers.js'
 import { loadLeagueValues, loadSniper, loadWaivers } from './fantasyApi.js'
 import { rankBoom, rankHandcuffs } from './fantasySniper.js'
-import { composeOfferMessage, findTrades } from './fantasyTrades.js'
+import { composeFlipMessage, composeOfferMessage, findFlips, findTrades } from './fantasyTrades.js'
 import { openExternalUrl, shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
 import { sportsBetPropTapPayload, useSportsBetOddsActions } from '../sports-bet-tracker/sportsBetLogContext.jsx'
@@ -980,6 +980,61 @@ function WaiverAvatar({ url, pos, team }) {
   )
 }
 
+function FlipCard({ flip, myTeamName, host }) {
+  const [open, setOpen] = useState(false)
+  const status = flip.lost.h.injury === 'long' ? 'IR' : flip.lost.h.injury === 'doubtful' ? 'doubtful' : 'out'
+  return (
+    <li className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
+      <div className="flex items-center gap-2.5">
+        <WaiverAvatar url={flip.pickup.entry.headshot_url} pos={flip.pickup.pos} team={flip.pickup.team} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-1.5">
+            <span className="fantasy-sit-in shrink-0 text-[10px] font-bold uppercase">Pick up</span>
+            <span className="truncate text-[12px] font-bold text-zinc-100">{shortName(flip.pickup.name, flip.pickup.pos)}</span>
+            <span className="shrink-0 text-[10px] text-zinc-500">
+              {flip.pickup.pos}
+              {flip.pickup.team ? ` · ${flip.pickup.team}` : ''}
+            </span>
+          </div>
+          <div className="line-clamp-2 text-[10px] leading-snug text-zinc-400">
+            {flip.team.team_name} lost {flip.lost.name} ({status}); {flip.pickup.name.split(' ').slice(-1)[0]} fills it (+{flip.fillGain.toFixed(1)}/wk for them)
+          </div>
+        </div>
+      </div>
+      <div className="mt-1.5 rounded-lg border border-zinc-800 px-2 py-1.5">
+        <div className="mb-1 text-[9px] font-bold uppercase tracking-wide text-zinc-500">Then offer {flip.team.team_name}</div>
+        <div className="grid grid-cols-2 gap-2">
+          <TradeSide label="You give" players={flip.give} />
+          <TradeSide label="You get" players={flip.get} />
+        </div>
+      </div>
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold tabular-nums">
+          <span className="fantasy-sit-in">+{flip.myGain.toFixed(1)}/wk you</span>
+          <span className="text-zinc-500">
+            {' · '}
+            {flip.theirGain >= 0 ? '+' : ''}
+            {flip.theirGain.toFixed(1)} them
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="rounded-full border border-zinc-700 px-2.5 py-1 text-[11px] font-semibold text-zinc-200"
+        >
+          {open ? 'Close' : 'Compose offer'}
+        </button>
+      </div>
+      {open ? (
+        <>
+          <ComposeOffer offer={flip} myTeamName={myTeamName} initialText={composeFlipMessage(flip, myTeamName)} />
+          <p className="mt-1 text-[10px] text-zinc-500">Claim {flip.pickup.name} on {host} first (you need an open roster spot), then send it.</p>
+        </>
+      ) : null}
+    </li>
+  )
+}
+
 function SniperView({ supabaseClient, detail, sport }) {
   const leagueId = detail?.league?.id || null
   const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
@@ -999,6 +1054,13 @@ function SniperView({ supabaseClient, detail, sport }) {
   const cuffs = useMemo(() => rankHandcuffs({ sniper: state.data?.sniper, scoring, sport }), [state.data, scoring, sport])
   const week = state.data?.sniper?.week
   const anyProps = (state.data?.sniper?.boom || []).some((b) => b.props?.length)
+  const mineTeam = (detail?.teams || []).find((t) => t.is_mine) || null
+  const flips = useMemo(() => {
+    if (!state.data?.league_players?.length || !mineTeam) return []
+    const { slots } = leagueLineupSlots(detail?.league, detail?.rostersByTeam?.[mineTeam.id] || [])
+    return findFlips({ values: state.data, pool: state.data, detail, scoring, slots, sport })
+  }, [state.data, detail, mineTeam, scoring, sport])
+  const host = providerLabel(detail?.league?.provider)
 
   if (state.loading) {
     return (
@@ -1033,6 +1095,19 @@ function SniperView({ supabaseClient, detail, sport }) {
 
   return (
     <div className="mt-2 space-y-3">
+      {flips.length ? (
+        <div>
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Snipe &amp; flip</span>
+            <span className="text-[10px] text-zinc-500">Before waivers run</span>
+          </div>
+          <ul className="space-y-1.5">
+            {flips.map((f) => (
+              <FlipCard key={`${f.team.id}-${f.pickup.id}`} flip={f} myTeamName={mineTeam?.team_name || ''} host={host} />
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <div>
         <div className="mb-1 flex items-baseline justify-between gap-2">
           <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Boom picks{week ? ` · wk ${week}` : ''}</span>
@@ -1272,8 +1347,8 @@ function TradeSide({ label, players }) {
   )
 }
 
-function ComposeOffer({ offer, myTeamName }) {
-  const [text, setText] = useState(() => composeOfferMessage(offer, myTeamName))
+function ComposeOffer({ offer, myTeamName, initialText }) {
+  const [text, setText] = useState(() => initialText ?? composeOfferMessage(offer, myTeamName))
   const [note, setNote] = useState('')
   const flash = (msg) => {
     setNote(msg)

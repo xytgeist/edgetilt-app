@@ -120,7 +120,7 @@ export async function buildFantasyWaivers(
   leagueId: string,
   opts: { mode?: string } = {},
 ): Promise<Record<string, unknown>> {
-  const withLeague = opts.mode === 'trades'
+  const withLeague = opts.mode === 'trades' || opts.mode === 'sniper'
   const withSniper = opts.mode === 'sniper'
   const { data: league, error: lgErr } = await admin
     .from('fantasy_leagues')

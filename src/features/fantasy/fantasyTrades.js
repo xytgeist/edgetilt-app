@@ -17,7 +17,7 @@ function teamPlayers(rows, byId, scoring, sport) {
     .map((row) => {
       const id = rowId(row)
       const entry = byId.get(id) || { position: row.position, weeks: [] }
-      const h = horizonValue(entry, scoring, row.injury_status, sport)
+      const h = horizonValue(entry, scoring, row.injury_status ?? entry.injury_status, sport)
       return {
         id,
         pos: fantasyPosition(row.position),
@@ -150,4 +150,122 @@ export function composeOfferMessage(offer, myTeamName) {
     'Open to tweaks if you want to counter.',
   ]
   return lines.join('\n')
+}
+
+function isHurt(p) {
+  return p.h.injury === 'out' || p.h.injury === 'long' || p.h.injury === 'doubtful'
+}
+
+/**
+ * Snipe & flip: a rival lost a starter (out / IR / doubtful) and the best free player at that position would
+ * fill the hole. Claim him, then offer him (alone or with one of your surplus players) for one of theirs that
+ * improves your lineup. Same acceptance band as the trade finder.
+ */
+export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' }) {
+  const byId = new Map((values?.league_players || []).map((p) => [String(p.sleeper_id), p]))
+  const teams = detail?.teams || []
+  const mine = teams.find((t) => t.is_mine)
+  if (!mine || !slots?.length) return []
+  const total = (list) => bestSeats(list, slots).total
+  const myPlayers = teamPlayers(detail.rostersByTeam?.[mine.id], byId, scoring, sport)
+  const mySeats = bestSeats(myPlayers, slots)
+  const myBase = mySeats.total
+  const surplus = myPlayers
+    .filter((p) => !mySeats.seated.has(p.id) && p.pos !== 'K' && p.pos !== 'DEF' && p.keep > 0 && !isHurt(p))
+    .sort((a, b) => b.keep - a.keep)
+    .slice(0, 6)
+
+  const free = (pool?.players || [])
+    .map((entry) => {
+      const h = horizonValue(entry, scoring, entry.injury_status, sport)
+      return {
+        id: String(entry.sleeper_id),
+        pos: fantasyPosition(entry.position),
+        value: h.avg,
+        keep: h.known ? Math.max(h.avg, h.healthy) : h.avg,
+        h,
+        row: { position: entry.position, injury_status: entry.injury_status },
+        name: entry.name,
+        team: entry.team || '',
+        entry,
+      }
+    })
+    .filter((p) => p.pos !== 'K' && p.pos !== 'DEF' && p.value > 0 && !isHurt(p))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 60)
+
+  const flips = []
+  for (const team of teams) {
+    if (team.id === mine.id) continue
+    const theirs = teamPlayers(detail.rostersByTeam?.[team.id], byId, scoring, sport)
+    if (!theirs.length) continue
+    const theirBase = total(theirs)
+    const hurtStarters = theirs.filter(isHurt).sort((a, b) => b.keep - a.keep)
+    if (!hurtStarters.length) continue
+
+    let need = null
+    for (const x of free) {
+      const lost = hurtStarters.find((p) => p.pos === x.pos)
+      if (!lost) continue
+      const gain = total([...theirs, x]) - theirBase
+      if (gain < 1.5) continue
+      if (!need || gain > need.gain) need = { x, lost, gain }
+    }
+    if (!need) continue
+
+    const packages = [[need.x], ...surplus.filter((y) => y.id !== need.x.id).map((y) => [need.x, y])]
+    let best = null
+    for (const z of theirs.filter((p) => p.pos !== 'K' && p.pos !== 'DEF' && !isHurt(p))) {
+      for (const give of packages) {
+        const giveKeep = give.reduce((a, p) => a + p.keep, 0)
+        if (giveKeep < 0.88 * z.keep) continue
+        const mineIds = new Set(give.map((p) => p.id))
+        const newMine = [...myPlayers.filter((p) => !mineIds.has(p.id)), z]
+        const myAfter = bestSeats(newMine, slots)
+        const myGain = myAfter.total - myBase
+        if (myGain < 0.5) continue
+        const newTheirs = [...theirs.filter((p) => p.id !== z.id), ...give]
+        const theirAfter = bestSeats(newTheirs, slots)
+        const theirGain = theirAfter.total - theirBase
+        if (theirGain < -0.75) continue
+        const score = myGain + 0.3 * Math.min(theirGain, 4) - 0.2 * (give.length - 1)
+        if (!best || score > best.score) {
+          best = {
+            team,
+            pickup: need.x,
+            lost: need.lost,
+            fillGain: need.gain,
+            give,
+            get: [z],
+            myGain,
+            theirGain,
+            score,
+            fairness: theirGain >= 0.25 ? 'Win-win' : theirGain >= -0.25 ? 'Even' : 'Slight edge you',
+            forYou: `${z.name} starts at ${slotLabel(seatOf(myAfter.seats, z.id) || z.pos)} (+${myGain.toFixed(1)}/wk)`,
+            forThem: `${need.x.name} steps in for ${need.lost.name}${give.length > 1 ? `, plus ${give.slice(1).map((p) => p.name).join(' and ')}` : ''}`,
+          }
+        }
+      }
+    }
+    if (best) flips.push(best)
+  }
+  flips.sort((a, b) => b.score - a.score)
+  return flips.slice(0, 4)
+}
+
+/** The flip pitch, written as if the pickup already cleared (send it after your claim goes through). */
+export function composeFlipMessage(flip, myTeamName) {
+  if (!flip) return ''
+  const them = flip.team?.team_name || 'there'
+  const status = flip.lost.h.injury === 'long' ? 'on IR' : flip.lost.h.injury === 'doubtful' ? 'banged up' : 'out'
+  return [
+    `Hey ${them}, saw ${flip.lost.name} is ${status}. ${myTeamName || 'I'} can help:`,
+    '',
+    `You get: ${flip.give.map(playerLine).join(' + ')}`,
+    `I get: ${flip.get.map(playerLine).join(' + ')}`,
+    '',
+    `${flip.pickup.name} can step right into ${flip.lost.name}'s spot${flip.theirGain >= 0.25 ? `, about +${flip.theirGain.toFixed(1)} projected pts a week for your lineup` : ''}.`,
+    '',
+    'Open to tweaks if you want to counter.',
+  ].join('\n')
 }

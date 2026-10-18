@@ -6,6 +6,7 @@
  *   { event_id, away_abbrev, home_abbrev, away_name?, home_name?, commence_time? }
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { withStoredHeadshots } from '../_shared/playerHeadshotStore.ts'
 import { userIdFromJwt } from '../_shared/userJwt.ts'
 import { buildCfbGamePlayers } from '../_shared/loungeCfbGamePlayers.ts'
 
@@ -81,7 +82,7 @@ Deno.serve(async (req) => {
         homeName: String(body?.home_name || '').trim(),
         commenceIso: String(body?.commence_time || '').trim() || null,
       }))
-    return json(200, payload as unknown as Record<string, unknown>)
+    return json(200, await withStoredHeadshots(admin, payload as unknown as Record<string, unknown>))
   } catch (err) {
     return json(502, { error: err instanceof Error ? err.message : 'CFB roster payload failed.' })
   }

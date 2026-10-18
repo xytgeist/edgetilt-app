@@ -4,6 +4,7 @@
  * Hub detail: plays, player stats, multi-book Odds API lines.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { withStoredHeadshots } from '../_shared/playerHeadshotStore.ts'
 import { cachedLoungeSportsScoreboard, fetchLoungeSportsGameDetail } from '../_shared/loungeSportsScoreboard.ts'
 import { loadPastedBettingSplitsForSlate } from '../_shared/loungeBotBettingSplits.ts'
 import { sharedCached } from '../_shared/edgeSharedCache.ts'
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
     const board = await cachedLoungeSportsScoreboard(admin, BOARD_TTL_MS)
     if (!eventId) {
       const games = scope === 'active' ? board.games.filter(isActiveBoardGame) : board.games
-      return json(200, { ok: true, ...board, games, scope: scope === 'active' ? 'active' : 'full', fetched_at: new Date().toISOString() })
+      return json(200, await withStoredHeadshots(admin, { ok: true, ...board, games, scope: scope === 'active' ? 'active' : 'full', fetched_at: new Date().toISOString() }))
     }
     const game = board.games.find((g) => g.id === eventId)
     if (!game) return json(404, { error: 'Game not on the current slate.' })
@@ -122,9 +123,9 @@ Deno.serve(async (req) => {
     if (!payload) return json(200, { error: 'Scoreboard failed.' })
     if (omitRosters) {
       const { rosters: _rosters, ...rest } = payload
-      return json(200, rest)
+      return json(200, await withStoredHeadshots(admin, rest))
     }
-    return json(200, payload)
+    return json(200, await withStoredHeadshots(admin, payload))
   } catch (err) {
     return json(502, { error: err instanceof Error ? err.message : 'Scoreboard failed.' })
   }

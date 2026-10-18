@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Calculator, ChevronLeft, ClipboardList, Shirt } from 'lucide-react'
 import LoungeSportsHubSlateSkeleton from './LoungeSportsHubSlateSkeleton.jsx'
+import { headshotSources } from '../../utils/playerHeadshot.js'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import LoungeGameScorePill from './LoungeGameScorePill.jsx'
@@ -47,7 +48,7 @@ function preloadSlatePillAssets(games) {
         ? game.golf.leaders
         : []
       for (const row of leaders) {
-        if (row?.headshot) jobs.push(preloadImage(row.headshot))
+        if (row?.headshot) jobs.push(preloadImage(headshotSources(row.headshot, 192)[0] || row.headshot))
         if (row?.flag) jobs.push(preloadImage(row.flag))
       }
       continue

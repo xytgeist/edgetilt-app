@@ -9,6 +9,7 @@
  *   { mirror_nflcom_headshots: true, items: [{ sleeper_id, espn_id, source_url }] }
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { backfillNflHeadshotVariants, withStoredHeadshots } from '../_shared/playerHeadshotStore.ts'
 import { userIdFromJwt } from '../_shared/userJwt.ts'
 import { isKnownServiceRoleBearer } from '../_shared/adminAuth.ts'
 import { buildNflGameFantasy } from '../_shared/loungeNflGameFantasy.ts'
@@ -87,6 +88,18 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Ops: thumb + card webp for NFL masters already on R2 (no ESPN fetch)
+  if (body?.headshot_variants === true) {
+    if (!isKnownServiceRoleBearer(jwt, serviceKey, supabaseUrl)) {
+      return json(403, { error: 'Service role required for headshot variants.' })
+    }
+    try {
+      return json(200, await backfillNflHeadshotVariants(admin, { limit: Number(body.limit) || 30 }))
+    } catch (err) {
+      return json(502, { error: err instanceof Error ? err.message : 'Headshot variants failed.' })
+    }
+  }
+
   // Ops: NFL.com masters (nflverse URLs) → R2 v2
   if (body?.mirror_nflcom_headshots === true) {
     if (!isKnownServiceRoleBearer(jwt, serviceKey, supabaseUrl)) {
@@ -117,7 +130,7 @@ Deno.serve(async (req) => {
   try {
     const payload = await memoFantasy(`${eventId}:${awayAbbrev}:${homeAbbrev}`, () =>
       buildNflGameFantasy(admin, { eventId, awayAbbrev, homeAbbrev }))
-    return json(200, payload)
+    return json(200, await withStoredHeadshots(admin, payload))
   } catch (err) {
     return json(502, { error: err instanceof Error ? err.message : 'Fantasy payload failed.' })
   }

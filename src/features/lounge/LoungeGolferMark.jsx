@@ -1,21 +1,20 @@
-import { useState } from 'react'
 import { golferInitials } from './loungeGolfFormat.js'
+import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 
 /**
  * Headshot + country flag for golf cards, pills, and the tournament board.
  */
 export default function LoungeGolferMark({ player, compact = false }) {
-  const src = String(player?.headshot || '').trim()
+  const shot = useHeadshotSrc(player?.headshot, 192)
   const flag = String(player?.flag || '').trim()
   const country = String(player?.country || '').trim()
   const letter = golferInitials(player?.name || player?.short_name)
-  const [failed, setFailed] = useState(false)
 
   return (
     <span data-lounge-golfer-mark={compact ? 'compact' : 'card'}>
-      {src && !failed ? (
+      {!shot.failed ? (
         <span data-lounge-golf-card-dot>
-          <img src={src} alt="" decoding="async" onError={() => setFailed(true)} />
+          <img src={shot.src} alt="" decoding="async" onError={shot.onError} />
         </span>
       ) : (
         <span data-lounge-golf-card-dot>{letter}</span>

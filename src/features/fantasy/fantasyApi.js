@@ -300,7 +300,7 @@ export async function loadLeagueDetail(supabase, leagueId) {
   const { data: teams, error: tErr } = await supabase
     .from('fantasy_teams')
     .select(
-      'id, owner_name, team_name, is_mine, wins, losses, ties, points_for, points_against, avatar_url',
+      'id, owner_name, team_name, is_mine, wins, losses, ties, points_for, points_against, avatar_url, metadata',
     )
     .eq('league_id', id)
     .order('wins', { ascending: false })

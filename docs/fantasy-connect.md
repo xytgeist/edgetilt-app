@@ -117,3 +117,5 @@ Authorize URL requests `scope=fspt-r`.
 
 
 **Lineup slots (2026-10-18):** `fantasy_leagues.settings.lineup_slots` holds the starting slots (e.g. `['QB','RB','RB','WR','WR','TE','FLEX','DEF','K']`). ESPN sync builds it from `settings.rosterSettings.lineupSlotCounts` (mSettings); Sleeper already stores `roster_positions`. Yahoo / CBS fall back to inferring slots from the current starters in the app. Start/Sit reads it.
+
+**Waiver rules (2026-10-18):** `fantasy_leagues.settings.waiver` = `{ type: 'faab' | 'rolling' | 'reverse' | 'continuous', budget, days: [ET weekday 0=Sun], hour_et, waiver_hours }` and `fantasy_teams.metadata.waiver` = `{ rank, faab_left }`. ESPN from `settings.acquisitionSettings` + team `waiverRank` / `transactionCounter.acquisitionBudgetSpent`; Sleeper from league `waiver_type` / `waiver_budget` / `waiver_day_of_week` (counts from Monday) / `daily_waivers` + roster `waiver_position` / `waiver_budget_used`; Yahoo from settings `uses_faab` / `waiver_type` / `waiver_time` + team `waiver_priority` / `faab_balance`. Hour defaults to 3 AM ET when the host does not send it. CBS not wired. Sync once to fill.

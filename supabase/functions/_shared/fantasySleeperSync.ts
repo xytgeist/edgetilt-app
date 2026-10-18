@@ -112,6 +112,8 @@ type SleeperRoster = {
     ties?: number
     fpts?: number
     fpts_against?: number
+    waiver_position?: number
+    waiver_budget_used?: number
   }
 }
 
@@ -120,6 +122,24 @@ type SleeperMatchup = {
   matchup_id: number | null
   points?: number
   players_points?: Record<string, number>
+}
+
+/**
+ * Sleeper waiver rules in the Edge shape. `waiver_type` 2 is FAAB, 1 reverse standings, 0 rolling.
+ * `waiver_day_of_week` counts from Monday (2 = Wednesday, the default); Sleeper processes overnight.
+ */
+function sleeperWaiver(raw: unknown) {
+  const st = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const type = Number(st.waiver_type)
+  const daily = Number(st.daily_waivers) === 1
+  const dow = Number(st.waiver_day_of_week)
+  return {
+    type: type === 2 ? 'faab' : type === 1 ? 'reverse' : 'rolling',
+    budget: type === 2 ? Number(st.waiver_budget) || null : null,
+    days: daily ? [0, 1, 2, 3, 4, 5, 6] : [Number.isFinite(dow) ? (dow + 1) % 7 : 3],
+    hour_et: 3,
+    waiver_hours: Number(st.waiver_clear_days) ? Number(st.waiver_clear_days) * 24 : null,
+  }
 }
 
 function slotForPlayer(
@@ -234,6 +254,7 @@ export async function syncSleeperConnection(
             settings: {
               ...(lg.settings && typeof lg.settings === 'object' ? lg.settings : {}),
               roster_positions: Array.isArray(lg.roster_positions) ? lg.roster_positions : [],
+              waiver: sleeperWaiver(lg.settings),
             },
           },
           { onConflict: 'connection_id,external_league_id' },
@@ -291,7 +312,16 @@ export async function syncSleeperConnection(
               ties: Number(r.settings?.ties) || 0,
               points_for: r.settings?.fpts != null ? Number(r.settings.fpts) : null,
               points_against: r.settings?.fpts_against != null ? Number(r.settings.fpts_against) : null,
-              metadata: { sleeper_roster_id: r.roster_id, owner_id: ownerId || null },
+              metadata: {
+                sleeper_roster_id: r.roster_id,
+                owner_id: ownerId || null,
+                waiver: {
+                  rank: Number(r.settings?.waiver_position) || null,
+                  faab_left: sleeperWaiver(lg.settings).type === 'faab'
+                    ? (Number((lg.settings as Record<string, unknown> | undefined)?.waiver_budget) || 0) - (Number(r.settings?.waiver_budget_used) || 0)
+                    : null,
+                },
+              },
             },
             { onConflict: 'league_id,external_team_id' },
           )

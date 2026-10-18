@@ -370,6 +370,24 @@ export function yahooOAuthReturnModeFromState(state: string): YahooOAuthReturnMo
   return String(state || '').startsWith('n.') ? 'native' : 'web'
 }
 
+/** Yahoo waiver rules: `uses_faab`, `waiver_type` (R rolling / FR FAAB / others), `waiver_time` days. */
+function yahooWaiver(payload: unknown): Record<string, unknown> | null {
+  const pick = (key: string) => {
+    const hit = collectByKey(payload, key)[0]
+    return hit ? str((hit as Record<string, unknown>)[key]) : ''
+  }
+  const faab = pick('uses_faab') === '1'
+  const days = num(pick('waiver_time'))
+  if (!pick('waiver_type') && !pick('uses_faab')) return null
+  return {
+    type: faab ? 'faab' : pick('waiver_type').toUpperCase().startsWith('C') ? 'continuous' : 'rolling',
+    budget: faab ? 100 : null,
+    days: [3],
+    hour_et: 3,
+    waiver_hours: days ? days * 24 : null,
+  }
+}
+
 export async function createYahooOAuthStart(
   admin: SupabaseClient,
   edgeUserId: string,
@@ -557,9 +575,11 @@ export async function syncYahooConnection(
       const leagueSeason = num(lg.season) || season
       const leagueName = str(lg.name) || 'Yahoo League'
       let scoring: Record<string, number> = {}
+      let waiver: Record<string, unknown> | null = null
       try {
         const settingsPayload = await yahooGet(access, `/league/${encodeURIComponent(leagueKey)}/settings`)
         scoring = yahooScoringFromSettings(settingsPayload)
+        waiver = yahooWaiver(settingsPayload)
       } catch {
         scoring = {}
       }
@@ -580,6 +600,7 @@ export async function syncYahooConnection(
               current_week: week,
               num_teams: num(lg.num_teams),
               scoring_type: str(lg.scoring_type),
+              ...(waiver ? { waiver } : {}),
             },
             updated_at: new Date().toISOString(),
           },
@@ -636,7 +657,13 @@ export async function syncYahooConnection(
               ties: num(outcome.ties) || 0,
               points_for: num(standings.points_for),
               points_against: num(standings.points_against),
-              metadata: { yahoo_team_key: teamKey },
+              metadata: {
+                yahoo_team_key: teamKey,
+                waiver: {
+                  rank: num(t.waiver_priority) || null,
+                  faab_left: t.faab_balance != null && str(t.faab_balance) !== '' ? num(t.faab_balance) : null,
+                },
+              },
               updated_at: new Date().toISOString(),
             },
             { onConflict: 'league_id,external_team_id' },

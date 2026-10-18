@@ -231,6 +231,36 @@ function num(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+const ESPN_DAY: Record<string, number> = { SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6 }
+
+/** League waiver rules in the Edge shape: type, FAAB budget, and when claims process (ET day + hour). */
+function espnWaiver(settings: Record<string, unknown>) {
+  const acq = asRecord(settings.acquisitionSettings) || {}
+  const faab = acq.isUsingAcquisitionBudget === true
+  const days = (Array.isArray(acq.waiverProcessDays) ? acq.waiverProcessDays : [])
+    .map((d) => ESPN_DAY[String(d).toUpperCase()])
+    .filter((d) => d != null)
+  const hour = Number(acq.waiverProcessHour)
+  return {
+    type: faab ? 'faab' : String(acq.acquisitionType || '').toUpperCase().includes('CONTINUOUS') ? 'continuous' : 'rolling',
+    budget: faab ? Number(acq.acquisitionBudget) || null : null,
+    days,
+    hour_et: Number.isFinite(hour) ? hour : null,
+    waiver_hours: Number(acq.waiverHours) || null,
+  }
+}
+
+function espnTeamWaiver(team: Record<string, unknown>, settings: Record<string, unknown>) {
+  const acq = asRecord(settings.acquisitionSettings) || {}
+  const spent = Number(asRecord(team.transactionCounter)?.acquisitionBudgetSpent)
+  const budget = Number(acq.acquisitionBudget)
+  const rank = Number(team.waiverRank)
+  return {
+    rank: Number.isFinite(rank) && rank > 0 ? rank : null,
+    faab_left: acq.isUsingAcquisitionBudget === true && Number.isFinite(budget) ? budget - (Number.isFinite(spent) ? spent : 0) : null,
+  }
+}
+
 /** ESPN `lineupSlotId` → Edge slot name. Bench (20), IR (21), and IDP slots are not lineup slots we optimize. */
 const ESPN_LINEUP_SLOT: Record<number, string> = {
   0: 'QB',
@@ -412,7 +442,7 @@ async function syncEspnConnection(
             season,
             sport: 'nfl',
             scoring: asRecord(settings.scoringSettings) || {},
-            settings: { size: settings.size ?? null, lineup_slots: espnLineupSlots(settings) },
+            settings: { size: settings.size ?? null, lineup_slots: espnLineupSlots(settings), waiver: espnWaiver(settings) },
           },
           { onConflict: 'connection_id,external_league_id' },
         )
@@ -454,7 +484,7 @@ async function syncEspnConnection(
               ties: Number(record.ties) || 0,
               points_for: num(record.pointsFor),
               points_against: num(record.pointsAgainst),
-              metadata: { espn_team_id: team.id ?? null },
+              metadata: { espn_team_id: team.id ?? null, waiver: espnTeamWaiver(team, settings) },
             },
             { onConflict: 'league_id,external_team_id' },
           )

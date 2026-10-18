@@ -194,12 +194,29 @@ export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' 
     .sort((a, b) => b.value - a.value)
     .slice(0, 60)
 
+  const rosters = new Map()
+  for (const team of teams) {
+    if (team.id === mine.id) continue
+    const list = teamPlayers(detail.rostersByTeam?.[team.id], byId, scoring, sport)
+    if (list.length) rosters.set(team.id, { team, list, base: total(list) })
+  }
+  /** Every rival whose lineup this free player would lift by 1.5+/wk (they would put in a claim too). */
+  const wanting = (x) => {
+    const out = []
+    for (const { team, list, base } of rosters.values()) {
+      const gain = total([...list, x]) - base
+      if (gain >= 1.5) out.push({ team, gain })
+    }
+    return out.sort((a, b) => b.gain - a.gain)
+  }
+
   const flips = []
   for (const team of teams) {
     if (team.id === mine.id) continue
-    const theirs = teamPlayers(detail.rostersByTeam?.[team.id], byId, scoring, sport)
-    if (!theirs.length) continue
-    const theirBase = total(theirs)
+    const entry = rosters.get(team.id)
+    if (!entry) continue
+    const theirs = entry.list
+    const theirBase = entry.base
     const hurtStarters = theirs.filter(isHurt).sort((a, b) => b.keep - a.keep)
     if (!hurtStarters.length) continue
 
@@ -247,7 +264,7 @@ export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' 
         }
       }
     }
-    if (best) flips.push(best)
+    if (best) flips.push({ ...best, rivalsWanting: wanting(need.x) })
   }
   flips.sort((a, b) => b.score - a.score)
   return flips.slice(0, 4)

@@ -6,6 +6,7 @@ import { leagueLineupSlots, optimizeLineup } from './fantasyStartSit.js'
 import { rankWaivers } from './fantasyWaivers.js'
 import { loadLeagueValues, loadSniper, loadWaivers } from './fantasyApi.js'
 import { rankBoom, rankHandcuffs } from './fantasySniper.js'
+import { claimOdds, waiverWindow } from './fantasyWaiverWindow.js'
 import { composeFlipMessage, composeOfferMessage, findFlips, findTrades } from './fantasyTrades.js'
 import { openExternalUrl, shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
@@ -980,7 +981,7 @@ function WaiverAvatar({ url, pos, team }) {
   )
 }
 
-function FlipCard({ flip, myTeamName, host }) {
+function FlipCard({ flip, myTeamName, host, odds }) {
   const [open, setOpen] = useState(false)
   const status = flip.lost.h.injury === 'long' ? 'IR' : flip.lost.h.injury === 'doubtful' ? 'doubtful' : 'out'
   return (
@@ -999,6 +1000,9 @@ function FlipCard({ flip, myTeamName, host }) {
           <div className="line-clamp-2 text-[10px] leading-snug text-zinc-400">
             {flip.team.team_name} lost {flip.lost.name} ({status}); {flip.pickup.name.split(' ').slice(-1)[0]} fills it (+{flip.fillGain.toFixed(1)}/wk for them)
           </div>
+          {odds ? (
+            <div className={`mt-0.5 text-[10px] font-semibold leading-snug ${odds.likely ? 'fantasy-sit-in' : 'fantasy-sit-out'}`}>{odds.text}</div>
+          ) : null}
         </div>
       </div>
       <div className="mt-1.5 rounded-lg border border-zinc-800 px-2 py-1.5">
@@ -1061,6 +1065,8 @@ function SniperView({ supabaseClient, detail, sport }) {
     return findFlips({ values: state.data, pool: state.data, detail, scoring, slots, sport })
   }, [state.data, detail, mineTeam, scoring, sport])
   const host = providerLabel(detail?.league?.provider)
+  const waiverWin = waiverWindow(detail?.league)
+  const continuous = waiverWin.type === 'continuous'
 
   if (state.loading) {
     return (
@@ -1095,18 +1101,40 @@ function SniperView({ supabaseClient, detail, sport }) {
 
   return (
     <div className="mt-2 space-y-3">
-      {flips.length ? (
+      {flips.length && (waiverWin.open || continuous) ? (
         <div>
           <div className="mb-1 flex items-baseline justify-between gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Snipe &amp; flip</span>
-            <span className="text-[10px] text-zinc-500">Before waivers run</span>
+            <span className="text-[10px] text-zinc-500">
+              {continuous
+                ? 'Free agents, first come'
+                : `Waivers run ${waiverWin.label}${waiverWin.hoursLeft != null ? ` · ${Math.max(1, Math.round(waiverWin.hoursLeft))}h left` : ''}`}
+            </span>
           </div>
           <ul className="space-y-1.5">
             {flips.map((f) => (
-              <FlipCard key={`${f.team.id}-${f.pickup.id}`} flip={f} myTeamName={mineTeam?.team_name || ''} host={host} />
+              <FlipCard
+                key={`${f.team.id}-${f.pickup.id}`}
+                flip={f}
+                myTeamName={mineTeam?.team_name || ''}
+                host={host}
+                odds={claimOdds({
+                  league: detail?.league,
+                  teams: detail?.teams || [],
+                  myTeamId: mineTeam?.id,
+                  rivalsWanting: f.rivalsWanting || [],
+                })}
+              />
             ))}
           </ul>
+          {!waiverWin.known ? (
+            <p className="mt-1 text-[10px] text-zinc-500">Waiver time assumed Wed 3 AM ET; Sync to load this league&apos;s waiver order and schedule.</p>
+          ) : null}
         </div>
+      ) : flips.length ? (
+        <p className="text-[10px] text-zinc-500">
+          Snipe &amp; flip opens Sunday 4 PM ET once the week&apos;s games are in, and runs until waivers process ({waiverWin.label}).
+        </p>
       ) : null}
       <div>
         <div className="mb-1 flex items-baseline justify-between gap-2">

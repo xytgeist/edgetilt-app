@@ -11848,7 +11848,16 @@ html.light [data-fantasy-home] .bg-black\/50 {
   background-color: rgb(9 9 11 / 0.35);
 }
 html.light [data-fantasy-home] .fantasy-bench-row {
-  background-color: #f4f4f5 !important;
+  background-color: #ffffff !important;
+}
+html.light [data-fantasy-home] .fantasy-matchup-row {
+  box-shadow: var(--edge-light-list-card-shadow);
+}
+[data-fantasy-home] .fantasy-row-divider {
+  background-color: rgb(39 39 42);
+}
+html.light [data-fantasy-home] .fantasy-row-divider {
+  background-color: #e4e4e7;
 }
 html.light [data-fantasy-home] .fantasy-win-track {
   background-color: #e4e4e7 !important;

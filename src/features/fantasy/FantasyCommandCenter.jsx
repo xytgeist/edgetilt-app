@@ -630,8 +630,12 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
         return (
           <li
             key={rowKey}
-            className={`rounded-xl border border-zinc-800 bg-zinc-900/60 ${bench ? 'fantasy-bench-row' : ''}`}
+            className={`fantasy-matchup-row relative rounded-xl border border-zinc-800 bg-zinc-900/60 ${bench ? 'fantasy-bench-row' : ''}`}
           >
+            <span
+              aria-hidden
+              className="fantasy-row-divider pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2"
+            />
             <div
               role="button"
               tabIndex={0}
@@ -643,7 +647,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                   toggle(rowKey)
                 }
               }}
-              className="block w-full cursor-pointer px-2 py-2 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+              className="relative block w-full cursor-pointer px-2 py-2 touch-manipulation [-webkit-tap-highlight-color:transparent]"
             >
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
                 <VsHead row={pair.left} align="left" />
@@ -671,7 +675,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               ) : null}
             </div>
             {open ? (
-              <div className="grid grid-cols-2 gap-1.5 px-2 pb-2.5">
+              <div className="relative grid grid-cols-2 gap-1.5 px-2 pb-2.5">
                 <SidePanel row={pair.left} card={leftCard} />
                 <SidePanel row={pair.right} card={rightCard} />
               </div>

@@ -69,7 +69,7 @@ function TeamLogo({ team }) {
     <img
       src={url}
       alt=""
-      className="h-9 w-9 shrink-0 rounded-full bg-zinc-800 object-cover"
+      className="h-10 w-10 shrink-0 object-contain"
       onError={() => setFailed(true)}
     />
   )

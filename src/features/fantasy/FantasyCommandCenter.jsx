@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
@@ -414,6 +414,52 @@ function propStat(prop) {
   return ''
 }
 
+const MARKET_GROUP_ORDER = {
+  QB: ['pass_yds', 'rush_yds', 'td', 'rec_yds', 'rec'],
+  RB: ['rush_yds', 'rec_yds', 'rec', 'td', 'pass_yds'],
+  WR: ['rec_yds', 'rec', 'td', 'rush_yds', 'pass_yds'],
+  TE: ['rec_yds', 'rec', 'td', 'rush_yds', 'pass_yds'],
+}
+const MARKET_GROUP_LABEL = {
+  pass_yds: 'Pass yds',
+  rush_yds: 'Rush yds',
+  rec_yds: 'Rec yds',
+  rr_yds: 'Rush + rec yds',
+  rec: 'Receptions',
+  td: 'Touchdowns',
+}
+
+function marketStat(prop) {
+  const known = propStat(prop)
+  if (known) return known
+  const t = String(prop?.label || '').toLowerCase()
+  if (/\btd\b|touchdown/.test(t)) return 'td'
+  if (/\brec(eption)?s?\b/.test(t)) return 'rec'
+  return 'other'
+}
+
+/** Markets grouped by stat (position's main stat first), each ladder low strike to high. */
+function groupMarkets(props, position) {
+  const order = MARKET_GROUP_ORDER[fantasyPos(position)] || MARKET_GROUP_ORDER.WR
+  const by = new Map()
+  for (const prop of props || []) {
+    const key = marketStat(prop)
+    if (!by.has(key)) by.set(key, [])
+    by.get(key).push(prop)
+  }
+  const rank = (key) => {
+    const i = order.indexOf(key)
+    return i < 0 ? order.length + (key === 'other' ? 1 : 0) : i
+  }
+  return [...by.entries()]
+    .sort((a, b) => rank(a[0]) - rank(b[0]))
+    .map(([key, list]) => ({
+      key,
+      label: MARKET_GROUP_LABEL[key] || 'Other',
+      props: [...list].sort((a, b) => (propStrike(a.label) ?? 1e9) - (propStrike(b.label) ?? 1e9)),
+    }))
+}
+
 function pickMainProp(row, card) {
   const want = MAIN_STAT[fantasyPos(row?.position)]
   if (!want) return null
@@ -702,12 +748,23 @@ function SidePanel({ row, card }) {
         </div>
         {props.length ? (
           <div className="w-full min-w-full shrink-0 snap-start px-2 py-1.5">
-            <div className="text-[9px] font-bold uppercase tracking-wide text-zinc-500">Markets</div>
-            <div className="mt-1 space-y-1">
-              {props.map((prop) => (
-                <div key={prop.label} className="flex items-center justify-between gap-1.5">
-                  <span className="min-w-0 truncate text-[10px] leading-[14px] text-zinc-300">{shortPropLabel(prop.label)}</span>
-                  <YesNoPills prop={prop} row={row} card={card} />
+            <div className="space-y-1.5">
+              {groupMarkets(props, row.position).map((group) => (
+                <div key={group.key}>
+                  <div className="text-[9px] font-bold uppercase tracking-wide text-zinc-500">{group.label}</div>
+                  <div className="mt-0.5 space-y-1">
+                    {group.props.map((prop) => {
+                      const strike = propStrike(prop.label)
+                      return (
+                        <div key={prop.label} className="flex items-center justify-between gap-1.5">
+                          <span className="min-w-0 truncate text-[10px] font-semibold leading-[14px] tabular-nums text-zinc-300">
+                            {strike != null && group.key !== 'other' ? `${strike}+` : shortPropLabel(prop.label)}
+                          </span>
+                          <YesNoPills prop={prop} row={row} card={card} />
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
@@ -978,6 +1035,71 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
  * Home is the matchup cards, grouped by sport. A tap opens that league:
  * the matchup stays on top, the lineup sits under it, and the other games are a swipe.
  */
+/**
+ * Matchups as a snap carousel: the current card centered, neighbors peeking 20px on each side.
+ * Bleeds to the screen edge (-mx-4 matches the page gutter). `onSettle` fires once a swipe comes to rest.
+ */
+function MatchupCarousel({ pages, index, onSettle, renderCard }) {
+  const ref = useRef(null)
+  const settleRef = useRef(0)
+
+  const centerOn = (i, behavior) => {
+    const el = ref.current
+    const card = el?.children?.[i]
+    if (!el || !card) return
+    el.scrollTo({ left: card.offsetLeft - (el.clientWidth - card.offsetWidth) / 2, behavior })
+  }
+
+  useLayoutEffect(() => {
+    centerOn(index, 'auto')
+  }, [index, pages.length])
+
+  useEffect(() => () => window.clearTimeout(settleRef.current), [])
+
+  const nearest = () => {
+    const el = ref.current
+    if (!el) return index
+    const mid = el.scrollLeft + el.clientWidth / 2
+    let best = index
+    let dist = Infinity
+    Array.from(el.children).forEach((child, i) => {
+      const d = Math.abs(child.offsetLeft + child.offsetWidth / 2 - mid)
+      if (d < dist) {
+        dist = d
+        best = i
+      }
+    })
+    return best
+  }
+
+  const settle = () => {
+    window.clearTimeout(settleRef.current)
+    const i = nearest()
+    if (i !== index) onSettle(i)
+  }
+
+  return (
+    <div
+      ref={ref}
+      onScroll={() => {
+        window.clearTimeout(settleRef.current)
+        settleRef.current = window.setTimeout(settle, 140)
+      }}
+      className="relative -mx-4 -mt-3 mb-1 flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-7 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {pages.map((page, i) => (
+        <div
+          key={page.key}
+          className={`w-full shrink-0 snap-center snap-always transition-opacity duration-200 ${i === index ? '' : 'opacity-60'}`}
+          onClick={i === index ? undefined : () => centerOn(i, 'smooth')}
+        >
+          {renderCard(page)}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function FantasyCommandCenter({
   leagues,
   details,
@@ -992,7 +1114,6 @@ export default function FantasyCommandCenter({
   const [leagueId, setLeagueId] = useState(null)
   const [pageKey, setPageKey] = useState(null)
   const [tool, setTool] = useState('start')
-  const touchX = useRef(null)
   const activeTool = TOOLS.find((t) => t.id === tool) || TOOLS[0]
 
   const groups = useMemo(() => {
@@ -1026,12 +1147,6 @@ export default function FantasyCommandCenter({
     setLeagueId(id)
     setPageKey(key)
     void onSetPrimary?.(id)
-  }
-
-  const stepPage = (dir) => {
-    const next = Math.min(pages.length - 1, Math.max(0, safePage + dir))
-    const item = pages[next]
-    if (item) setPageKey(item.key)
   }
 
   return (
@@ -1125,54 +1240,25 @@ export default function FantasyCommandCenter({
           ) : null}
 
           {current ? (
-            <div
-              onTouchStart={(e) => {
-                touchX.current = e.changedTouches?.[0]?.clientX ?? null
+            <MatchupCarousel
+              pages={pages}
+              index={safePage}
+              onSettle={(i) => {
+                const item = pages[i]
+                if (item) setPageKey(item.key)
               }}
-              onTouchEnd={(e) => {
-                const start = touchX.current
-                const end = e.changedTouches?.[0]?.clientX
-                touchX.current = null
-                if (start == null || end == null || pages.length < 2) return
-                const dx = end - start
-                if (dx < -48) stepPage(1)
-                if (dx > 48) stepPage(-1)
-              }}
-            >
-              <MatchupCard
-                page={current}
-                teams={detail?.teams || []}
-                week={detail?.week}
-                provider={selected?.provider || detail?.league?.provider}
-                cards={cards}
-                scoring={detail?.league?.scoring}
-                sport={selected?.sport || detail?.league?.sport}
-              />
-            </div>
-          ) : null}
-
-          {pages.length > 1 ? (
-            <div className="flex items-center justify-between gap-3">
-              <button
-                type="button"
-                disabled={safePage <= 0}
-                onClick={() => stepPage(-1)}
-                className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-30"
-              >
-                Prev
-              </button>
-              <div className="text-[12px] text-zinc-500">
-                {safePage + 1} / {pages.length}
-              </div>
-              <button
-                type="button"
-                disabled={safePage >= pages.length - 1}
-                onClick={() => stepPage(1)}
-                className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-30"
-              >
-                Next
-              </button>
-            </div>
+              renderCard={(page) => (
+                <MatchupCard
+                  page={page}
+                  teams={detail?.teams || []}
+                  week={detail?.week}
+                  provider={selected?.provider || detail?.league?.provider}
+                  cards={cards}
+                  scoring={detail?.league?.scoring}
+                  sport={selected?.sport || detail?.league?.sport}
+                />
+              )}
+            />
           ) : null}
 
           <div className="flex gap-2 overflow-x-auto pb-1">

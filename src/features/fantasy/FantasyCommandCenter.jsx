@@ -666,6 +666,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                   </span>
                   {slotPillPosition(pair.label) ? (
                     <span
+                      data-pos-pill={slotPillPosition(pair.label)}
                       className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${positionPillClass(slotPillPosition(pair.label))}`}
                     >
                       {pair.label}

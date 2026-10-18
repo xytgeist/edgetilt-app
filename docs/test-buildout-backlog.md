@@ -4664,3 +4664,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - 2026-10-18 (1.4.1266): Fantasy matchup card team logos show bare (no circle crop or gray backing, `object-contain`, 40px). Letter fallback keeps its circle.
 - 2026-10-18 (1.4.1267): Fantasy matchup card split into a name row (each team gets half the width) and a score row with the site badge + week between the scores, so team names truncate much later.
 - 2026-10-18 (1.4.1268): Fantasy lineup name lane +4px each side so names sit a touch further from the bust heads.
+- 2026-10-18 (1.4.1269): Removed the fantasy tool explainer line under the Start/Sit / Waivers / Trades / Live / Fliers pills.

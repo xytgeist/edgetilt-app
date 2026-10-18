@@ -11,27 +11,22 @@ const TOOLS = [
   {
     id: 'start',
     label: 'Start/Sit',
-    body: 'The synced starters are what the host has in the lineup. A suggested swap needs the value engine, which is not computing yet.',
   },
   {
     id: 'waiver',
     label: 'Waivers',
-    body: 'Waiver rank is this league’s free agents, not a global top 50. That pool is not synced yet.',
   },
   {
     id: 'trade',
     label: 'Trades',
-    body: 'Trade finder and offer review need every roster’s need and surplus. Not computing yet.',
   },
   {
     id: 'live',
     label: 'Live',
-    body: 'Starter points follow this league’s scoring off the live box. Before tip, the row stays on the projection.',
   },
   {
     id: 'fliers',
     label: 'Fliers',
-    body: 'A flier is a small bet that pays when a starter busts or an opponent goes off. Nothing is suggested until that hedge exists.',
   },
 ]
 
@@ -1193,7 +1188,6 @@ export default function FantasyCommandCenter({
   const [leagueId, setLeagueId] = useState(null)
   const [pageKey, setPageKey] = useState(null)
   const [tool, setTool] = useState('start')
-  const activeTool = TOOLS.find((t) => t.id === tool) || TOOLS[0]
 
   const groups = useMemo(() => {
     const by = new Map()
@@ -1357,7 +1351,6 @@ export default function FantasyCommandCenter({
               )
             })}
           </div>
-          <p className="text-[13px] leading-snug text-zinc-400">{activeTool.body}</p>
 
           {current ? (
             <VsMatchup

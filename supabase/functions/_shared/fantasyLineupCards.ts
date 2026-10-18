@@ -63,7 +63,7 @@ export type LineupCard = {
   proj_line?: Record<string, number> | null
 }
 
-type GameRow = {
+export type GameRow = {
   week: number
   status: string
   home: string
@@ -92,7 +92,7 @@ type Board = {
 
 let boardCache: Board | null = null
 
-function normTeam(team: string | null | undefined): string {
+export function normTeam(team: string | null | undefined): string {
   const t = String(team || '').trim().toUpperCase().replace(/[^A-Z]/g, '')
   if (t === 'WSH') return 'WAS'
   if (t === 'JAC') return 'JAX'
@@ -104,7 +104,7 @@ function kalshiTeam(team: string): string {
   return t === 'JAX' ? 'JAC' : t
 }
 
-function fantasyPos(position: string | null | undefined): string {
+export function fantasyPos(position: string | null | undefined): string {
   const p = String(position || '').toUpperCase().replace(/[^A-Z]/g, '')
   if (p === 'FB' || p === 'HB') return 'RB'
   if (p === 'DST' || p === 'D' || p === 'DEF') return 'DEF'
@@ -132,7 +132,7 @@ function gradeFor(rank: number, of: number): 'A' | 'B' | 'C' | 'D' {
   return 'D'
 }
 
-async function fetchJson(url: string): Promise<unknown> {
+export async function fetchJson(url: string): Promise<unknown> {
   let last: Error | null = null
   for (let attempt = 0; attempt < 3; attempt++) {
     const res = await fetch(url, {
@@ -152,7 +152,7 @@ async function fetchJson(url: string): Promise<unknown> {
   throw last || new Error(`${url} → failed`)
 }
 
-function statMap(raw: unknown): Map<string, Record<string, unknown>> {
+export function statMap(raw: unknown): Map<string, Record<string, unknown>> {
   const out = new Map<string, Record<string, unknown>>()
   if (!raw || typeof raw !== 'object') return out
   for (const [id, row] of Object.entries(raw as Record<string, unknown>)) {
@@ -176,12 +176,12 @@ function projStatLine(stats: Record<string, unknown> | undefined): Record<string
   return Object.keys(out).length ? out : null
 }
 
-function ptsOf(stats: Record<string, unknown> | undefined): number | null {
+export function ptsOf(stats: Record<string, unknown> | undefined): number | null {
   if (!stats) return null
   return num(stats.pts_ppr ?? stats.pts_half_ppr ?? stats.pts_std)
 }
 
-async function loadGames(season: string): Promise<GameRow[]> {
+export async function loadGames(season: string): Promise<GameRow[]> {
   const raw = (await fetchJson(`https://api.sleeper.app/schedule/nfl/regular/${season}`)) as unknown[]
   if (!Array.isArray(raw)) return []
   const out: GameRow[] = []

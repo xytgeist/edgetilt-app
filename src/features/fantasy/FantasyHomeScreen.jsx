@@ -590,6 +590,7 @@ export default function FantasyHomeScreen({
         {signedIn && hasConnection ? (
           <SportsBetLogGameProvider game={FANTASY_BET_GAME} supabaseClient={supabaseClient}>
             <FantasyCommandCenter
+              supabaseClient={supabaseClient}
               leagues={snap.leagues}
               details={details}
               loadingDetail={loadingDetail}

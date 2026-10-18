@@ -211,6 +211,14 @@ export async function loadLineupCards(supabase, players, sport = 'nfl') {
   return result?.cards && typeof result.cards === 'object' ? result.cards : {}
 }
 
+/** Players not rostered in this league, with next-four-week projected lines, plus your roster's lines. */
+export async function loadWaivers(supabase, leagueId) {
+  const id = String(leagueId || '').trim()
+  if (!id) return null
+  const { data, error } = await supabase.functions.invoke('fantasy-waivers', { body: { league_id: id } })
+  return finishEdge(data, error, 'Could not load waivers.')
+}
+
 function loosePlayerName(value) {
   return String(value || '')
     .toLowerCase()

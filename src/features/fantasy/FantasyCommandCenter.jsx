@@ -3,6 +3,8 @@ import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { leagueLineupSlots, optimizeLineup } from './fantasyStartSit.js'
+import { rankWaivers } from './fantasyWaivers.js'
+import { loadWaivers } from './fantasyApi.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
 import { openExternalUrl } from '../../utils/edgeNative.js'
 import { sportsBetPropTapPayload, useSportsBetOddsActions } from '../sports-bet-tracker/sportsBetLogContext.jsx'
@@ -954,6 +956,136 @@ function StartSitPanel({ detail, cards, sport }) {
   )
 }
 
+const WAIVER_POS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+
+function WaiverAvatar({ url, pos, team }) {
+  const shot = useHeadshotSrc(pos === 'DEF' ? null : url, 160)
+  if (pos === 'DEF' && team) {
+    return <img src={`/sports/nfl/logos/${team}.png`} alt="" className="h-9 w-9 shrink-0 object-contain" loading="lazy" decoding="async" />
+  }
+  if (shot.failed) return <span className="h-9 w-9 shrink-0 rounded-full bg-zinc-800" aria-hidden />
+  return (
+    <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-zinc-800">
+      <img
+        src={shot.src}
+        alt=""
+        className="absolute inset-0 h-full w-full origin-[center_22%] scale-[1.42] object-cover object-[center_18%]"
+        loading="lazy"
+        decoding="async"
+        onError={shot.onError}
+      />
+    </span>
+  )
+}
+
+/** Waivers: best adds available in this league for your lineup, with a safe drop. Claims happen on the host. */
+function WaiversPanel({ supabaseClient, detail, sport }) {
+  const leagueId = detail?.league?.id || null
+  const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
+  const [pos, setPos] = useState('All')
+  useEffect(() => {
+    if (!supabaseClient || !leagueId) return undefined
+    let alive = true
+    loadWaivers(supabaseClient, leagueId)
+      .then((data) => alive && setLoaded({ id: leagueId, data, error: '' }))
+      .catch((err) => alive && setLoaded({ id: leagueId, data: null, error: err?.message || 'Could not load waivers.' }))
+    return () => {
+      alive = false
+    }
+  }, [supabaseClient, leagueId])
+  const state = loaded.id === leagueId ? { ...loaded, loading: false } : { id: leagueId, data: null, error: '', loading: true }
+
+  const mine = (detail?.teams || []).find((t) => t.is_mine) || null
+  const rosterRows = useMemo(() => (mine ? detail?.rostersByTeam?.[mine.id] || [] : []), [detail, mine])
+  const picks = useMemo(() => {
+    if (!state.data?.players?.length || !rosterRows.length) return []
+    const { slots } = leagueLineupSlots(detail?.league, rosterRows)
+    if (!slots.length) return []
+    return rankWaivers({ pool: state.data, rosterRows, scoring: detail?.league?.scoring, slots, sport })
+  }, [state.data, rosterRows, detail, sport])
+
+  const host = providerLabel(detail?.league?.provider)
+  const weeks = state.data?.weeks || []
+  const span = weeks.length ? `wk ${weeks[0]}${weeks.length > 1 ? `-${weeks[weeks.length - 1]}` : ''}` : ''
+  const shown = picks.filter((p) => pos === 'All' || p.cand.pos === pos).slice(0, 10)
+
+  return (
+    <div data-fantasy-waivers className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="text-[13px] font-bold text-zinc-100">Waiver targets</div>
+        <div className="text-[10px] text-zinc-500">Available in your league{span ? ` · ${span} avg` : ''}</div>
+      </div>
+      <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {WAIVER_POS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setPos(p)}
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+              pos === p ? 'bg-zinc-100 text-zinc-950' : 'border border-zinc-800 bg-zinc-900 text-zinc-300'
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+      {state.loading ? (
+        <div className="mt-2 space-y-1.5" data-edge-skeleton aria-label="Loading waivers">
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} className="edge-skel block h-12 rounded-xl" />
+          ))}
+        </div>
+      ) : state.error ? (
+        <p className="mt-2 text-[12px] text-rose-300">{state.error}</p>
+      ) : !shown.length ? (
+        <p className="mt-2 text-[12px] text-zinc-500">
+          {picks.length ? `No ${pos} upgrades available right now.` : 'No available player beats your current roster right now.'}
+        </p>
+      ) : (
+        <ul className="mt-2 space-y-1.5">
+          {shown.map((pick) => (
+            <li key={pick.cand.id} className="flex items-center gap-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
+              <WaiverAvatar url={pick.cand.entry.headshot_url} pos={pick.cand.pos} team={pick.cand.entry.team} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="truncate text-[12px] font-bold text-zinc-100">
+                    {shortName(pick.cand.name, pick.cand.entry.position)}
+                  </span>
+                  {injuryPill(pick.cand.entry.injury_status)}
+                  <span className="shrink-0 text-[10px] text-zinc-500">
+                    {pick.cand.pos}
+                    {pick.cand.entry.team ? ` · ${pick.cand.entry.team}` : ''}
+                  </span>
+                </div>
+                {pick.reasons[0] ? <div className="line-clamp-2 text-[10px] leading-snug text-zinc-400">{pick.reasons.join(' · ')}</div> : null}
+                {pick.drop ? (
+                  <div className="truncate text-[10px] text-zinc-500">
+                    Drop <span className="fantasy-sit-out font-semibold">{shortName(pick.drop.name, pick.drop.row?.position)}</span>{' '}
+                    ({pick.drop.value.toFixed(1)}/wk)
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-0.5">
+                <span className="text-[12px] font-bold tabular-nums text-zinc-100">{pick.cand.value.toFixed(1)}</span>
+                <span
+                  className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                    pick.starter ? 'fantasy-sit-gain' : 'fantasy-sit-ok'
+                  }`}
+                >
+                  {pick.starter ? `+${pick.gain.toFixed(1)}` : 'Depth'}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-2 text-[10px] text-zinc-500">
+        Not on any roster in this league. Waiver order and pending claims are not visible here; claim on {host}.
+      </p>
+    </div>
+  )
+}
+
 function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport }) {
   const starters = pairStarters(mine, opp)
   const bench = pairBench(mine, opp)
@@ -1252,6 +1384,7 @@ function MatchupCarousel({ pages, index, onSettle, renderCard }) {
  * the matchup stays on top, the lineup sits under it, and the other games are a swipe.
  */
 export default function FantasyCommandCenter({
+  supabaseClient,
   leagues,
   details,
   loadingDetail,
@@ -1430,6 +1563,9 @@ export default function FantasyCommandCenter({
           </div>
 
           {tool === 'start' && detail ? <StartSitPanel detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} /> : null}
+          {tool === 'waiver' && detail ? (
+            <WaiversPanel supabaseClient={supabaseClient} detail={detail} sport={selected?.sport || detail?.league?.sport} />
+          ) : null}
 
           {current ? (
             <VsMatchup

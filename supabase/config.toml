@@ -73,6 +73,9 @@ verify_jwt = false
 [functions.fantasy-lineup-cards]
 verify_jwt = false
 
+[functions.fantasy-waivers]
+verify_jwt = false
+
 [functions.fantasy-cbs-link]
 verify_jwt = false
 

@@ -11874,13 +11874,14 @@ html.light [data-fantasy-home] .fantasy-live-half {
 html.light [data-fantasy-home] .fantasy-live-pts {
   color: #15803d !important;
 }
-/* Light position pills: same tag shape as dark, light tint + deep text + matching ring */
-html.light [data-fantasy-home] [data-pos-pill='QB'] { background-color: #dbeafe !important; color: #1d4ed8 !important; --tw-ring-color: rgb(29 78 216 / 0.45) !important; }
-html.light [data-fantasy-home] [data-pos-pill='RB'] { background-color: #dcfce7 !important; color: #15803d !important; --tw-ring-color: rgb(21 128 61 / 0.45) !important; }
-html.light [data-fantasy-home] [data-pos-pill='WR'] { background-color: #ffedd5 !important; color: #c2410c !important; --tw-ring-color: rgb(194 65 12 / 0.45) !important; }
-html.light [data-fantasy-home] [data-pos-pill='TE'] { background-color: #fce7f3 !important; color: #be185d !important; --tw-ring-color: rgb(190 24 93 / 0.45) !important; }
-html.light [data-fantasy-home] [data-pos-pill='K'] { background-color: #fef9c3 !important; color: #a16207 !important; --tw-ring-color: rgb(161 98 7 / 0.45) !important; }
-html.light [data-fantasy-home] [data-pos-pill='DEF'] { background-color: #e0ecf8 !important; color: #1e4e7c !important; --tw-ring-color: rgb(30 78 124 / 0.45) !important; }
+/* Light position pills: solid position color, white text, no ring */
+html.light [data-fantasy-home] [data-pos-pill] { color: #ffffff !important; --tw-ring-color: transparent !important; }
+html.light [data-fantasy-home] [data-pos-pill='QB'] { background-color: #1d4ed8 !important; }
+html.light [data-fantasy-home] [data-pos-pill='RB'] { background-color: #15803d !important; }
+html.light [data-fantasy-home] [data-pos-pill='WR'] { background-color: #c2410c !important; }
+html.light [data-fantasy-home] [data-pos-pill='TE'] { background-color: #be185d !important; }
+html.light [data-fantasy-home] [data-pos-pill='K'] { background-color: #eab308 !important; color: #18181b !important; }
+html.light [data-fantasy-home] [data-pos-pill='DEF'] { background-color: #1e4e7c !important; }
 [data-fantasy-home] .fantasy-row-divider {
   background-color: rgb(39 39 42);
 }

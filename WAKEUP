@@ -32,7 +32,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**App Store (2026-10-18):** **1.4.97** (`20261018004742`) approved (expedited) and **Ready for Distribution**, auto-release. Next store version is **1.4.98**. Do not attach Cloud **242** / **243** (Test Fast). Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*. W-9 still with Apple Finance.
+**App Store (2026-10-18):** **1.4.97** (`20261018004742`) approved (expedited) and **Ready for Distribution**, auto-release. **1.4.98** (`20261018210148`) is on TestFlight, not submitted: it restores the bundled Live Activity team logos (every build since Oct 11 shipped without them … XcodeGen ignores the target-level `resources:` key, so the `TeamLogos` folder now sits under `sources` with `buildPhase: resources`). Submitting 1.4.98 needs Ryan's ask. Do not attach Cloud **242** / **243** (Test Fast). Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*. W-9 still with Apple Finance.
 
 **Scorebug taste (2026-10-17):** Ryan likes the stacked two-row team-color score card (Auburn 27 / #1 Georgia 24, `FINAL` pill, muted losing row). North star for future Lounge / hub score chrome. Not a build request. Image + notes in his personal store (`ryan-scorebug-taste.md`).
 
@@ -42,7 +42,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` web **1.4.1098** (`80550189`). iOS marketing **1.4.97** on `test`. Dual-machine. Physical iOS 27 → **Xcode 27 beta**. Do not upload Play until Ryan says the APK is ready.
+**Branch:** `test` (match `origin/test` before edits). `main` web **1.4.1098** (`80550189`). iOS marketing **1.4.98** on `test`. Dual-machine. Physical iOS 27 → **Xcode 27 beta**. Do not upload Play until Ryan says the APK is ready.
 
 **Supabase (do not swap these):**
 

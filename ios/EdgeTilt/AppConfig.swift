@@ -1,7 +1,7 @@
 import Foundation
 
 enum AppConfig {
-  static let shellVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.4.97"
+  static let shellVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.4.98"
   static let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
 
   #if EDGE_ENV_PROD

@@ -17,10 +17,12 @@
 		32BB1D33156BEBC54B50E16D /* EdgeWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B884711901FA09324B73CC22 /* EdgeWebView.swift */; };
 		3593289FFB5610CB78E87E2E /* EdgeWebKitKeyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D77BF9A686EB3B073BF18F1F /* EdgeWebKitKeyboard.swift */; };
 		372BD0A547F59438BBEB1FBD /* EdgeStoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526333C3005807423630ED4B /* EdgeStoreKitManager.swift */; };
+		3FC26A7C6B5650C5D085801D /* EdgeCbsLoginSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4FBDD5499E2ADF8D737F4D5 /* EdgeCbsLoginSheet.swift */; };
 		41CFF15884F3766E5E2C72E3 /* EdgeLiveBankrollActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50DCC156C6A4FC09AAB8994 /* EdgeLiveBankrollActivity.swift */; };
 		4D2B7308E4E652439250E60D /* LiveSportsAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE3235FC376AF6C8643DD1C4 /* LiveSportsAttributes.swift */; };
 		4F796FB9733BC1CC4C6C69F3 /* EdgeWebAuthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5EA385091E625C2ACB8EA27 /* EdgeWebAuthSession.swift */; };
 		51E6C77592507C47FF8226CC /* LiveBankrollActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C222002DE4E8B9895C1677E8 /* LiveBankrollActivityWidget.swift */; };
+		525F29EB7E4A90FF7F5E0F8F /* EdgeEspnLoginSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFBC402FC54871E1847177D /* EdgeEspnLoginSheet.swift */; };
 		53F079A67B5A0904E25CB824 /* TeamLogoBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6487C8442F5FDB5395775A18 /* TeamLogoBundle.swift */; };
 		56164041B61C9D93975189F6 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61EE56EC2ACB500F375E8BE /* AppDelegate.swift */; };
 		60F2D1935FE59A9DE818E01D /* LiveBankrollAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B822F039CCADE4C051AA3D42 /* LiveBankrollAttributes.swift */; };
@@ -33,6 +35,7 @@
 		9980D8DAF4E53F6C0DF750A5 /* EdgeAudioSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */; };
 		9DFF9939E20AFB8EA0975B7B /* EdgeShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF2D12F900A2F0FF25C93395 /* EdgeShareSheet.swift */; };
 		9E78B1403D32309052B654F3 /* EdgeShellAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24D9A0E1C32EAE14CA7B896 /* EdgeShellAppearance.swift */; };
+		A49CE9192CCD015C29A24075 /* TeamLogos in Resources */ = {isa = PBXBuildFile; fileRef = CD9ECE9B105025CD206B903D /* TeamLogos */; };
 		AA3EDFFBF45D39505C9A6FFD /* EdgeLiveSportsActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0EE5089438160304DE4F313 /* EdgeLiveSportsActivity.swift */; };
 		AC9A2A447F8360BFE9156441 /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5C406EF04C1D4650664DC2AF /* LiveKit */; };
 		AD8603BE6B58AD8A27B8F9BB /* EdgeLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50DC0B1CCEF2E8786FA052B /* EdgeLocationManager.swift */; };
@@ -47,8 +50,6 @@
 		BD77B93B3B8FE0B930A6B235 /* EdgePushManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */; };
 		C9BC839D606179C6D5157C72 /* ShellRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */; };
 		D1A48565A63EFCD6012D4C86 /* EdgeBetSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E00F0F7F73D53284B52B55C /* EdgeBetSheet.swift */; };
-		B1E5B0C0E5B0C0E5B0C0E5B1 /* EdgeEspnLoginSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E5B0C0E5B0C0E5B0C0E5B0 /* EdgeEspnLoginSheet.swift */; };
-		D2E5B0C0E5B0C0E5B0C0E5C1 /* EdgeCbsLoginSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2E5B0C0E5B0C0E5B0C0E5C0 /* EdgeCbsLoginSheet.swift */; };
 		D409761760FC945615B8075A /* EdgeCallKitAvatarApply.m in Sources */ = {isa = PBXBuildFile; fileRef = EFFB047139687FDEEE829B3B /* EdgeCallKitAvatarApply.m */; };
 		D8232F9CE5E3919C29DAE2AA /* EdgeCallKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */; };
 		DAFB0470CCB9156C895B3947 /* EdgeOrientationLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89DB0259F2A317DC1635FD17 /* EdgeOrientationLock.swift */; };
@@ -102,8 +103,6 @@
 		888C6ABE8EAF8C36C53A14E8 /* EdgeVideoNative.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeVideoNative.swift; sourceTree = "<group>"; };
 		89DB0259F2A317DC1635FD17 /* EdgeOrientationLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeOrientationLock.swift; sourceTree = "<group>"; };
 		8E00F0F7F73D53284B52B55C /* EdgeBetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeBetSheet.swift; sourceTree = "<group>"; };
-		A1E5B0C0E5B0C0E5B0C0E5B0 /* EdgeEspnLoginSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeEspnLoginSheet.swift; sourceTree = "<group>"; };
-		C2E5B0C0E5B0C0E5B0C0E5C0 /* EdgeCbsLoginSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeCbsLoginSheet.swift; sourceTree = "<group>"; };
 		8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeCallKitManager.swift; sourceTree = "<group>"; };
 		A039684E44413435F9C5696A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeAudioSession.swift; sourceTree = "<group>"; };
@@ -119,10 +118,13 @@
 		C222002DE4E8B9895C1677E8 /* LiveBankrollActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBankrollActivityWidget.swift; sourceTree = "<group>"; };
 		C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellRootView.swift; sourceTree = "<group>"; };
 		C9EC6B9DDA100BF882E1A9C8 /* EdgeSportsbookOpen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeSportsbookOpen.swift; sourceTree = "<group>"; };
+		CD9ECE9B105025CD206B903D /* TeamLogos */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TeamLogos; path = EdgeTiltLiveActivity/TeamLogos; sourceTree = SOURCE_ROOT; };
 		D3159B2EAF1B24324DD562FC /* EdgeChinaAvailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeChinaAvailability.swift; sourceTree = "<group>"; };
 		D77BF9A686EB3B073BF18F1F /* EdgeWebKitKeyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebKitKeyboard.swift; sourceTree = "<group>"; };
+		DCFBC402FC54871E1847177D /* EdgeEspnLoginSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeEspnLoginSheet.swift; sourceTree = "<group>"; };
 		E0EE5089438160304DE4F313 /* EdgeLiveSportsActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLiveSportsActivity.swift; sourceTree = "<group>"; };
 		E24D9A0E1C32EAE14CA7B896 /* EdgeShellAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeShellAppearance.swift; sourceTree = "<group>"; };
+		E4FBDD5499E2ADF8D737F4D5 /* EdgeCbsLoginSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeCbsLoginSheet.swift; sourceTree = "<group>"; };
 		E5EA385091E625C2ACB8EA27 /* EdgeWebAuthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebAuthSession.swift; sourceTree = "<group>"; };
 		EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebsiteDataHygiene.swift; sourceTree = "<group>"; };
 		EFFB047139687FDEEE829B3B /* EdgeCallKitAvatarApply.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EdgeCallKitAvatarApply.m; sourceTree = "<group>"; };
@@ -155,6 +157,7 @@
 				A3DA1B675A81CDADF6320DA1 /* LiveSportsActivityWidget.swift */,
 				FE3235FC376AF6C8643DD1C4 /* LiveSportsAttributes.swift */,
 				6487C8442F5FDB5395775A18 /* TeamLogoBundle.swift */,
+				CD9ECE9B105025CD206B903D /* TeamLogos */,
 			);
 			path = EdgeTiltLiveActivity;
 			sourceTree = "<group>";
@@ -178,13 +181,13 @@
 				A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */,
 				226515DE808038FBBFC76BE7 /* EdgeAuthSessionStore.swift */,
 				8E00F0F7F73D53284B52B55C /* EdgeBetSheet.swift */,
-				A1E5B0C0E5B0C0E5B0C0E5B0 /* EdgeEspnLoginSheet.swift */,
-				C2E5B0C0E5B0C0E5B0C0E5C0 /* EdgeCbsLoginSheet.swift */,
 				EFFB047139687FDEEE829B3B /* EdgeCallKitAvatarApply.m */,
 				8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */,
+				E4FBDD5499E2ADF8D737F4D5 /* EdgeCbsLoginSheet.swift */,
 				22A7E631FCF8686B1D061151 /* EdgeChatCallsClient.swift */,
 				D3159B2EAF1B24324DD562FC /* EdgeChinaAvailability.swift */,
 				F6D4C529EC0DA7B944108A8C /* EdgeDocumentScanner.swift */,
+				DCFBC402FC54871E1847177D /* EdgeEspnLoginSheet.swift */,
 				BF0D9AEF6D31B7874CAA6351 /* EdgeHaptics.swift */,
 				47FF9D0DCA930FB8FA005728 /* EdgeInAppBrowser.swift */,
 				F50DCC156C6A4FC09AAB8994 /* EdgeLiveBankrollActivity.swift */,
@@ -232,6 +235,7 @@
 			buildConfigurationList = 5D8968532EBAECA98A6CDAAE /* Build configuration list for PBXNativeTarget "EdgeTiltLiveActivity" */;
 			buildPhases = (
 				55D6CC1C0B1829642ABE2FF6 /* Sources */,
+				9A08079091A7FB2EB2EE9DC6 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -317,6 +321,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9A08079091A7FB2EB2EE9DC6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A49CE9192CCD015C29A24075 /* TeamLogos in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -343,13 +355,13 @@
 				9980D8DAF4E53F6C0DF750A5 /* EdgeAudioSession.swift in Sources */,
 				2220D161D3DD3D621E704EBD /* EdgeAuthSessionStore.swift in Sources */,
 				D1A48565A63EFCD6012D4C86 /* EdgeBetSheet.swift in Sources */,
-				B1E5B0C0E5B0C0E5B0C0E5B1 /* EdgeEspnLoginSheet.swift in Sources */,
-				D2E5B0C0E5B0C0E5B0C0E5C1 /* EdgeCbsLoginSheet.swift in Sources */,
 				D409761760FC945615B8075A /* EdgeCallKitAvatarApply.m in Sources */,
 				D8232F9CE5E3919C29DAE2AA /* EdgeCallKitManager.swift in Sources */,
+				3FC26A7C6B5650C5D085801D /* EdgeCbsLoginSheet.swift in Sources */,
 				2C826D2B39E7E6FDC0EA2F7E /* EdgeChatCallsClient.swift in Sources */,
 				611669D5F52C5FE6D61A6E88 /* EdgeChinaAvailability.swift in Sources */,
 				AF092F84F07EE807D053962A /* EdgeDocumentScanner.swift in Sources */,
+				525F29EB7E4A90FF7F5E0F8F /* EdgeEspnLoginSheet.swift in Sources */,
 				2EDAB0E529026EF8B5FEA532 /* EdgeHaptics.swift in Sources */,
 				7149BE87448C0D8EE6E10B8F /* EdgeInAppBrowser.swift in Sources */,
 				41CFF15884F3766E5E2C72E3 /* EdgeLiveBankrollActivity.swift in Sources */,
@@ -422,7 +434,7 @@
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.4.97;
+				MARKETING_VERSION = 1.4.98;
 				PRODUCT_BUNDLE_IDENTIFIER = com.edgetilt.app.LiveActivity;
 				PRODUCT_NAME = EdgeTiltLiveActivity;
 				SDKROOT = iphoneos;
@@ -512,11 +524,16 @@
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Edge;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Edge uses the microphone for voice and video calls and for videos you record in Lounge or Chat.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Edge can save images you capture or download to your photo library when you choose.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Edge accesses your photo library so you can attach images and videos in Lounge and Chat.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.4.97;
+				MARKETING_VERSION = 1.4.98;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -540,7 +557,7 @@
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.4.97;
+				MARKETING_VERSION = 1.4.98;
 				PRODUCT_BUNDLE_IDENTIFIER = com.edgetilt.app.LiveActivity;
 				PRODUCT_NAME = EdgeTiltLiveActivity;
 				SDKROOT = iphoneos;
@@ -605,11 +622,16 @@
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Edge;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Edge uses the microphone for voice and video calls and for videos you record in Lounge or Chat.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Edge can save images you capture or download to your photo library when you choose.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Edge accesses your photo library so you can attach images and videos in Lounge and Chat.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.4.97;
+				MARKETING_VERSION = 1.4.98;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -632,7 +654,7 @@
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.4.97;
+				MARKETING_VERSION = 1.4.98;
 				PRODUCT_BUNDLE_IDENTIFIER = com.edgetilt.app.LiveActivity;
 				PRODUCT_NAME = EdgeTiltLiveActivity;
 				SDKROOT = iphoneos;
@@ -718,11 +740,16 @@
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Edge;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Edge uses the microphone for voice and video calls and for videos you record in Lounge or Chat.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Edge can save images you capture or download to your photo library when you choose.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Edge accesses your photo library so you can attach images and videos in Lounge and Chat.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.4.97;
+				MARKETING_VERSION = 1.4.98;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

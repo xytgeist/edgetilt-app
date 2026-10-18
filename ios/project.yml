@@ -18,7 +18,7 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     CURRENT_PROJECT_VERSION: 4
-    MARKETING_VERSION: "1.4.97"
+    MARKETING_VERSION: "1.4.98"
     GENERATE_INFOPLIST_FILE: YES
     INFOPLIST_FILE: EdgeTilt/Info.plist
     INFOPLIST_KEY_CFBundleDisplayName: Edge
@@ -83,10 +83,12 @@ targets:
       - path: EdgeTiltLiveActivity
         excludes:
           - "TeamLogos/**"
-    resources:
-      # Bundled NFL marks for Dynamic Island / Lock Screen (AsyncImage is flaky in LA snapshots).
+      # Bundled NFL / CFB marks for Dynamic Island / Lock Screen (AsyncImage is flaky in LA snapshots).
+      # Must live under `sources` with a resources phase … XcodeGen ignores a target-level `resources:` key,
+      # so a regenerate silently drops the folder from the extension.
       - path: EdgeTiltLiveActivity/TeamLogos
         type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.edgetilt.app.LiveActivity
@@ -98,7 +100,7 @@ targets:
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
         TARGETED_DEVICE_FAMILY: "1,2"
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-        MARKETING_VERSION: "1.4.97"
+        MARKETING_VERSION: "1.4.98"
         INFOPLIST_KEY_CFBundleDisplayName: Edge
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
       configs:

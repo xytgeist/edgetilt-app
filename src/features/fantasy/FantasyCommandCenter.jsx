@@ -609,7 +609,14 @@ function playerPts(card, loading, scoring, sport) {
 }
 
 function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
-  const [openKey, setOpenKey] = useState(null)
+  const [openKeys, setOpenKeys] = useState(() => new Set())
+  const toggle = (key) =>
+    setOpenKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
   if (!pairs.length) return null
   return (
     <>
@@ -619,21 +626,21 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
         const rightCard = pair.right?.sleeper_id ? cards?.[pair.right.sleeper_id] : null
         const leftMain = pair.left ? pickMainProp(pair.left, leftCard) : null
         const rightMain = pair.right ? pickMainProp(pair.right, rightCard) : null
-        const open = openKey === rowKey
+        const open = openKeys.has(rowKey)
         return (
           <li
             key={rowKey}
-            className={`border-b border-zinc-800/80 last:border-b-0 ${bench ? 'fantasy-bench-row' : ''}`}
+            className={`rounded-xl border border-zinc-800 bg-zinc-900/60 ${bench ? 'fantasy-bench-row' : ''}`}
           >
             <div
               role="button"
               tabIndex={0}
               aria-expanded={open}
-              onClick={() => setOpenKey(open ? null : rowKey)}
+              onClick={() => toggle(rowKey)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  setOpenKey(open ? null : rowKey)
+                  toggle(rowKey)
                 }
               }}
               className="block w-full cursor-pointer px-2 py-2 touch-manipulation [-webkit-tap-highlight-color:transparent]"
@@ -683,7 +690,7 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport }) {
     return <p className="px-1 text-[13px] text-zinc-500">No players synced for this matchup.</p>
   }
   return (
-    <ul>
+    <ul className="space-y-1.5">
       <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} />
       <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} />
     </ul>

@@ -310,13 +310,41 @@ export async function gradeOpenSportsBets(supabaseClient) {
   return { resolved: Number(data?.resolved) || 0, error: null }
 }
 
+/** Same reading as Edge `propStatKey` (sportsBetsPropGrade.ts) … keep the two in step. */
+export function sportsBetPropStatKey(text) {
+  const t = String(text || '').toLowerCase()
+  if (!t) return null
+  if (/rush(ing)?\s*(and|\+|&)\s*rec/.test(t) || /scrim(mage)?\s*(yds|yards)/.test(t)) return 'rr_yds'
+  if (/long(est)?\s*rec/.test(t)) return 'rec_lng'
+  if (/fantasy|fpts/.test(t)) return null
+  if (/pass(ing)?\s*(yds|yards)/.test(t)) return 'pass_yds'
+  if (/pass(ing)?\s*(td|touchdown)/.test(t)) return 'pass_td'
+  if (/\bint(erception)?s?\b/.test(t)) return 'pass_int'
+  if (/comp(letion)?s?\b/.test(t)) return 'pass_cmp'
+  if (/pass(ing)?\s*att/.test(t)) return 'pass_att'
+  if (/rush(ing)?\s*(yds|yards)/.test(t)) return 'rush_yds'
+  if (/rush(ing)?\s*att|carries/.test(t)) return 'rush_att'
+  if (/rec(eiving)?\s*(yds|yards)/.test(t)) return 'rec_yds'
+  if (/\brec(eption)?s?\b/.test(t)) return 'rec'
+  if (/\btd\b|touchdown/.test(t)) return 'td'
+  return null
+}
+
 /**
  * Markets/sports the Edge grader can actually settle via ESPN boards.
  * Boxing has no scoreboard path … never promise auto-grade.
  * UFC/MMA: moneyline only (1-0 person boards).
+ * Props: NFL only, with a player, a line, and a stat the box score carries.
  */
 export function sportsBetIsAutoGradeable(bet) {
   const m = String(bet?.market || '')
+  if (m === 'prop') {
+    const sk = `${bet?.sport_key || ''} ${bet?.sport_label || ''}`.toLowerCase()
+    const nfl = sk.includes('americanfootball_nfl') || /\bnfl\b/.test(sk)
+    const line = bet?.line
+    return nfl && Boolean(String(bet?.player_name || '').trim()) && line != null && line !== '' &&
+      Number.isFinite(Number(line)) && Boolean(sportsBetPropStatKey(bet?.prop_stat))
+  }
   if (m !== 'spread' && m !== 'h2h' && m !== 'total') return false
   const sk = `${bet?.sport_key || ''} ${bet?.sport_label || ''}`.toLowerCase()
   if (/\bboxing\b/.test(sk)) return false

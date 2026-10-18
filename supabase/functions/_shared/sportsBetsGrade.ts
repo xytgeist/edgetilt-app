@@ -1,6 +1,7 @@
 /**
- * Auto-grade open `sports_bets` (spread / ML / total) from ESPN completed boards.
- * Props / other stay manual. Piggybacks on `grade_picks` cron + JWT `sports-bets-grade`.
+ * Auto-grade open `sports_bets` (spread / ML / total) from ESPN completed boards, plus NFL player props
+ * from ESPN box scores (`sportsBetsPropGrade.ts`). Other props stay manual.
+ * Piggybacks on `grade_picks` cron + JWT `sports-bets-grade`.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
@@ -10,6 +11,7 @@ import {
   matchEspnFinalScore,
   type EspnCompletedEvent,
 } from './loungeBotEspnSummary.ts'
+import { gradeNflPropRows, loadOpenNflPropRows } from './sportsBetsPropGrade.ts'
 
 type SportsBetRow = {
   id: string
@@ -242,7 +244,12 @@ export async function gradeOpenSportsBets(
     errors.push(`legs: ${legErr.message}`)
   }
 
-  if (!bets.length && !legs.length) return { resolved: 0, scanned: 0, errors }
+  const props = await loadOpenNflPropRows(admin, opts)
+  errors.push(...props.errors)
+
+  if (!bets.length && !legs.length && !props.bets.length && !props.legs.length) {
+    return { resolved: 0, scanned: 0, errors }
+  }
 
   const datesBySport = new Map<string, Set<string>>()
   const rememberDates = (sportKey: string, commence: string | null | undefined) => {
@@ -366,6 +373,45 @@ export async function gradeOpenSportsBets(
     }
   }
 
+  if (props.bets.length || props.legs.length) {
+    const { graded, errors: propErrors } = await gradeNflPropRows([...props.bets, ...props.legs])
+    errors.push(...propErrors)
+    for (const bet of props.bets) {
+      const status = graded.get(bet.id)
+      if (!status) continue
+      const { error: upErr } = await admin
+        .from('sports_bets')
+        .update({
+          status,
+          result_at: nowIso,
+          profit_units: profitUnitsForSportsBetStatus(status, bet.stake_units, bet.odds),
+          confirmed: true,
+        })
+        .eq('id', bet.id)
+        .eq('status', 'open')
+      if (upErr) {
+        errors.push(`${bet.id}: ${upErr.message}`)
+        continue
+      }
+      resolved += 1
+    }
+    for (const leg of props.legs) {
+      const status = graded.get(leg.id)
+      if (!status) continue
+      const { error: upErr } = await admin
+        .from('sports_bet_legs')
+        .update({ status })
+        .eq('id', leg.id)
+        .eq('status', 'open')
+      if (upErr) {
+        errors.push(`leg ${leg.id}: ${upErr.message}`)
+        continue
+      }
+      touchedParlayIds.add(leg.bet_id)
+      resolved += 1
+    }
+  }
+
   for (const betId of touchedParlayIds) {
     const { data: allLegs, error: loadErr } = await admin
       .from('sports_bet_legs')
@@ -405,5 +451,5 @@ export async function gradeOpenSportsBets(
     if (upParent) errors.push(`parlay ${betId}: ${upParent.message}`)
   }
 
-  return { resolved, scanned: bets.length + legs.length, errors }
+  return { resolved, scanned: bets.length + legs.length + props.bets.length + props.legs.length, errors }
 }

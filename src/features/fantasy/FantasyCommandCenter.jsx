@@ -559,9 +559,9 @@ function CenterMarket({ prop, align, row, card }) {
   const left = align === 'left'
   return (
     <div className={`flex min-w-0 items-center gap-1 ${left ? 'justify-end' : 'justify-start'}`}>
-      {left ? <span className="min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{shortPropLabel(prop.label)}</span> : null}
+      {left ? <span className="fantasy-prop-label min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{shortPropLabel(prop.label)}</span> : null}
       <YesNoPills prop={prop} row={row} card={card} />
-      {left ? null : <span className="min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{shortPropLabel(prop.label)}</span>}
+      {left ? null : <span className="fantasy-prop-label min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{shortPropLabel(prop.label)}</span>}
     </div>
   )
 }

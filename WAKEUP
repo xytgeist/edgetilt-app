@@ -32,7 +32,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**App Store (2026-10-15):** live **1.4.96** (`20261008181941`). **1.4.97** (`20261015175413`) is **Waiting for Review**. Do not attach Cloud **242** / **243** (Test Fast). Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*. W-9 still with Apple Finance.
+**App Store (2026-10-15):** live **1.4.96** (`20261008181941`). **1.4.97** (`20261018004742`, resubmitted 2026-10-17) is **Waiting for Review**. Do not attach Cloud **242** / **243** (Test Fast). Leftover: Windows AASA `/lounge/g/*` + `?game=` … see **`docs/ios-native-bridge.md`** → *After the next App Store build goes live*. W-9 still with Apple Finance.
 
 **Scorebug taste (2026-10-17):** Ryan likes the stacked two-row team-color score card (Auburn 27 / #1 Georgia 24, `FINAL` pill, muted losing row). North star for future Lounge / hub score chrome. Not a build request. Image + notes in his personal store (`ryan-scorebug-taste.md`).
 
@@ -51,7 +51,7 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal (Mac):** _**1.4.97** is Waiting for Review (`20261015175413`). Live store stays **1.4.96** until Apple approves. Play APK stays parked._
+**Goal (Mac):** _**1.4.97** is Waiting for Review (`20261018004742`, resubmitted 2026-10-17). Live store stays **1.4.96** until Apple approves. Play APK stays parked._
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + sports pill / live-data track + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
@@ -132,7 +132,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 **I am Windows Theo.** Offsite `pg_dump` → private R2 for **production only** (`docs/db-r2-backups.md`). Test keeps Supabase daily backups. Script `scripts/db-dump-to-r2.mjs`, 14-day prune, Windows task daily 3:15 AM. Needs Ryan: create private bucket + `DB_BACKUP_R2_*` in `.env.master`, install `pg_dump`, first `npm run db:dump:r2:production` to size egress, then `npm run db:dump:r2:install-windows-task`. Before scary prod SQL: `--tag=pre-migrate`.
 
 ### Mac Theo 2026-10-17 ... iPhone video upload + poster
-**I am Mac Theo.** iPhone Lounge video "Upload failed" was Ryan's home Wi-Fi corrupting large uploads to Cloudflare (-1200 / bad record MAC, reproduced with curl from the Mac; cellular posts fine). No app fix needed for that. Composer poster: native probe retries the still with async `image(at:)`. TestFlight-only Prod **1.4.97 (20261018004742)**, not attached to the 1.4.97 in review. Ryan's phone is on a Mac-signed build until he installs it.
+**I am Mac Theo.** iPhone Lounge video "Upload failed" was Ryan's home Wi-Fi corrupting large uploads to Cloudflare (-1200 / bad record MAC, reproduced with curl from the Mac; cellular posts fine). No app fix needed for that. Composer poster: native probe retries the still with async `image(at:)`. Prod **1.4.97 (20261018004742)** replaced `20261015175413` in review (Ryan asked, 2026-10-17 6:15 PM). Apple warned Cloud **250** was newer; kept Prod DTG. Ryan's phone is on a Mac-signed build until he installs from TestFlight.
 
 ### Mac Theo ACTIVE TRACK 2026-10-15 ... Lounge Mod hub + report triage
 **I am Mac Theo.** Staff inbox **`/?tab=mod`**. New reports start pending (`needs_human=false`); bot / never-auto / classify failure elevates. SQL **`20261015220000`** + **`20261015240000`** and Edge **`lounge-report-triage`** are on **test + prod** (prod 2026-10-17). Ban / SLA clock still open. Do not bump iOS **1.4.97**.

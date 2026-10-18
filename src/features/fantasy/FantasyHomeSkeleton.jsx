@@ -21,7 +21,7 @@ function SkeletonSide({ align }) {
 
 function SkeletonCard() {
   return (
-    <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
+    <div className="fantasy-card-lift overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         <SkeletonSide align="left" />
         <div className="flex flex-col items-center justify-center gap-1.5 px-1 py-3">

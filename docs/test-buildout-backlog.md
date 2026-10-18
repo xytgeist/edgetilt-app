@@ -4642,3 +4642,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 - 2026-10-18 (1.4.1246): Fantasy lineup rows are outlined cards (rounded border, light mode via existing `[data-fantasy-home]` remaps). Expanded rows stay open independently until tapped closed.
 - 2026-10-18 (1.4.1247): Fantasy lineup cards get a center divider (both modes), light-mode list-card shadow (same token as Slots hub cards), and white bench rows in light mode (dark bench tint unchanged).
+- 2026-10-18 (1.4.1248): Fantasy matchup score cards (home list, detail, skeleton) share the light-mode list-card lift (`.fantasy-card-lift`).

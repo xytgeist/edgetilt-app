@@ -630,7 +630,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
         return (
           <li
             key={rowKey}
-            className={`fantasy-matchup-row relative rounded-xl border border-zinc-800 bg-zinc-900/60 ${bench ? 'fantasy-bench-row' : ''}`}
+            className={`fantasy-card-lift relative rounded-xl border border-zinc-800 bg-zinc-900/60 ${bench ? 'fantasy-bench-row' : ''}`}
           >
             <span
               aria-hidden
@@ -813,7 +813,7 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
   const leftOut = sideOutlook(page.roster, cards, scoring, sport)
   const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport)
   return (
-    <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
+    <div className="fantasy-card-lift overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
       <div className={`grid ${page.right ? 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'grid-cols-1'}`}>
         <ScoreSide team={page.left} teams={teams} outlook={leftOut} hostScore={page.leftScore} align="left" />
         {page.right ? (

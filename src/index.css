@@ -11850,7 +11850,7 @@ html.light [data-fantasy-home] .bg-black\/50 {
 html.light [data-fantasy-home] .fantasy-bench-row {
   background-color: #ffffff !important;
 }
-html.light [data-fantasy-home] .fantasy-matchup-row {
+html.light [data-fantasy-home] .fantasy-card-lift {
   box-shadow: var(--edge-light-list-card-shadow);
 }
 [data-fantasy-home] .fantasy-row-divider {

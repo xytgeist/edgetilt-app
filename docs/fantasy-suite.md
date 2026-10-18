@@ -173,7 +173,7 @@ Projection source v1: provider projections where available (e.g. Sleeper) + Edge
 
 ### B2 … Waiver / FA
 
-- Rank **available in this league** (not global top-50 wire)
+- Rank **available in this league** (not global top-50 wire). **Ryan 2026-10-18:** v1 treats every NFL player not rostered in the league as available, labeled "available in your league" (no host FA / waiver-claim sync yet).
 - Blend ROS value + upcoming schedule / SOS
 - Optional: drop candidates from my bench
 
@@ -220,7 +220,7 @@ Example shape: “Your RB bench is weak (two RB1s on bye same week). Offer Leagu
 ### Layer B deliverables / specifics
 
 - [ ] Value + need engine (NFL first)
-- [ ] Start/Sit v1
+- [x] Start/Sit v1 (2026-10-18: client `fantasyStartSit.js` … best legal lineup from your roster in league scoring, injuries / byes / locked games, swap cards; value engine for Waivers / Trades still open)
 - [ ] Waiver v1
 - [ ] Trade Analyzer v1 (Finder + manual Offer Review)
 - [ ] Research pack v1
@@ -430,7 +430,7 @@ Notifications (F) deep-link into the relevant tab; prefs live under Settings (an
 
 Record answers here when locked:
 
-1. Aggressive↔Fair default for Trade Analyzer? (plan: slightly aggressive)
+1. Aggressive↔Fair default for Trade Analyzer? **Locked 2026-10-18: slightly aggressive, still realistic.**
 2. First second-sport after NFL? (plan lean: NBA or MLB)
 3. DFS v1 sites? (plan: DK + FD via CSV)
 4. Emotional hedge: show estimated cost in units by default?

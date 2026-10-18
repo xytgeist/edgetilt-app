@@ -114,3 +114,6 @@ Authorize URL requests `scope=fspt-r`.
 4. Open an NFL hub with a starter → Watch / Enemy pins.
 5. Sleeper username link still works alongside Yahoo.
 6. ESPN and CBS connect are in-app login sheets (`startEspnFantasyLogin` / `startCbsFantasyLogin`) on iPhone and Android (APK **1.3.24**). A normal browser and older shells explain that an app update is required. Edge functions are on test and prod. Password is never stored.
+
+
+**Lineup slots (2026-10-18):** `fantasy_leagues.settings.lineup_slots` holds the starting slots (e.g. `['QB','RB','RB','WR','WR','TE','FLEX','DEF','K']`). ESPN sync builds it from `settings.rosterSettings.lineupSlotCounts` (mSettings); Sleeper already stores `roster_positions`. Yahoo / CBS fall back to inferring slots from the current starters in the app. Start/Sit reads it.

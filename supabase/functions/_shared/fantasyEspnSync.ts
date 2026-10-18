@@ -231,6 +231,35 @@ function num(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/** ESPN `lineupSlotId` → Edge slot name. Bench (20), IR (21), and IDP slots are not lineup slots we optimize. */
+const ESPN_LINEUP_SLOT: Record<number, string> = {
+  0: 'QB',
+  2: 'RB',
+  3: 'WRRB_FLEX',
+  4: 'WR',
+  5: 'REC_FLEX',
+  6: 'TE',
+  7: 'SUPER_FLEX',
+  16: 'DEF',
+  17: 'K',
+  23: 'FLEX',
+}
+
+/** Starting slots from `settings.rosterSettings.lineupSlotCounts` (mSettings), e.g. ['QB','RB','RB','WR','WR','TE','FLEX','DEF','K']. */
+function espnLineupSlots(settings: Record<string, unknown>): string[] {
+  const roster = asRecord(settings.rosterSettings)
+  const counts = asRecord(roster?.lineupSlotCounts)
+  if (!counts) return []
+  const out: string[] = []
+  for (const [id, raw] of Object.entries(counts)) {
+    const name = ESPN_LINEUP_SLOT[Number(id)]
+    const n = Number(raw)
+    if (!name || !Number.isFinite(n) || n <= 0) continue
+    for (let i = 0; i < n; i++) out.push(name)
+  }
+  return out
+}
+
 export async function linkAndSyncEspn(
   admin: SupabaseClient,
   edgeUserId: string,
@@ -383,7 +412,7 @@ async function syncEspnConnection(
             season,
             sport: 'nfl',
             scoring: asRecord(settings.scoringSettings) || {},
-            settings: { size: settings.size ?? null },
+            settings: { size: settings.size ?? null, lineup_slots: espnLineupSlots(settings) },
           },
           { onConflict: 'connection_id,external_league_id' },
         )

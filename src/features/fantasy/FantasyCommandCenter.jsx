@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
+import { leagueLineupSlots, optimizeLineup } from './fantasyStartSit.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
 import { openExternalUrl } from '../../utils/edgeNative.js'
 import { sportsBetPropTapPayload, useSportsBetOddsActions } from '../sports-bet-tracker/sportsBetLogContext.jsx'
@@ -877,6 +878,82 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
   )
 }
 
+function startSitReason(p) {
+  if (!p) return ''
+  if (p.why === 'bye') return 'on bye'
+  if (p.why) return p.why
+  return ''
+}
+
+/** Start/Sit: best lineup for this week from your own roster, as swap cards. Moves happen on the host. */
+function StartSitPanel({ detail, cards, sport }) {
+  const mine = (detail?.teams || []).find((t) => t.is_mine) || null
+  const roster = useMemo(() => (mine ? detail?.rostersByTeam?.[mine.id] || [] : []), [detail, mine])
+  const plan = useMemo(() => {
+    if (!roster.length) return null
+    const { slots, inferred } = leagueLineupSlots(detail?.league, roster)
+    if (!slots.length) return null
+    return { inferred, ...optimizeLineup({ roster, cards, scoring: detail?.league?.scoring, slots, sport }) }
+  }, [roster, cards, detail, sport])
+  if (!plan) return null
+  const host = providerLabel(detail?.league?.provider)
+  const moves = plan.moves
+  return (
+    <div data-fantasy-start-sit className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[13px] font-bold text-zinc-100">{moves.length ? 'Suggested moves' : 'Your lineup is set'}</div>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
+            moves.length ? 'fantasy-sit-gain' : 'fantasy-sit-ok'
+          }`}
+        >
+          {moves.length ? `+${plan.gain.toFixed(1)} proj` : `${plan.projected.toFixed(1)} proj`}
+        </span>
+      </div>
+      {moves.length ? (
+        <ul className="mt-2 space-y-1.5">
+          {moves.map((m) => (
+            <li
+              key={`${m.start.row.sleeper_id}-${m.bench?.row?.sleeper_id || 'open'}`}
+              className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2"
+            >
+              <div className="min-w-0 flex-1 space-y-0.5 text-[12px]">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="fantasy-sit-in w-11 shrink-0 text-[10px] font-bold uppercase">Start</span>
+                  <span className="truncate font-semibold text-zinc-100">{shortName(m.start.row.player_name, m.start.row.position)}</span>
+                  <span className="shrink-0 text-[10px] text-zinc-500">{m.start.pos}</span>
+                  <span className="ml-auto shrink-0 tabular-nums text-zinc-300">{m.start.value.toFixed(1)}</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="fantasy-sit-out w-11 shrink-0 text-[10px] font-bold uppercase">Bench</span>
+                  <span className="truncate text-zinc-300">
+                    {m.bench ? shortName(m.bench.row.player_name, m.bench.row.position) : 'Empty slot'}
+                  </span>
+                  {m.bench ? <span className="shrink-0 text-[10px] text-zinc-500">{m.bench.pos}</span> : null}
+                  {startSitReason(m.bench) ? (
+                    <span className="shrink-0 text-[10px] font-semibold text-rose-300">{startSitReason(m.bench)}</span>
+                  ) : null}
+                  <span className="ml-auto shrink-0 tabular-nums text-zinc-500">{m.bench ? m.bench.value.toFixed(1) : '-'}</span>
+                </div>
+              </div>
+              <span className="fantasy-sit-gain shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums">
+                +{m.gain.toFixed(1)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1 text-[11px] text-zinc-500">Best projected lineup for this week.</p>
+      )}
+      <p className="mt-2 text-[10px] text-zinc-500">
+        {moves.length ? `Make the swap on ${host}.` : ''}
+        {plan.locked ? `${moves.length ? ' ' : ''}${plan.locked} already playing, locked.` : ''}
+        {plan.inferred ? ' Slots read from your current lineup; Sync to load league slots.' : ''}
+      </p>
+    </div>
+  )
+}
+
 function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport }) {
   const starters = pairStarters(mine, opp)
   const bench = pairBench(mine, opp)
@@ -1039,7 +1116,7 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
   const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport)
   const leftAccent = useTeamAccent(page.left?.avatar_url, page.left?.id || page.left?.team_name)
   const rightRaw = useTeamAccent(page.right?.avatar_url, page.right?.id || page.right?.team_name)
-  const rightAccent = distinctTeamAccent(rightRaw, leftAccent, page.right?.id || page.right?.team_name)
+  const rightAccent = distinctTeamAccent(rightRaw, leftAccent)
   const ls = scoreValue(leftOut, page.leftScore)
   const rs = scoreValue(rightOut, page.rightScore)
   const lead = page.right && ls != null && rs != null && ls !== rs ? (ls > rs ? 'left' : 'right') : null
@@ -1351,6 +1428,8 @@ export default function FantasyCommandCenter({
               )
             })}
           </div>
+
+          {tool === 'start' && detail ? <StartSitPanel detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} /> : null}
 
           {current ? (
             <VsMatchup

@@ -255,7 +255,7 @@ export async function loadLeagueDetail(supabase, leagueId) {
 
   const { data: league, error: lgErr } = await supabase
     .from('fantasy_leagues')
-    .select('id, name, season, is_primary, provider, sport, connection_id, scoring')
+    .select('id, name, season, is_primary, provider, sport, connection_id, scoring, settings')
     .eq('id', id)
     .maybeSingle()
   if (lgErr) throw new Error(lgErr.message)

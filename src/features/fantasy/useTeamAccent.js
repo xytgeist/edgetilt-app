@@ -59,11 +59,15 @@ export function useTeamAccent(url, seed) {
   }, [hex, seed])
 }
 
-/** Same pick but never equal to `taken` (two teams with the same hue read as one side). */
-export function distinctTeamAccent(accent, taken, seed) {
-  if (!taken || accent.dark !== taken.dark) return accent
+/** Same pick unless it sits within a few palette steps of `taken` (red vs rose read as one side). */
+export function distinctTeamAccent(accent, taken) {
+  if (!taken) return accent
   const n = GUIDE_ACCENT_PALETTE.length
   const at = GUIDE_ACCENT_PALETTE.findIndex((p) => p.hex === accent.dark)
-  const next = GUIDE_ACCENT_PALETTE[((at >= 0 ? at : hashIndex(seed, n)) + Math.floor(n / 2)) % n]
+  const other = GUIDE_ACCENT_PALETTE.findIndex((p) => p.hex === taken.dark)
+  if (at < 0 || other < 0) return accent
+  const gap = Math.min(Math.abs(at - other), n - Math.abs(at - other))
+  if (gap > 2) return accent
+  const next = GUIDE_ACCENT_PALETTE[(other + Math.floor(n / 2)) % n]
   return { dark: next.hex, light: next.lightHex }
 }

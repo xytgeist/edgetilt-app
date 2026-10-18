@@ -4656,3 +4656,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - 2026-10-18 (1.4.1259): Fantasy lineup busts no longer crop the shoulders: full 600x436 frame with `object-contain` (same fix as the game hub H2H portraits, 1.4.849), 96% of the collapsed header height, 8px past the outer edge, 384px source (stored card variant). Names keep clear of the head; market labels may run over the shoulders and get the full card width.
 - 2026-10-18 (1.4.1260): Fantasy lineup busts tucked 24px past the outer edge (was 8px); name lane trimmed to match so names get more room.
 - 2026-10-18 (1.4.1261): Fantasy card-face prop labels get a text halo (`.fantasy-prop-label`: dark halo in dark mode, white in light) so they read where they cross the player bust.
+- 2026-10-18 (1.4.1262): Prop label halo no longer squared off (truncate clipped the text-shadow at the box; padding + matching negative margin gives it room).

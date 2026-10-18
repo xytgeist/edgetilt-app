@@ -57,7 +57,7 @@ export function horizonValue(entry, scoring, injuryStatus, sport = 'nfl') {
   return { avg, healthy, weeks, injury: kind, known }
 }
 
-function rowId(row) {
+export function rowId(row) {
   if (row?.sleeper_id) return String(row.sleeper_id)
   if (fantasyPosition(row?.position) === 'DEF' && row?.nfl_team) return String(row.nfl_team).toUpperCase()
   return ''

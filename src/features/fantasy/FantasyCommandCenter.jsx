@@ -4,9 +4,10 @@ import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { leagueLineupSlots, optimizeLineup } from './fantasyStartSit.js'
 import { rankWaivers } from './fantasyWaivers.js'
-import { loadWaivers } from './fantasyApi.js'
+import { loadLeagueValues, loadWaivers } from './fantasyApi.js'
+import { composeOfferMessage, findTrades } from './fantasyTrades.js'
+import { openExternalUrl, shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
-import { openExternalUrl } from '../../utils/edgeNative.js'
 import { sportsBetPropTapPayload, useSportsBetOddsActions } from '../sports-bet-tracker/sportsBetLogContext.jsx'
 import { useOddsLogPress } from '../sports-bet-tracker/useOddsLogPress.js'
 
@@ -1086,6 +1087,214 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
   )
 }
 
+async function copyText(text) {
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    /* fall back below */
+  }
+  try {
+    const area = document.createElement('textarea')
+    area.value = text
+    area.setAttribute('readonly', '')
+    area.style.position = 'fixed'
+    area.style.opacity = '0'
+    document.body.appendChild(area)
+    area.select()
+    const ok = document.execCommand('copy')
+    area.remove()
+    return ok
+  } catch {
+    return false
+  }
+}
+
+function TradeSide({ label, players }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[9px] font-bold uppercase tracking-wide text-zinc-500">{label}</div>
+      <div className="mt-0.5 space-y-0.5">
+        {players.map((p) => (
+          <div key={p.id} className="flex min-w-0 items-baseline gap-1">
+            <span className="truncate text-[12px] font-bold text-zinc-100">{shortName(p.name, p.row?.position)}</span>
+            {injuryPill(p.row?.injury_status)}
+            <span className="shrink-0 text-[10px] text-zinc-500">
+              {p.pos}
+              {p.team ? ` · ${p.team}` : ''}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ComposeOffer({ offer, myTeamName }) {
+  const [text, setText] = useState(() => composeOfferMessage(offer, myTeamName))
+  const [note, setNote] = useState('')
+  const flash = (msg) => {
+    setNote(msg)
+    window.setTimeout(() => setNote(''), 1800)
+  }
+  return (
+    <div data-fantasy-trade-compose className="mt-2 space-y-1.5">
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={8}
+        className="w-full resize-none rounded-xl border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-[12px] leading-snug text-zinc-100 outline-none"
+        aria-label="Offer message"
+      />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={async () => flash((await copyText(text)) ? 'Copied' : 'Copy failed')}
+          className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-semibold text-zinc-950"
+        >
+          Copy
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            const res = await shareViaBestAvailable({ title: 'Trade offer', text, onCopied: () => flash('Copied') })
+            if (res.mode === 'failed') flash('Share not available')
+          }}
+          className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200"
+        >
+          Share
+        </button>
+        {note ? <span className="text-[11px] font-semibold text-zinc-400">{note}</span> : null}
+      </div>
+    </div>
+  )
+}
+
+function OfferCard({ offer, myTeamName, compact = false }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-[12px] font-bold text-zinc-100">{offer.team?.team_name || 'Team'}</span>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${offer.theirGain >= -0.25 ? 'fantasy-sit-gain' : 'fantasy-sit-ok'}`}>
+          {offer.fairness}
+        </span>
+      </div>
+      <div className="mt-1.5 grid grid-cols-2 gap-2">
+        <TradeSide label="You give" players={offer.give} />
+        <TradeSide label="You get" players={offer.get} />
+      </div>
+      {!compact ? (
+        <div className="mt-1.5 space-y-0.5 text-[10px] leading-snug">
+          <div className="text-zinc-300">
+            <span className="fantasy-sit-in font-bold">You:</span> {offer.forYou}
+          </div>
+          <div className="text-zinc-400">
+            <span className="font-bold text-zinc-300">Them:</span> {offer.forThem}
+          </div>
+        </div>
+      ) : null}
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold tabular-nums">
+          <span className="fantasy-sit-in">+{offer.myGain.toFixed(1)}/wk you</span>
+          <span className="text-zinc-500">
+            {' · '}
+            {offer.theirGain >= 0 ? '+' : ''}
+            {offer.theirGain.toFixed(1)} them
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="rounded-full border border-zinc-700 px-2.5 py-1 text-[11px] font-semibold text-zinc-200"
+        >
+          {open ? 'Close' : 'Compose offer'}
+        </button>
+      </div>
+      {open ? <ComposeOffer offer={offer} myTeamName={myTeamName} /> : null}
+    </div>
+  )
+}
+
+/** Trade Finder: offers that raise your best lineup, realistic for the other side, with a pasteable message. */
+function TradesPanel({ supabaseClient, detail, sport }) {
+  const leagueId = detail?.league?.id || null
+  const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
+  useEffect(() => {
+    if (!supabaseClient || !leagueId) return undefined
+    let alive = true
+    loadLeagueValues(supabaseClient, leagueId)
+      .then((data) => alive && setLoaded({ id: leagueId, data, error: '' }))
+      .catch((err) => alive && setLoaded({ id: leagueId, data: null, error: err?.message || 'Could not load trade values.' }))
+    return () => {
+      alive = false
+    }
+  }, [supabaseClient, leagueId])
+  const state = loaded.id === leagueId ? { ...loaded, loading: false } : { data: null, error: '', loading: true }
+
+  const mine = (detail?.teams || []).find((t) => t.is_mine) || null
+  const result = useMemo(() => {
+    if (!state.data?.league_players?.length || !mine) return null
+    const { slots } = leagueLineupSlots(detail?.league, detail?.rostersByTeam?.[mine.id] || [])
+    return findTrades({ values: state.data, detail, scoring: detail?.league?.scoring, slots, sport })
+  }, [state.data, detail, mine, sport])
+  const weeks = state.data?.weeks || []
+  const span = weeks.length ? `wk ${weeks[0]}${weeks.length > 1 ? `-${weeks[weeks.length - 1]}` : ''}` : ''
+  const myName = mine?.team_name || ''
+
+  return (
+    <div data-fantasy-trades className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="text-[13px] font-bold text-zinc-100">Trade ideas</div>
+        <div className="text-[10px] text-zinc-500">Slightly aggressive{span ? ` · ${span}` : ''}</div>
+      </div>
+      {state.loading ? (
+        <div className="mt-2 space-y-1.5" data-edge-skeleton aria-label="Loading trade ideas">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="edge-skel block h-20 rounded-xl" />
+          ))}
+        </div>
+      ) : state.error ? (
+        <p className="mt-2 text-[12px] text-rose-300">{state.error}</p>
+      ) : !result?.best ? (
+        <p className="mt-2 text-[12px] text-zinc-500">No trade improves your lineup right now without fleecing someone.</p>
+      ) : (
+        <div className="mt-2 space-y-2">
+          <div>
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Best offer</div>
+            <OfferCard offer={result.best} myTeamName={myName} />
+          </div>
+          {result.ifDeclined.length ? (
+            <div>
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">If they pass</div>
+              <div className="space-y-1.5">
+                {result.ifDeclined.map((o) => (
+                  <OfferCard key={`${o.get[0].id}-${o.give.map((p) => p.id).join('-')}`} offer={o} myTeamName={myName} compact />
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {result.alsoConsider.length ? (
+            <div>
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Also consider</div>
+              <div className="space-y-1.5">
+                {result.alsoConsider.map((o) => (
+                  <OfferCard key={`${o.team.id}-${o.get[0].id}`} offer={o} myTeamName={myName} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+      <p className="mt-2 text-[10px] text-zinc-500">
+        Based on next-four-week projections in your league scoring. Send the offer on {providerLabel(detail?.league?.provider)} or paste the message anywhere.
+      </p>
+    </div>
+  )
+}
+
 function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport }) {
   const starters = pairStarters(mine, opp)
   const bench = pairBench(mine, opp)
@@ -1565,6 +1774,9 @@ export default function FantasyCommandCenter({
           {tool === 'start' && detail ? <StartSitPanel detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} /> : null}
           {tool === 'waiver' && detail ? (
             <WaiversPanel supabaseClient={supabaseClient} detail={detail} sport={selected?.sport || detail?.league?.sport} />
+          ) : null}
+          {tool === 'trade' && detail ? (
+            <TradesPanel supabaseClient={supabaseClient} detail={detail} sport={selected?.sport || detail?.league?.sport} />
           ) : null}
 
           {current ? (

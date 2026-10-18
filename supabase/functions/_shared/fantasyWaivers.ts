@@ -107,7 +107,9 @@ export async function buildFantasyWaivers(
   admin: SupabaseClient,
   userId: string,
   leagueId: string,
+  opts: { mode?: string } = {},
 ): Promise<Record<string, unknown>> {
+  const withLeague = opts.mode === 'trades'
   const { data: league, error: lgErr } = await admin
     .from('fantasy_leagues')
     .select('id, sport')
@@ -156,6 +158,7 @@ export async function buildFantasyWaivers(
 
   const byPos = new Map<string, Array<{ p: WaiverPlayer; horizon: number }>>()
   const roster: WaiverPlayer[] = []
+  const leaguePlayers: WaiverPlayer[] = []
   for (const row of playersRes.data || []) {
     const id = String(row.sleeper_id || '')
     if (!id) continue
@@ -169,6 +172,7 @@ export async function buildFantasyWaivers(
       headshot_url: row.headshot_url || row.local_headshot_path || null,
       weeks: weeksFor(board, id, row.team),
     }
+    if (withLeague && rostered.has(id)) leaguePlayers.push(out)
     if (mineIds.has(id)) {
       roster.push(out)
       continue
@@ -189,5 +193,13 @@ export async function buildFantasyWaivers(
     for (const { p } of list.slice(0, SHORTLIST[pos] || 10)) players.push(p)
   }
 
-  return { supported: true, season: board.season, week: board.week, weeks: board.weeks, players, roster }
+  return {
+    supported: true,
+    season: board.season,
+    week: board.week,
+    weeks: board.weeks,
+    players,
+    roster,
+    ...(withLeague ? { league_players: leaguePlayers } : {}),
+  }
 }

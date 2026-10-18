@@ -219,6 +219,14 @@ export async function loadWaivers(supabase, leagueId) {
   return finishEdge(data, error, 'Could not load waivers.')
 }
 
+/** Next-four-week lines for every rostered player in the league (trade finder). */
+export async function loadLeagueValues(supabase, leagueId) {
+  const id = String(leagueId || '').trim()
+  if (!id) return null
+  const { data, error } = await supabase.functions.invoke('fantasy-waivers', { body: { league_id: id, mode: 'trades' } })
+  return finishEdge(data, error, 'Could not load trade values.')
+}
+
 function loosePlayerName(value) {
   return String(value || '')
     .toLowerCase()

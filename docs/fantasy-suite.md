@@ -222,7 +222,7 @@ Example shape: “Your RB bench is weak (two RB1s on bye same week). Offer Leagu
 - [ ] Value + need engine (NFL first)
 - [x] Start/Sit v1 (2026-10-18: client `fantasyStartSit.js` … best legal lineup from your roster in league scoring, injuries / byes / locked games, swap cards; value engine for Waivers / Trades still open)
 - [x] Waiver v1 (2026-10-18: Edge `fantasy-waivers` … not rostered in the league, shortlisted by next-4-week Sleeper projections with byes; app `fantasyWaivers.js` scores in league rules, ranks by lineup gain vs your roster, safe drop that keeps dedicated slots filled and never cuts an IR stash on a bye-week average)
-- [ ] Trade Analyzer v1 (Finder + manual Offer Review)
+- [ ] Trade Analyzer v1 (Finder + manual Offer Review). **Finder shipped 2026-10-18** (`fantasyTrades.js`: 1-for-1 / 2-for-1, slightly aggressive band, best + if-declined + also-consider, Compose offer with Copy / Share); Offer Review still open.
 - [ ] Research pack v1
 - [ ] Trade Analyzer v2 (pending-trade sync, keeper/picks, playoff SOS)
 

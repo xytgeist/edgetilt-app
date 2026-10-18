@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Calculator, ChevronLeft, ClipboardList, Loader2, Shirt } from 'lucide-react'
+import { Calculator, ChevronLeft, ClipboardList, Shirt } from 'lucide-react'
+import LoungeSportsHubSlateSkeleton from './LoungeSportsHubSlateSkeleton.jsx'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import LoungeGameScorePill from './LoungeGameScorePill.jsx'
@@ -418,14 +419,9 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
           />
         )}
         {nflHub ? <NflHubFantasyComingSoon /> : null}
-        {!leagueReady ? (
-          <div
-            data-lounge-sports-hub-loading
-            className="flex items-center justify-center py-24 text-zinc-500"
-            role="status"
-            aria-label={`Loading ${title}`}
-          >
-            <Loader2 className="h-7 w-7 animate-spin" aria-hidden />
+        {!leagueReady || (!boardFetched && !games.length) ? (
+          <div data-lounge-sports-hub-loading>
+            <LoungeSportsHubSlateSkeleton grid={phoneLandscape && !embedded} />
           </div>
         ) : !games.length ? (
           <div className="px-2 py-16 text-center text-sm text-zinc-500">

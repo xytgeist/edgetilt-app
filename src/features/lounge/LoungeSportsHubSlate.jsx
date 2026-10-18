@@ -24,6 +24,7 @@ import { isPgaGame, loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
 import { probeLogoWashTreatment, resolveNflPillWashes } from './loungeSportsMatch.js'
 import { usePhoneLandscapeNotTablet } from '../../utils/edgeiOSComposerPortraitLock.js'
 import { openSportsBetTracker, openSportsBetTools } from '../sports-bet-tracker/sportsBetNav.js'
+import { markFantasyOpenedFromSportsHub } from '../fantasy/fantasyReturnNav.js'
 
 /** Never hold a league hub behind the loader longer than this (slow CDN / missing art). */
 const LEAGUE_HUB_ASSET_CAP_MS = 6000
@@ -132,6 +133,7 @@ function NflHubFantasyComingSoon() {
     const url = new URL(window.location.href)
     url.searchParams.set('tab', 'fantasy')
     url.searchParams.delete('game')
+    markFantasyOpenedFromSportsHub(sports?.slateFilter)
     window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
     window.dispatchEvent(new PopStateEvent('popstate'))
     // Hub is a body portal and the feed stays mounted, so the veil would cover Fantasy.

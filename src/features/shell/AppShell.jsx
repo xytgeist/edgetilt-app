@@ -166,6 +166,7 @@ import {
   requestLoungeSportsHubOpen,
   clearLoungeSportsGamePending,
 } from '../lounge/loungeSportsHubNav.js'
+import { takeFantasyHubReturn } from '../fantasy/fantasyReturnNav.js'
 import { isSportsBetTrackerSearch, isUsefulSportsBetPrefill, sportsBetLogOpenEventName, sportsBetPrefillFromSearchParams, closeSportsBetTracker } from '../sports-bet-tracker/sportsBetNav.js'
 import { BadgeCheck, Bot, ChartSpline, Cherry, ClipboardList, Flag, Handshake, MessagesSquare, Shirt, Spade, Sparkles, Trophy } from 'lucide-react'
 import { football, footballHelmet } from '@lucide/lab'
@@ -527,6 +528,28 @@ export default function AppShell({
     setSlotsLandscapeLounge(false)
     setTabRaw(value)
   }, [])
+  const tabRef = useRef(tab)
+  tabRef.current = tab
+  /** Where Fantasy was opened from, so closing it lands there instead of always on the Lounge. */
+  const fantasyReturnRef = useRef({ tab: 'home', hubFilter: null })
+  const prevTabForFantasyRef = useRef(tab)
+  useEffect(() => {
+    const prev = prevTabForFantasyRef.current
+    prevTabForFantasyRef.current = tab
+    if (tab === 'fantasy' && prev !== 'fantasy') {
+      fantasyReturnRef.current = { tab: prev || 'home', hubFilter: takeFantasyHubReturn() }
+    }
+  }, [tab])
+  const returnFromFantasy = useCallback(() => {
+    const { tab: back, hubFilter } = fantasyReturnRef.current
+    fantasyReturnRef.current = { tab: 'home', hubFilter: null }
+    if (hubFilter) {
+      setTab('home')
+      requestLoungeSportsHubOpen(hubFilter)
+      return
+    }
+    setTab(back && back !== 'fantasy' ? back : 'home')
+  }, [setTab])
   /** Mount once visited, then hide (like Chat) so reopen skips full reload. */
   const [pokerBankrollKeepAlive, setPokerBankrollKeepAlive] = useState(false)
   const [slotsBankrollKeepAlive, setSlotsBankrollKeepAlive] = useState(false)
@@ -1683,12 +1706,9 @@ export default function AppShell({
           setTab('fantasy')
           setMenuOpen(false)
         }
-      } else if (targetTab !== 'sports-bets') {
-        setTab((prev) => {
-          if (prev !== 'fantasy') return prev
-          if (targetTab && targetTab !== 'fantasy') return targetTab
-          return 'home'
-        })
+      } else if (targetTab !== 'sports-bets' && tabRef.current === 'fantasy') {
+        if (targetTab && targetTab !== 'fantasy') setTab(targetTab)
+        else returnFromFantasy()
       }
       if (targetTab === 'w2g-scanner') {
         if (browseMode === 'anonymous') {
@@ -2470,9 +2490,9 @@ export default function AppShell({
     } catch {
       /* ignore */
     }
-    setTab('home')
+    returnFromFantasy()
     setMenuOpen(false)
-  }, [])
+  }, [returnFromFantasy])
 
   // `intel` - routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)

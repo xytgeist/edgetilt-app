@@ -11862,6 +11862,18 @@ html.light [data-fantasy-home] .fantasy-card-lift {
   border-color: rgba(0, 0, 0, 0.06) !important;
   box-shadow: var(--edge-light-list-card-shadow);
 }
+[data-fantasy-home] .fantasy-live-half {
+  background-color: rgb(16 185 129 / 0.12);
+}
+html.light [data-fantasy-home] .fantasy-live-half {
+  background-color: rgb(34 197 94 / 0.14);
+}
+[data-fantasy-home] .fantasy-live-pts {
+  color: #34d399;
+}
+html.light [data-fantasy-home] .fantasy-live-pts {
+  color: #15803d !important;
+}
 [data-fantasy-home] .fantasy-row-divider {
   background-color: rgb(39 39 42);
 }

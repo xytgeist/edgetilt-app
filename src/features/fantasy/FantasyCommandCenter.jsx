@@ -627,11 +627,19 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
         const leftMain = pair.left ? pickMainProp(pair.left, leftCard) : null
         const rightMain = pair.right ? pickMainProp(pair.right, rightCard) : null
         const open = openKeys.has(rowKey)
+        const leftLive = !!pair.left && sideStatus(leftCard) === 'Live'
+        const rightLive = !!pair.right && sideStatus(rightCard) === 'Live'
         return (
           <li
             key={rowKey}
             className={`fantasy-card-lift relative rounded-xl border border-zinc-800 bg-zinc-900/60 ${bench ? 'fantasy-bench-row' : ''}`}
           >
+            {leftLive ? (
+              <span aria-hidden className="fantasy-live-half pointer-events-none absolute inset-y-0 left-0 w-1/2 rounded-l-[11px]" />
+            ) : null}
+            {rightLive ? (
+              <span aria-hidden className="fantasy-live-half pointer-events-none absolute inset-y-0 right-0 w-1/2 rounded-r-[11px]" />
+            ) : null}
             <span
               aria-hidden
               className="fantasy-row-divider pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2"
@@ -652,7 +660,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
                 <VsHead row={pair.left} align="left" />
                 <div className="flex items-center gap-1">
-                  <span className="w-8 text-right text-[13px] font-bold tabular-nums text-zinc-100">
+                  <span className={`w-8 text-right text-[13px] font-bold tabular-nums ${leftLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>
                     {playerPts(leftCard, cardsLoading, scoring, sport)}
                   </span>
                   <span
@@ -661,7 +669,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                   >
                     {pair.label}
                   </span>
-                  <span className="w-8 text-[13px] font-bold tabular-nums text-zinc-100">
+                  <span className={`w-8 text-[13px] font-bold tabular-nums ${rightLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>
                     {playerPts(rightCard, cardsLoading, scoring, sport)}
                   </span>
                 </div>

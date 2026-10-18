@@ -131,6 +131,9 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 ### Windows Theo ACTIVE TRACK 2026-10-13 ... Prod DB dumps → private R2
 **I am Windows Theo.** Offsite `pg_dump` → private R2 for **production only** (`docs/db-r2-backups.md`). Test keeps Supabase daily backups. Script `scripts/db-dump-to-r2.mjs`, 14-day prune, Windows task daily 3:15 AM. Needs Ryan: create private bucket + `DB_BACKUP_R2_*` in `.env.master`, install `pg_dump`, first `npm run db:dump:r2:production` to size egress, then `npm run db:dump:r2:install-windows-task`. Before scary prod SQL: `--tag=pre-migrate`.
 
+### Mac Theo 2026-10-17 ... iPhone video upload + poster
+**I am Mac Theo.** iPhone Lounge video "Upload failed" was Ryan's home Wi-Fi corrupting large uploads to Cloudflare (-1200 / bad record MAC, reproduced with curl from the Mac; cellular posts fine). No app fix needed for that. Composer poster: native probe retries the still with async `image(at:)`. TestFlight-only Prod **1.4.97 (20261018004742)**, not attached to the 1.4.97 in review. Ryan's phone is on a Mac-signed build until he installs it.
+
 ### Mac Theo ACTIVE TRACK 2026-10-15 ... Lounge Mod hub + report triage
 **I am Mac Theo.** Staff inbox **`/?tab=mod`**. New reports start pending (`needs_human=false`); bot / never-auto / classify failure elevates. SQL **`20261015220000`** + **`20261015240000`** and Edge **`lounge-report-triage`** are on **test + prod** (prod 2026-10-17). Ban / SLA clock still open. Do not bump iOS **1.4.97**.
 

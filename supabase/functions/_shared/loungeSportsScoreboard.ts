@@ -375,6 +375,8 @@ export type LoungeSportsGame = {
   rundown_id?: string | null
   /** Every id this game has been served under, so saved ids (posts, bets, Live Activities) still resolve. */
   source_ids?: string[]
+  /** TheRundown team ids (live-state possession + player stat sides) when matched from the shop fetch. */
+  rundown_team_ids?: { home: number | null; away: number | null } | null
   sport_key: string
   sport_label: string
   status: 'pre' | 'in' | 'post'
@@ -1716,9 +1718,10 @@ function uniqueShopDates(rundownBatches: RundownEvent[][], fallbackDates: string
 }
 
 async function fetchLeagueBoardPack(sportKey: string, dates: string[]): Promise<LeaguePack> {
-  const rundownBatches = await Promise.all(
-    dates.map((date) => listRundownDayEvents(sportKey, date).catch(() => [])),
-  )
+  // The slate comes from The Odds API (+ ESPN enrich). TheRundown is quota-limited and only adds the five
+  // shop books (Circa / Heritage / Bet105 / BookMaker / Betcris); its shop day fetch also carries each game's
+  // TheRundown event id for the hub's live-state backup + player stats.
+  const rundownBatches: RundownEvent[][] = []
   const shopDates = uniqueShopDates(rundownBatches, dates)
   const [scores, oddsPack, pinPack, shopEvents] = await Promise.all([
     cachedSportScores(sportKey),
@@ -3893,14 +3896,36 @@ function shopBookKey(name: string): string {
     .replace(/[^a-z0-9]/g, '')
 }
 
-function shopRowsForGame(events: RundownEvent[], game: LoungeSportsGame): LoungeSportsOddsRow[] {
+function shopEventForGame(events: RundownEvent[], game: LoungeSportsGame): RundownEvent | null {
   for (const ev of events) {
     const sides = rundownShopEventSides(ev)
     if (!sides) continue
     if (!oddsNamesHit(sides.home, game.home) || !oddsNamesHit(sides.away, game.away)) continue
-    return rundownShopRowsFromEvent(ev)
+    return ev
   }
-  return []
+  return null
+}
+
+function shopRowsForGame(events: RundownEvent[], game: LoungeSportsGame): LoungeSportsOddsRow[] {
+  const ev = shopEventForGame(events, game)
+  return ev ? rundownShopRowsFromEvent(ev) : []
+}
+
+/** TheRundown event + team ids from the shop day fetch, so hub detail can call TheRundown without a slate fetch. */
+function withRundownIds(game: LoungeSportsGame, ev: RundownEvent | null): LoungeSportsGame {
+  const eventId = String(ev?.event_id || '').trim()
+  if (!ev || !eventId || game.rundown_id) return game
+  const teams = Array.isArray(ev.teams) ? ev.teams : []
+  const home = teams.find((t) => t.is_home) || teams[1]
+  const away = teams.find((t) => t.is_away) || teams[0]
+  const homeId = numOrNull(home?.team_id)
+  const awayId = numOrNull(away?.team_id)
+  return {
+    ...game,
+    rundown_id: eventId,
+    rundown_team_ids: homeId != null || awayId != null ? { home: homeId, away: awayId } : null,
+    source_ids: [...new Set([...(game.source_ids || [game.id]), eventId])],
+  }
 }
 
 const RUNDOWN_SHOP_BOOK_KEYS = new Set([
@@ -3938,8 +3963,10 @@ function mergeRundownShopOdds(
 /** Fill missing / bogus 0-0 slate numbers from the Rundown shop when Odds is thin. */
 function applyRundownShopQuotes(games: LoungeSportsGame[], events: RundownEvent[]): LoungeSportsGame[] {
   if (!events.length) return games
-  return games.map((game) => {
-    const rows = shopRowsForGame(events, game)
+  return games.map((raw) => {
+    const ev = shopEventForGame(events, raw)
+    const game = withRundownIds(raw, ev)
+    const rows = ev ? rundownShopRowsFromEvent(ev) : []
     if (!rows.length) return game
     const needSpread = !gameHasSpread(game) || gameHasBogusZeroSpread(game)
     const needMl = numOrNull(game.home?.ml) == null || numOrNull(game.away?.ml) == null
@@ -4234,8 +4261,8 @@ export async function fetchLoungeSportsGameDetail(
   const eventObj = eventRaw && typeof eventRaw === 'object'
     ? ((eventRaw as { event?: Record<string, unknown> }).event || eventRaw) as Record<string, unknown>
     : null
-  const homeId = game.home.team_id ?? null
-  const awayId = game.away.team_id ?? null
+  const homeId = game.rundown_team_ids?.home ?? game.home.team_id ?? null
+  const awayId = game.rundown_team_ids?.away ?? game.away.team_id ?? null
   const live = eventObj
     ? liveFromRundown(eventObj, homeId, awayId) || game.live
     : game.live

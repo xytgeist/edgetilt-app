@@ -2,6 +2,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
+import { useLiveGames, useLivePlays } from './useFantasyLive.js'
+import { leagueRates } from './fantasyBoxScore.js'
+import { requestLoungeSportsGameOpen } from '../lounge/loungeSportsHubNav.js'
+import { formatFantasyPoints } from '../lounge/gameHub/gameHubPlayFantasy.js'
 import {
   fantasyPosition,
   gameLocked,
@@ -1021,6 +1025,124 @@ function OpenSlotAlert({ empty, fills, host }) {
           ) : null}
         </div>
       )}
+    </div>
+  )
+}
+
+function openGameHub(game) {
+  if (game?.id) requestLoungeSportsGameOpen(String(game.id), { direct: true })
+}
+
+function shortTeamName(team) {
+  const name = String(team?.team_name || '').trim()
+  return name.length > 14 ? `${name.slice(0, 13)}…` : name
+}
+
+function LiveGameChip({ entry }) {
+  const { game, left, right } = entry
+  const live = game.status === 'in'
+  const score = (side) => (game.status === 'pre' || side.score == null ? '' : ` ${side.score}`)
+  return (
+    <button
+      type="button"
+      onClick={() => openGameHub(game)}
+      data-fantasy-live-game={game.status}
+      className="shrink-0 rounded-xl border border-zinc-800 bg-zinc-900/60 px-2.5 py-1.5 text-left"
+    >
+      <div className="flex items-center gap-1 text-[12px] font-bold tabular-nums text-zinc-100">
+        {game.away.logo ? <img src={game.away.logo} alt="" className="h-4 w-4 object-contain" loading="lazy" /> : null}
+        <span>
+          {game.away.abbrev}
+          {score(game.away)}
+        </span>
+        <span className="text-zinc-500">·</span>
+        {game.home.logo ? <img src={game.home.logo} alt="" className="h-4 w-4 object-contain" loading="lazy" /> : null}
+        <span>
+          {game.home.abbrev}
+          {score(game.home)}
+        </span>
+      </div>
+      <div className="mt-0.5 flex items-center gap-1.5 text-[10px] font-semibold">
+        <span className={live ? 'fantasy-live-pts' : 'text-zinc-500'}>{game.status_label || (live ? 'Live' : '')}</span>
+        {left.length ? <span data-fantasy-live-side="left" className="rounded px-1 font-bold">{left.length}</span> : null}
+        {right.length ? <span data-fantasy-live-side="right" className="rounded px-1 font-bold">{right.length}</span> : null}
+      </div>
+    </button>
+  )
+}
+
+function LivePlayRow({ item, leftName, rightName }) {
+  const shot = useHeadshotSrc(item.position === 'DEF' ? null : item.headshotUrl || null, 96)
+  const clock = item.play.period ? `Q${item.play.period}${item.play.clock ? ` ${item.play.clock}` : ''}` : ''
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => openGameHub(item.game)}
+        className="flex w-full items-start gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 px-2.5 py-2 text-left"
+      >
+        {item.position === 'DEF' && item.headshotUrl ? (
+          <img src={item.headshotUrl} alt="" className="mt-0.5 h-7 w-7 shrink-0 object-contain" loading="lazy" />
+        ) : shot.failed || !item.headshotUrl ? (
+          <span className="mt-0.5 h-7 w-7 shrink-0 rounded-full bg-zinc-800" aria-hidden />
+        ) : (
+          <img src={shot.src} alt="" onError={shot.onError} className="mt-0.5 h-7 w-7 shrink-0 rounded-full bg-zinc-800 object-cover object-top" loading="lazy" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-1.5">
+            <span className="truncate text-[12px] font-bold text-zinc-100">{item.name}</span>
+            {item.position ? <span className="shrink-0 text-[10px] text-zinc-500">{item.position === 'DEF' ? 'D/ST' : item.position}</span> : null}
+            <span data-fantasy-live-side={item.side} className="shrink-0 truncate rounded px-1 text-[9px] font-bold uppercase">
+              {item.side === 'left' ? leftName : rightName}
+            </span>
+            <span className={`ml-auto shrink-0 text-[13px] font-bold tabular-nums ${item.points >= 0 ? 'fantasy-sit-in' : 'fantasy-sit-out'}`}>
+              {formatFantasyPoints(item.points)}
+            </span>
+          </div>
+          <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-zinc-400">{item.play.description}</p>
+          <p className="mt-0.5 text-[10px] text-zinc-500">
+            {clock}
+            {clock ? ' · ' : ''}
+            {item.game.away.abbrev} @ {item.game.home.abbrev}
+          </p>
+        </div>
+      </button>
+    </li>
+  )
+}
+
+/** Live: games with these lineups' starters (tap opens the game hub) and the plays that scored for them. */
+function LivePanel({ supabaseClient, page, detail, sport, active }) {
+  const nfl = String(sport || 'nfl').toLowerCase() === 'nfl'
+  const games = useLiveGames({ supabaseClient, active: active && nfl, leftRows: page?.roster, rightRows: page?.oppRoster })
+  const rates = useMemo(() => leagueRates(detail?.league?.scoring, 'nfl'), [detail?.league?.scoring])
+  const plays = useLivePlays({ supabaseClient, active: active && nfl, games, rates })
+  if (!nfl || !games.length) return null
+  const leftName = shortTeamName(page?.left) || 'Left'
+  const rightName = shortTeamName(page?.right) || 'Right'
+  const anyLive = games.some((g) => g.game.status === 'in')
+  return (
+    <div data-fantasy-live className="space-y-2">
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {games.map((entry) => (
+          <LiveGameChip key={entry.game.id} entry={entry} />
+        ))}
+      </div>
+      {plays.length ? (
+        <div>
+          <div className="mb-1 flex items-baseline justify-between gap-2 px-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{page?.yours ? 'Your players' : 'These lineups'}</span>
+            <span className="text-[10px] text-zinc-500">Tap a play for the game</span>
+          </div>
+          <ul className="max-h-[22rem] space-y-1.5 overflow-y-auto overscroll-contain">
+            {plays.map((item) => (
+              <LivePlayRow key={item.key} item={item} leftName={leftName} rightName={rightName} />
+            ))}
+          </ul>
+        </div>
+      ) : anyLive ? (
+        <p className="px-0.5 text-[11px] text-zinc-500">No scoring plays for these starters yet.</p>
+      ) : null}
     </div>
   )
 }
@@ -2626,6 +2748,15 @@ export default function FantasyCommandCenter({
               cardsLoading={cardsLoading}
               sport={selected?.sport || detail?.league?.sport}
               onOpen={() => setTool('start')}
+            />
+          ) : null}
+          {tool === 'live' && detail && current ? (
+            <LivePanel
+              supabaseClient={supabaseClient}
+              page={current}
+              detail={detail}
+              sport={selected?.sport || detail?.league?.sport}
+              active
             />
           ) : null}
           {tool === 'start' && detail ? (

@@ -11988,6 +11988,23 @@ html.light [data-fantasy-home] [data-fantasy-open-tag] {
   color: #ffffff;
   box-shadow: none;
 }
+/* Fantasy Live: side tags (left lineup green, right rose) */
+[data-fantasy-home] [data-fantasy-live-side='left'] {
+  background-color: rgb(16 185 129 / 0.18);
+  color: #6ee7b7;
+}
+[data-fantasy-home] [data-fantasy-live-side='right'] {
+  background-color: rgb(244 63 94 / 0.18);
+  color: #fda4af;
+}
+html.light [data-fantasy-home] [data-fantasy-live-side='left'] {
+  background-color: #059669;
+  color: #ffffff;
+}
+html.light [data-fantasy-home] [data-fantasy-live-side='right'] {
+  background-color: #e11d48;
+  color: #ffffff;
+}
 /* Offer Review verdict */
 [data-fantasy-home] [data-fantasy-offer-count] {
   background-color: #f43f5e;

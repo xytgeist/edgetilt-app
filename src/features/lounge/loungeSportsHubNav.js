@@ -107,9 +107,12 @@ const LOUNGE_SPORTS_GAME_PENDING_TTL_MS = 6 * 60 * 60 * 1000
 /**
  * Queue a game hub open + broadcast to a mounted Lounge. localStorage (not session) so it survives the
  * sign-in sheet, a new account's email-confirm tab, and the app remount after auth.
+ * `direct`: the caller resolved this id from the live board (e.g. Fantasy), so look it up right away instead
+ * of waiting for the Lounge board to load (it never loads on a cold boot into another tab).
  * @param {string} eventId
+ * @param {{ direct?: boolean }} [opts]
  */
-export function requestLoungeSportsGameOpen(eventId) {
+export function requestLoungeSportsGameOpen(eventId, opts = {}) {
   const id = String(eventId || '').trim()
   if (!id) return
   try {
@@ -120,7 +123,7 @@ export function requestLoungeSportsGameOpen(eventId) {
     /* ignore */
   }
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(LOUNGE_SPORTS_GAME_OPEN_EVENT, { detail: { eventId: id } }))
+    window.dispatchEvent(new CustomEvent(LOUNGE_SPORTS_GAME_OPEN_EVENT, { detail: { eventId: id, direct: Boolean(opts.direct) } }))
   }
 }
 

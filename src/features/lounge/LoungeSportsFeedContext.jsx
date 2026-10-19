@@ -404,10 +404,13 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       || readLoungeSportsGameIdFromLocation(),
   )
   const pendingLookupRef = useRef('')
+  const pendingDirectRef = useRef('')
   useEffect(() => {
     const onOpen = (event) => {
       const id = String(event?.detail?.eventId || '').trim()
-      if (id) setPendingGameId(id)
+      if (!id) return
+      pendingDirectRef.current = event?.detail?.direct ? id : ''
+      setPendingGameId(id)
     }
     window.addEventListener(LOUNGE_SPORTS_GAME_OPEN_EVENT, onOpen)
     return () => window.removeEventListener(LOUNGE_SPORTS_GAME_OPEN_EVENT, onOpen)
@@ -442,7 +445,8 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       openHub(hit)
       return undefined
     }
-    if (!boardFetched || !supabaseClient || pendingLookupRef.current === pendingGameId) return undefined
+    const direct = pendingDirectRef.current === pendingGameId
+    if ((!boardFetched && !direct) || !supabaseClient || pendingLookupRef.current === pendingGameId) return undefined
     // Not on the painted slate … the Edge event lookup still finds current-slate games.
     pendingLookupRef.current = pendingGameId
     let cancelled = false

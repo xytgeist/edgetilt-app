@@ -221,7 +221,7 @@ function teamAbbrev(row) {
 }
 
 /**
- * Full 600x436 ESPN bust (contain, never cropped at the shoulders) at a fixed 96px so the head reaches the name
+ * Full 600x436 ESPN bust (contain, never cropped at the shoulders) at a fixed 104px so the head reaches the name
  * line whatever the card height, bottom-anchored and tucked past the outer edge. Names keep clear of the head;
  * market text may run over the shoulders.
  * Logos and letter fallbacks keep the round mark, centered in the same lane.
@@ -235,7 +235,7 @@ function SideBust({ row, align, live, final = false }) {
     <span
       aria-hidden
       data-fantasy-final-side={final ? '' : undefined}
-      className={`pointer-events-none absolute bottom-0 h-[96px] aspect-[600/436] ${right ? '-right-9' : '-left-9'}`}
+      className={`pointer-events-none absolute bottom-0 h-[104px] aspect-[600/436] ${right ? '-right-9' : '-left-9'}`}
     >
       {live ? <span className="fantasy-live-glow absolute -inset-x-10 -top-4 bottom-0" /> : null}
       {bust ? (
@@ -633,7 +633,7 @@ function CenterMarket({ prop, align, row, card }) {
   if (!prop?.label) return <div />
   const left = align === 'left'
   return (
-    <div className={`flex min-w-0 items-center gap-1 ${left ? 'justify-start' : 'justify-end'}`}>
+    <div className={`flex min-w-0 items-center gap-1 ${left ? 'justify-end' : 'justify-start'}`}>
       {left ? <span className="fantasy-prop-label min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{shortPropLabel(prop.label)}</span> : null}
       <YesNoPills prop={prop} row={row} card={card} />
       {left ? null : <span className="fantasy-prop-label min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{shortPropLabel(prop.label)}</span>}
@@ -912,28 +912,18 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               <SideBust row={pair.left} align="left" live={leftLive} final={sideStatus(leftCard) === 'Final'} />
               <SideBust row={pair.right} align="right" live={rightLive} final={sideStatus(rightCard) === 'Final'} />
               <div className="relative z-[1] grid w-full grid-cols-2 gap-4 px-10">
-                <div className="min-w-0">
-                  {pair.left || !pair.leftOpen ? (
-                    <VsHead row={pair.left} align="left" final={sideStatus(leftCard) === 'Final'} />
-                  ) : (
-                    <OpenSlotTag align="left" />
-                  )}
-                  <div className="mt-1 min-h-[14px]">
-                    <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  {pair.right || !pair.rightOpen ? (
-                    <VsHead row={pair.right} align="right" final={sideStatus(rightCard) === 'Final'} />
-                  ) : (
-                    <OpenSlotTag align="right" />
-                  )}
-                  <div className="mt-1 min-h-[14px]">
-                    <CenterMarket prop={rightMain} align="right" row={pair.right} card={rightCard} />
-                  </div>
-                </div>
+                {pair.left || !pair.leftOpen ? (
+                  <VsHead row={pair.left} align="left" final={sideStatus(leftCard) === 'Final'} />
+                ) : (
+                  <OpenSlotTag align="left" />
+                )}
+                {pair.right || !pair.rightOpen ? (
+                  <VsHead row={pair.right} align="right" final={sideStatus(rightCard) === 'Final'} />
+                ) : (
+                  <OpenSlotTag align="right" />
+                )}
               </div>
-              <div className="relative z-[1] -mt-1 flex items-center justify-center gap-2">
+              <div data-fantasy-scoreboard className="relative z-[1] mt-1 flex items-center justify-center gap-2">
                 <PointsCell card={leftCard} loading={cardsLoading} scoring={scoring} sport={sport} align="left" />
                 {bench ? (
                   <span data-fantasy-bench-pill className="rounded-md px-1.5 py-0.5 text-[10px] font-bold">
@@ -955,6 +945,10 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                   </span>
                 )}
                 <PointsCell card={rightCard} loading={cardsLoading} scoring={scoring} sport={sport} align="right" />
+              </div>
+              <div className="relative z-[1] mt-1 grid min-h-[26px] grid-cols-2 gap-2 px-10">
+                <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />
+                <CenterMarket prop={rightMain} align="right" row={pair.right} card={rightCard} />
               </div>
             </div>
             {open ? (

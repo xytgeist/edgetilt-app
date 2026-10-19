@@ -89,15 +89,31 @@ export function writeLoungeSportsScoreboardCache(games) {
 }
 
 /**
+ * Teams + kickoff for a board game, so a detail lookup still lands if the board switched this game's source id.
+ * @param {{ sport_key?: string, away?: { abbrev?: string }, home?: { abbrev?: string }, commence_time?: string } | null} game
+ */
+export function loungeSportsGameMatch(game) {
+  const away = String(game?.away?.abbrev || '').trim()
+  const home = String(game?.home?.abbrev || '').trim()
+  const sport = String(game?.sport_key || '').trim()
+  if (!away || !home || !sport) return null
+  return { sport_key: sport, away, home, commence_time: String(game?.commence_time || '') }
+}
+
+/**
  * Hub-open detail: live clock/down, multi-book odds, PBP, player stats.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} eventId
- * @param {{ omitRosters?: boolean }} [opts] omitRosters: caller already holds this game's rosters (static in-game).
+ * @param {{ omitRosters?: boolean, match?: ReturnType<typeof loungeSportsGameMatch> }} [opts] omitRosters: caller
+ *   already holds this game's rosters (static in-game). match: teams + kickoff fallback for a switched source id.
  */
 export async function loungeSportsGameDetail(supabase, eventId, opts = {}) {
   const id = String(eventId || '').trim()
   if (!id) return { error: 'Missing event.' }
-  return loungeSportsScoreboard(supabase, opts.omitRosters ? { event_id: id, omit_rosters: true } : { event_id: id })
+  const body = { event_id: id }
+  if (opts.omitRosters) body.omit_rosters = true
+  if (opts.match) body.match = opts.match
+  return loungeSportsScoreboard(supabase, body)
 }
 
 /**

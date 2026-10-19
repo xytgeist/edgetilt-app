@@ -249,6 +249,8 @@ Gameday-shaped **week command center**, Edge-native … not a FantasyPros conten
 - Deep link into existing **game hubs** with Watch / Enemy pins applied
 - Multi-league week strip
 
+**Shipped 2026-10-18:** the main Fantasy page leads with cross-league Live: one Start/Sit alert per league (tap opens that league on Start/Sit), one games strip and one "Your players" feed across every NFL league (your starters green, this week's opponents rose, a player started in two leagues shows once with both tags, points in the primary league's scoring, plays under a point either way hidden). The league screen keeps its own Live pill for that matchup.
+
 NFL first (hub + scoreboard + fantasy points already exist). Extend when other sports hubs are real.
 
 ### Layer C deliverables / specifics

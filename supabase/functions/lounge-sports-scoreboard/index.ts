@@ -64,11 +64,21 @@ Deno.serve(async (req) => {
   let eventId = ''
   let scope = ''
   let omitRosters = false
+  let match: { sport_key: string; away: string; home: string; commence_time: string } | null = null
   try {
     const body = await req.json().catch(() => ({}))
     eventId = String(body?.event_id || '').trim()
     scope = String(body?.scope || '').trim()
     omitRosters = body?.omit_rosters === true
+    const m = body?.match
+    if (m && typeof m === 'object' && m.sport_key && m.away && m.home) {
+      match = {
+        sport_key: String(m.sport_key),
+        away: String(m.away),
+        home: String(m.home),
+        commence_time: String(m.commence_time || ''),
+      }
+    }
   } catch {
     eventId = ''
   }
@@ -79,9 +89,25 @@ Deno.serve(async (req) => {
       const games = scope === 'active' ? board.games.filter(isActiveBoardGame) : board.games
       return json(200, await withStoredHeadshots(admin, { ok: true, ...board, games, scope: scope === 'active' ? 'active' : 'full', fetched_at: new Date().toISOString() }))
     }
-    const game = board.games.find((g) => g.id === eventId)
+    // A board rebuild can switch the same game between source ids (TheRundown vs The Odds API) when one feed
+    // blips. With `match`, a stale id still finds its game by sport + teams + kickoff (12h window).
+    const teamKey = (v: unknown) => {
+      const u = String(v || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
+      return u === 'WSH' ? 'WAS' : u === 'JAC' ? 'JAX' : u
+    }
+    const game =
+      board.games.find((g) => g.id === eventId) ||
+      (match
+        ? board.games.find((g) => {
+            if (g.sport_key !== match!.sport_key) return false
+            if (teamKey(g.away?.abbrev) !== teamKey(match!.away) || teamKey(g.home?.abbrev) !== teamKey(match!.home)) return false
+            const a = Date.parse(g.commence_time || '')
+            const b = Date.parse(match!.commence_time || '')
+            return !Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a - b) < 12 * 3600 * 1000
+          })
+        : undefined)
     if (!game) return json(404, { error: 'Game not on the current slate.' })
-    const payload = await cachedDetail(eventId, admin, async () => {
+    const payload = await cachedDetail(game.id, admin, async () => {
       const detail = await fetchLoungeSportsGameDetail(game, admin)
       const splitMap = await loadPastedBettingSplitsForSlate(admin, game.sport_key, [
         {

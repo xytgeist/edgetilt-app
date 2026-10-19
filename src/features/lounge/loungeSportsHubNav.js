@@ -109,8 +109,9 @@ const LOUNGE_SPORTS_GAME_PENDING_TTL_MS = 6 * 60 * 60 * 1000
  * sign-in sheet, a new account's email-confirm tab, and the app remount after auth.
  * `direct`: the caller resolved this id from the live board (e.g. Fantasy), so look it up right away instead
  * of waiting for the Lounge board to load (it never loads on a cold boot into another tab).
+ * `match` (teams + kickoff) lets that lookup still land if the board switched this game's source id.
  * @param {string} eventId
- * @param {{ direct?: boolean }} [opts]
+ * @param {{ direct?: boolean, match?: { sport_key: string, away: string, home: string, commence_time?: string } | null }} [opts]
  */
 export function requestLoungeSportsGameOpen(eventId, opts = {}) {
   const id = String(eventId || '').trim()
@@ -123,7 +124,9 @@ export function requestLoungeSportsGameOpen(eventId, opts = {}) {
     /* ignore */
   }
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(LOUNGE_SPORTS_GAME_OPEN_EVENT, { detail: { eventId: id, direct: Boolean(opts.direct) } }))
+    window.dispatchEvent(
+      new CustomEvent(LOUNGE_SPORTS_GAME_OPEN_EVENT, { detail: { eventId: id, direct: Boolean(opts.direct), match: opts.match || null } }),
+    )
   }
 }
 

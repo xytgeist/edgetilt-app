@@ -5,6 +5,7 @@ import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { useLiveGames, useLivePlays } from './useFantasyLive.js'
 import { leagueRates } from './fantasyBoxScore.js'
 import { requestLoungeSportsGameOpen } from '../lounge/loungeSportsHubNav.js'
+import { loungeSportsGameMatch } from '../../utils/loungeSportsApi.js'
 import { formatFantasyPoints } from '../lounge/gameHub/gameHubPlayFantasy.js'
 import {
   fantasyPosition,
@@ -1030,7 +1031,7 @@ function OpenSlotAlert({ empty, fills, host }) {
 }
 
 function openGameHub(game) {
-  if (game?.id) requestLoungeSportsGameOpen(String(game.id), { direct: true })
+  if (game?.id) requestLoungeSportsGameOpen(String(game.id), { direct: true, match: loungeSportsGameMatch(game) })
 }
 
 function shortTeamName(team) {
@@ -1071,7 +1072,7 @@ function LiveGameChip({ entry }) {
   )
 }
 
-function LivePlayRow({ item, leftName, rightName }) {
+function LivePlayRow({ item, tagFor }) {
   const shot = useHeadshotSrc(item.position === 'DEF' ? null : item.headshotUrl || null, 96)
   const clock = item.play.period ? `Q${item.play.period}${item.play.clock ? ` ${item.play.clock}` : ''}` : ''
   return (
@@ -1092,8 +1093,8 @@ function LivePlayRow({ item, leftName, rightName }) {
           <div className="flex items-baseline gap-1.5">
             <span className="truncate text-[12px] font-bold text-zinc-100">{item.name}</span>
             {item.position ? <span className="shrink-0 text-[10px] text-zinc-500">{item.position === 'DEF' ? 'D/ST' : item.position}</span> : null}
-            <span data-fantasy-live-side={item.side} className="shrink-0 truncate rounded px-1 text-[9px] font-bold uppercase">
-              {item.side === 'left' ? leftName : rightName}
+            <span data-fantasy-live-side={item.side} className="min-w-0 truncate rounded px-1 text-[9px] font-bold uppercase">
+              {tagFor(item)}
             </span>
             <span className={`ml-auto shrink-0 text-[13px] font-bold tabular-nums ${item.points >= 0 ? 'fantasy-sit-in' : 'fantasy-sit-out'}`}>
               {formatFantasyPoints(item.points)}
@@ -1136,7 +1137,7 @@ function LivePanel({ supabaseClient, page, detail, sport, active }) {
           </div>
           <ul className="max-h-[22rem] space-y-1.5 overflow-y-auto overscroll-contain">
             {plays.map((item) => (
-              <LivePlayRow key={item.key} item={item} leftName={leftName} rightName={rightName} />
+              <LivePlayRow key={item.key} item={item} tagFor={(x) => (x.side === 'left' ? leftName : rightName)} />
             ))}
           </ul>
         </div>
@@ -1144,6 +1145,113 @@ function LivePanel({ supabaseClient, page, detail, sport, active }) {
         <p className="px-0.5 text-[11px] text-zinc-500">No scoring plays for these starters yet.</p>
       ) : null}
     </div>
+  )
+}
+
+function shortLeagueName(lg) {
+  const name = String(lg?.name || '').trim()
+  return name.length > 16 ? `${name.slice(0, 15)}…` : name
+}
+
+function rowKeyOf(row) {
+  if (row?.sleeper_id) return String(row.sleeper_id)
+  return fantasyPosition(row?.position) === 'DEF' && row?.nfl_team ? `DEF:${String(row.nfl_team).toUpperCase()}` : ''
+}
+
+/**
+ * Main-page Live across every NFL league: one alert per league with something to fix, one games strip and one
+ * play feed for all your starters (green) and this week's opponents' starters (rose). A player you start in
+ * several leagues shows once, tagged with each. Points use the primary league's scoring.
+ */
+function HomeLive({ supabaseClient, leagues, details, cards, cardsLoading, onOpenLeague }) {
+  const nfl = useMemo(
+    () => (leagues || []).filter((lg) => String(lg.sport || 'nfl').toLowerCase() === 'nfl' && details?.[lg.id]),
+    [leagues, details],
+  )
+  const merged = useMemo(() => {
+    const left = new Map()
+    const right = new Map()
+    const tags = new Map()
+    const add = (map, row, side, lg) => {
+      const key = rowKeyOf(row)
+      if (!key) return
+      if (!map.has(key)) map.set(key, row)
+      const list = tags.get(`${side}:${key}`) || []
+      list.push(shortLeagueName(lg))
+      tags.set(`${side}:${key}`, list)
+    }
+    for (const lg of nfl) {
+      const page = matchupPages(details[lg.id]).find((p) => p.yours)
+      if (!page) continue
+      for (const row of page.roster || []) if (row.slot === 'starter') add(left, row, 'left', lg)
+      for (const row of page.oppRoster || []) if (row.slot === 'starter') add(right, row, 'right', lg)
+    }
+    for (const key of left.keys()) right.delete(key)
+    return { leftRows: [...left.values()], rightRows: [...right.values()], tags }
+  }, [nfl, details])
+  const primary = nfl.find((lg) => lg.is_primary) || nfl[0] || null
+  const rates = useMemo(() => leagueRates(primary ? details?.[primary.id]?.league?.scoring : null, 'nfl'), [primary, details])
+  const games = useLiveGames({ supabaseClient, active: nfl.length > 0, leftRows: merged.leftRows, rightRows: merged.rightRows })
+  const plays = useLivePlays({ supabaseClient, active: nfl.length > 0, games, rates })
+  if (!nfl.length) return null
+
+  const tagFor = (item) => {
+    const key = item.position === 'DEF' ? `DEF:${String(item.name).toUpperCase()}` : String(item.sleeperId || '')
+    const list = merged.tags.get(`${item.side}:${key}`) || []
+    const label = list.join(' · ')
+    return item.side === 'left' ? label || 'Yours' : `vs · ${label || 'Opp'}`
+  }
+  const anyLive = games.some((g) => g.game.status === 'in')
+
+  return (
+    <section data-fantasy-live className="space-y-2">
+      {nfl.map((lg) => (
+        <LiveAlerts
+          key={lg.id}
+          detail={details[lg.id]}
+          cards={cards}
+          cardsLoading={cardsLoading}
+          sport="nfl"
+          prefix={nfl.length > 1 ? shortLeagueName(lg) : ''}
+          onOpen={() => onOpenLeague(lg.id, 'start')}
+        />
+      ))}
+      {games.length ? (
+        <>
+          <div className="flex items-baseline justify-between gap-2 px-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Live</span>
+            <span className="text-[10px] text-zinc-500">
+              <span data-fantasy-live-side="left" className="rounded px-1 font-bold">
+                yours
+              </span>{' '}
+              <span data-fantasy-live-side="right" className="rounded px-1 font-bold">
+                opponents
+              </span>
+            </span>
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {games.map((entry) => (
+              <LiveGameChip key={entry.game.id} entry={entry} />
+            ))}
+          </div>
+        </>
+      ) : null}
+      {plays.length ? (
+        <div>
+          <div className="mb-1 flex items-baseline justify-between gap-2 px-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Your players</span>
+            <span className="text-[10px] text-zinc-500">Tap a play for the game</span>
+          </div>
+          <ul className="max-h-[22rem] space-y-1.5 overflow-y-auto overscroll-contain">
+            {plays.map((item) => (
+              <LivePlayRow key={item.key} item={item} tagFor={tagFor} />
+            ))}
+          </ul>
+        </div>
+      ) : anyLive ? (
+        <p className="px-0.5 text-[11px] text-zinc-500">No scoring plays for your starters yet.</p>
+      ) : null}
+    </section>
   )
 }
 
@@ -1159,7 +1267,7 @@ function useStartSitPlan(detail, cards, sport) {
 }
 
 /** Live banner: open slots and swaps from Start/Sit, one tap to the details. Hidden when there is nothing to do. */
-function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen }) {
+function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen, prefix = '' }) {
   const plan = useStartSitPlan(detail, cards, sport)
   if (cardsLoading || !plan || (!plan.moves.length && !plan.empty.length)) return null
   const parts = []
@@ -1176,7 +1284,10 @@ function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen }) {
       className="flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-[12px] font-bold"
     >
       <span aria-hidden>!</span>
-      <span className="min-w-0 flex-1 truncate">{parts.join(' · ')}</span>
+      <span className="min-w-0 flex-1 truncate">
+        {prefix ? <span className="opacity-80">{prefix}: </span> : null}
+        {parts.join(' · ')}
+      </span>
       <span className="shrink-0 text-[11px] font-semibold opacity-80">Start/Sit</span>
     </button>
   )
@@ -2610,6 +2721,11 @@ export default function FantasyCommandCenter({
     setPageKey(key)
     void onSetPrimary?.(id)
   }
+  const openLeagueTool = (id, nextTool) => {
+    const page = details?.[id] ? matchupPages(details[id]).find((p) => p.yours) : null
+    setTool(nextTool)
+    openMatchup(id, page?.key || null)
+  }
 
   return (
     <div className="space-y-4">
@@ -2652,6 +2768,14 @@ export default function FantasyCommandCenter({
 
       {!leagueId ? (
         <>
+          <HomeLive
+            supabaseClient={supabaseClient}
+            leagues={leagues}
+            details={details}
+            cards={cards}
+            cardsLoading={cardsLoading}
+            onOpenLeague={openLeagueTool}
+          />
           {loadingDetail && !(leagues || []).some((lg) => details?.[lg.id]) ? (
             <div className="py-6 text-center text-sm text-zinc-500">Loading matchups…</div>
           ) : null}
@@ -2671,7 +2795,10 @@ export default function FantasyCommandCenter({
                   <button
                     key={`${lg.id}-${item.key}`}
                     type="button"
-                    onClick={() => openMatchup(lg.id, item.key)}
+                    onClick={() => {
+                      setTool('live')
+                      openMatchup(lg.id, item.key)
+                    }}
                     className="block w-full border-0 bg-transparent p-0 text-left"
                   >
                     <MatchupCard

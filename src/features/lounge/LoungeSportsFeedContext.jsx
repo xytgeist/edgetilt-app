@@ -405,11 +405,13 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   )
   const pendingLookupRef = useRef('')
   const pendingDirectRef = useRef('')
+  const pendingMatchRef = useRef(null)
   useEffect(() => {
     const onOpen = (event) => {
       const id = String(event?.detail?.eventId || '').trim()
       if (!id) return
       pendingDirectRef.current = event?.detail?.direct ? id : ''
+      pendingMatchRef.current = event?.detail?.match ? { id, match: event.detail.match } : null
       setPendingGameId(id)
     }
     window.addEventListener(LOUNGE_SPORTS_GAME_OPEN_EVENT, onOpen)
@@ -450,7 +452,8 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     // Not on the painted slate … the Edge event lookup still finds current-slate games.
     pendingLookupRef.current = pendingGameId
     let cancelled = false
-    void loungeSportsGameDetail(supabaseClient, pendingGameId).then((data) => {
+    const match = pendingMatchRef.current?.id === pendingGameId ? pendingMatchRef.current.match : null
+    void loungeSportsGameDetail(supabaseClient, pendingGameId, match ? { match } : {}).then((data) => {
       if (cancelled) return
       const game = data?.game && typeof data.game === 'object' ? enrichLoungeSportsGame(data.game) : null
       if (game) {

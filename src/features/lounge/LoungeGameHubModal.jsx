@@ -6,6 +6,7 @@ import {
   loungeGameNews,
   loungeNflGameFantasy,
   loungeSportsGameDetail,
+  loungeSportsGameMatch,
 } from '../../utils/loungeSportsApi.js'
 import { shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { formatLoungeSearchError, loungeSearch, LOUNGE_SEARCH_SORT } from './loungeSearchApi.js'
@@ -268,6 +269,7 @@ function LoungeMatchupGameHubModal({
 
   const detailGameId = game?.id || null
   const detailGameLive = game?.status === 'in'
+  const detailMatchKey = JSON.stringify(loungeSportsGameMatch(game))
   useEffect(() => {
     if (!detailGameId || !supabaseClient) {
       setDetail(EMPTY_DETAIL)
@@ -282,7 +284,7 @@ function LoungeMatchupGameHubModal({
     const load = () => {
       if (inflight) return
       inflight = true
-      void loungeSportsGameDetail(supabaseClient, detailGameId, { omitRosters: Boolean(knownRosters) }).then((data) => {
+      void loungeSportsGameDetail(supabaseClient, detailGameId, { omitRosters: Boolean(knownRosters), match: JSON.parse(detailMatchKey) }).then((data) => {
         inflight = false
         if (cancelled || data?.error) return
         const freshRosters = data.rosters && typeof data.rosters === 'object' ? data.rosters : null
@@ -321,7 +323,7 @@ function LoungeMatchupGameHubModal({
       clearInterval(id)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [detailGameId, detailGameLive, supabaseClient, hubOpenNonce, markHubReady])
+  }, [detailGameId, detailGameLive, detailMatchKey, supabaseClient, hubOpenNonce, markHubReady])
 
   useEffect(() => {
     if (!game || !supabaseClient) return undefined

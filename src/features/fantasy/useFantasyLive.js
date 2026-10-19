@@ -4,7 +4,13 @@
  * while the Live tab is on screen and the page is visible.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { loungeNflGameFantasy, loungeSportsGameDetail, loungeSportsScoreboard, readLoungeSportsScoreboardCache } from '../../utils/loungeSportsApi.js'
+import {
+  loungeNflGameFantasy,
+  loungeSportsGameDetail,
+  loungeSportsGameMatch,
+  loungeSportsScoreboard,
+  readLoungeSportsScoreboardCache,
+} from '../../utils/loungeSportsApi.js'
 import { teamsMatch } from '../lounge/gameHub/gameHubFormatters.js'
 import { playFantasyPoints } from '../lounge/gameHub/gameHubPlayFantasy.js'
 import { fantasyPosition } from './fantasyStartSit.js'
@@ -12,8 +18,19 @@ import { fantasyPosition } from './fantasyStartSit.js'
 const POLL_MS = 30000
 const NFL = 'americanfootball_nfl'
 
+const PRE_WINDOW_MS = 36 * 3600 * 1000
+const POST_WINDOW_MS = 18 * 3600 * 1000
+
+/** NFL games that are live, kick off within a day and a half, or finished in the last 18 hours. */
 function nflGames(list) {
-  return (Array.isArray(list) ? list : []).filter((g) => String(g?.sport_key || '').includes(NFL) && g?.home?.abbrev && g?.away?.abbrev)
+  const now = Date.now()
+  return (Array.isArray(list) ? list : []).filter((g) => {
+    if (!String(g?.sport_key || '').includes(NFL) || !g?.home?.abbrev || !g?.away?.abbrev) return false
+    if (g.status === 'in') return true
+    const t = Date.parse(g.commence_time || '')
+    if (!Number.isFinite(t)) return false
+    return g.status === 'pre' ? t - now < PRE_WINDOW_MS : now - t < POST_WINDOW_MS
+  })
 }
 
 function starters(rows) {
@@ -41,8 +58,10 @@ export function useLiveGames({ supabaseClient, active, leftRows, rightRows }) {
   useEffect(() => {
     if (!supabaseClient || !active || !visible) return undefined
     let alive = true
+    // Full slate, not `scope: active`: the active view can carry a different source id for the same game,
+    // and the hub / detail lookup only resolves full-slate ids.
     const load = () =>
-      loungeSportsScoreboard(supabaseClient, { scope: 'active' }).then((data) => {
+      loungeSportsScoreboard(supabaseClient).then((data) => {
         if (alive && Array.isArray(data?.games)) setBoard(nflGames(data.games))
       })
     void load()
@@ -97,7 +116,7 @@ export function useLivePlays({ supabaseClient, active, games, rates }) {
             const fan = await loungeNflGameFantasy(supabaseClient, { eventId: id, awayAbbrev: g.away.abbrev, homeAbbrev: g.home.abbrev })
             if (Array.isArray(fan?.players)) rostersRef.current.set(id, fan.players)
           }
-          const detail = await loungeSportsGameDetail(supabaseClient, id, { omitRosters: true })
+          const detail = await loungeSportsGameDetail(supabaseClient, id, { omitRosters: true, match: loungeSportsGameMatch(g) })
           return [id, Array.isArray(detail?.plays) ? detail.plays : null, rostersRef.current.get(id) || []]
         }),
       )
@@ -145,6 +164,8 @@ export function useLivePlays({ supabaseClient, active, games, rates }) {
           rates,
         })
         for (const r of rows) {
+          // Under a point either way is noise (a QB's 6-yard completion); catches, real gains, TDs, turnovers stay.
+          if (Math.abs(r.points) < 1) continue
           let side = null
           if (r.position === 'DEF') {
             if (leftDef.some((d) => teamsMatch(d.nfl_team, r.name))) side = 'left'

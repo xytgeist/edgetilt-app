@@ -221,8 +221,8 @@ function teamAbbrev(row) {
 }
 
 /**
- * Full 600x436 ESPN bust (contain, never cropped at the shoulders) at a fixed 104px so the head reaches the name
- * line whatever the card height, bottom-anchored and tucked past the outer edge. Names keep clear of the head;
+ * Full 600x436 ESPN bust (contain, never cropped at the shoulders), a bit taller than the collapsed card so the
+ * head clears the name line, bottom-anchored and tucked past the outer edge. Names keep clear of the head;
  * market text may run over the shoulders.
  * Logos and letter fallbacks keep the round mark, centered in the same lane.
  */
@@ -235,7 +235,7 @@ function SideBust({ row, align, live, final = false }) {
     <span
       aria-hidden
       data-fantasy-final-side={final ? '' : undefined}
-      className={`pointer-events-none absolute bottom-0 h-[104px] aspect-[600/436] ${right ? '-right-9' : '-left-9'}`}
+      className={`pointer-events-none absolute bottom-0 h-[115%] aspect-[600/436] ${right ? '-right-7' : '-left-7'}`}
     >
       {live ? <span className="fantasy-live-glow absolute -inset-x-10 -top-4 bottom-0" /> : null}
       {bust ? (
@@ -650,7 +650,7 @@ function VsHead({ row, align, final = false }) {
     >
       <div className="min-w-0">
         <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
-          <span className="truncate text-[12.5px] font-bold text-zinc-100">
+          <span className="truncate text-[12px] font-bold tracking-wide text-zinc-100">
             {shortName(row.player_name, row.position)}
           </span>
           {injuryPill(row.injury_status)}
@@ -856,9 +856,9 @@ function PointsCell({ card, loading, scoring, sport, align }) {
     }
   }
   return (
-    <span className={`flex w-12 flex-col leading-none ${align === 'right' ? 'items-start' : 'items-end'}`}>
-      <span className={`text-[17px] font-bold tabular-nums ${mainCls}`}>{main}</span>
-      {sub ? <span className={`mt-1 text-[10px] font-semibold tabular-nums ${subCls}`}>{sub}</span> : null}
+    <span className={`flex w-8 flex-col leading-none ${align === 'right' ? 'items-start' : 'items-end'}`}>
+      <span className={`text-[13px] font-bold tabular-nums ${mainCls}`}>{main}</span>
+      {sub ? <span className={`mt-0.5 text-[9px] font-semibold tabular-nums ${subCls}`}>{sub}</span> : null}
     </span>
   )
 }
@@ -911,42 +911,42 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
             >
               <SideBust row={pair.left} align="left" live={leftLive} final={sideStatus(leftCard) === 'Final'} />
               <SideBust row={pair.right} align="right" live={rightLive} final={sideStatus(rightCard) === 'Final'} />
-              <div className="relative z-[1] grid w-full grid-cols-2 gap-4 px-10">
+              <div className="relative z-[1] grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-10">
                 {pair.left || !pair.leftOpen ? (
                   <VsHead row={pair.left} align="left" final={sideStatus(leftCard) === 'Final'} />
                 ) : (
                   <OpenSlotTag align="left" />
                 )}
+                <div className="flex items-center gap-1">
+                  <PointsCell card={leftCard} loading={cardsLoading} scoring={scoring} sport={sport} align="left" />
+                  {bench ? (
+                    <span data-fantasy-bench-pill className="rounded-md px-1.5 py-0.5 text-[10px] font-bold">
+                      BN
+                    </span>
+                  ) : slotPillPosition(pair.label) ? (
+                    <span
+                      data-pos-pill={slotPillPosition(pair.label)}
+                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${positionPillClass(slotPillPosition(pair.label))}`}
+                    >
+                      {pair.label}
+                    </span>
+                  ) : (
+                    <span
+                      className="fantasy-slot-pill rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
+                      style={{ color: '#fff' }}
+                    >
+                      {pair.label}
+                    </span>
+                  )}
+                  <PointsCell card={rightCard} loading={cardsLoading} scoring={scoring} sport={sport} align="right" />
+                </div>
                 {pair.right || !pair.rightOpen ? (
                   <VsHead row={pair.right} align="right" final={sideStatus(rightCard) === 'Final'} />
                 ) : (
                   <OpenSlotTag align="right" />
                 )}
               </div>
-              <div data-fantasy-scoreboard className="relative z-[1] mt-1 flex items-center justify-center gap-2">
-                <PointsCell card={leftCard} loading={cardsLoading} scoring={scoring} sport={sport} align="left" />
-                {bench ? (
-                  <span data-fantasy-bench-pill className="rounded-md px-1.5 py-0.5 text-[10px] font-bold">
-                    BN
-                  </span>
-                ) : slotPillPosition(pair.label) ? (
-                  <span
-                    data-pos-pill={slotPillPosition(pair.label)}
-                    className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${positionPillClass(slotPillPosition(pair.label))}`}
-                  >
-                    {slotDisplayLabel(pair.label)}
-                  </span>
-                ) : (
-                  <span
-                    className="fantasy-slot-pill rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
-                    style={{ color: '#fff' }}
-                  >
-                    {slotDisplayLabel(pair.label)}
-                  </span>
-                )}
-                <PointsCell card={rightCard} loading={cardsLoading} scoring={scoring} sport={sport} align="right" />
-              </div>
-              <div className="relative z-[1] mt-1 grid min-h-[26px] grid-cols-2 gap-2 px-10">
+              <div className="relative z-[1] mt-1.5 grid min-h-[14px] grid-cols-2 gap-1.5 px-1">
                 <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />
                 <CenterMarket prop={rightMain} align="right" row={pair.right} card={rightCard} />
               </div>
@@ -962,11 +962,6 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
       })}
     </>
   )
-}
-
-/** "RB1" / "WR2" → "RB" / "WR": the slot type is enough on the card. */
-function slotDisplayLabel(label) {
-  return String(label || '').replace(/\d+$/, '')
 }
 
 function OpenSlotTag({ align }) {

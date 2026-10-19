@@ -4,7 +4,7 @@
  * splits, or rosters … the logged-in hub keeps using `lounge-sports-scoreboard`.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { cachedLoungeSportsScoreboard, type LoungeSportsGame } from '../_shared/loungeSportsScoreboard.ts'
+import { boardGameById, cachedLoungeSportsScoreboard, type LoungeSportsGame } from '../_shared/loungeSportsScoreboard.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
   try {
     admin ??= createClient(supabaseUrl, serviceKey)
     const board = await cachedLoungeSportsScoreboard(admin, BOARD_TTL_MS)
-    const game = board.games.find((g) => g.id === eventId)
+    const game = boardGameById(board.games, eventId)
     if (!game) return json(404, { error: 'Game not on the current slate.' }, 60)
     const live = game.live
     return json(200, {

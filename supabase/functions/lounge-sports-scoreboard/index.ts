@@ -5,7 +5,7 @@
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { withStoredHeadshots } from '../_shared/playerHeadshotStore.ts'
-import { cachedLoungeSportsScoreboard, fetchLoungeSportsGameDetail } from '../_shared/loungeSportsScoreboard.ts'
+import { boardGameById, cachedLoungeSportsScoreboard, fetchLoungeSportsGameDetail } from '../_shared/loungeSportsScoreboard.ts'
 import { loadPastedBettingSplitsForSlate } from '../_shared/loungeBotBettingSplits.ts'
 import { sharedCached } from '../_shared/edgeSharedCache.ts'
 import { userIdFromJwt } from '../_shared/userJwt.ts'
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
       return u === 'WSH' ? 'WAS' : u === 'JAC' ? 'JAX' : u
     }
     const game =
-      board.games.find((g) => g.id === eventId) ||
+      boardGameById(board.games, eventId) ||
       (match
         ? board.games.find((g) => {
             if (g.sport_key !== match!.sport_key) return false

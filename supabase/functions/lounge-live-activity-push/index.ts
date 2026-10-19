@@ -4,7 +4,7 @@
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
-import { cachedLoungeSportsScoreboard } from '../_shared/loungeSportsScoreboard.ts'
+import { boardGameIndex, cachedLoungeSportsScoreboard } from '../_shared/loungeSportsScoreboard.ts'
 import {
   fingerprintLiveSportsState,
   liveSportsContentStateFromGame,
@@ -64,7 +64,8 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   const scoreAdmin = createClient(supabaseUrl || '', serviceKey || '')
   const board = await cachedLoungeSportsScoreboard(scoreAdmin, BOARD_TTL_MS)
-  const byId = new Map((board.games || []).map((g) => [String(g.id), g]))
+  // Tokens keep the id the game had at start; the board may have moved it to a more stable source id since.
+  const byId = boardGameIndex(board.games || [])
 
   let sent = 0
   let ended = 0

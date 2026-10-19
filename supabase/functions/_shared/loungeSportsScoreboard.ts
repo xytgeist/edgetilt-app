@@ -369,7 +369,12 @@ async function fetchEspnNflRoster(abbrev: string | null | undefined): Promise<Lo
 }
 
 export type LoungeSportsGame = {
+  /** The Odds API event id when that feed has the game (stable across rebuilds), else TheRundown's. */
   id: string
+  /** TheRundown event id for `/events/{id}` calls; never use `id` for TheRundown. */
+  rundown_id?: string | null
+  /** Every id this game has been served under, so saved ids (posts, bets, Live Activities) still resolve. */
+  source_ids?: string[]
   sport_key: string
   sport_label: string
   status: 'pre' | 'in' | 'post'
@@ -954,8 +959,11 @@ function gameFromRundown(
   if (!id) return null
   const live = liveFromRundown(event as Record<string, unknown>, home.team_id ?? null, away.team_id ?? null)
   const spread = spreadFromRundownEvent(event as Record<string, unknown>)
+  const rundownId = String(event.event_id || '').trim() || null
   return {
     id,
+    rundown_id: rundownId,
+    source_ids: [id],
     sport_key: sportKey,
     sport_label: sportLabel,
     status,
@@ -1080,8 +1088,11 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
     record: null,
     team_id: cfbAwayId > 0 ? cfbAwayId : null,
   }
+  const oddsId = String(ev.id || `${sportKey}:${awayName}@${homeName}`).trim()
   return {
-    id: String(ev.id || `${sportKey}:${awayName}@${homeName}`).trim(),
+    id: oddsId,
+    rundown_id: null,
+    source_ids: [oddsId],
     sport_key: sportKey,
     sport_label: sportLabel,
     status,
@@ -1269,14 +1280,57 @@ function richerSlateGame(a: LoungeSportsGame, b: LoungeSportsGame): LoungeSports
   return score(b) > score(a) ? b : a
 }
 
+/** Same game, new board id: remember every id it has had and keep its TheRundown id for TheRundown calls. */
+function withGameId(game: LoungeSportsGame, id: string, other?: LoungeSportsGame): LoungeSportsGame {
+  const ids = new Set([id, game.id, ...(game.source_ids || []), ...(other ? [other.id, ...(other.source_ids || [])] : [])])
+  return {
+    ...game,
+    id,
+    rundown_id: game.rundown_id || other?.rundown_id || null,
+    source_ids: [...ids].filter(Boolean),
+  }
+}
+
+/** Odds API ids are stable (TheRundown id only when the Odds API never had the game). */
+function stableIdOf(a: LoungeSportsGame, b: LoungeSportsGame): string {
+  const isOdds = (g: LoungeSportsGame) => g.id !== g.rundown_id && !g.id.startsWith('espn-golf-')
+  if (isOdds(a)) return a.id
+  if (isOdds(b)) return b.id
+  return a.id
+}
+
 function collapseSlateGames(games: LoungeSportsGame[]): LoungeSportsGame[] {
   const byKey = new Map<string, LoungeSportsGame>()
   for (const game of games) {
     const key = slateDedupeKey(game)
     const prev = byKey.get(key)
-    byKey.set(key, prev ? richerSlateGame(prev, game) : game)
+    if (!prev) {
+      byKey.set(key, game)
+      continue
+    }
+    const winner = richerSlateGame(prev, game)
+    const loser = winner === prev ? game : prev
+    byKey.set(key, withGameId(winner, stableIdOf(prev, game), loser))
   }
   return [...byKey.values()]
+}
+
+/** Board lookup by any id the game has been served under (current, Odds API, TheRundown). */
+export function boardGameById(games: LoungeSportsGame[], id: string): LoungeSportsGame | undefined {
+  const want = String(id || '').trim()
+  if (!want) return undefined
+  return games.find((g) => g.id === want) || games.find((g) => g.rundown_id === want || (g.source_ids || []).includes(want))
+}
+
+/** id → game for every id each game carries (Live Activity tokens saved under an older id still match). */
+export function boardGameIndex(games: LoungeSportsGame[]): Map<string, LoungeSportsGame> {
+  const out = new Map<string, LoungeSportsGame>()
+  for (const g of games) {
+    for (const id of [g.id, g.rundown_id, ...(g.source_ids || [])]) {
+      if (id && !out.has(String(id))) out.set(String(id), g)
+    }
+  }
+  return out
 }
 
 function nflAbbrevKey(value: unknown): string {
@@ -1709,7 +1763,12 @@ async function ingestLeagueBoardPack(opts: {
         : `${sourceRef.value}+odds`
     for (const ev of scores) {
       const game = gameFromOdds(sport.key, sport.label, sport.logoLeague, ev)
-      if (game && gameOnSlate(game, dates)) upsert(game, false)
+      if (!game || !gameOnSlate(game, dates)) continue
+      const key = slateDedupeKey(game)
+      const prev = byKey.get(key)
+      // TheRundown's richer row stays, but the Odds API id is the game id: TheRundown is the quota-limited feed
+      // that drops out, so its id would come and go between rebuilds.
+      byKey.set(key, prev ? withGameId(prev, game.id) : game)
     }
   }
   if (oddsPack || pinPack) {
@@ -4158,14 +4217,15 @@ export async function fetchLoungeSportsGameDetail(
       golf_odds: golfOdds,
     }
   }
-  const eventId = encodeURIComponent(game.id)
+  // TheRundown only knows its own event id; an Odds API-only game skips TheRundown (saves quota, no 404s).
+  const rundownId = game.rundown_id ? encodeURIComponent(game.rundown_id) : ''
   const liveHub = game.status === 'in'
   const shopDay = ptDateFromIso(String(game.commence_time || '')) || ptTodayDate()
   // Scores-only event (`affiliate_ids=0`) for live state. Shop books are a separate cached
   // day fetch (Circa / Heritage / …). Skip Rundown `/plays` (Ultra-only; football PBP is ESPN).
   const [eventRaw, statsRaw, oddsPack, pinPack, shopEvents] = await Promise.all([
-    rundownGet<unknown>(`/events/${eventId}?affiliate_ids=0`),
-    rundownGet<unknown>(`/events/${eventId}/players/stats`),
+    rundownId ? rundownGet<unknown>(`/events/${rundownId}?affiliate_ids=0`) : Promise.resolve(null),
+    rundownId ? rundownGet<unknown>(`/events/${rundownId}/players/stats`) : Promise.resolve(null),
     cachedSportOdds(game.sport_key, liveHub),
     cachedPinnacleOdds(game.sport_key, liveHub),
     cachedRundownShop(String(game.sport_key || ''), [shopDay], liveHub),

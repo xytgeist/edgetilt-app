@@ -2,6 +2,8 @@
  * Live counting lines from the ESPN summary, keyed for league scoring (Sleeper names).
  * Separate from the 15 minute lineup board so a refresh does not refetch Kalshi.
  */
+import { sharedCached } from './edgeSharedCache.ts'
+
 const ESPN = 'https://site.api.espn.com/apis/site/v2/sports'
 const HEADERS = { Accept: 'application/json', 'User-Agent': 'EdgeTilt-fantasy-live-lines/1.0' }
 const LIVE_MS = 25_000
@@ -23,9 +25,8 @@ export type FantasyLiveHit = {
   home: boolean | null
 }
 
-type Cache = { at: number; byName: Map<string, FantasyLiveHit> }
-
-const caches = new Map<string, Cache>()
+/** One Map per shared payload (the shared cache hands every caller the same array until it refreshes). */
+const mapByEntries = new WeakMap<object, Map<string, FantasyLiveHit>>()
 
 function nameKey(name: string): string {
   return String(name || '')
@@ -370,6 +371,10 @@ async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<vo
   await Promise.all(workers)
 }
 
+/**
+ * The live slate map (ESPN scoreboard + up to 20 game summaries) is shared across every isolate for 25s, so a
+ * busy Sunday is one ESPN read per window project-wide instead of one per warm isolate.
+ */
 async function loadLiveMap(
   sport: string,
   opts: { season?: string; week?: number },
@@ -377,9 +382,24 @@ async function loadLiveMap(
   const path = PATHS[sport]
   if (!path) return new Map()
   const cacheKey = sport === 'nfl' && opts.week ? `nfl:${opts.season}:${opts.week}` : sport
-  const hit = caches.get(cacheKey)
-  if (hit && Date.now() - hit.at < LIVE_MS) return hit.byName
+  const entries = await sharedCached<Array<[string, FantasyLiveHit]>>(
+    `fantasy:live:${cacheKey}`,
+    { ttlMs: LIVE_MS, leaseMs: 20_000, shouldStore: (rows) => Array.isArray(rows) && rows.length > 0 },
+    async () => [...(await buildLiveMap(sport, path, opts)).entries()],
+  )
+  let map = mapByEntries.get(entries)
+  if (!map) {
+    map = new Map(entries)
+    mapByEntries.set(entries, map)
+  }
+  return map
+}
 
+async function buildLiveMap(
+  sport: string,
+  path: string,
+  opts: { season?: string; week?: number },
+): Promise<Map<string, FantasyLiveHit>> {
   const urls = sport === 'nfl' && opts.week && opts.season
     ? [`${ESPN}/${path}/scoreboard?week=${opts.week}&seasontype=2&dates=${opts.season}`]
     : [0, -1, 1].map((delta) => `${ESPN}/${path}/scoreboard?dates=${ptYmd(delta)}`)
@@ -476,7 +496,6 @@ async function loadLiveMap(
     }
   })
 
-  caches.set(cacheKey, { at: Date.now(), byName: map })
   return map
 }
 

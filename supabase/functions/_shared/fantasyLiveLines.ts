@@ -23,6 +23,8 @@ export type FantasyLiveHit = {
   kickoff: string | null
   opponent: string | null
   home: boolean | null
+  /** Share of the game played (0 at kickoff, 1 final) from ESPN period + clock, for live projection pacing. */
+  progress?: number | null
 }
 
 /** One Map per shared payload (the shared cache hands every caller the same array until it refreshes). */
@@ -256,7 +258,37 @@ function otherLine(sport: string, bag: Record<string, number>): FantasyLiveLine 
 
 type Side = { abbrev: string; name: string; id: string }
 
-function competitors(event: Record<string, unknown>): { home: Side; away: Side; status: string; kickoff: string | null } | null {
+/** Regulation periods and minutes per period; MLB counts half-innings instead. */
+const GAME_SHAPE: Record<string, { periods: number; minutes: number }> = {
+  nfl: { periods: 4, minutes: 15 },
+  nba: { periods: 4, minutes: 12 },
+  nhl: { periods: 3, minutes: 20 },
+}
+
+function gameProgress(sport: string, status: Record<string, unknown> | undefined, state: string): number | null {
+  if (state === 'final') return 1
+  if (state !== 'in_progress' || !status) return state === 'pre' ? 0 : null
+  const period = Number(status.period)
+  if (!Number.isFinite(period) || period < 1) return null
+  if (sport === 'mlb') {
+    const type = (status.type && typeof status.type === 'object') ? status.type as Record<string, unknown> : {}
+    const detail = String(type.shortDetail || type.detail || '').toLowerCase()
+    const half = /\b(bot|bottom|end)\b/.test(detail) ? 1 : 0
+    return Math.min(0.99, ((period - 1) * 2 + half + 0.5) / 18)
+  }
+  const shape = GAME_SHAPE[sport]
+  if (!shape) return null
+  if (period > shape.periods) return 0.99
+  const m = String(status.displayClock || '').match(/^(\d+):(\d+)/)
+  const left = m ? Number(m[1]) + Number(m[2]) / 60 : shape.minutes
+  const played = (period - 1) * shape.minutes + Math.max(0, shape.minutes - left)
+  return Math.max(0, Math.min(0.99, played / (shape.periods * shape.minutes)))
+}
+
+function competitors(
+  event: Record<string, unknown>,
+  sport = 'nfl',
+): { home: Side; away: Side; status: string; kickoff: string | null; progress: number | null } | null {
   const comps = (event.competitions as Array<Record<string, unknown>> | undefined)?.[0]
   const rows = Array.isArray(comps?.competitors) ? comps!.competitors as Array<Record<string, unknown>> : []
   const side = (homeAway: string): Side | null => {
@@ -273,11 +305,13 @@ function competitors(event: Record<string, unknown>): { home: Side; away: Side; 
   const away = side('away')
   if (!home || !away) return null
   const status = (comps?.status || event.status) as Record<string, unknown> | undefined
+  const state = espnStatus(status)
   return {
     home,
     away,
-    status: espnStatus(status),
+    status: state,
     kickoff: String(event.date || '') || null,
+    progress: gameProgress(sport, status, state),
   }
 }
 
@@ -421,7 +455,7 @@ async function buildLiveMap(
     const id = String(ev.id || '')
     if (!id || seen.has(id)) continue
     seen.add(id)
-    const pack = competitors(ev)
+    const pack = competitors(ev, sport)
     if (!pack) continue
     const kickMs = pack.kickoff ? Date.parse(pack.kickoff) : NaN
     const begun = pack.status !== 'pre' || (Number.isFinite(kickMs) && kickMs <= Date.now())
@@ -431,6 +465,7 @@ async function buildLiveMap(
         line: null,
         game_status: begun && pack.status === 'pre' ? 'in_progress' : pack.status,
         kickoff: pack.kickoff,
+        progress: pack.progress,
         opponent: opp.abbrev || null,
         home: side === pack.home,
       })
@@ -463,6 +498,7 @@ async function buildLiveMap(
             line: defenseLine(summary, teams, abbrev, opp),
             game_status: game.pack.status === 'pre' ? 'in_progress' : game.pack.status,
             kickoff: game.pack.kickoff,
+            progress: game.pack.progress,
             opponent: opp || null,
             home: abbrev === game.pack.home.abbrev,
           })
@@ -485,6 +521,7 @@ async function buildLiveMap(
               line,
               game_status: game.pack.status === 'pre' ? 'in_progress' : game.pack.status,
               kickoff: game.pack.kickoff,
+              progress: game.pack.progress,
               opponent: opp || null,
               home,
             })

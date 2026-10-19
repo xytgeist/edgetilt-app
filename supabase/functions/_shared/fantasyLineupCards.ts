@@ -63,6 +63,8 @@ export type LineupCard = {
   line?: Record<string, number> | null
   /** Sleeper's projected counting stats for this week (same keys as `line`). */
   proj_line?: Record<string, number> | null
+  /** Share of this player's game played (0-1), live only; the app paces the projection with it. */
+  game_progress?: number | null
 }
 
 export type GameRow = {
@@ -569,6 +571,7 @@ async function mergeLiveLines(
       card.home = hit.home
     }
     if (hit.game_status === 'in_progress' || hit.game_status === 'final') card.game_status = hit.game_status
+    if (hit.progress != null) card.game_progress = hit.progress
   }
 }
 

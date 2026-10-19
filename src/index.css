@@ -11850,14 +11850,12 @@ html.light [data-fantasy-home] .text-amber-300 {
 html.light [data-fantasy-home] .bg-black\/50 {
   background-color: rgb(0 0 0 / 0.35) !important;
 }
-/* Player whose game is final (actual points, done for the week) */
-[data-fantasy-home] [data-fantasy-final-tag] {
-  background-color: #a1a1aa;
-  color: #18181b;
+/* Player whose game is final: name + photo fade (points stay full strength) */
+[data-fantasy-home] [data-fantasy-final-side] {
+  opacity: 0.5;
 }
-html.light [data-fantasy-home] [data-fantasy-final-tag] {
-  background-color: #52525b;
-  color: #ffffff;
+[data-fantasy-home] [data-fantasy-final-side] img {
+  filter: grayscale(0.5);
 }
 /* Bench rows: flat dashed card, softer content, neutral BN pill (starters keep the solid lifted card) */
 [data-fantasy-home] .fantasy-bench-row {

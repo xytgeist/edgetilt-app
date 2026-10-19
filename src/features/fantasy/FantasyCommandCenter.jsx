@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Check } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
@@ -226,7 +226,7 @@ function teamAbbrev(row) {
  * market text may run over the shoulders.
  * Logos and letter fallbacks keep the round mark, centered in the same lane.
  */
-function SideBust({ row, align, live }) {
+function SideBust({ row, align, live, final = false }) {
   const shot = useHeadshotSrc(row?.headshot_url, 384)
   if (!row) return null
   const right = align === 'right'
@@ -234,6 +234,7 @@ function SideBust({ row, align, live }) {
   return (
     <span
       aria-hidden
+      data-fantasy-final-side={final ? '' : undefined}
       className={`pointer-events-none absolute bottom-0 h-[115%] aspect-[600/436] ${right ? '-right-7' : '-left-7'}`}
     >
       {live ? <span className="fantasy-live-glow absolute -inset-x-10 -top-4 bottom-0" /> : null}
@@ -643,7 +644,10 @@ function CenterMarket({ prop, align, row, card }) {
 function VsHead({ row, align, final = false }) {
   if (!row) return <div />
   return (
-    <div className={`flex min-w-0 items-center ${align === 'right' ? 'flex-row-reverse text-right' : 'text-left'}`}>
+    <div
+      data-fantasy-final-side={final ? '' : undefined}
+      className={`flex min-w-0 items-center ${align === 'right' ? 'flex-row-reverse text-right' : 'text-left'}`}
+    >
       <div className="min-w-0">
         <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
           <span className="truncate text-[12px] font-bold tracking-wide text-zinc-100">
@@ -651,22 +655,9 @@ function VsHead({ row, align, final = false }) {
           </span>
           {injuryPill(row.injury_status)}
         </div>
-        <div className={`flex min-w-0 items-center gap-1 text-[10px] text-zinc-500 ${align === 'right' ? 'justify-end' : ''}`}>
-          <span className="truncate">
-            {fantasyPos(row.position) || row.position}
-            {row.nfl_team ? ` · ${row.nfl_team}` : ''}
-          </span>
-          {final ? (
-            <span
-              data-fantasy-final-tag
-              role="img"
-              aria-label="Game final"
-              title="Game final"
-              className="inline-flex h-3 w-3 shrink-0 items-center justify-center rounded-full"
-            >
-              <Check size={8} strokeWidth={3.5} aria-hidden />
-            </span>
-          ) : null}
+        <div className="truncate text-[10px] text-zinc-500">
+          {fantasyPos(row.position) || row.position}
+          {row.nfl_team ? ` · ${row.nfl_team}` : ''}
         </div>
       </div>
     </div>
@@ -823,13 +814,55 @@ function SidePanel({ row, card }) {
   )
 }
 
-function playerPts(card, loading, scoring, sport) {
-  const livePts = pointsOf(card, scoring, sport)
-  if (livePts) return pts(livePts.pts) || '0.0'
-  const proj = pts(card?.projected)
-  if (proj) return proj
-  return loading ? '…' : '-'
+/** Typical real-time game length (minutes) when ESPN progress is missing, to pace a live projection. */
+const GAME_MINUTES = { nfl: 185, nba: 140, nhl: 150, mlb: 180 }
+
+/** Live projection: points so far plus the original projection for the share of the game still to play. */
+function liveProjection(card, actual, sport) {
+  const proj = Number(card?.projected)
+  if (!Number.isFinite(proj)) return null
+  let progress = Number(card?.game_progress)
+  if (!Number.isFinite(progress)) {
+    const kick = Date.parse(card?.kickoff || '')
+    if (!Number.isFinite(kick)) return null
+    progress = Math.min(0.97, Math.max(0, (Date.now() - kick) / ((GAME_MINUTES[sport] || 185) * 60_000)))
+  }
+  return actual + proj * (1 - Math.min(1, Math.max(0, progress)))
 }
+
+/**
+ * Big number = points scored ("-" before kickoff). Small line under it = projection: the pregame number before
+ * and after the game, the live-paced number during it (green / red vs the pregame projection).
+ */
+function PointsCell({ card, loading, scoring, sport, align }) {
+  const status = sideStatus(card)
+  const proj = Number(card?.projected)
+  const hasProj = Number.isFinite(proj)
+  const scored = status === 'Proj' ? null : pointsOf(card, scoring, sport)
+  let main = !card && loading ? '…' : '-'
+  let mainCls = 'text-zinc-100'
+  let sub = card?.bye ? 'BYE' : hasProj ? pts(proj) : ''
+  let subCls = 'text-zinc-500'
+  if (scored) {
+    main = pts(scored.pts) || '0.0'
+    if (status === 'Live') {
+      mainCls = 'fantasy-live-pts'
+      const paced = liveProjection(card, scored.pts, sport)
+      if (paced != null && hasProj) {
+        sub = pts(paced)
+        const delta = paced - proj
+        subCls = delta >= 0.5 ? 'fantasy-proj-up' : delta <= -0.5 ? 'fantasy-proj-down' : 'text-zinc-400'
+      }
+    }
+  }
+  return (
+    <span className={`flex w-8 flex-col leading-none ${align === 'right' ? 'items-start' : 'items-end'}`}>
+      <span className={`text-[13px] font-bold tabular-nums ${mainCls}`}>{main}</span>
+      {sub ? <span className={`mt-0.5 text-[9px] font-semibold tabular-nums ${subCls}`}>{sub}</span> : null}
+    </span>
+  )
+}
+
 
 function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
   const [openKeys, setOpenKeys] = useState(() => new Set())
@@ -876,8 +909,8 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               }}
               className="relative block w-full cursor-pointer px-2 py-2 touch-manipulation [-webkit-tap-highlight-color:transparent]"
             >
-              <SideBust row={pair.left} align="left" live={leftLive} />
-              <SideBust row={pair.right} align="right" live={rightLive} />
+              <SideBust row={pair.left} align="left" live={leftLive} final={sideStatus(leftCard) === 'Final'} />
+              <SideBust row={pair.right} align="right" live={rightLive} final={sideStatus(rightCard) === 'Final'} />
               <div className="relative z-[1] grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-10">
                 {pair.left || !pair.leftOpen ? (
                   <VsHead row={pair.left} align="left" final={sideStatus(leftCard) === 'Final'} />
@@ -885,9 +918,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                   <OpenSlotTag align="left" />
                 )}
                 <div className="flex items-center gap-1">
-                  <span className={`w-8 text-right text-[13px] font-bold tabular-nums ${leftLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>
-                    {playerPts(leftCard, cardsLoading, scoring, sport)}
-                  </span>
+                  <PointsCell card={leftCard} loading={cardsLoading} scoring={scoring} sport={sport} align="left" />
                   {bench ? (
                     <span data-fantasy-bench-pill className="rounded-md px-1.5 py-0.5 text-[10px] font-bold">
                       BN
@@ -907,9 +938,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                       {pair.label}
                     </span>
                   )}
-                  <span className={`w-8 text-[13px] font-bold tabular-nums ${rightLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>
-                    {playerPts(rightCard, cardsLoading, scoring, sport)}
-                  </span>
+                  <PointsCell card={rightCard} loading={cardsLoading} scoring={scoring} sport={sport} align="right" />
                 </div>
                 {pair.right || !pair.rightOpen ? (
                   <VsHead row={pair.right} align="right" final={sideStatus(rightCard) === 'Final'} />

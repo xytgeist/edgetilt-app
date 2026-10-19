@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
@@ -987,7 +988,7 @@ function OpenSlotAlert({ empty, fills, host }) {
   return (
     <div data-fantasy-open-slot className="mt-2 rounded-xl border px-2.5 py-2">
       <div className="flex items-center gap-1.5 text-[12px] font-bold">
-        <span aria-hidden>!</span>
+        <AlertTriangle size={15} strokeWidth={2.25} className="shrink-0" aria-hidden />
         <span>
           {names.length === 1 ? `${names[0]} is empty` : `${names.length} empty slots: ${names.join(', ')}`}
         </span>
@@ -1283,7 +1284,7 @@ function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen, prefix = '' })
       data-fantasy-open-slot
       className="flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-[12px] font-bold"
     >
-      <span aria-hidden>!</span>
+      <AlertTriangle size={15} strokeWidth={2.25} className="shrink-0" aria-hidden />
       <span className="min-w-0 flex-1 truncate">
         {prefix ? <span className="opacity-80">{prefix}: </span> : null}
         {parts.join(' · ')}

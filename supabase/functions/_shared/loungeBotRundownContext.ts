@@ -243,19 +243,57 @@ function eventsMatchTeamsAndTime(
   return Math.abs(commenceMs - eventMs) <= COMMENCE_MATCH_MS
 }
 
-async function rundownFetch<T>(path: string): Promise<T | null> {
-  if (isTestSupabaseProject()) return null
+/** TheRundown allows 5 requests / second (`x-rate-limit`). Stay at 4 per isolate so bursts are not refused. */
+const RUNDOWN_MAX_PER_SEC = 4
+const rundownStarts: number[] = []
+let rundownQueue: Promise<void> = Promise.resolve()
+
+function rundownSlot(): Promise<void> {
+  const next = rundownQueue.then(async () => {
+    for (;;) {
+      const now = Date.now()
+      while (rundownStarts.length && now - rundownStarts[0] >= 1000) rundownStarts.shift()
+      if (rundownStarts.length < RUNDOWN_MAX_PER_SEC) {
+        rundownStarts.push(now)
+        return
+      }
+      await new Promise((r) => setTimeout(r, 1000 - (now - rundownStarts[0]) + 5))
+    }
+  })
+  rundownQueue = next.catch(() => {})
+  return next
+}
+
+/**
+ * Every TheRundown GET: rate-limited, one retry on 429, refusals logged (they used to vanish as "no games").
+ * Returns null on any failure so callers can avoid caching a refusal as an empty slate.
+ */
+export async function rundownRequest<T>(path: string, opts: { timeoutMs?: number } = {}): Promise<T | null> {
   const key = rundownApiKey()
   if (!key) return null
-  try {
-    const res = await fetch(`${RUNDOWN_BASE}${path}`, {
-      headers: { 'X-TheRundown-Key': key },
-    })
-    if (!res.ok) return null
-    return await res.json() as T
-  } catch {
-    return null
+  const route = path.split('?')[0]
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await rundownSlot()
+    try {
+      const res = await fetch(`${RUNDOWN_BASE}${path}`, {
+        headers: { 'X-TheRundown-Key': key },
+        ...(opts.timeoutMs ? { signal: AbortSignal.timeout(opts.timeoutMs) } : {}),
+      })
+      if (res.ok) return await res.json() as T
+      console.warn(`[rundown] ${res.status} ${route}${attempt === 0 && res.status === 429 ? ' (retrying)' : ''}`)
+      if (res.status !== 429 || attempt > 0) return null
+      await new Promise((r) => setTimeout(r, 1200))
+    } catch (err) {
+      console.warn(`[rundown] error ${route}: ${err instanceof Error ? err.name : 'fetch failed'}`)
+      return null
+    }
   }
+  return null
+}
+
+async function rundownFetch<T>(path: string): Promise<T | null> {
+  if (isTestSupabaseProject()) return null
+  return rundownRequest<T>(path)
 }
 
 /**
@@ -276,7 +314,8 @@ async function loadDayEvents(
     `/sports/${sportId}/events/${ptDate}?offset=${PT_OFFSET_MIN}&affiliate_ids=0`,
   )
   const events = Array.isArray(data?.events) ? data!.events! : []
-  dayEventsCache.set(cacheKey, { at: Date.now(), events })
+  // A refused / failed read is not an empty day; leave it uncached so the next call retries.
+  if (data) dayEventsCache.set(cacheKey, { at: Date.now(), events })
   return events
 }
 
@@ -286,7 +325,7 @@ async function loadTeamPlayers(teamId: number): Promise<RundownPlayer[]> {
 
   const data = await rundownFetch<{ players?: RundownPlayer[] }>(`/teams/${teamId}/players`)
   const players = Array.isArray(data?.players) ? data!.players! : []
-  teamPlayersCache.set(teamId, { at: Date.now(), players })
+  if (data) teamPlayersCache.set(teamId, { at: Date.now(), players })
   return players
 }
 

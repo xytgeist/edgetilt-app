@@ -8,7 +8,7 @@ import {
   isRundownEnabled,
   listRundownDayEvents,
   ptDateFromIso,
-  rundownApiKey,
+  rundownRequest,
   type RundownEvent,
 } from './loungeBotRundownContext.ts'
 import {
@@ -2652,7 +2652,6 @@ async function loadGolfOutrights(tournament: string, sportKey = 'golf_pga'): Pro
   }
 }
 
-const RUNDOWN_BASE = 'https://therundown.io/api/v2'
 /** Odds API + Pinnacle slate. Lines do not need the 8s score tick. */
 const ODDS_SLATE_CACHE_MS = 90_000
 /** Open live hub can shop Odds/Pinnacle a bit faster without paying every board rebuild. */
@@ -2710,30 +2709,22 @@ function cachedRundownShop(sportKey: string, dates: string[], live = false): Pro
   const days = [...new Set(dates.map((d) => String(d || '').trim()).filter(Boolean))].sort()
   if (!days.length) return Promise.resolve([])
   const lane = live ? 'hub' : 'slate'
+  // A refused day used to be cached as "no games" for the full TTL (an hour pregame); only store complete reads.
+  let complete = true
   return sharedCached<RundownEvent[]>(
     `rundown:shop:${lane}:${sportKey}:${days.join(',')}`,
-    { ttlMs: rundownShopTtlMs(live), shouldStore: (rows) => Array.isArray(rows) },
+    { ttlMs: rundownShopTtlMs(live), shouldStore: (rows) => Array.isArray(rows) && complete },
     async () => {
-      const batches = await Promise.all(days.map((day) => loadRundownShopDayEvents(sportKey, day).catch(() => [])))
-      return batches.flat()
+      const batches = await Promise.all(days.map((day) => loadRundownShopDayEvents(sportKey, day).catch(() => null)))
+      complete = batches.every((b) => Array.isArray(b))
+      return batches.flatMap((b) => b || [])
     },
   )
 }
 
 async function rundownGet<T>(path: string): Promise<T | null> {
   if (!isRundownEnabled()) return null
-  const key = rundownApiKey()
-  if (!key) return null
-  try {
-    const res = await fetch(`${RUNDOWN_BASE}${path}`, {
-      headers: { 'X-TheRundown-Key': key },
-      signal: AbortSignal.timeout(10_000),
-    })
-    if (!res.ok) return null
-    return await res.json() as T
-  } catch {
-    return null
-  }
+  return rundownRequest<T>(path, { timeoutMs: 10_000 })
 }
 
 /** ESPN timeout / period rows carry stale spots and no down/distance … never a LOS source. */

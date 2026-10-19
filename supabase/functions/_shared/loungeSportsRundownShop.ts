@@ -10,11 +10,10 @@ import type { RundownEvent, RundownTeam } from './loungeBotRundownContext.ts'
 import {
   isRundownEnabled,
   oddsSportKeyToRundownSportId,
-  rundownApiKey,
+  rundownRequest,
 } from './loungeBotRundownContext.ts'
 import { isTestSupabaseProject } from './publicAppOrigin.ts'
 
-const RUNDOWN_BASE = 'https://therundown.io/api/v2'
 const PT_OFFSET_MIN = 420
 
 /**
@@ -204,29 +203,19 @@ export function rundownShopRowsFromEvent(ev: RundownEvent): RundownShopOddsRow[]
   return v2.length ? v2 : parseLegacyLines(ev)
 }
 
-async function rundownFetch<T>(path: string): Promise<T | null> {
-  const key = rundownApiKey()
-  if (!key) return null
-  try {
-    const res = await fetch(`${RUNDOWN_BASE}${path}`, {
-      headers: { 'X-TheRundown-Key': key },
-      signal: AbortSignal.timeout(12_000),
-    })
-    if (!res.ok) return null
-    return await res.json() as T
-  } catch {
-    return null
-  }
-}
-
-/** One PT date of main-line shop books. Caller caches (60m slate / 2m live hub). */
-export async function loadRundownShopDayEvents(sportKey: string, ptDate: string): Promise<RundownEvent[]> {
+/**
+ * One PT date of main-line shop books. Caller caches (60m slate / 2m live hub).
+ * `null` = TheRundown refused or failed (do not cache); `[]` = a real empty day.
+ */
+export async function loadRundownShopDayEvents(sportKey: string, ptDate: string): Promise<RundownEvent[] | null> {
   // Test shares the prod Rundown key … shop snapshots are the Odds datapoint furnace.
   if (isTestSupabaseProject()) return []
   const sportId = oddsSportKeyToRundownSportId(sportKey)
   if (!sportId || !isRundownEnabled() || !ptDate) return []
-  const data = await rundownFetch<{ events?: RundownEvent[] }>(
+  const data = await rundownRequest<{ events?: RundownEvent[] }>(
     `/sports/${sportId}/events/${encodeURIComponent(ptDate)}?offset=${PT_OFFSET_MIN}&affiliate_ids=${SHOP_AFFILIATE_QUERY}&market_ids=1,2,3&main_line=true`,
+    { timeoutMs: 12_000 },
   )
-  return Array.isArray(data?.events) ? data.events : []
+  if (!data) return null
+  return Array.isArray(data.events) ? data.events : []
 }

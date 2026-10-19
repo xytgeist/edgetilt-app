@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Check } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
@@ -640,7 +640,7 @@ function CenterMarket({ prop, align, row, card }) {
   )
 }
 
-function VsHead({ row, align }) {
+function VsHead({ row, align, final = false }) {
   if (!row) return <div />
   return (
     <div className={`flex min-w-0 items-center ${align === 'right' ? 'flex-row-reverse text-right' : 'text-left'}`}>
@@ -651,9 +651,22 @@ function VsHead({ row, align }) {
           </span>
           {injuryPill(row.injury_status)}
         </div>
-        <div className="truncate text-[10px] text-zinc-500">
-          {fantasyPos(row.position) || row.position}
-          {row.nfl_team ? ` · ${row.nfl_team}` : ''}
+        <div className={`flex min-w-0 items-center gap-1 text-[10px] text-zinc-500 ${align === 'right' ? 'justify-end' : ''}`}>
+          <span className="truncate">
+            {fantasyPos(row.position) || row.position}
+            {row.nfl_team ? ` · ${row.nfl_team}` : ''}
+          </span>
+          {final ? (
+            <span
+              data-fantasy-final-tag
+              role="img"
+              aria-label="Game final"
+              title="Game final"
+              className="inline-flex h-3 w-3 shrink-0 items-center justify-center rounded-full"
+            >
+              <Check size={8} strokeWidth={3.5} aria-hidden />
+            </span>
+          ) : null}
         </div>
       </div>
     </div>
@@ -866,7 +879,11 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               <SideBust row={pair.left} align="left" live={leftLive} />
               <SideBust row={pair.right} align="right" live={rightLive} />
               <div className="relative z-[1] grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-10">
-                {pair.left || !pair.leftOpen ? <VsHead row={pair.left} align="left" /> : <OpenSlotTag align="left" />}
+                {pair.left || !pair.leftOpen ? (
+                  <VsHead row={pair.left} align="left" final={sideStatus(leftCard) === 'Final'} />
+                ) : (
+                  <OpenSlotTag align="left" />
+                )}
                 <div className="flex items-center gap-1">
                   <span className={`w-8 text-right text-[13px] font-bold tabular-nums ${leftLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>
                     {playerPts(leftCard, cardsLoading, scoring, sport)}
@@ -894,7 +911,11 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                     {playerPts(rightCard, cardsLoading, scoring, sport)}
                   </span>
                 </div>
-                {pair.right || !pair.rightOpen ? <VsHead row={pair.right} align="right" /> : <OpenSlotTag align="right" />}
+                {pair.right || !pair.rightOpen ? (
+                  <VsHead row={pair.right} align="right" final={sideStatus(rightCard) === 'Final'} />
+                ) : (
+                  <OpenSlotTag align="right" />
+                )}
               </div>
               <div className="relative z-[1] mt-1.5 grid min-h-[14px] grid-cols-2 gap-1.5 px-1">
                 <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />

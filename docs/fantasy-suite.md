@@ -253,7 +253,7 @@ NFL first (hub + scoreboard + fantasy points already exist). Extend when other s
 
 ### Layer C deliverables / specifics
 
-- [ ] Fantasy home **Live** tab (week HQ)
+- [ ] Fantasy home **Live** tab (week HQ). **2026-10-18:** Live is the first pill and the default view (matchup rows + a Start/Sit banner for open slots / swaps that opens Start/Sit); Fliers pill dropped (Sniper Boom picks covers it). Live HQ pieces below still open.
 - [ ] Multi-matchup cards + win % 
 - [ ] “My players only” play filter (reuse hub PBP where possible)
 - [ ] One-tap open hub with pins

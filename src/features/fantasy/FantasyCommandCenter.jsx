@@ -38,6 +38,10 @@ import { useOddsLogPress } from '../sports-bet-tracker/useOddsLogPress.js'
 
 const TOOLS = [
   {
+    id: 'live',
+    label: 'Live',
+  },
+  {
     id: 'start',
     label: 'Start/Sit',
   },
@@ -48,14 +52,6 @@ const TOOLS = [
   {
     id: 'trade',
     label: 'Trades',
-  },
-  {
-    id: 'live',
-    label: 'Live',
-  },
-  {
-    id: 'fliers',
-    label: 'Fliers',
   },
 ]
 
@@ -1029,16 +1025,44 @@ function OpenSlotAlert({ empty, fills, host }) {
   )
 }
 
-/** Start/Sit: best lineup for this week from your own roster, as swap cards. Moves happen on the host. */
-function StartSitPanel({ supabaseClient, detail, cards, sport }) {
-  const mine = (detail?.teams || []).find((t) => t.is_mine) || null
-  const roster = useMemo(() => (mine ? detail?.rostersByTeam?.[mine.id] || [] : []), [detail, mine])
-  const plan = useMemo(() => {
+function useStartSitPlan(detail, cards, sport) {
+  return useMemo(() => {
+    const mine = (detail?.teams || []).find((t) => t.is_mine)
+    const roster = mine ? detail?.rostersByTeam?.[mine.id] || [] : []
     if (!roster.length) return null
     const { slots, inferred } = leagueLineupSlots(detail?.league, roster)
     if (!slots.length) return null
     return { inferred, ...optimizeLineup({ roster, cards, scoring: detail?.league?.scoring, slots, sport }) }
-  }, [roster, cards, detail, sport])
+  }, [detail, cards, sport])
+}
+
+/** Live banner: open slots and swaps from Start/Sit, one tap to the details. Hidden when there is nothing to do. */
+function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen }) {
+  const plan = useStartSitPlan(detail, cards, sport)
+  if (cardsLoading || !plan || (!plan.moves.length && !plan.empty.length)) return null
+  const parts = []
+  if (plan.empty.length) {
+    const names = plan.empty.map(openSlotName)
+    parts.push(names.length === 1 ? `${names[0]} is empty` : `${names.length} empty slots`)
+  }
+  if (plan.moves.length) parts.push(`${plan.moves.length} swap${plan.moves.length > 1 ? 's' : ''}, +${plan.gain.toFixed(1)} proj`)
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      data-fantasy-open-slot
+      className="flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-[12px] font-bold"
+    >
+      <span aria-hidden>!</span>
+      <span className="min-w-0 flex-1 truncate">{parts.join(' · ')}</span>
+      <span className="shrink-0 text-[11px] font-semibold opacity-80">Start/Sit</span>
+    </button>
+  )
+}
+
+/** Start/Sit: best lineup for this week from your own roster, as swap cards. Moves happen on the host. */
+function StartSitPanel({ supabaseClient, detail, cards, sport }) {
+  const plan = useStartSitPlan(detail, cards, sport)
   const empty = plan?.empty || []
   const fills = useOpenSlotFills({ supabaseClient, detail, empty, sport })
   if (!plan || (!plan.moves.length && !empty.length)) return null
@@ -2430,7 +2454,7 @@ export default function FantasyCommandCenter({
 }) {
   const [leagueId, setLeagueId] = useState(null)
   const [pageKey, setPageKey] = useState(null)
-  const [tool, setTool] = useState('start')
+  const [tool, setTool] = useState('live')
 
   const groups = useMemo(() => {
     const by = new Map()
@@ -2595,6 +2619,15 @@ export default function FantasyCommandCenter({
             })}
           </div>
 
+          {tool === 'live' && detail ? (
+            <LiveAlerts
+              detail={detail}
+              cards={cards}
+              cardsLoading={cardsLoading}
+              sport={selected?.sport || detail?.league?.sport}
+              onOpen={() => setTool('start')}
+            />
+          ) : null}
           {tool === 'start' && detail ? (
             <StartSitPanel supabaseClient={supabaseClient} detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} />
           ) : null}

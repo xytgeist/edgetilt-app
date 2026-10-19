@@ -1580,6 +1580,13 @@ function PendingOfferCard({ offer, detail, values, sport, onOpen }) {
             </span>
             <span className="text-[10px] font-semibold text-zinc-400">Details</span>
           </div>
+          {review.counters[0] ? (
+            <div className="mt-1 text-[10px] leading-snug text-zinc-400">
+              <span className="font-bold text-zinc-300">{review.verdict === 'Accept' ? 'Push:' : 'Counter:'}</span> {review.counters[0].why} (
+              {review.counters[0].myGain >= 0 ? '+' : ''}
+              {review.counters[0].myGain.toFixed(1)}/wk you)
+            </div>
+          ) : null}
         </>
       ) : (
         <p className="mt-1 text-[11px] text-zinc-500">
@@ -1779,7 +1786,9 @@ function OfferReview({ values, detail, sport, myName, pending }) {
 
       {review?.counters.length ? (
         <div>
-          <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Counter with</div>
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+            {review.verdict === 'Accept' ? 'Or push for more' : 'Counter with'}
+          </div>
           <div className="space-y-1.5">
             {review.counters.map((c) => (
               <OfferCard

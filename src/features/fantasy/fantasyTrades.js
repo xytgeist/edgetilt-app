@@ -6,6 +6,12 @@ const SLOT_LABEL = { FLEX: 'FLEX', SUPER_FLEX: 'SUPERFLEX', WRRB_FLEX: 'W/R flex
 const THEIR_FLOOR = -0.75
 const VALUE_BAND = 0.88
 const MIN_GAIN = 0.5
+/**
+ * Counters answer an offer they started, so they get more room than a cold offer: up to -2/wk, and up to 1.75x
+ * the per-game value back (2-for-1 consolidation premium for the side landing the best piece).
+ */
+const COUNTER_FLOOR = -2
+const COUNTER_BAND = 1.75
 
 function slotLabel(slot) {
   return SLOT_LABEL[slot] || slot
@@ -350,16 +356,23 @@ export function reviewOffer({ values, detail, scoring, slots, sport = 'nfl', tea
           .slice(0, extra)
       : []
 
+  // Counters start from their offer: keep what they asked for and re-pick what comes back, keep their package
+  // and send someone else, or trim / add one piece. Each must beat accepting by 0.75+/wk.
   const counters = []
-  const tryCounter = (g, t, why) => {
+  const names = (list) => list.map((p) => p.name).join(' + ')
+  const tryCounter = (g, t, kind, why) => {
     if (!g.size || !t.size) return
-    const c = evaluate({ myPlayers, theirs, giveIds: g, getIds: t, slots })
-    if (c.myGain < Math.max(ev.myGain + 0.75, 1) || c.theirGain < THEIR_FLOOR) return
     const key = `${[...g].sort().join(',')}|${[...t].sort().join(',')}`
     if (counters.some((x) => x.key === key)) return
+    const c = evaluate({ myPlayers, theirs, giveIds: g, getIds: t, slots })
+    if (c.myGain < Math.max(ev.myGain + 0.75, MIN_GAIN) || c.theirGain < COUNTER_FLOOR) return
+    const giveKeep = c.give.reduce((a, p) => a + p.keep, 0)
+    const getKeep = c.get.reduce((a, p) => a + p.keep, 0)
+    if (getKeep > COUNTER_BAND * giveKeep && c.theirGain < 0.25) return
     counters.push({
       key,
-      why,
+      kind,
+      why: why(c),
       team,
       give: c.give,
       get: c.get,
@@ -367,27 +380,43 @@ export function reviewOffer({ values, detail, scoring, slots, sport = 'nfl', tea
       theirGain: c.theirGain,
       fairness: fairnessFor(c.theirGain, -c.valueEdge),
       forThem: describeFor(c.give, c.theirAfter.seats),
-      score: c.myGain + 0.4 * Math.min(c.theirGain, 3),
+      score: c.myGain + 0.6 * Math.min(c.theirGain, 3) - 0.2 * Math.max(0, c.give.length + c.get.length - 2),
     })
   }
-  const theirExtras = theirs
-    .filter((p) => !get.has(p.id) && p.pos !== 'K' && p.pos !== 'DEF' && p.keep > 0)
-    .sort((a, b) => b.keep - a.keep)
-    .slice(0, 8)
-  for (const z of theirExtras) tryCounter(give, new Set([...get, z.id]), `Ask for ${z.name} too`)
+  const tradeable = (p) => p.pos !== 'K' && p.pos !== 'DEF' && p.keep > 0
+  const theirPool = theirs.filter(tradeable).sort((a, b) => b.keep - a.keep).slice(0, 12)
+  const askFor = (list) => tryCounter(give, new Set(list.map((p) => p.id)), 'ask', (c) => `They want ${names(ev.give)}: ask for ${names(c.get)} instead`)
+  for (let i = 0; i < theirPool.length; i++) {
+    askFor([theirPool[i]])
+    for (let j = i + 1; j < theirPool.length; j++) askFor([theirPool[i], theirPool[j]])
+  }
+  for (const z of theirPool.filter((p) => !get.has(p.id)).slice(0, 8)) {
+    tryCounter(give, new Set([...get, z.id]), 'more', () => `Ask them to add ${z.name}`)
+  }
   if (give.size > 1) for (const id of give) {
     const p = ev.give.find((x) => x.id === id)
-    tryCounter(new Set([...give].filter((x) => x !== id)), get, `Keep ${p?.name || 'one of yours'}`)
+    tryCounter(new Set([...give].filter((x) => x !== id)), get, 'keep', () => `Keep ${p?.name || 'one of yours'} out of it`)
   }
-  for (const id of give) {
-    const out = ev.give.find((x) => x.id === id)
-    if (!out) continue
-    const cheaper = myPlayers
-      .filter((p) => !give.has(p.id) && p.pos === out.pos && p.keep < out.keep && p.keep > 0)
-      .sort((a, b) => b.keep - a.keep)[0]
-    if (cheaper) tryCounter(new Set([...[...give].filter((x) => x !== id), cheaper.id]), get, `Send ${cheaper.name} instead of ${out.name}`)
+  for (const p of myPlayers.filter((x) => tradeable(x) && !give.has(x.id))) {
+    tryCounter(new Set([p.id]), get, 'swap', () => `Take their package, send ${p.name} instead of ${names(ev.give)}`)
   }
   counters.sort((a, b) => b.score - a.score)
+  // One of each kind first so the advice is not three versions of the same ask.
+  const ids = (list) => list.map((p) => p.id)
+  const padded = (c) =>
+    counters.some(
+      (x) =>
+        x !== c &&
+        ids(x.give).join() === ids(c.give).join() &&
+        x.get.length < c.get.length &&
+        ids(x.get).every((id) => ids(c.get).includes(id)) &&
+        c.myGain < x.myGain + 0.5,
+    )
+  const useful = counters.filter((c) => !padded(c))
+  const picked = []
+  for (const c of useful) if (!picked.some((x) => x.kind === c.kind) && picked.length < 3) picked.push(c)
+  for (const c of useful) if (!picked.includes(c) && picked.length < 3) picked.push(c)
+  picked.sort((a, b) => b.score - a.score)
 
   let verdict
   let confidence
@@ -406,7 +435,7 @@ export function reviewOffer({ values, detail, scoring, slots, sport = 'nfl', tea
   }
 
   let betterAsk = null
-  if (verdict === 'Decline') {
+  if (verdict === 'Decline' && !picked.length) {
     const alt = findTrades({ values, detail: { ...detail, teams: [mine, team] }, scoring, slots, sport })
     betterAsk = alt.best
   }
@@ -439,7 +468,7 @@ export function reviewOffer({ values, detail, scoring, slots, sport = 'nfl', tea
     needYou: moveLine(ev.myMoves, 'you'),
     theirAngle,
     drops,
-    counters: verdict === 'Accept' && confidence !== 'Low' ? [] : counters.slice(0, 2),
+    counters: picked,
     betterAsk,
   }
 }

@@ -20,10 +20,28 @@ const corsHeaders = {
  * reuse one slate build and one detail build (TheRundown + ESPN + Odds) per TTL.
  */
 const BOARD_TTL_MS = 8_000
-const DETAIL_TTL_MS = 4_000
+const DETAIL_LIVE_TTL_MS = 4_000
+/** Pregame / final hubs refresh every 2 min client-side and barely change, so one ESPN read a minute covers them. */
+const DETAIL_IDLE_TTL_MS = 60_000
+const DETAIL_KICKOFF_WINDOW_MS = 15 * 60_000
 
-function cachedDetail(key: string, admin: ReturnType<typeof createClient>, build: () => Promise<Record<string, unknown> | null>) {
-  return sharedCached(`scoreboard:detail:${key}`, { ttlMs: DETAIL_TTL_MS, leaseMs: 15_000, admin }, build)
+/** Live (or about to start) games stay at 4s so plays land fast; everything else shares a 60s read. */
+function detailTtlMs(game: { status?: string; commence_time?: string }): number {
+  if (game.status === 'in') return DETAIL_LIVE_TTL_MS
+  const kickoff = Date.parse(String(game.commence_time || ''))
+  if (game.status === 'pre' && Number.isFinite(kickoff) && kickoff - Date.now() < DETAIL_KICKOFF_WINDOW_MS) {
+    return DETAIL_LIVE_TTL_MS
+  }
+  return DETAIL_IDLE_TTL_MS
+}
+
+function cachedDetail(
+  key: string,
+  ttlMs: number,
+  admin: ReturnType<typeof createClient>,
+  build: () => Promise<Record<string, unknown> | null>,
+) {
+  return sharedCached(`scoreboard:detail:${key}`, { ttlMs, leaseMs: 15_000, admin }, build)
 }
 
 /** Feed pills poll this slim slice between full-board refreshes: live, about to start, or recently final. */
@@ -107,7 +125,7 @@ Deno.serve(async (req) => {
           })
         : undefined)
     if (!game) return json(404, { error: 'Game not on the current slate.' })
-    const payload = await cachedDetail(game.id, admin, async () => {
+    const payload = await cachedDetail(game.id, detailTtlMs(game), admin, async () => {
       const detail = await fetchLoungeSportsGameDetail(game, admin)
       const splitMap = await loadPastedBettingSplitsForSlate(admin, game.sport_key, [
         {

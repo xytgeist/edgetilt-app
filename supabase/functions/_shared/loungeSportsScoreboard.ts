@@ -360,6 +360,49 @@ function isEspnRefusal(res: Response): boolean {
   return res.status === 403 || res.status === 429 || res.headers.get('x-edge-espn-backoff') === '1'
 }
 
+/**
+ * One ESPN scoreboard read per URL per 3s, shared by every hub refresh (and the board clock) in this isolate:
+ * on a busy Saturday every open game used to pull the same league board itself. In-flight reads are shared;
+ * failures and refusals are not kept.
+ */
+const ESPN_BOARD_SHARE_MS = 3_000
+type SharedEspnBoard = { events: Array<Record<string, unknown>> | null; refused: boolean }
+const espnBoardShare = new Map<string, { at: number; promise: Promise<SharedEspnBoard> }>()
+
+function sharedEspnBoard(url: string, timeoutMs = 8_000): Promise<SharedEspnBoard> {
+  const hit = espnBoardShare.get(url)
+  if (hit && Date.now() - hit.at < ESPN_BOARD_SHARE_MS) return hit.promise
+  const promise = (async (): Promise<SharedEspnBoard> => {
+    try {
+      const res = await espnFetch(url, {
+        headers: { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' },
+        signal: AbortSignal.timeout(timeoutMs),
+      })
+      if (!res.ok) return { events: null, refused: isEspnRefusal(res) }
+      const pack = await res.json() as { events?: Array<Record<string, unknown>> }
+      return { events: Array.isArray(pack.events) ? pack.events : [], refused: false }
+    } catch {
+      return { events: null, refused: false }
+    }
+  })()
+  espnBoardShare.set(url, { at: Date.now(), promise })
+  void promise.then((r) => {
+    if (!r.events && espnBoardShare.get(url)?.promise === promise) espnBoardShare.delete(url)
+  })
+  if (espnBoardShare.size > 120) {
+    for (const [k, v] of espnBoardShare) if (Date.now() - v.at > 60_000) espnBoardShare.delete(k)
+  }
+  return promise
+}
+
+/** Which scoreboard date found each game's ESPN event, so refreshes try that date first. */
+const espnGameDate = new Map<string, string>()
+
+function datesFirst(gameId: string, dates: string[]): string[] {
+  const known = espnGameDate.get(gameId)
+  return known != null && dates.includes(known) ? [known, ...dates.filter((d) => d !== known)] : dates
+}
+
 const ESPN_ROSTER_TTL_MS = 6 * 60 * 60 * 1000
 const ESPN_NFL_ROSTER_ABBREV: Record<string, string> = { WAS: 'WSH', JAC: 'JAX', LA: 'LAR', OAK: 'LV' }
 const espnRosterCache = new Map<string, { at: number; rows: LoungeSportsRosterPlayer[] }>()
@@ -1578,7 +1621,6 @@ async function loadEspnFootballDivisionRecords(
 }
 
 const ESPN_CLOCK_TTL_MS = 5_000
-const espnFootballClockCache = new Map<string, { at: number; events: Array<Record<string, unknown>> }>()
 
 /** ESPN status → compact pill clock ("Q2 4:12", "Halftime", "End Q1", "OT 3:05"). */
 function espnLiveClockLabel(status: Record<string, unknown> | undefined): string | null {
@@ -1609,26 +1651,12 @@ async function enrichEspnFootballLiveClock(
   const live = games.filter((g) => g.status === 'in' && sportMatch(String(g.sport_key || '')))
   if (!live.length) return games
   const dates = [...new Set(live.map((g) => String(ptDateFromIso(g.commence_time) || '').replace(/-/g, '')).filter(Boolean))]
-  const headers = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
   const base = espnFootballScoreboardPath(league)
   const events: Array<Record<string, unknown>> = []
   await Promise.all(dates.map(async (date) => {
-    const key = `${league}:${date}`
-    const cached = espnFootballClockCache.get(key)
-    if (cached && Date.now() - cached.at < ESPN_CLOCK_TTL_MS) {
-      events.push(...cached.events)
-      return
-    }
-    try {
-      const res = await espnFetch(`${base}?dates=${date}&limit=300`, { headers, signal: AbortSignal.timeout(6_000) })
-      if (!res.ok) return
-      const pack = await res.json() as { events?: Array<Record<string, unknown>> }
-      const list = Array.isArray(pack.events) ? pack.events : []
-      espnFootballClockCache.set(key, { at: Date.now(), events: list })
-      events.push(...list)
-    } catch {
-      // soft-fail … pill keeps "Live"
-    }
+    // Shared with hub detail (same URL), so pills and open hubs read one ESPN scoreboard.
+    const shared = await sharedEspnBoard(`${base}?dates=${date}&limit=300`, 6_000)
+    if (shared.events) events.push(...shared.events)
   }))
   if (!events.length) return games
 
@@ -3012,15 +3040,17 @@ async function fetchEspnFootballLivePack(
   const boardBase = espnFootballScoreboardPath(league)
   let refused = false
 
-  for (const date of dates) {
-    const url = date ? `${boardBase}?dates=${date}` : boardBase
+  let foundDate: string | null = null
+  for (const date of datesFirst(game.id, dates)) {
+    // Same URL as the board clock enrich, so hub refreshes and the pills share one read.
+    const url = date ? `${boardBase}?dates=${date}&limit=300` : boardBase
     try {
-      const res = await espnFetch(url, { headers, signal: AbortSignal.timeout(8_000) })
-      if (!res.ok) {
-        if (isEspnRefusal(res)) refused = true
+      const shared = await sharedEspnBoard(url)
+      if (!shared.events) {
+        if (shared.refused) refused = true
         continue
       }
-      const pack = await res.json() as { events?: Array<Record<string, unknown>> }
+      const pack = { events: shared.events }
       for (const ev of Array.isArray(pack.events) ? pack.events : []) {
         const comps = (ev.competitions as Array<Record<string, unknown>> | undefined)?.[0]
         const competitors = Array.isArray(comps?.competitors) ? comps.competitors as Array<Record<string, unknown>> : []
@@ -3078,9 +3108,13 @@ async function fetchEspnFootballLivePack(
     } catch {
       // try next date
     }
-    if (eventId) break
+    if (eventId) {
+      foundDate = date
+      break
+    }
   }
   if (!eventId) return { live: null, plays: [], refused }
+  espnGameDate.set(game.id, foundDate ?? '')
 
   try {
     const res = await espnFetch(
@@ -3379,15 +3413,16 @@ async function fetchEspnMajorLeagueLivePack(
   let awayEspnId = ''
   let statusObj: Record<string, unknown> | undefined
   let refused = false
-  for (const date of dates) {
+  let foundDate: string | null = null
+  for (const date of datesFirst(game.id, dates)) {
     const url = date ? `${boardBase}?dates=${date}` : boardBase
     try {
-      const res = await espnFetch(url, { headers, signal: AbortSignal.timeout(8_000) })
-      if (!res.ok) {
-        if (isEspnRefusal(res)) refused = true
+      const shared = await sharedEspnBoard(url)
+      if (!shared.events) {
+        if (shared.refused) refused = true
         continue
       }
-      const pack = await res.json() as { events?: Array<Record<string, unknown>> }
+      const pack = { events: shared.events }
       for (const ev of Array.isArray(pack.events) ? pack.events : []) {
         const comps = (ev.competitions as Array<Record<string, unknown>> | undefined)?.[0]
         const home = (Array.isArray(comps?.competitors) ? comps!.competitors as Array<Record<string, unknown>> : [])
@@ -3404,9 +3439,13 @@ async function fetchEspnMajorLeagueLivePack(
     } catch {
       /* try next date */
     }
-    if (eventId) break
+    if (eventId) {
+      foundDate = date
+      break
+    }
   }
   if (!eventId) return { live: liveFromEspnBoard(statusObj), plays: [], refused }
+  espnGameDate.set(game.id, foundDate ?? '')
 
   try {
     const res = await espnFetch(

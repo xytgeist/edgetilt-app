@@ -11850,11 +11850,42 @@ html.light [data-fantasy-home] .text-amber-300 {
 html.light [data-fantasy-home] .bg-black\/50 {
   background-color: rgb(0 0 0 / 0.35) !important;
 }
+/* Bench rows: flat dashed card, softer content, neutral BN pill (starters keep the solid lifted card) */
 [data-fantasy-home] .fantasy-bench-row {
   background-color: rgb(9 9 11 / 0.35);
+  border-color: rgb(63 63 70 / 0.9);
+}
+[data-fantasy-home] .fantasy-bench-row > [role='button'] {
+  opacity: 0.72;
+}
+[data-fantasy-home] .fantasy-bench-row img {
+  filter: grayscale(0.45);
+}
+[data-fantasy-home] [data-fantasy-bench-pill] {
+  background-color: transparent;
+  color: #a1a1aa;
+  box-shadow: inset 0 0 0 1px rgb(82 82 91);
+}
+[data-fantasy-home] [data-fantasy-bench-divider] {
+  color: #71717a;
+}
+[data-fantasy-home] [data-fantasy-bench-divider] > span.h-px {
+  background-color: rgb(63 63 70);
 }
 html.light [data-fantasy-home] .fantasy-bench-row {
-  background-color: #f4f4f5 !important;
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+  box-shadow: none !important;
+}
+html.light [data-fantasy-home] [data-fantasy-bench-pill] {
+  color: #71717a;
+  box-shadow: inset 0 0 0 1px #d4d4d8;
+}
+html.light [data-fantasy-home] [data-fantasy-bench-divider] {
+  color: #a1a1aa;
+}
+html.light [data-fantasy-home] [data-fantasy-bench-divider] > span.h-px {
+  background-color: #e4e4e7;
 }
 /* Same surface as Slots hub tool cards ([data-hub-tool-card]) */
 html.light [data-fantasy-home] .fantasy-card-lift {

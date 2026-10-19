@@ -842,7 +842,9 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
         return (
           <li
             key={rowKey}
-            className={`fantasy-card-lift relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/60 ${bench ? 'fantasy-bench-row' : ''}`}
+            className={`relative overflow-hidden rounded-xl border ${
+              bench ? 'fantasy-bench-row border-dashed' : 'fantasy-card-lift border-zinc-800 bg-zinc-900/60'
+            }`}
           >
             <span
               aria-hidden
@@ -869,7 +871,11 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                   <span className={`w-8 text-right text-[13px] font-bold tabular-nums ${leftLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>
                     {playerPts(leftCard, cardsLoading, scoring, sport)}
                   </span>
-                  {slotPillPosition(pair.label) ? (
+                  {bench ? (
+                    <span data-fantasy-bench-pill className="rounded-md px-1.5 py-0.5 text-[10px] font-bold">
+                      BN
+                    </span>
+                  ) : slotPillPosition(pair.label) ? (
                     <span
                       data-pos-pill={slotPillPosition(pair.label)}
                       className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${positionPillClass(slotPillPosition(pair.label))}`}
@@ -2386,6 +2392,13 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
   return (
     <ul className="space-y-1.5">
       <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} />
+      {bench.length ? (
+        <li data-fantasy-bench-divider className="flex items-center gap-2 px-1 pb-0.5 pt-3" aria-label="Bench">
+          <span className="h-px flex-1" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.14em]">Bench</span>
+          <span className="h-px flex-1" />
+        </li>
+      ) : null}
       <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} />
     </ul>
   )

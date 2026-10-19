@@ -1722,13 +1722,22 @@ async function fetchLeagueBoardPack(sportKey: string, dates: string[]): Promise<
   // shop books (Circa / Heritage / Bet105 / BookMaker / Betcris); its shop day fetch also carries each game's
   // TheRundown event id for the hub's live-state backup + player stats.
   const rundownBatches: RundownEvent[][] = []
-  const shopDates = uniqueShopDates(rundownBatches, dates)
-  const [scores, oddsPack, pinPack, shopEvents] = await Promise.all([
+  const [scores, oddsPack, pinPack] = await Promise.all([
     cachedSportScores(sportKey),
     cachedSportOdds(sportKey, false),
     cachedPinnacleOdds(sportKey, false),
-    cachedRundownShop(sportKey, shopDates, false),
   ])
+  // Shop days = PT days with an unfinished game on the slate (live or upcoming), soonest first.
+  const openDays = [
+    ...new Set(
+      (scores || [])
+        .filter((ev) => !ev.completed && ev.commence_time)
+        .map((ev) => ptDateFromIso(String(ev.commence_time)))
+        .filter((day) => day && dates.includes(day)),
+    ),
+  ].sort()
+  const shopDates = openDays.length ? openDays.slice(0, 3) : uniqueShopDates(rundownBatches, dates)
+  const shopEvents = await cachedRundownShop(sportKey, shopDates, false)
   return [rundownBatches, scores, oddsPack, pinPack, shopEvents]
 }
 

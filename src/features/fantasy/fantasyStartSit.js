@@ -120,6 +120,11 @@ function canFill(slot, pos) {
   return (SLOT_ELIGIBLE[slot] || []).includes(pos)
 }
 
+/** Positions that can play a lineup slot (FLEX → RB / WR / TE). */
+export function slotPositions(slot) {
+  return SLOT_ELIGIBLE[slot] || []
+}
+
 /**
  * Best legal lineup for this week. Players whose game already started stay where they are.
  * Most restrictive slots fill first, so FLEX takes the best leftover RB / WR / TE.
@@ -149,10 +154,12 @@ export function optimizeLineup({ roster, cards, scoring, slots, sport = 'nfl' })
     }
   }
 
+  // A player with no NFL team, on bye, or out cannot score, so he does not count as filling a seat.
+  const playable = (p) => p.why !== 'bye' && p.why !== 'out' && (p.pos === 'DEF' || Boolean(p.row.nfl_team))
   const order = open.filter((s) => !s.player).sort((a, b) => restrict(a.slot) - restrict(b.slot) || a.i - b.i)
   for (const seat of order) {
     const best = pool
-      .filter((p) => !used.has(p.row.sleeper_id) && !(p.locked && !p.starter) && canFill(seat.slot, p.pos))
+      .filter((p) => !used.has(p.row.sleeper_id) && !(p.locked && !p.starter) && playable(p) && canFill(seat.slot, p.pos))
       .sort((a, b) => b.value - a.value || Number(b.starter) - Number(a.starter))[0]
     if (best) {
       seat.player = best
@@ -173,17 +180,50 @@ export function optimizeLineup({ roster, cards, scoring, slots, sport = 'nfl' })
     if (at < 0) at = left.length ? 0 : -1
     const outP = at >= 0 ? left.splice(at, 1)[0] : null
     const gain = inP.value - (outP ? outP.value : 0)
-    if (gain < 0.05) continue
+    if (gain < 0.05 && outP) continue
     moves.push({ start: inP, bench: outP, gain })
   }
 
   const sum = (list) => list.reduce((acc, p) => acc + p.value, 0)
   const now = sum(current)
   const best = sum(open.filter((s) => s.player).map((s) => s.player))
+  // Seats nobody on the roster can take (no eligible player, or every one is locked on the bench / already used).
+  const empty = open
+    .filter((s) => !s.player)
+    .map((s) => {
+      const total = slots.filter((x) => x === s.slot).length
+      const nth = slots.slice(0, s.i + 1).filter((x) => x === s.slot).length
+      return { slot: s.slot, label: total > 1 ? `${s.slot}${nth}` : s.slot }
+    })
   return {
     moves,
     gain: Math.max(0, best - now),
     projected: best,
     locked: pool.filter((p) => p.locked && p.starter).length,
+    empty,
   }
+}
+
+/**
+ * Dedicated starting slots (QB / RB / WR / TE / K / DEF) the host lineup leaves empty, as `{ pos: count }`.
+ * Starters take the tightest slot they fit; FLEX holes are left to Start/Sit.
+ */
+export function openLineupSlots(rows, slots) {
+  const seats = (slots || []).map((slot) => ({ slot, taken: false }))
+  const restrict = (slot) => (SLOT_ELIGIBLE[slot] || []).length
+  for (const row of rows || []) {
+    if (row?.slot !== 'starter') continue
+    const pos = fantasyPosition(row.position)
+    const seat = seats
+      .filter((x) => !x.taken && canFill(x.slot, pos))
+      .sort((a, b) => restrict(a.slot) - restrict(b.slot))[0]
+    if (seat) seat.taken = true
+  }
+  const out = {}
+  for (const x of seats) {
+    if (x.taken || restrict(x.slot) !== 1) continue
+    const pos = SLOT_ELIGIBLE[x.slot][0]
+    out[pos] = (out[pos] || 0) + 1
+  }
+  return out
 }

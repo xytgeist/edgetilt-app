@@ -219,6 +219,16 @@ export async function loadWaivers(supabase, leagueId) {
   return finishEdge(data, error, 'Could not load waivers.')
 }
 
+/** Available players at these positions whose game this week has not started (open lineup slot fill). */
+export async function loadOpenSlotFill(supabase, leagueId, positions) {
+  const id = String(leagueId || '').trim()
+  if (!id || !positions?.length) return null
+  const { data, error } = await supabase.functions.invoke('fantasy-waivers', {
+    body: { league_id: id, mode: 'fill', positions },
+  })
+  return finishEdge(data, error, 'Could not load free agents.')
+}
+
 /** Next-four-week lines for every rostered player in the league (trade finder). */
 export async function loadLeagueValues(supabase, leagueId) {
   const id = String(leagueId || '').trim()

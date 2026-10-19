@@ -2,6 +2,7 @@
  * Waiver pool for one of the caller's leagues (available = not rostered by any team in that league).
  * Body: { league_id, mode? } … mode `trades` also returns `league_players` (every rostered player's weekly lines);
  * mode `sniper` adds boom candidates (Kalshi props / next man up / matchup) and RB handcuffs.
+ * mode `fill` + `positions` returns `fill`: available players at those positions whose game this week has not started.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { userIdFromJwt } from '../_shared/userJwt.ts'
@@ -38,13 +39,14 @@ Deno.serve(async (req) => {
   const userId = await userIdFromJwt(jwt, admin)
   if (!userId) return json(401, { error: 'Invalid session.' })
 
-  const body = (await req.json().catch(() => ({}))) as { league_id?: unknown; mode?: unknown }
+  const body = (await req.json().catch(() => ({}))) as { league_id?: unknown; mode?: unknown; positions?: unknown }
   const leagueId = String(body.league_id || '').trim()
   if (!leagueId) return json(400, { error: 'league_id required.' })
 
   try {
     const mode = String(body.mode || '').trim()
-    return json(200, { ok: true, ...(await buildFantasyWaivers(admin, userId, leagueId, { mode })) })
+    const positions = Array.isArray(body.positions) ? body.positions.map((p) => String(p)).slice(0, 6) : []
+    return json(200, { ok: true, ...(await buildFantasyWaivers(admin, userId, leagueId, { mode, positions })) })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Waivers failed.'
     return json(msg === 'League not found.' ? 404 : 502, { error: msg })

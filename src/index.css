@@ -11967,6 +11967,27 @@ html.light [data-fantasy-home] .fantasy-sit-in {
 html.light [data-fantasy-home] .fantasy-sit-out {
   color: #be123c;
 }
+/* Start/Sit open lineup slot */
+[data-fantasy-home] [data-fantasy-open-slot] {
+  border-color: rgb(245 158 11 / 0.45);
+  background-color: rgb(245 158 11 / 0.08);
+  color: #fcd34d;
+}
+html.light [data-fantasy-home] [data-fantasy-open-slot] {
+  border-color: rgb(217 119 6 / 0.45);
+  background-color: #fffbeb;
+  color: #b45309;
+}
+[data-fantasy-home] [data-fantasy-open-tag] {
+  background-color: rgb(245 158 11 / 0.16);
+  color: #fcd34d;
+  box-shadow: inset 0 0 0 1px rgb(245 158 11 / 0.45);
+}
+html.light [data-fantasy-home] [data-fantasy-open-tag] {
+  background-color: #d97706;
+  color: #ffffff;
+  box-shadow: none;
+}
 /* Offer Review verdict */
 [data-fantasy-home] [data-fantasy-offer-count] {
   background-color: #f43f5e;

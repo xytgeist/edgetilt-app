@@ -2,9 +2,24 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
-import { fantasyPosition, leagueLineupSlots, optimizeLineup } from './fantasyStartSit.js'
+import {
+  fantasyPosition,
+  gameLocked,
+  leagueLineupSlots,
+  openLineupSlots,
+  optimizeLineup,
+  slotPositions,
+  weekValue,
+} from './fantasyStartSit.js'
 import { rankWaivers, rowId } from './fantasyWaivers.js'
-import { loadLeagueValues, loadPendingTrades, loadSniper, loadWaivers } from './fantasyApi.js'
+import {
+  loadLeagueValues,
+  loadLineupCards,
+  loadOpenSlotFill,
+  loadPendingTrades,
+  loadSniper,
+  loadWaivers,
+} from './fantasyApi.js'
 import { rankBoom, rankHandcuffs } from './fantasySniper.js'
 import { claimOdds, waiverWindow } from './fantasyWaiverWindow.js'
 import {
@@ -847,7 +862,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               <SideBust row={pair.left} align="left" live={leftLive} />
               <SideBust row={pair.right} align="right" live={rightLive} />
               <div className="relative z-[1] grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 px-10">
-                <VsHead row={pair.left} align="left" />
+                {pair.left || !pair.leftOpen ? <VsHead row={pair.left} align="left" /> : <OpenSlotTag align="left" />}
                 <div className="flex items-center gap-1">
                   <span className={`w-8 text-right text-[13px] font-bold tabular-nums ${leftLive ? 'fantasy-live-pts' : 'text-zinc-100'}`}>
                     {playerPts(leftCard, cardsLoading, scoring, sport)}
@@ -871,7 +886,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                     {playerPts(rightCard, cardsLoading, scoring, sport)}
                   </span>
                 </div>
-                <VsHead row={pair.right} align="right" />
+                {pair.right || !pair.rightOpen ? <VsHead row={pair.right} align="right" /> : <OpenSlotTag align="right" />}
               </div>
               <div className="relative z-[1] mt-1.5 grid min-h-[14px] grid-cols-2 gap-1.5 px-1">
                 <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />
@@ -891,6 +906,16 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
   )
 }
 
+function OpenSlotTag({ align }) {
+  return (
+    <div className={`min-w-0 ${align === 'right' ? 'text-right' : ''}`}>
+      <span data-fantasy-open-tag className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+        Open slot
+      </span>
+    </div>
+  )
+}
+
 function startSitReason(p) {
   if (!p) return ''
   if (p.why === 'bye') return 'on bye'
@@ -898,8 +923,114 @@ function startSitReason(p) {
   return ''
 }
 
+const OPEN_SLOT_NAME = { DEF: 'D/ST', WRRB_FLEX: 'W/R', REC_FLEX: 'W/T', SUPER_FLEX: 'SFLEX' }
+
+function openSlotName(seat) {
+  const base = OPEN_SLOT_NAME[seat.slot] || seat.slot
+  return seat.label.replace(seat.slot, base)
+}
+
+function kickoffShort(iso) {
+  const t = Date.parse(iso || '')
+  if (!Number.isFinite(t)) return ''
+  return new Date(t).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+}
+
+/**
+ * Free agents who can still fill an open seat this week: eligible position, game not started, ranked by this
+ * week's projection in league scoring.
+ */
+function useOpenSlotFills({ supabaseClient, detail, empty, sport }) {
+  const leagueId = detail?.league?.id || null
+  const positions = [...new Set(empty.flatMap((s) => slotPositions(s.slot)))].sort()
+  const key = leagueId && positions.length ? `${leagueId}:${positions.join(',')}` : null
+  const [loaded, setLoaded] = useState({ key: null, list: [], error: '' })
+  useEffect(() => {
+    if (!supabaseClient || !key) return undefined
+    let alive = true
+    const want = new Set(key.split(':')[1].split(','))
+    ;(async () => {
+      const pool = await loadOpenSlotFill(supabaseClient, leagueId, [...want])
+      const candidates = (pool?.fill || []).filter((p) => want.has(fantasyPosition(p.position))).slice(0, 60)
+      const cardMap = candidates.length
+        ? await loadLineupCards(
+            supabaseClient,
+            candidates.map((p) => ({ sleeper_id: p.sleeper_id, name: p.name, position: p.position, team: p.team })),
+            sport,
+          )
+        : {}
+      const list = candidates
+        .map((p) => {
+          const card = cardMap[p.sleeper_id] || null
+          const row = { position: p.position, injury_status: p.injury_status }
+          return { p, card, pos: fantasyPosition(p.position), ...weekValue(row, card, detail?.league?.scoring, sport) }
+        })
+        .filter((x) => x.card && !x.card.bye && !gameLocked(x.card) && x.value > 0)
+        .sort((a, b) => b.value - a.value)
+      if (alive) setLoaded({ key, list, error: '' })
+    })().catch((err) => alive && setLoaded({ key, list: [], error: err?.message || 'Could not load free agents.' }))
+    return () => {
+      alive = false
+    }
+  }, [supabaseClient, key, leagueId, sport, detail?.league?.scoring])
+  if (!key) return { loading: false, list: [], error: '' }
+  return loaded.key === key ? { ...loaded, loading: false } : { loading: true, list: [], error: '' }
+}
+
+function OpenSlotAlert({ empty, fills, host }) {
+  const names = empty.map(openSlotName)
+  const bySeat = empty.map((seat) => ({
+    seat,
+    picks: fills.list.filter((x) => slotPositions(seat.slot).includes(x.pos)).slice(0, 3),
+  }))
+  return (
+    <div data-fantasy-open-slot className="mt-2 rounded-xl border px-2.5 py-2">
+      <div className="flex items-center gap-1.5 text-[12px] font-bold">
+        <span aria-hidden>!</span>
+        <span>
+          {names.length === 1 ? `${names[0]} is empty` : `${names.length} empty slots: ${names.join(', ')}`}
+        </span>
+      </div>
+      {fills.loading ? (
+        <span className="edge-skel mt-1.5 block h-10 rounded-lg" data-edge-skeleton aria-label="Finding free agents" />
+      ) : fills.error ? (
+        <p className="mt-1 text-[11px] opacity-80">{fills.error}</p>
+      ) : (
+        <div className="mt-1 space-y-1.5">
+          {bySeat.map(({ seat, picks }, i) => (
+            <div key={`${seat.label}-${i}`}>
+              {empty.length > 1 ? <div className="text-[10px] font-bold uppercase tracking-wide opacity-80">{openSlotName(seat)}</div> : null}
+              {picks.length ? (
+                <ul className="space-y-1">
+                  {picks.map((x) => (
+                    <li key={x.p.sleeper_id} className="flex items-baseline gap-1.5 text-[12px]">
+                      <span className="truncate font-semibold text-zinc-100">{shortName(x.p.name, x.p.position)}</span>
+                      <span className="shrink-0 text-[10px] text-zinc-500">
+                        {x.pos === 'DEF' ? 'D/ST' : x.pos}
+                        {x.p.team ? ` · ${x.p.team}` : ''}
+                        {x.card?.kickoff ? ` · ${kickoffShort(x.card.kickoff)}` : ''}
+                      </span>
+                      {injuryPill(x.p.injury_status)}
+                      <span className="ml-auto shrink-0 tabular-nums text-zinc-300">{x.value.toFixed(1)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[11px] text-zinc-400">No free agent here still has a game this week.</p>
+              )}
+            </div>
+          ))}
+          {bySeat.some((b) => b.picks.length) ? (
+            <p className="text-[10px] text-zinc-500">Available in your league, game not started. Add on {host} before kickoff.</p>
+          ) : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Start/Sit: best lineup for this week from your own roster, as swap cards. Moves happen on the host. */
-function StartSitPanel({ detail, cards, sport }) {
+function StartSitPanel({ supabaseClient, detail, cards, sport }) {
   const mine = (detail?.teams || []).find((t) => t.is_mine) || null
   const roster = useMemo(() => (mine ? detail?.rostersByTeam?.[mine.id] || [] : []), [detail, mine])
   const plan = useMemo(() => {
@@ -908,13 +1039,17 @@ function StartSitPanel({ detail, cards, sport }) {
     if (!slots.length) return null
     return { inferred, ...optimizeLineup({ roster, cards, scoring: detail?.league?.scoring, slots, sport }) }
   }, [roster, cards, detail, sport])
+  const empty = plan?.empty || []
+  const fills = useOpenSlotFills({ supabaseClient, detail, empty, sport })
   if (!plan) return null
   const host = providerLabel(detail?.league?.provider)
   const moves = plan.moves
   return (
     <div data-fantasy-start-sit className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-[13px] font-bold text-zinc-100">{moves.length ? 'Suggested moves' : 'Your lineup is set'}</div>
+        <div className="text-[13px] font-bold text-zinc-100">
+          {moves.length ? 'Suggested moves' : empty.length ? 'Open lineup slot' : 'Your lineup is set'}
+        </div>
         <span
           className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
             moves.length ? 'fantasy-sit-gain' : 'fantasy-sit-ok'
@@ -955,9 +1090,10 @@ function StartSitPanel({ detail, cards, sport }) {
             </li>
           ))}
         </ul>
-      ) : (
+      ) : empty.length ? null : (
         <p className="mt-1 text-[11px] text-zinc-500">Best projected lineup for this week.</p>
       )}
+      {empty.length ? <OpenSlotAlert empty={empty} fills={fills} host={host} /> : null}
       <p className="mt-2 text-[10px] text-zinc-500">
         {moves.length ? `Make the swap on ${host}.` : ''}
         {plan.locked ? `${moves.length ? ' ' : ''}${plan.locked} already playing, locked.` : ''}
@@ -1938,8 +2074,55 @@ function TradesPanel({ supabaseClient, detail, sport }) {
   )
 }
 
-function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport }) {
-  const starters = pairStarters(mine, opp)
+const OPEN_ORDER = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+
+/** Flag rows where a side has a real empty slot, and add a row when neither team starts that position. */
+function markOpenSlots(pairs, mine, opp, league) {
+  const slotsFor = (rows) => leagueLineupSlots(league, rows || [])
+  const a = slotsFor(mine)
+  const b = slotsFor(opp)
+  if (a.inferred && b.inferred) return pairs
+  const leftOpen = openLineupSlots(mine, a.slots)
+  const rightOpen = openLineupSlots(opp, b.slots)
+  const out = pairs.map((pair) => ({ ...pair }))
+  for (const pos of OPEN_ORDER) {
+    const need = Math.max(leftOpen[pos] || 0, rightOpen[pos] || 0)
+    if (!need) continue
+    const rows = out.filter((pair) => pair.key.startsWith(`${pos}-`))
+    let leftLeft = leftOpen[pos] || 0
+    let rightLeft = rightOpen[pos] || 0
+    for (const pair of rows) {
+      if (!pair.left && leftLeft > 0) {
+        pair.leftOpen = true
+        leftLeft -= 1
+      }
+      if (!pair.right && rightLeft > 0) {
+        pair.rightOpen = true
+        rightLeft -= 1
+      }
+    }
+    const extra = Math.max(leftLeft, rightLeft)
+    if (!extra) continue
+    const at = (() => {
+      const later = OPEN_ORDER.slice(OPEN_ORDER.indexOf(pos) + 1)
+      const idx = out.findIndex((pair) => later.includes(pair.key.split('-')[0]))
+      return idx < 0 ? out.length : idx
+    })()
+    const added = Array.from({ length: extra }, (_, i) => ({
+      key: `${pos}-open-${i}`,
+      label: pos,
+      left: null,
+      right: null,
+      leftOpen: i < leftLeft,
+      rightOpen: i < rightLeft,
+    }))
+    out.splice(at, 0, ...added)
+  }
+  return out
+}
+
+function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
+  const starters = markOpenSlots(pairStarters(mine, opp), mine, opp, league)
   const bench = pairBench(mine, opp)
   if (!starters.length && !bench.length) {
     return <p className="px-1 text-[13px] text-zinc-500">No players synced for this matchup.</p>
@@ -2414,7 +2597,9 @@ export default function FantasyCommandCenter({
             })}
           </div>
 
-          {tool === 'start' && detail ? <StartSitPanel detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} /> : null}
+          {tool === 'start' && detail ? (
+            <StartSitPanel supabaseClient={supabaseClient} detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} />
+          ) : null}
           {tool === 'waiver' && detail ? (
             <WaiversPanel supabaseClient={supabaseClient} detail={detail} sport={selected?.sport || detail?.league?.sport} />
           ) : null}
@@ -2430,6 +2615,7 @@ export default function FantasyCommandCenter({
               cardsLoading={cardsLoading}
               scoring={detail?.league?.scoring}
               sport={selected?.sport || detail?.league?.sport}
+              league={detail?.league}
             />
           ) : null}
         </>

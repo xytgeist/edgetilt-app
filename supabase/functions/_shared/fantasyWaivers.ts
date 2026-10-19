@@ -118,7 +118,7 @@ export async function buildFantasyWaivers(
   admin: SupabaseClient,
   userId: string,
   leagueId: string,
-  opts: { mode?: string } = {},
+  opts: { mode?: string; positions?: string[] } = {},
 ): Promise<Record<string, unknown>> {
   const withLeague = opts.mode === 'trades' || opts.mode === 'sniper'
   const withSniper = opts.mode === 'sniper'
@@ -167,6 +167,15 @@ export async function buildFantasyWaivers(
       .limit(3000),
   ])
   if (playersRes.error) throw new Error(playersRes.error.message)
+
+  if (opts.mode === 'fill') {
+    return {
+      supported: true,
+      season: board.season,
+      week: board.week,
+      fill: await buildFill(board, playersRes.data || [], rostered, opts.positions || []),
+    }
+  }
 
   const byPos = new Map<string, Array<{ p: WaiverPlayer; horizon: number }>>()
   const roster: WaiverPlayer[] = []
@@ -343,4 +352,64 @@ async function buildSniper(
   }
 
   return { week, boom, handcuffs }
+}
+
+const FILL_PER_POS = 12
+
+/**
+ * Open-slot fill: every available player at these positions whose team still has a game this week (Sleeper
+ * schedule not in progress or final), ranked by this week's projection. Not limited to the waiver shortlist,
+ * so Monday-night kickers show up on Sunday evening.
+ */
+async function buildFill(
+  board: ProjBoard,
+  players: PlayerRow[],
+  rostered: Set<string>,
+  positions: string[],
+): Promise<Array<Record<string, unknown>>> {
+  const want = new Set(positions.map((p) => fantasyPos(p)).filter((p) => POSITIONS.includes(p)))
+  if (!want.size) return []
+  const week = board.week
+  const pending = new Set<string>()
+  for (const g of board.games) {
+    if (g.week !== week) continue
+    const st = String(g.status || '').toLowerCase()
+    if (st === 'complete' || st === 'in_game' || st === 'in_progress') continue
+    pending.add(g.home)
+    pending.add(g.away)
+  }
+  if (!pending.size) return []
+  const stats =
+    board.proj.get(week) ||
+    ((await fetchJson(`https://api.sleeper.app/v1/projections/nfl/regular/${board.season}/${week}`)
+      .then(statMap)
+      .catch(() => new Map())) as Map<string, Record<string, unknown>>)
+  const byPos = new Map<string, Array<Record<string, unknown> & { ppr: number }>>()
+  for (const row of players) {
+    const id = String(row.sleeper_id || '')
+    const position = fantasyPos(row.position)
+    if (!id || !want.has(position) || rostered.has(id)) continue
+    const status = String(row.status || '').toLowerCase()
+    if (status && status !== 'active') continue
+    const team = row.team ? normTeam(row.team) : ''
+    if (!team || !pending.has(team)) continue
+    const ppr = ptsOf(stats.get(id)) || 0
+    const list = byPos.get(position) || []
+    list.push({
+      sleeper_id: id,
+      name: String(row.full_name || ''),
+      position,
+      team,
+      injury_status: row.injury_status || null,
+      headshot_url: row.headshot_url || row.local_headshot_path || null,
+      ppr,
+    })
+    byPos.set(position, list)
+  }
+  const out: Array<Record<string, unknown>> = []
+  for (const list of byPos.values()) {
+    list.sort((a, b) => b.ppr - a.ppr)
+    out.push(...list.slice(0, FILL_PER_POS))
+  }
+  return out
 }

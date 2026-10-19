@@ -4202,15 +4202,62 @@ function oddsNamesHit(oddsName: string, side: LoungeSportsGameSide): boolean {
   return false
 }
 
-function categorizeStat(name: string, abbr: string): string | null {
-  const hay = `${name} ${abbr}`.toLowerCase()
-  if (/pass/.test(hay) && !/rush|receiv/.test(hay)) return 'Passing'
-  if (/rush/.test(hay)) return 'Rushing'
-  if (/rec|catch|target/.test(hay)) return 'Receiving'
-  if (/\bpts\b|points|reb|ast|3pt/.test(hay)) return 'Basketball'
-  if (/\bso\b|strike|hits|rbi|era/.test(hay)) return 'Baseball'
-  if (/\bg\b|a\b|sog|save/.test(hay) && /hockey|goal/.test(hay)) return 'Hockey'
-  return null
+const PLAYER_STATS_PER_GROUP = 12
+
+/** Stats tab player lines from the ESPN box score: one row per player per group, best first. */
+function statsFromPlayerBox(box: LoungeSportsPlayerBoxes | null): LoungeSportsPlayerStat[] {
+  if (!box) return []
+  const rows: Array<LoungeSportsPlayerStat & { rank: number }> = []
+  const push = (name: string, side: 'home' | 'away', category: string, parts: Array<string | null>, rank: number) => {
+    const line = parts.filter(Boolean).join(' · ')
+    if (line) rows.push({ name, team_id: null, side, category, line, rank })
+  }
+  const n = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
+  const part = (v: number, label: string, always = false) => (always || v ? `${v} ${label}` : null)
+  for (const side of ['away', 'home'] as const) {
+    for (const p of box[side] || []) {
+      const st = p.stats
+      if (!st) {
+        if (p.pass_att > 0) {
+          push(p.name, side, 'Passing', [`${p.pass_cmp}/${p.pass_att}`, part(p.pass_yds, 'YDS', true), part(p.pass_td, 'TD'), part(p.pass_int, 'INT')], p.pass_yds)
+        }
+        if (p.rush_att > 0) {
+          push(p.name, side, 'Rushing', [part(p.rush_att, 'CAR', true), part(p.rush_yds, 'YDS', true), part(p.rush_td, 'TD'), part(p.rush_lng, 'LNG')], p.rush_yds)
+        }
+        if (p.rec > 0 || p.rec_tgt > 0) {
+          push(p.name, side, 'Receiving', [`${p.rec}/${p.rec_tgt || p.rec} REC`, part(p.rec_yds, 'YDS', true), part(p.rec_td, 'TD'), part(p.rec_lng, 'LNG')], p.rec_yds)
+        }
+        if (p.fg_att > 0 || p.xp_made > 0) {
+          push(p.name, side, 'Kicking', [p.fg_att > 0 ? `FG ${p.fg_made}/${p.fg_att}` : null, part(p.xp_made, 'XP')], p.fg_made * 3 + p.xp_made)
+        }
+        continue
+      }
+      if ('saves' in st || 'goalsAgainst' in st) {
+        push(p.name, side, 'Goalies', [`${n(st.saves)}/${n(st.shotsAgainst)} SV`, part(n(st.goalsAgainst), 'GA', true)], n(st.saves))
+      } else if ('earnedRuns' in st || 'fullInnings.partInnings' in st) {
+        push(p.name, side, 'Pitching', [part(n(st['fullInnings.partInnings']), 'IP', true), part(n(st.hits), 'H', true), part(n(st.earnedRuns), 'ER', true), part(n(st.walks), 'BB'), part(n(st.strikeouts), 'K')], n(st.strikeouts) + n(st['fullInnings.partInnings']) * 3)
+      } else if ('atBats' in st) {
+        if (!n(st.atBats) && !n(st.walks)) continue
+        push(p.name, side, 'Batting', [`${n(st.hits)}/${n(st.atBats)}`, part(n(st.runs), 'R'), part(n(st.RBIs), 'RBI'), part(n(st.homeRuns), 'HR'), part(n(st.walks), 'BB'), part(n(st.strikeouts), 'K')], n(st.hits) * 2 + n(st.homeRuns) * 4 + n(st.RBIs))
+      } else if ('points' in st || 'rebounds' in st) {
+        if (!n(st.minutes) && !n(st.points)) continue
+        push(p.name, side, 'Players', [part(n(st.points), 'PTS', true), part(n(st.rebounds), 'REB'), part(n(st.assists), 'AST'), n(st.threePointFieldGoalsMade) ? `${n(st.threePointFieldGoalsMade)}/${n(st.threePointFieldGoalsAttempted)} 3PT` : null, part(n(st.steals), 'STL'), part(n(st.blocks), 'BLK')], n(st.points) + n(st.rebounds) + n(st.assists))
+      } else if ('shotsTotal' in st || 'timeOnIce' in st || 'goals' in st) {
+        const g = n(st.goals)
+        const a = n(st.assists)
+        const sog = n(st.shotsTotal)
+        if (!g && !a && !sog) continue
+        push(p.name, side, 'Skaters', [part(g, 'G'), part(a, 'A'), part(sog, 'SOG'), st.plusMinus ? `${n(st.plusMinus) > 0 ? '+' : ''}${n(st.plusMinus)} +/-` : null], g * 3 + a * 2 + sog * 0.2)
+      }
+    }
+  }
+  const out: LoungeSportsPlayerStat[] = []
+  const byCat = new Map<string, typeof rows>()
+  for (const r of rows) byCat.set(r.category, [...(byCat.get(r.category) || []), r])
+  for (const list of byCat.values()) {
+    for (const { rank: _rank, ...row } of list.sort((a, b) => b.rank - a.rank).slice(0, PLAYER_STATS_PER_GROUP)) out.push(row)
+  }
+  return out
 }
 
 export async function fetchLoungeSportsGameDetail(
@@ -4250,9 +4297,10 @@ export async function fetchLoungeSportsGameDetail(
   const shopDay = ptDateFromIso(String(game.commence_time || '')) || ptTodayDate()
   // Scores-only event (`affiliate_ids=0`) for live state. Shop books are a separate cached
   // day fetch (Circa / Heritage / …). Skip Rundown `/plays` (Ultra-only; football PBP is ESPN).
-  const [eventRaw, statsRaw, oddsPack, pinPack, shopEvents] = await Promise.all([
+  // Player stats come from the ESPN box score (`statsFromPlayerBox`); TheRundown `/players/stats` cost ~515
+  // datapoints a call on every 4s live hub refresh.
+  const [eventRaw, oddsPack, pinPack, shopEvents] = await Promise.all([
     rundownId ? rundownGet<unknown>(`/events/${rundownId}?affiliate_ids=0`) : Promise.resolve(null),
-    rundownId ? rundownGet<unknown>(`/events/${rundownId}/players/stats`) : Promise.resolve(null),
     cachedSportOdds(game.sport_key, liveHub),
     cachedPinnacleOdds(game.sport_key, liveHub),
     cachedRundownShop(String(game.sport_key || ''), [shopDay], liveHub),
@@ -4307,40 +4355,7 @@ export async function fetchLoungeSportsGameDetail(
     playerBox = espn.player_box ?? null
   }
 
-  const statRows: unknown[] = Array.isArray(statsRaw)
-    ? statsRaw
-    : Array.isArray((statsRaw as { players?: unknown[] } | null)?.players)
-      ? (statsRaw as { players: unknown[] }).players
-      : []
-  const stats: LoungeSportsPlayerStat[] = []
-  for (const row of statRows.slice(0, 80)) {
-    const r = (row && typeof row === 'object') ? row as Record<string, unknown> : {}
-    const player = (r.player && typeof r.player === 'object') ? r.player as Record<string, unknown> : {}
-    const name = String(player.display_name || [player.first_name, player.last_name].filter(Boolean).join(' ')).trim()
-    if (!name) continue
-    const teamId = numOrNull(player.team_id)
-    const side: 'home' | 'away' | null = teamId && homeId === teamId ? 'home' : teamId && awayId === teamId ? 'away' : null
-    const bits: string[] = []
-    let category = ''
-    for (const s of Array.isArray(r.stats) ? r.stats as Array<Record<string, unknown>> : []) {
-      const def = (s.stat && typeof s.stat === 'object') ? s.stat as Record<string, unknown> : {}
-      const stName = String(def.name || def.display_name || '').trim()
-      const abbr = String(def.abbreviation || '').trim()
-      const value = String(s.value ?? '').trim()
-      if (!value) continue
-      const cat = categorizeStat(stName, abbr)
-      if (cat && !category) category = cat
-      bits.push(`${abbr || stName} ${value}`)
-    }
-    if (!bits.length) continue
-    stats.push({
-      name,
-      team_id: teamId,
-      side,
-      category: category || 'Stats',
-      line: bits.slice(0, 8).join(' · '),
-    })
-  }
+  const stats = statsFromPlayerBox(playerBox)
 
   const events = Array.isArray(oddsPack?.events) ? oddsPack.events as OddsEventRow[] : []
   const matchedRaw = events.find((ev) =>

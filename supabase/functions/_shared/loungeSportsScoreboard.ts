@@ -333,6 +333,33 @@ export type LoungeSportsPlayerBoxes = { home: LoungeSportsPlayerBox[]; away: Lou
 export type LoungeSportsRosterPlayer = { name: string; jersey: string; position: string; headshot: string }
 export type LoungeSportsRosters = { home: LoungeSportsRosterPlayer[]; away: LoungeSportsRosterPlayer[] }
 
+/**
+ * ESPN refusal backoff (per isolate). A 403 / 429 means ESPN is throttling our servers, so stop asking for
+ * 30s (doubling to 10 min while refusals continue). During backoff callers get a stand-in 503, so every existing
+ * `!res.ok` branch behaves as before without touching ESPN; `isEspnRefusal` tells hub detail to keep its last
+ * good copy instead of painting an empty feed.
+ */
+const ESPN_BACKOFF_START_MS = 30_000
+const ESPN_BACKOFF_MAX_MS = 10 * 60_000
+let espnBackoffUntil = 0
+let espnBackoffMs = 0
+
+async function espnFetch(url: string, init: RequestInit): Promise<Response> {
+  if (Date.now() < espnBackoffUntil) return new Response(null, { status: 503, headers: { 'x-edge-espn-backoff': '1' } })
+  const res = await fetch(url, init)
+  if (res.status === 403 || res.status === 429) {
+    espnBackoffMs = espnBackoffMs ? Math.min(ESPN_BACKOFF_MAX_MS, espnBackoffMs * 2) : ESPN_BACKOFF_START_MS
+    espnBackoffUntil = Date.now() + espnBackoffMs
+  } else if (res.ok) {
+    espnBackoffMs = 0
+  }
+  return res
+}
+
+function isEspnRefusal(res: Response): boolean {
+  return res.status === 403 || res.status === 429 || res.headers.get('x-edge-espn-backoff') === '1'
+}
+
 const ESPN_ROSTER_TTL_MS = 6 * 60 * 60 * 1000
 const ESPN_NFL_ROSTER_ABBREV: Record<string, string> = { WAS: 'WSH', JAC: 'JAX', LA: 'LAR', OAK: 'LV' }
 const espnRosterCache = new Map<string, { at: number; rows: LoungeSportsRosterPlayer[] }>()
@@ -344,7 +371,7 @@ async function fetchEspnNflRoster(abbrev: string | null | undefined): Promise<Lo
   const hit = espnRosterCache.get(key)
   if (hit && Date.now() - hit.at < ESPN_ROSTER_TTL_MS) return hit.rows
   try {
-    const res = await fetch(
+    const res = await espnFetch(
       `https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${key.toLowerCase()}/roster`,
       { headers: { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' } },
     )
@@ -1452,7 +1479,7 @@ async function loadEspnFootballSlateExtras(
   await Promise.all(dates.map(async (date) => {
     const url = date ? `${base}?dates=${date}` : base
     try {
-      const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
+      const res = await espnFetch(url, { headers, signal: AbortSignal.timeout(8_000) })
       if (!res.ok) return
       const pack = await res.json() as { events?: Array<Record<string, unknown>> }
       for (const ev of Array.isArray(pack.events) ? pack.events : []) {
@@ -1511,7 +1538,7 @@ async function loadEspnFootballDivisionRecords(
   const statType = league === 'nfl' ? 'vsdiv' : 'vsconf'
   const label: EspnDivisionRecord['label'] = league === 'nfl' ? 'DIV' : 'CONF'
   try {
-    const res = await fetch(`https://site.api.espn.com/apis/v2/sports/football/${league}/standings`, {
+    const res = await espnFetch(`https://site.api.espn.com/apis/v2/sports/football/${league}/standings`, {
       headers: { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' },
       signal: AbortSignal.timeout(8_000),
     })
@@ -1593,7 +1620,7 @@ async function enrichEspnFootballLiveClock(
       return
     }
     try {
-      const res = await fetch(`${base}?dates=${date}&limit=300`, { headers, signal: AbortSignal.timeout(6_000) })
+      const res = await espnFetch(`${base}?dates=${date}&limit=300`, { headers, signal: AbortSignal.timeout(6_000) })
       if (!res.ok) return
       const pack = await res.json() as { events?: Array<Record<string, unknown>> }
       const list = Array.isArray(pack.events) ? pack.events : []
@@ -2121,7 +2148,7 @@ async function enrichEspnMajorLeagueSides(
       return
     }
     try {
-      const res = await fetch(`${base}?dates=${date}&limit=100`, { headers, signal: AbortSignal.timeout(6_000) })
+      const res = await espnFetch(`${base}?dates=${date}&limit=100`, { headers, signal: AbortSignal.timeout(6_000) })
       if (!res.ok) return
       const pack = await res.json() as { events?: Array<Record<string, unknown>> }
       const list = Array.isArray(pack.events) ? pack.events : []
@@ -2528,7 +2555,7 @@ async function fetchEspnGolfLeaderboardEvents(
   const qs = new URLSearchParams({ league, region: 'us', lang: 'en' })
   if (eventId) qs.set('event', eventId)
   const url = `https://site.web.api.espn.com/apis/site/v2/sports/golf/leaderboard?${qs}`
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
+  const res = await espnFetch(url, { headers, signal: AbortSignal.timeout(8_000) })
   if (!res.ok) return []
   const pack = await res.json() as { events?: Array<Record<string, unknown>> }
   return Array.isArray(pack.events) ? pack.events : []
@@ -2540,7 +2567,7 @@ async function loadEspnGolfRecentEvents(scoreboard: string): Promise<Array<{ id:
   const from = ptYmdCompactDaysAgo(10)
   const url = `https://site.api.espn.com/apis/site/v2/sports/golf/${scoreboard}/scoreboard?dates=${from}-${to}`
   try {
-    const res = await fetch(url, { headers: espnGolfHeaders(), signal: AbortSignal.timeout(8_000) })
+    const res = await espnFetch(url, { headers: espnGolfHeaders(), signal: AbortSignal.timeout(8_000) })
     if (!res.ok) return []
     const pack = await res.json() as { events?: Array<{ id?: string; date?: string }> }
     return (pack.events || [])
@@ -2806,7 +2833,7 @@ export async function resolveEspnFootballEvent(game: LoungeSportsGame): Promise<
   let ref: EspnFootballEventRef | null = null
   for (const date of dates) {
     try {
-      const res = await fetch(`${espnFootballScoreboardPath(league)}?dates=${date}${groups}`, {
+      const res = await espnFetch(`${espnFootballScoreboardPath(league)}?dates=${date}${groups}`, {
         headers,
         signal: AbortSignal.timeout(8_000),
       })
@@ -2937,6 +2964,8 @@ async function fetchEspnFootballLivePack(
   plays: LoungeSportsPlay[]
   team_stats?: LoungeSportsTeamStats | null
   player_box?: LoungeSportsPlayerBoxes | null
+  /** ESPN refused (403 / 429 / backoff) … keep the last good copy, do not cache this read. */
+  refused?: boolean
 }> {
   const sk = String(game.sport_key || '')
   const league: EspnFootballLeague | null = isCfbSportKey(sk)
@@ -2981,12 +3010,16 @@ async function fetchEspnFootballLivePack(
   let boardStatusName = ''
   let boardStatusDetail = ''
   const boardBase = espnFootballScoreboardPath(league)
+  let refused = false
 
   for (const date of dates) {
     const url = date ? `${boardBase}?dates=${date}` : boardBase
     try {
-      const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
-      if (!res.ok) continue
+      const res = await espnFetch(url, { headers, signal: AbortSignal.timeout(8_000) })
+      if (!res.ok) {
+        if (isEspnRefusal(res)) refused = true
+        continue
+      }
       const pack = await res.json() as { events?: Array<Record<string, unknown>> }
       for (const ev of Array.isArray(pack.events) ? pack.events : []) {
         const comps = (ev.competitions as Array<Record<string, unknown>> | undefined)?.[0]
@@ -3047,14 +3080,14 @@ async function fetchEspnFootballLivePack(
     }
     if (eventId) break
   }
-  if (!eventId) return { live: null, plays: [] }
+  if (!eventId) return { live: null, plays: [], refused }
 
   try {
-    const res = await fetch(
+    const res = await espnFetch(
       espnFootballSummaryPath(league, eventId),
       { headers, signal: AbortSignal.timeout(10_000) },
     )
-    if (!res.ok) return { live: null, plays: [] }
+    if (!res.ok) return { live: null, plays: [], refused: isEspnRefusal(res) }
     const summary = await res.json() as Record<string, unknown>
     const drivesObj = (summary.drives && typeof summary.drives === 'object')
       ? summary.drives as Record<string, unknown>
@@ -3322,6 +3355,7 @@ async function fetchEspnMajorLeagueLivePack(
   plays: LoungeSportsPlay[]
   team_stats?: LoungeSportsTeamStats | null
   player_box?: LoungeSportsPlayerBoxes | null
+  refused?: boolean
 }> {
   const path = majorLeaguePathForSportKey(String(game.sport_key || ''))
   if (!path) return { live: null, plays: [] }
@@ -3344,11 +3378,15 @@ async function fetchEspnMajorLeagueLivePack(
   let homeEspnId = ''
   let awayEspnId = ''
   let statusObj: Record<string, unknown> | undefined
+  let refused = false
   for (const date of dates) {
     const url = date ? `${boardBase}?dates=${date}` : boardBase
     try {
-      const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
-      if (!res.ok) continue
+      const res = await espnFetch(url, { headers, signal: AbortSignal.timeout(8_000) })
+      if (!res.ok) {
+        if (isEspnRefusal(res)) refused = true
+        continue
+      }
       const pack = await res.json() as { events?: Array<Record<string, unknown>> }
       for (const ev of Array.isArray(pack.events) ? pack.events : []) {
         const comps = (ev.competitions as Array<Record<string, unknown>> | undefined)?.[0]
@@ -3368,14 +3406,14 @@ async function fetchEspnMajorLeagueLivePack(
     }
     if (eventId) break
   }
-  if (!eventId) return { live: liveFromEspnBoard(statusObj), plays: [] }
+  if (!eventId) return { live: liveFromEspnBoard(statusObj), plays: [], refused }
 
   try {
-    const res = await fetch(
+    const res = await espnFetch(
       espnMajorLeagueSummaryPath(path, eventId),
       { headers, signal: AbortSignal.timeout(10_000) },
     )
-    if (!res.ok) return { live: liveFromEspnBoard(statusObj), plays: [] }
+    if (!res.ok) return { live: liveFromEspnBoard(statusObj), plays: [], refused: isEspnRefusal(res) }
     const summary = await res.json() as Record<string, unknown>
     const header = (summary.header && typeof summary.header === 'object')
       ? summary.header as Record<string, unknown>
@@ -4260,6 +4298,33 @@ function statsFromPlayerBox(box: LoungeSportsPlayerBoxes | null): LoungeSportsPl
   return out
 }
 
+type EspnLivePack = {
+  live: LoungeSportsLiveState | null
+  plays: LoungeSportsPlay[]
+  team_stats?: LoungeSportsTeamStats | null
+  player_box?: LoungeSportsPlayerBoxes | null
+  refused?: boolean
+}
+
+/** Last good ESPN live pack per game (per isolate), served while ESPN is refusing us. */
+const espnLastGood = new Map<string, { at: number; pack: EspnLivePack }>()
+const ESPN_LAST_GOOD_MAX_MS = 30 * 60_000
+
+async function keepLastGoodEspn(gameId: string, pack: EspnLivePack): Promise<EspnLivePack & { stale?: boolean }> {
+  if (!pack.refused) {
+    if (pack.plays.length || pack.live || pack.player_box) {
+      espnLastGood.set(gameId, { at: Date.now(), pack })
+      if (espnLastGood.size > 200) {
+        for (const [k, v] of espnLastGood) if (Date.now() - v.at > ESPN_LAST_GOOD_MAX_MS) espnLastGood.delete(k)
+      }
+    }
+    return pack
+  }
+  const prev = espnLastGood.get(gameId)
+  if (prev && Date.now() - prev.at < ESPN_LAST_GOOD_MAX_MS) return { ...prev.pack, refused: true, stale: true }
+  return pack
+}
+
 export async function fetchLoungeSportsGameDetail(
   game: LoungeSportsGame,
   admin?: SupabaseClient,
@@ -4273,6 +4338,10 @@ export async function fetchLoungeSportsGameDetail(
   rosters: LoungeSportsRosters | null
   golf?: LoungeSportsGolfCard | null
   golf_odds?: GolfOutrightRow[]
+  /** ESPN refused this read; live / plays / box are the last good copy (do not cache). */
+  espn_stale?: boolean
+  /** ESPN refused and there is no good copy yet (caller should keep whatever it shows). */
+  espn_unavailable?: boolean
 }> {
   if (isPgaSportKey(game.sport_key) || String(game.id || '').startsWith('espn-golf-')) {
     const [rich, golfOdds] = await Promise.all([
@@ -4338,8 +4407,12 @@ export async function fetchLoungeSportsGameDetail(
       ([away, home]) => (away.length || home.length ? { away, home } : null),
     )
     : Promise.resolve(null)
+  let espnRefused = false
+  let espnStale = false
   if (needEspn || wantTeamStats) {
-    const espn = await fetchEspnFootballLivePack(game)
+    const espn = await keepLastGoodEspn(game.id, await fetchEspnFootballLivePack(game))
+    espnRefused = Boolean(espn.refused)
+    espnStale = Boolean(espn.stale)
     if (espn.plays.length) playsOut = mergeFootballPlays(playsOut, espn.plays)
     if (espn.live) {
       const [lead, rest] = fresherLiveFirst(liveOut, espn.live)
@@ -4348,7 +4421,9 @@ export async function fetchLoungeSportsGameDetail(
     teamStats = espn.team_stats ?? null
     playerBox = espn.player_box ?? null
   } else if (wantMajorLive) {
-    const espn = await fetchEspnMajorLeagueLivePack(game)
+    const espn = await keepLastGoodEspn(game.id, await fetchEspnMajorLeagueLivePack(game))
+    espnRefused = Boolean(espn.refused)
+    espnStale = Boolean(espn.stale)
     if (espn.plays.length) playsOut = espn.plays
     if (espn.live) liveOut = mergeLiveState(espn.live, liveOut)
     teamStats = espn.team_stats ?? null
@@ -4377,5 +4452,7 @@ export async function fetchLoungeSportsGameDetail(
     team_stats: teamStats,
     player_box: playerBox,
     rosters: await rostersPromise,
+    espn_stale: espnStale,
+    espn_unavailable: espnRefused && !espnStale,
   }
 }

@@ -41,7 +41,12 @@ function cachedDetail(
   admin: ReturnType<typeof createClient>,
   build: () => Promise<Record<string, unknown> | null>,
 ) {
-  return sharedCached(`scoreboard:detail:${key}`, { ttlMs, leaseMs: 15_000, admin }, build)
+  // A read ESPN refused (served from the last good copy) is not stored, so the next caller tries again.
+  return sharedCached(
+    `scoreboard:detail:${key}`,
+    { ttlMs, leaseMs: 15_000, admin, shouldStore: (v) => !(v as { espn_stale?: boolean } | null)?.espn_stale },
+    build,
+  )
 }
 
 /** Feed pills poll this slim slice between full-board refreshes: live, about to start, or recently final. */
@@ -127,6 +132,8 @@ Deno.serve(async (req) => {
     if (!game) return json(404, { error: 'Game not on the current slate.' })
     const payload = await cachedDetail(game.id, detailTtlMs(game), admin, async () => {
       const detail = await fetchLoungeSportsGameDetail(game, admin)
+      // ESPN refused with nothing good to show: answer with an error so the hub keeps what it has on screen.
+      if (detail.espn_unavailable) return null
       const splitMap = await loadPastedBettingSplitsForSlate(admin, game.sport_key, [
         {
           id: game.id,

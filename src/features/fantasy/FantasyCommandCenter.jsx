@@ -1041,14 +1041,14 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
   }, [roster, cards, detail, sport])
   const empty = plan?.empty || []
   const fills = useOpenSlotFills({ supabaseClient, detail, empty, sport })
-  if (!plan) return null
+  if (!plan || (!plan.moves.length && !empty.length)) return null
   const host = providerLabel(detail?.league?.provider)
   const moves = plan.moves
   return (
     <div data-fantasy-start-sit className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="text-[13px] font-bold text-zinc-100">
-          {moves.length ? 'Suggested moves' : empty.length ? 'Open lineup slot' : 'Your lineup is set'}
+          {moves.length ? 'Suggested moves' : 'Open lineup slot'}
         </div>
         <span
           className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
@@ -1090,9 +1090,7 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
             </li>
           ))}
         </ul>
-      ) : empty.length ? null : (
-        <p className="mt-1 text-[11px] text-zinc-500">Best projected lineup for this week.</p>
-      )}
+      ) : null}
       {empty.length ? <OpenSlotAlert empty={empty} fills={fills} host={host} /> : null}
       <p className="mt-2 text-[10px] text-zinc-500">
         {moves.length ? `Make the swap on ${host}.` : ''}

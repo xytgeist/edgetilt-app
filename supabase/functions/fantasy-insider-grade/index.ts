@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
       if (grade === 'contradicted') {
         newContradictions.push({ ...r, player: p.full_name, note })
         await admin.from('fantasy_insider_regression').upsert(
-          { handle: str(r.handle), text: str(r.text), expected_next: 'none', expected_player: str(p.full_name), origin: 'contradicted', note: `auto ${note}; review label` },
+          { handle: str(r.handle), text: str(r.text), posted_at: str(r.posted_at) || null, expected_next: 'none', expected_player: str(p.full_name), origin: 'contradicted', note: `auto ${note}; review label` },
           { onConflict: 'handle,text', ignoreDuplicates: true },
         )
       }

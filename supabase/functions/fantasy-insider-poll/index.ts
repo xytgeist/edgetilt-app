@@ -15,7 +15,7 @@
 import { type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
 import { buildPlayerIndex, matchPlayers, type InsiderPlayer, type PlayerIndex } from '../_shared/fantasyInsiderMatch.ts'
-import { RANK, pushStarterAlerts, type StatusTransition } from '../_shared/fantasyStatusPush.ts'
+import { ESPN_NFL, ESPN_TO_SLEEPER, RANK, espnJson, pushStarterAlerts, type StatusTransition } from '../_shared/fantasyStatusPush.ts'
 import {
   openaiChatMaxCompletionTokens,
   openaiChatReasoningNone,
@@ -248,6 +248,65 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
   }
 }
 
+/** Words that make "ruled out" about a future game even when posted mid-game. */
+const FUTURE = /\b(next week|this week|week \d+|sunday|monday|thursday|saturday|season|weeks|months|injured reserve|ir|surgery|indefinitely|practice)\b/i
+const IN_GAME_MS = 4 * 60 * 60 * 1000
+
+function etYmd(ms: number): string {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms))
+  return p.replace(/-/g, '')
+}
+
+const dayCache = new Map<string, Promise<Array<{ teams: string[]; kickoff: number }>>>()
+function dayGames(ymd: string) {
+  if (!dayCache.has(ymd)) {
+    dayCache.set(
+      ymd,
+      espnJson(`${ESPN_NFL}/scoreboard?dates=${ymd}`, 10_000).then((body) => {
+        const events = Array.isArray(body?.events) ? (body!.events as Array<Record<string, unknown>>) : []
+        return events.map((ev) => {
+          const comp = (ev.competitions as Array<Record<string, unknown>> | undefined)?.[0]
+          const teams = ((comp?.competitors as Array<Record<string, unknown>> | undefined) || []).map((c) => {
+            const abbr = String((c.team as Record<string, unknown> | undefined)?.abbreviation || '').toUpperCase()
+            return ESPN_TO_SLEEPER[abbr] || abbr
+          })
+          return { teams, kickoff: Date.parse(String(ev.date || '')) }
+        })
+      }).catch(() => []),
+    )
+  }
+  return dayCache.get(ymd)!
+}
+
+/** True when this team's game was underway at `iso` (kickoff to kickoff + 4h). */
+async function teamInGameAt(team: string, iso: string): Promise<boolean> {
+  const t = Date.parse(iso)
+  if (!Number.isFinite(t) || !team) return false
+  for (const ymd of new Set([etYmd(t), etYmd(t - 6 * 3600 * 1000)])) {
+    for (const g of await dayGames(ymd)) {
+      if (g.teams.includes(team) && Number.isFinite(g.kickoff) && t >= g.kickoff && t <= g.kickoff + IN_GAME_MS) return true
+    }
+  }
+  return false
+}
+
+/** `judge`, then: an Out / Doubtful posted while that player's game is underway is an in-game ruling, not next week's. */
+async function judgeGuarded(t: Tweet, players: InsiderPlayer[], recent: string[]): Promise<Verdict> {
+  const v = await judge(t, players, recent)
+  if ((v.next === 'out' || v.next === 'doubtful') && !FUTURE.test(t.text)) {
+    const want = v.next_player.toLowerCase().replace(/[^a-z ]/g, '').trim()
+    const p =
+      players.find((x) => x.full_name.toLowerCase().replace(/[^a-z ]/g, '').trim() === want) ||
+      (players.length === 1 ? players[0] : undefined)
+    if (p?.team && t.created_at && (await teamInGameAt(p.team, t.created_at))) {
+      v.next = null
+      v.next_player = ''
+      v.injury = ''
+    }
+  }
+  return v
+}
+
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length)
   let next = 0
@@ -311,7 +370,7 @@ Deno.serve(async (req) => {
       const t: Tweet = { id: '0', text: String(e.text || ''), created_at: String(e.created_at || ''), author_id: '', handle, name: handle }
       const ids = matchPlayers(t.text, index, beatTeam.get(handle) || null)
       if (!ids.length) return { handle, text: t.text.slice(0, 160), matched: [], verdict: null, next: null, next_player: null, trusted: false, headline: '' }
-      const v = await judge(t, ids.map((id) => byId.get(id)).filter(Boolean) as InsiderPlayer[], [])
+      const v = await judgeGuarded(t, ids.map((id) => byId.get(id)).filter(Boolean) as InsiderPlayer[], [])
       const sid = v.status !== 'skip' && v.next ? statusPlayerId(v.next_player, ids, byId) : null
       return {
         handle,
@@ -329,9 +388,9 @@ Deno.serve(async (req) => {
     return adminOpsJson(200, { ok: true, evaluated: await judgeAll(body.evaluate.slice(0, 40)) })
   }
   if (body.regression) {
-    const { data: cases } = await admin.from('fantasy_insider_regression').select('id, handle, text, expected_next, expected_player, origin').limit(400)
+    const { data: cases } = await admin.from('fantasy_insider_regression').select('id, handle, text, expected_next, expected_player, origin, posted_at').limit(400)
     const list = cases || []
-    const got = await judgeAll(list)
+    const got = await judgeAll(list.map((c) => ({ ...c, created_at: c.posted_at ? String(c.posted_at) : '' })))
     const BLOCKS = new Set(['out', 'doubtful', 'ir'])
     const sameClass = (a: string | null, b: string) => (a === 'ir' || a === 'out' ? ['ir', 'out'].includes(b) : a === b)
     const results = list.map((c, i) => {
@@ -430,7 +489,7 @@ Deno.serve(async (req) => {
         .gte('posted_at', since)
         .order('posted_at', { ascending: true })
         .limit(6)
-      const verdict = await judge(t, ids.map((id) => byId.get(id)).filter(Boolean) as InsiderPlayer[], (prior || []).map((p) => String(p.headline)))
+      const verdict = await judgeGuarded(t, ids.map((id) => byId.get(id)).filter(Boolean) as InsiderPlayer[], (prior || []).map((p) => String(p.headline)))
       if (verdict.status === 'show') shown++
       else if (verdict.status === 'duplicate') duplicate++
       else skipped++

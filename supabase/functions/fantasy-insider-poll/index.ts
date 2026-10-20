@@ -34,6 +34,16 @@ const RESTART_LOOKBACK_MS = 5 * 60 * 1000
 const CORE = new Set(['adamschefter', 'rapsheet', 'tompelissero', 'mikegarafolo', 'underdognfl', 'caplannfl'])
 const STATUSES = ['out', 'doubtful', 'ir', 'questionable', 'cleared']
 const RETURNING = /\b(activated|reinstated|coming off|returns? from|returning from|back from|designated to return|window to return|return to practice)\b[^.]{0,80}\b(injured reserve|ir|pup|reserve)\b/i
+const PLACED = /\b(plac(e|ed|es|ing)|headed|heading|going|goes|moved?|lands?|landed)\b[^.]{0,40}\b(on|to)\s+(injured reserve|ir)\b/i
+
+/** A mixed post ("activated A from IR ... B is headed to IR") keeps B's IR when B's own sentence places him there. */
+function placedInOwnSentence(text: string, player: string): boolean {
+  const last = player.toLowerCase().trim().split(/\s+/).pop() || ''
+  if (!last) return false
+  return text
+    .split(/\n+|(?<=[.!?])\s+/)
+    .some((s) => s.toLowerCase().includes(last) && PLACED.test(s) && !RETURNING.test(s))
+}
 
 type Source = { handle: string; display_name: string; team: string | null; push_trusted?: boolean }
 type Tweet = { id: string; text: string; created_at: string; author_id: string; handle: string; name: string }
@@ -199,7 +209,8 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
               'next (always fill, even for duplicate / skip): the status the post sets for the player\'s NEXT game. ' +
               '"out" when it says he will not play it: ruled out, inactive, will not play, will miss, out for Week N, also ' +
               'multi-week absences ("going to miss some time", "out 6-10 weeks", "out three months", "season is over"). ' +
-              '"ir" when placed on IR / reserve. "doubtful" / "questionable" when officially listed that way. "cleared" when ' +
+              '"ir" when placed on IR / reserve, or when the coach or team says he will be or is expected to be placed on ' +
+              'IR (speculation like "could land on IR" is "none"). "doubtful" / "questionable" when officially listed that way. "cleared" when ' +
               'he will play, is active, practiced fully after an injury, or is activated / coming off IR (a practice window ' +
               'opening or "designated to return" is "none", never "ir"). "none" for anything else, including in-game ' +
               'injuries (left the game, won\'t return, questionable to return), rumors, and stat lines. next_player: the ' +
@@ -220,7 +231,7 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
     const status = ['show', 'duplicate', 'skip'].includes(parsed.status) ? parsed.status : 'show'
     let next = STATUSES.includes(String(parsed.next)) ? String(parsed.next) : null
     // Activation / return-window posts mention IR but never put a player on it.
-    if ((next === 'ir' || next === 'out') && RETURNING.test(t.text)) next = null
+    if ((next === 'ir' || next === 'out') && RETURNING.test(t.text) && !placedInOwnSentence(t.text, String(parsed.next_player || ''))) next = null
     const verdict: Verdict = {
       status,
       headline: cleanProse(parsed.headline, 140),

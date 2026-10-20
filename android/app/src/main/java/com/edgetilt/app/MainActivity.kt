@@ -209,6 +209,15 @@ class MainActivity : Activity() {
     )
   }
 
+  /** Deliver Yahoo login-sheet cookie header to JS (`edge-android-yahoo-login`). Do not log [detailJson]. */
+  fun dispatchYahooLoginResult(detailJson: String) {
+    val quoted = JSONObject.quote(detailJson)
+    webView.evaluateJavascript(
+      "(function(){try{var d=JSON.parse($quoted);window.dispatchEvent(new CustomEvent('${EdgeYahooLogin.EVENT}',{detail:d}));}catch(e){}})()",
+      null,
+    )
+  }
+
   override fun onDestroy() {
     EdgeCallRing.bindHost(null)
     super.onDestroy()
@@ -474,6 +483,20 @@ class MainActivity : Activity() {
       if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
       return try {
         EdgeEspnLogin.start(this@MainActivity).toString()
+      } catch (e: Exception) {
+        JSONObject().put("ok", false).put("error", e.message ?: "failed").toString()
+      }
+    }
+
+    /**
+     * Yahoo login sheet (stopgap while Fantasy API approval is pending). Returns `{ ok, started }` immediately.
+     * Completes with window event `edge-android-yahoo-login` `{ ok, cancelled?, cookie? }`.
+     */
+    @JavascriptInterface
+    fun startYahooFantasyLogin(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("error", "off-app").toString()
+      return try {
+        EdgeYahooLogin.start(this@MainActivity).toString()
       } catch (e: Exception) {
         JSONObject().put("ok", false).put("error", e.message ?: "failed").toString()
       }

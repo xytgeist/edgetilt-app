@@ -8,6 +8,7 @@ import {
   linkCbsSession,
   linkEspnSession,
   linkSleeperUsername,
+  linkYahooSession,
   setPrimaryFantasyLeague,
   startYahooOAuth,
   syncAllFantasy,
@@ -17,11 +18,13 @@ import {
   canStartCbsFantasyLogin,
   canStartEdgeWebAuthSession,
   canStartEspnFantasyLogin,
+  canStartYahooFantasyLogin,
   isEdgeiOSShell,
   openExternalUrl,
   startCbsFantasyLogin,
   startEdgeWebAuthSession,
   startEspnFantasyLogin,
+  startYahooFantasyLogin,
 } from '../../utils/edgeNative.js'
 import FantasyCommandCenter from './FantasyCommandCenter.jsx'
 import FantasyConnectPanel from './FantasyConnectPanel.jsx'
@@ -68,6 +71,24 @@ function clearYahooHandoff() {
   }
 }
 
+function decodeYahooError(raw) {
+  const s = String(raw || '').trim()
+  try {
+    return decodeURIComponent(s)
+  } catch {
+    return s
+  }
+}
+
+/** OAuth worked but Yahoo's Fantasy API approval for our App ID is still pending (league calls 403). */
+function isYahooApprovalError(raw) {
+  const s = decodeYahooError(raw)
+  return (
+    /not approved for this EdgeTilt app|sports\.yahoo\.com\/developer/i.test(s) ||
+    (/403/.test(s) && /not authorized|not allowed|not authorised/i.test(s))
+  )
+}
+
 /** Decode / shorten Yahoo Edge errors for the Fantasy banner. */
 function friendlyYahooError(raw) {
   let s = String(raw || '').trim()
@@ -76,13 +97,8 @@ function friendlyYahooError(raw) {
   } catch {
     /* already plain */
   }
-  if (/not approved for this EdgeTilt app|sports\.yahoo\.com\/developer/i.test(s)) return s
-  if (/403/i.test(s) && /not authorized|not allowed|not authorised/i.test(s)) {
-    return (
-      'Yahoo Fantasy API access is not approved for this EdgeTilt app yet. ' +
-      'OAuth worked, but Yahoo is blocking league data until they approve App ID i4wW6xoc ' +
-      '(apply at sports.yahoo.com/developer).'
-    )
+  if (isYahooApprovalError(s)) {
+    return "Yahoo hasn't approved our league access yet. Until then, connect Yahoo in the EdgeTilt app (update to the latest version) and sign in to Yahoo there."
   }
   if (s.length > 240) return `${s.slice(0, 240)}…`
   return s
@@ -147,6 +163,38 @@ export default function FantasyHomeScreen({
     setSnap(next)
   }, [supabaseClient, signedIn])
 
+  /** Stopgap while Yahoo approval is pending: Yahoo's own login in a native sheet, leagues read with that session. */
+  const connectYahooSession = useCallback(async () => {
+    setBusy(true)
+    setErr('')
+    setInfo('Opening Yahoo sign-in…')
+    try {
+      const session = await startYahooFantasyLogin()
+      if (session?.cancelled) {
+        setInfo('')
+        return
+      }
+      if (!session?.ok || !session.cookie) {
+        setInfo('')
+        setErr(session?.error || 'Yahoo sign-in did not finish.')
+        return
+      }
+      setInfo('Syncing Yahoo leagues…')
+      const linked = await linkYahooSession(supabaseClient, session.cookie)
+      setInfo(
+        linked?.leagues
+          ? `Yahoo linked. ${linked.leagues} league${linked.leagues === 1 ? '' : 's'}.`
+          : 'Yahoo linked.',
+      )
+      await refresh()
+    } catch (e) {
+      setInfo('')
+      setErr(friendlyYahooError(e?.message || 'Yahoo link failed.'))
+    } finally {
+      setBusy(false)
+    }
+  }, [refresh, supabaseClient])
+
   const applyYahooHandoffResult = useCallback(
     (handoff) => {
       if (!handoff?.yahoo) return
@@ -157,11 +205,15 @@ export default function FantasyHomeScreen({
           .then(() => setInfo(''))
           .catch((e) => setErr(friendlyYahooError(e?.message || 'Could not load fantasy.')))
       } else if (handoff.yahoo === 'error') {
-        setErr(friendlyYahooError(handoff.yahoo_error || 'Yahoo connect failed.'))
+        if (isYahooApprovalError(handoff.yahoo_error) && canStartYahooFantasyLogin()) {
+          void connectYahooSession()
+        } else {
+          setErr(friendlyYahooError(handoff.yahoo_error || 'Yahoo connect failed.'))
+        }
       }
       clearYahooHandoff()
     },
-    [refresh],
+    [refresh, connectYahooSession],
   )
 
   useEffect(() => {
@@ -463,8 +515,8 @@ export default function FantasyHomeScreen({
         } catch {
           /* treat as linked + refresh */
         }
-        applyYahooHandoffResult(handoff)
         setBusy(false)
+        applyYahooHandoffResult(handoff)
         return
       }
       const url = await startYahooOAuth(supabaseClient, { returnMode: 'web' })

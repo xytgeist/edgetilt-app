@@ -36,6 +36,7 @@
 		9DFF9939E20AFB8EA0975B7B /* EdgeShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF2D12F900A2F0FF25C93395 /* EdgeShareSheet.swift */; };
 		9E78B1403D32309052B654F3 /* EdgeShellAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24D9A0E1C32EAE14CA7B896 /* EdgeShellAppearance.swift */; };
 		A49CE9192CCD015C29A24075 /* TeamLogos in Resources */ = {isa = PBXBuildFile; fileRef = CD9ECE9B105025CD206B903D /* TeamLogos */; };
+		A7CCFAF152E82CE75991419F /* EdgeYahooLoginSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 283FC8871F86523E74E22C45 /* EdgeYahooLoginSheet.swift */; };
 		AA3EDFFBF45D39505C9A6FFD /* EdgeLiveSportsActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0EE5089438160304DE4F313 /* EdgeLiveSportsActivity.swift */; };
 		AC9A2A447F8360BFE9156441 /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5C406EF04C1D4650664DC2AF /* LiveKit */; };
 		AD8603BE6B58AD8A27B8F9BB /* EdgeLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50DC0B1CCEF2E8786FA052B /* EdgeLocationManager.swift */; };
@@ -92,6 +93,7 @@
 		226515DE808038FBBFC76BE7 /* EdgeAuthSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeAuthSessionStore.swift; sourceTree = "<group>"; };
 		22A7E631FCF8686B1D061151 /* EdgeChatCallsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeChatCallsClient.swift; sourceTree = "<group>"; };
 		25EB141E909A2DB3AF9DD9D5 /* EdgeLiveBankrollIslandOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLiveBankrollIslandOverlay.swift; sourceTree = "<group>"; };
+		283FC8871F86523E74E22C45 /* EdgeYahooLoginSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeYahooLoginSheet.swift; sourceTree = "<group>"; };
 		4310EE47360251D57F675AE8 /* EdgeTilt.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EdgeTilt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		47FF9D0DCA930FB8FA005728 /* EdgeInAppBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeInAppBrowser.swift; sourceTree = "<group>"; };
 		4AFC174E533396B430220B9D /* EdgeTiltLiveActivity.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = EdgeTiltLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -212,6 +214,7 @@
 				D77BF9A686EB3B073BF18F1F /* EdgeWebKitKeyboard.swift */,
 				EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */,
 				B884711901FA09324B73CC22 /* EdgeWebView.swift */,
+				283FC8871F86523E74E22C45 /* EdgeYahooLoginSheet.swift */,
 				636A0FF8CC23E17E467905A0 /* Info.plist */,
 				C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */,
 			);
@@ -385,6 +388,7 @@
 				3593289FFB5610CB78E87E2E /* EdgeWebKitKeyboard.swift in Sources */,
 				32BB1D33156BEBC54B50E16D /* EdgeWebView.swift in Sources */,
 				EE01FB4E608236E755E652E2 /* EdgeWebsiteDataHygiene.swift in Sources */,
+				A7CCFAF152E82CE75991419F /* EdgeYahooLoginSheet.swift in Sources */,
 				B65CAF504EA66A0613F38092 /* LiveBankrollAttributes.swift in Sources */,
 				1F6159B945B6273373F7B41E /* LiveSportsAttributes.swift in Sources */,
 				C9BC839D606179C6D5157C72 /* ShellRootView.swift in Sources */,

@@ -84,6 +84,14 @@ export async function linkEspnSession(supabase, session) {
   return finishEdge(data, error, 'ESPN link failed.')
 }
 
+/** In-app Yahoo sign-in stopgap (Fantasy API approval pending): yahoo.com cookie header from the native sheet. */
+export async function linkYahooSession(supabase, cookie) {
+  const { data, error } = await supabase.functions.invoke('fantasy-yahoo-link', {
+    body: { cookie: String(cookie || '').trim() },
+  })
+  return finishEdge(data, error, 'Yahoo link failed.')
+}
+
 export async function syncEspnFantasy(supabase) {
   const { data, error } = await supabase.functions.invoke('fantasy-espn-sync', { body: {} })
   return finishEdge(data, error, 'ESPN sync failed.')

@@ -10,6 +10,17 @@ import { yahooScoringFromSettings } from './fantasyScoringRules.ts'
 
 const YAHOO_AUTH = 'https://api.login.yahoo.com/oauth2'
 const YAHOO_FANTASY = 'https://fantasysports.yahooapis.com/fantasy/v2'
+/**
+ * Yahoo's own fantasy web app reads the same v2 API from this host with the user's yahoo.com login cookies.
+ * Used as a stopgap while our App ID waits on Fantasy API approval (OAuth works, league calls return 403).
+ */
+const YAHOO_FANTASY_WEB = 'https://pub-api-ro.fantasysports.yahoo.com/fantasy/v2'
+const YAHOO_WEB_ORIGIN = 'https://football.fantasysports.yahoo.com'
+const BROWSER_UA =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+
+/** OAuth bearer (official host) or the in-app Yahoo sign-in session (web host, cookie header). */
+export type YahooAuth = { kind: 'oauth'; token: string } | { kind: 'session'; cookie: string }
 
 export type YahooEnv = {
   clientId: string
@@ -123,18 +134,26 @@ function yahooApiErrorMessage(status: number, bodyText: string): string {
   return `Yahoo Fantasy API ${status}. ${text.slice(0, 160)}`
 }
 
-async function yahooGet(accessToken: string, path: string): Promise<unknown> {
-  const url = path.includes('?')
-    ? `${YAHOO_FANTASY}${path}&format=json`
-    : `${YAHOO_FANTASY}${path}?format=json`
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-    },
-  })
+async function yahooGet(auth: YahooAuth | string, path: string): Promise<unknown> {
+  const a: YahooAuth = typeof auth === 'string' ? { kind: 'oauth', token: auth } : auth
+  const base = a.kind === 'session' ? YAHOO_FANTASY_WEB : YAHOO_FANTASY
+  const url = path.includes('?') ? `${base}${path}&format=json` : `${base}${path}?format=json`
+  const headers: Record<string, string> =
+    a.kind === 'session'
+      ? {
+          Cookie: a.cookie,
+          Accept: 'application/json',
+          Origin: YAHOO_WEB_ORIGIN,
+          Referer: `${YAHOO_WEB_ORIGIN}/`,
+          'User-Agent': BROWSER_UA,
+        }
+      : { Authorization: `Bearer ${a.token}`, Accept: 'application/json' }
+  const res = await fetch(url, { headers })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
+    if (a.kind === 'session' && (res.status === 401 || res.status === 403 || res.status === 999)) {
+      throw new Error('Yahoo sign-in expired. Sign in to Yahoo again in EdgeTilt.')
+    }
     throw new Error(yahooApiErrorMessage(res.status, text))
   }
   return await res.json()
@@ -342,24 +361,90 @@ async function saveTokens(
 async function accessTokenForConnection(
   admin: SupabaseClient,
   connectionId: string,
-): Promise<string> {
-  const env = yahooEnv()
-  if (!env) throw new Error('Yahoo Fantasy OAuth is not configured (missing client id/secret).')
-
+): Promise<YahooAuth> {
   const { data: tok } = await admin
     .from('fantasy_provider_tokens')
-    .select('access_token, refresh_token, expires_at')
+    .select('access_token, refresh_token, expires_at, token_type')
     .eq('connection_id', connectionId)
     .maybeSingle()
   if (!tok?.access_token) throw new Error('No Yahoo tokens. Reconnect Yahoo.')
+  if (tok.token_type === 'yahoo_session') return { kind: 'session', cookie: String(tok.access_token) }
+
+  const env = yahooEnv()
+  if (!env) throw new Error('Yahoo Fantasy OAuth is not configured (missing client id/secret).')
 
   const expiresMs = tok.expires_at ? new Date(tok.expires_at).getTime() : 0
-  if (expiresMs && expiresMs > Date.now() + 30_000) return String(tok.access_token)
+  if (expiresMs && expiresMs > Date.now() + 30_000) return { kind: 'oauth', token: String(tok.access_token) }
 
   if (!tok.refresh_token) throw new Error('Yahoo access expired. Reconnect Yahoo.')
   const next = await refreshAccessToken(env, String(tok.refresh_token))
   await saveTokens(admin, connectionId, next)
-  return next.access_token
+  return { kind: 'oauth', token: next.access_token }
+}
+
+/** Keep only yahoo.com login cookies the web API needs; never log the value. */
+export function normalizeYahooCookie(raw: string): string {
+  const pairs = String(raw || '')
+    .split(/;\s*/)
+    .map((p) => p.trim())
+    .filter((p) => /^[A-Za-z0-9_.-]+=/.test(p) && p.length < 4096)
+  return pairs.join('; ').slice(0, 16_000)
+}
+
+/**
+ * In-app Yahoo sign-in stopgap: verify the session with Yahoo's web host, store it as this user's Yahoo
+ * connection (token_type `yahoo_session`, replacing an OAuth token that is still blocked), then sync.
+ */
+export async function linkYahooSession(
+  admin: SupabaseClient,
+  edgeUserId: string,
+  rawCookie: string,
+): Promise<SyncResult> {
+  const cookie = normalizeYahooCookie(rawCookie)
+  if (cookie.length < 40) return { ok: false, error: 'Yahoo sign-in did not finish. Try again.'}
+  const auth: YahooAuth = { kind: 'session', cookie }
+  let guid = ''
+  let nickname = ''
+  try {
+    const profile = await yahooGet(auth, '/users;use_login=1')
+    const users = collectByKey(profile, 'guid')
+    guid = str(users[0]?.guid)
+    for (const u of users) nickname = str(u.nickname) || str(u.email) || nickname
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Could not read your Yahoo account.'}
+  }
+  if (!guid) return { ok: false, error: 'Could not read your Yahoo account. Sign in again.'}
+
+  const { data: conn, error: connErr } = await admin
+    .from('fantasy_connections')
+    .upsert(
+      {
+        user_id: edgeUserId,
+        provider: 'yahoo',
+        external_user_id: guid,
+        external_username: nickname || guid.slice(0, 12),
+        status: 'active',
+        last_error: null,
+      },
+      { onConflict: 'user_id,provider' },
+    )
+    .select('id')
+    .single()
+  if (connErr || !conn?.id) return { ok: false, error: connErr?.message || 'Could not save Yahoo connection.'}
+
+  await admin.from('fantasy_provider_tokens').upsert(
+    {
+      connection_id: String(conn.id),
+      access_token: cookie,
+      refresh_token: null,
+      expires_at: null,
+      token_type: 'yahoo_session',
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'connection_id' },
+  )
+  const sync = await syncYahooConnection(admin, edgeUserId, String(conn.id))
+  return { ...sync, connectionId: String(conn.id) }
 }
 
 /** OAuth return channel … encoded in the state key so the callback can choose without a SQL column. */

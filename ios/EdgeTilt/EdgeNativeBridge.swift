@@ -113,6 +113,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       EdgeEspnLoginSheet.present(completion: completion)
     case "startCbsFantasyLogin":
       EdgeCbsLoginSheet.present(completion: completion)
+    case "startYahooFantasyLogin":
+      EdgeYahooLoginSheet.present(completion: completion)
     case "openSportsbookUrl":
       guard let urlString = payload?["url"] as? String,
             let url = URL(string: urlString)
@@ -827,6 +829,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       startWebAuthSession: function (payload) { return call('startWebAuthSession', payload || {}); },
       startEspnFantasyLogin: function () { return call('startEspnFantasyLogin', {}); },
       startCbsFantasyLogin: function () { return call('startCbsFantasyLogin', {}); },
+      startYahooFantasyLogin: function () { return call('startYahooFantasyLogin', {}); },
       openSportsbookUrl: function (payload) { return call('openSportsbookUrl', payload || {}); },
       openAppSettings: function () { return call('openAppSettings', null); },
       getPushPermissionStatus: function () {

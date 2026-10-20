@@ -67,6 +67,9 @@ verify_jwt = false
 [functions.fantasy-espn-link]
 verify_jwt = false
 
+[functions.fantasy-yahoo-link]
+verify_jwt = false
+
 [functions.fantasy-espn-sync]
 verify_jwt = false
 

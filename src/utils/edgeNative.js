@@ -389,6 +389,62 @@ export async function startCbsFantasyLogin() {
   }
 }
 
+export function canStartYahooFantasyLogin() {
+  if (typeof window === 'undefined') return false
+  if (isEdgeAndroidShell() && typeof window.EdgeAndroid?.startYahooFantasyLogin === 'function') return true
+  if (!isEdgeiOSShell()) return false
+  return typeof window.EdgeNative?.startYahooFantasyLogin === 'function'
+}
+
+/**
+ * Yahoo's own login page in a separate sheet (never the app webview … Yahoo login there crashed the IPA).
+ * Resolves with the yahoo.com cookie header once signed in, or cancelled. Old shell → { ok: false, via: 'noop' }.
+ *
+ * @returns {Promise<{ ok: boolean, cancelled?: boolean, cookie?: string, error?: string, via: string }>}
+ */
+export async function startYahooFantasyLogin() {
+  const shape = (detail, via) => ({
+    ok: detail?.ok === true,
+    cancelled: detail?.cancelled === true,
+    cookie: typeof detail?.cookie === 'string' ? detail.cookie : undefined,
+    error: typeof detail?.error === 'string' ? detail.error : undefined,
+    via,
+  })
+  if (isEdgeAndroidShell() && typeof window.EdgeAndroid?.startYahooFantasyLogin === 'function') {
+    return new Promise((resolve) => {
+      let done = false
+      const finish = (detail, via) => {
+        if (done) return
+        done = true
+        window.removeEventListener('edge-android-yahoo-login', onResult)
+        window.clearTimeout(timer)
+        resolve(shape(detail, via))
+      }
+      const onResult = (event) => finish(event?.detail || {}, 'sheet')
+      const timer = window.setTimeout(() => finish({ ok: false, error: 'timeout' }, 'timeout'), 10 * 60_000)
+      window.addEventListener('edge-android-yahoo-login', onResult)
+      try {
+        const raw = window.EdgeAndroid.startYahooFantasyLogin('{}')
+        const started = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+        if (started?.ok === false) {
+          finish(
+            { ok: false, error: typeof started?.error === 'string' ? started.error : 'Could not open Yahoo' },
+            'bridge',
+          )
+        }
+      } catch {
+        finish({ ok: false, error: 'Could not open Yahoo' }, 'error')
+      }
+    })
+  }
+  if (!canStartYahooFantasyLogin()) return { ok: false, via: 'noop' }
+  try {
+    return shape(await edgeNativeInvoke('startYahooFantasyLogin', {}), 'sheet')
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 export function canStartEspnFantasyLogin() {
   if (typeof window === 'undefined') return false
   if (isEdgeAndroidShell() && typeof window.EdgeAndroid?.startEspnFantasyLogin === 'function') return true

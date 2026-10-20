@@ -97,7 +97,7 @@ Bump `versionCode` every upload. Org account + Play App Signing + internal track
 - **Upload key:** `33:56:43:97:85:D1:4C:AD:1B:CF:E8:89:34:31:8E:04:98:2B:AB:85:1C:D6:20:1B:0D:51:EE:41:B4:8D:7D:36`
 - **Debug:** `26:4E:6A:82:56:0F:D2:1D:8F:1A:67:13:F5:33:8E:04:97:16:A3:52:1B:C8:9C:07:14:12:33:95:0F:87:92:E3`
 
-All three for `com.edgetilt.app` live in `public/.well-known/assetlinks.json`. Play Console org: **DIGIVERSE VENTURES LLC** / `play@digiverse.ventures` (developer `8014913311107911454`). App **Edge Tilt** Play internal is still **25 (1.3.21)**. Signed prod AAB **28 (1.3.24)** is built (ESPN + CBS bottom login sheets, loads edgetilt.com) and not uploaded from this Mac (no Play publisher credential). Needs web **`1.4.1213`**+ on edgetilt.com. Prior upload: **25 (1.3.21)** shortcuts + live-session widget (Windows, 2026-10-15). **24 (1.3.20)** ML Kit; **23 (1.3.19)** video export poster.
+All three for `com.edgetilt.app` live in `public/.well-known/assetlinks.json`. Play Console org: **DIGIVERSE VENTURES LLC** / `play@digiverse.ventures` (developer `8014913311107911454`). App **Edge Tilt** Play internal is still **25 (1.3.21)**. Signed prod AAB **29 (1.3.25)** built on the Mac 2026-10-20 (adds the Yahoo login sheet `startYahooFantasyLogin`; also carries 28's ESPN + CBS bottom sheets), Ryan uploads it in Play Console. The Yahoo sheet needs web **`1.4.1307`**+ on edgetilt.com to be reachable. Needs web **`1.4.1213`**+ on edgetilt.com. Prior upload: **25 (1.3.21)** shortcuts + live-session widget (Windows, 2026-10-15). **24 (1.3.20)** ML Kit; **23 (1.3.19)** video export poster.
 
 ## App Links
 

@@ -5,32 +5,57 @@ import WebKit
 /// Stopgap while Yahoo's Fantasy API approval is pending: once Yahoo's own fantasy web API answers for the
 /// signed-in user, returns the yahoo.com cookie header once and dismisses. Never reads the password.
 enum EdgeYahooLoginSheet {
+  /// The web opens this right after the Yahoo OAuth web-auth session returns, while that sheet is still
+  /// animating away. UIKit drops a present() during a transition without calling back, which left the web
+  /// waiting forever, so wait for the hierarchy to settle and report failure instead of hanging.
   static func present(completion: @escaping (Result<[String: Any], Error>) -> Void) {
     DispatchQueue.main.async {
-      guard let presenter = topViewController() else {
-        completion(.success(["ok": false, "error": "Could not open Yahoo login."]))
-        return
-      }
-      let controller = EdgeYahooLoginController(completion: completion)
-      let nav = UINavigationController(rootViewController: controller)
-      nav.modalPresentationStyle = .pageSheet
-      if let sheet = nav.sheetPresentationController {
-        sheet.detents = [.custom { context in context.maximumDetentValue * 0.92 }]
-        sheet.prefersGrabberVisible = true
-        sheet.prefersEdgeAttachedInCompactHeight = true
-        sheet.preferredCornerRadius = 22
-        sheet.prefersScrollingExpandsWhenScrolledToEdge = false
-      }
-      presenter.present(nav, animated: true)
+      attemptPresent(completion: completion, triesLeft: 20)
     }
   }
 
+  private static func attemptPresent(completion: @escaping (Result<[String: Any], Error>) -> Void, triesLeft: Int) {
+    let presenter = topViewController()
+    let settling = presenter == nil
+      || presenter?.isBeingDismissed == true
+      || presenter?.isBeingPresented == true
+      || presenter?.transitionCoordinator != nil
+    if settling {
+      guard triesLeft > 0 else {
+        completion(.success(["ok": false, "error": "Could not open Yahoo login. Try again."]))
+        return
+      }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        attemptPresent(completion: completion, triesLeft: triesLeft - 1)
+      }
+      return
+    }
+    guard let presenter else { return }
+    let controller = EdgeYahooLoginController(completion: completion)
+    let nav = UINavigationController(rootViewController: controller)
+    nav.modalPresentationStyle = .pageSheet
+    if let sheet = nav.sheetPresentationController {
+      sheet.detents = [.custom { context in context.maximumDetentValue * 0.92 }]
+      sheet.prefersGrabberVisible = true
+      sheet.prefersEdgeAttachedInCompactHeight = true
+      sheet.preferredCornerRadius = 22
+      sheet.prefersScrollingExpandsWhenScrolledToEdge = false
+    }
+    presenter.present(nav, animated: true)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+      if nav.presentingViewController == nil {
+        controller.failToOpen()
+      }
+    }
+  }
+
+  /// Top of the presented chain, skipping a controller that is on its way out.
   private static func topViewController() -> UIViewController? {
     let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
     let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
       ?? scenes.first?.windows.first
     var controller = window?.rootViewController
-    while let presented = controller?.presentedViewController {
+    while let presented = controller?.presentedViewController, !presented.isBeingDismissed {
       controller = presented
     }
     return controller
@@ -98,13 +123,19 @@ final class EdgeYahooLoginController: UIViewController, WKNavigationDelegate, WK
 
   override func viewDidDisappear(_ animated: Bool) {
     super.viewDidDisappear(animated)
-    if isBeingDismissed || navigationController?.isBeingDismissed == true {
+    // Also covers the sheet going away with its presenter (no dismiss flag on us), which used to hang the web.
+    if isBeingDismissed || navigationController?.isBeingDismissed == true || navigationController?.presentingViewController == nil {
       finish(ok: false, cancelled: true, cookie: nil, error: nil)
     }
   }
 
   deinit {
     timer?.invalidate()
+  }
+
+  /// The sheet never made it on screen; answer the web so it can show an error instead of waiting.
+  func failToOpen() {
+    finish(ok: false, cancelled: false, cookie: nil, error: "Could not open Yahoo login. Try again.")
   }
 
   @objc private func cancelTapped() {

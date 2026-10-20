@@ -206,7 +206,8 @@ export default function FantasyHomeScreen({
           .catch((e) => setErr(friendlyYahooError(e?.message || 'Could not load fantasy.')))
       } else if (handoff.yahoo === 'error') {
         if (isYahooApprovalError(handoff.yahoo_error) && canStartYahooFantasyLogin()) {
-          void connectYahooSession()
+          // The OAuth sheet is still animating away; iOS drops a sheet presented mid-transition.
+          window.setTimeout(() => void connectYahooSession(), 900)
         } else {
           setErr(friendlyYahooError(handoff.yahoo_error || 'Yahoo connect failed.'))
         }

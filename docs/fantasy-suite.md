@@ -256,7 +256,7 @@ NFL first (hub + scoreboard + fantasy points already exist). Extend when other s
 ### Layer C deliverables / specifics
 
 - [ ] Fantasy home **Live** tab (week HQ). **2026-10-18:** Live is the first pill and the default view (matchup rows + a Start/Sit banner for open slots / swaps that opens Start/Sit); Fliers pill dropped (Sniper Boom picks covers it). Live HQ pieces below still open.
-- [ ] Multi-matchup cards + win % 
+- [x] Multi-matchup cards + win % (2026-10-17/18: every one of your matchups across leagues on the main page grouped by sport, a swipe carousel of the league's other games, team-color win bar + projected finish. **2026-10-19 (1.4.1301):** win % tightens as the week plays out … spread = sqrt(3.4 x projected points both sides still have to play), about 28 pregame, near-certain late Monday, 100/0 once every starter is final; projected finish adds the paced rest of players mid-game, same pacing as the roster rows; score label reads Final when the week is done)
 - [x] “My players only” play filter (2026-10-18: Live feed … plays in live games that scored for either lineup's starters, `playFantasyPoints` in league rates, newest first; `useFantasyLive.js`)
 - [x] One-tap open hub with pins (2026-10-18: Live game strip + play rows call `requestLoungeSportsGameOpen(id, { direct: true })`; hub pins stay primary-league)
 - [ ] Deep links from Layer F notifications into HQ / hub

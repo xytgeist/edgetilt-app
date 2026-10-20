@@ -364,7 +364,10 @@ function pointsOf(card, scoring, sport) {
   return { pts: 0, fromLine: false }
 }
 
-/** Starter total. Before kickoff this is the projection. After, live points so far plus remaining projections. */
+/**
+ * Starter total. Before kickoff this is the projection. After, live points so far plus what is still to play:
+ * full projections for players yet to start, the paced share for players mid-game, nothing once final.
+ */
 function sideOutlook(roster, cards, scoring, sport) {
   const starters = startersOf(roster)
   let projected = 0
@@ -372,10 +375,12 @@ function sideOutlook(roster, cards, scoring, sport) {
   let scored = 0
   let started = false
   let fromLine = false
-  let outlook = 0
+  let remaining = 0
   let outlookOk = false
+  let allFinal = starters.length > 0
   for (const row of starters) {
     const card = row?.sleeper_id ? cards?.[row.sleeper_id] : null
+    if (!card || sideStatus(card) !== 'Final') allFinal = false
     if (!card) continue
     const p = Number(card.projected)
     const hasP = Number.isFinite(p)
@@ -388,19 +393,24 @@ function sideOutlook(roster, cards, scoring, sport) {
       started = true
       if (livePts.fromLine) fromLine = true
       scored += livePts.pts
-      outlook += livePts.pts
       outlookOk = true
+      if (hasP && sideStatus(card) === 'Live') {
+        const progress = gameProgressOf(card, sport)
+        if (progress != null) remaining += p * (1 - progress)
+      }
     } else if (hasP) {
-      outlook += p
+      remaining += p
       outlookOk = true
     }
   }
   return {
     live: started,
+    final: started && allFinal,
     fromLine,
     projected: projectedN ? projected : null,
     scored: started ? scored : null,
-    outlook: outlookOk ? outlook : null,
+    remaining,
+    outlook: outlookOk ? scored + remaining : null,
   }
 }
 
@@ -424,11 +434,18 @@ function normCdf(x) {
   return 0.5 * (1 + sign * y)
 }
 
-/** Weekly win chance from the two outlooks. σ 28 is a typical fantasy margin, not a book price. */
-function winChance(left, right) {
+/**
+ * Points of variance per projected point still to play. Sets the pregame spread near 28 for two ~115-point
+ * lineups (a typical weekly fantasy margin, not a book price), and tightens as the week plays out.
+ */
+const WIN_VAR_PER_POINT = 3.4
+
+/** Weekly win chance from the two projected finishes and the projected points both sides still have to play. */
+function winChance(left, right, remaining) {
   if (left == null || right == null) return null
-  const p = normCdf((left - right) / 28)
-  return Math.min(0.97, Math.max(0.03, p))
+  const sigma = Math.sqrt(WIN_VAR_PER_POINT * Math.max(0, Number(remaining) || 0))
+  if (sigma < 0.5) return left > right ? 1 : left < right ? 0 : 0.5
+  return Math.min(0.99, Math.max(0.01, normCdf((left - right) / sigma)))
 }
 
 const MAIN_STAT = { QB: 'pass_yds', RB: 'rush_yds', WR: 'rec_yds', TE: 'rec_yds' }
@@ -817,17 +834,24 @@ function SidePanel({ row, card }) {
 /** Typical real-time game length (minutes) when ESPN progress is missing, to pace a live projection. */
 const GAME_MINUTES = { nfl: 185, nba: 140, nhl: 150, mlb: 180 }
 
-/** Live projection: points so far plus the original projection for the share of the game still to play. */
-function liveProjection(card, actual, sport) {
-  const proj = Number(card?.projected)
-  if (!Number.isFinite(proj)) return null
+/** Share of this player's game already played (0-1): ESPN's clock when we have it, else time since kickoff. */
+function gameProgressOf(card, sport) {
   let progress = Number(card?.game_progress)
   if (!Number.isFinite(progress)) {
     const kick = Date.parse(card?.kickoff || '')
     if (!Number.isFinite(kick)) return null
     progress = Math.min(0.97, Math.max(0, (Date.now() - kick) / ((GAME_MINUTES[sport] || 185) * 60_000)))
   }
-  return actual + proj * (1 - Math.min(1, Math.max(0, progress)))
+  return Math.min(1, Math.max(0, progress))
+}
+
+/** Live projection: points so far plus the original projection for the share of the game still to play. */
+function liveProjection(card, actual, sport) {
+  const proj = Number(card?.projected)
+  if (!Number.isFinite(proj)) return null
+  const progress = gameProgressOf(card, sport)
+  if (progress == null) return null
+  return actual + proj * (1 - progress)
 }
 
 /**
@@ -2539,7 +2563,7 @@ function TeamHead({ team, teams, align }) {
 
 function ScoreLine({ outlook, hostScore, align, lead, projUp, projFinal: finish }) {
   const score = displayScore(outlook, hostScore)
-  const projFinal = score.live && finish != null ? finish.toFixed(1) : null
+  const projFinal = score.live && !outlook?.final && finish != null ? finish.toFixed(1) : null
   const end = align === 'right'
   return (
     <div className={`min-w-0 ${end ? 'text-right' : 'text-left'}`}>
@@ -2552,7 +2576,7 @@ function ScoreLine({ outlook, hostScore, align, lead, projUp, projFinal: finish 
       </div>
       <div className={`mt-1 flex items-baseline gap-1.5 ${end ? 'justify-end' : ''}`}>
         <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-          {score.live ? 'Live' : score.text === '–' ? '' : 'Proj'}
+          {score.live ? (outlook?.final ? 'Final' : 'Live') : score.text === '–' ? '' : 'Proj'}
         </span>
         {projFinal ? (
           <span className={`text-[11px] font-bold tabular-nums ${projUp ? 'fantasy-proj-up' : 'fantasy-proj-down'}`}>
@@ -2564,8 +2588,8 @@ function ScoreLine({ outlook, hostScore, align, lead, projUp, projFinal: finish 
   )
 }
 
-function WinBar({ left, right }) {
-  const p = winChance(left, right)
+function WinBar({ left, right, remaining }) {
+  const p = winChance(left, right, remaining)
   if (p == null) return null
   const leftPct = Math.round(p * 100)
   const rightPct = 100 - leftPct
@@ -2660,7 +2684,7 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
       </div>
       {page.right ? (
         <div className="relative">
-          <WinBar left={lo} right={ro} />
+          <WinBar left={lo} right={ro} remaining={leftOut.remaining + rightOut.remaining} />
         </div>
       ) : null}
     </div>

@@ -167,7 +167,7 @@ function copyFor(status: string, name: string, injury: string | null, leagues: s
   const day = game ? kickoffDay(game.kickoff) : ''
   const vs = game?.opp ? `${game.home ? 'vs' : '@'} ${game.opp}` : ''
   const when = [day, vs].filter(Boolean).join(' ')
-  const body = `He's in ${where}${when ? ` for ${when}` : ''}. Tap for a swap.`
+  const body = `He's in ${where}${when ? ` for ${when}` : ''}. Tap to see who to start instead.`
   return { title, body }
 }
 

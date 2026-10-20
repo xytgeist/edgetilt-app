@@ -311,6 +311,8 @@ async function attachMissingSleeperIds(supabase, rows) {
   })
 }
 
+const FRESH_STATUS_LABEL = { active: null, questionable: 'Questionable', doubtful: 'Doubtful', out: 'Out', ir: 'IR' }
+
 export async function loadLeagueDetail(supabase, leagueId) {
   const id = String(leagueId || '').trim()
   if (!id) return null
@@ -370,13 +372,20 @@ export async function loadLeagueDetail(supabase, leagueId) {
 
   const sleeperIds = [...new Set(rosterRows.map((r) => r.sleeper_id).filter(Boolean))]
   const injuryById = {}
+  const freshById = {}
   if (sleeperIds.length) {
-    const { data: players } = await supabase
-      .from('nfl_players')
-      .select('sleeper_id, injury_status, status, headshot_url, local_headshot_path')
-      .in('sleeper_id', sleeperIds)
+    const [{ data: players }, { data: fresh }] = await Promise.all([
+      supabase
+        .from('nfl_players')
+        .select('sleeper_id, injury_status, status, headshot_url, local_headshot_path')
+        .in('sleeper_id', sleeperIds),
+      supabase.from('nfl_player_status').select('sleeper_id, status').in('sleeper_id', sleeperIds),
+    ])
     for (const p of players || []) {
       if (p?.sleeper_id) injuryById[String(p.sleeper_id)] = p
+    }
+    for (const s of fresh || []) {
+      if (s?.sleeper_id) freshById[String(s.sleeper_id)] = FRESH_STATUS_LABEL[s.status] ?? null
     }
   }
 
@@ -387,7 +396,8 @@ export async function loadLeagueDetail(supabase, leagueId) {
     const tag = row.sleeper_id ? injuryById[String(row.sleeper_id)] : null
     rostersByTeam[key].push({
       ...row,
-      injury_status: tag?.injury_status || null,
+      // ESPN's game designation (kept fresh by fantasy-status-watch) wins over the weekly Sleeper sync.
+      injury_status: row.sleeper_id && String(row.sleeper_id) in freshById ? freshById[String(row.sleeper_id)] : tag?.injury_status || null,
       player_status: tag?.status || null,
       headshot_url: tag?.headshot_url || tag?.local_headshot_path || null,
     })

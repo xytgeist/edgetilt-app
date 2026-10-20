@@ -2775,6 +2775,31 @@ function MatchupCarousel({ pages, index, onSettle, renderCard, className = '-mt-
   )
 }
 
+function readFantasyDeepLink() {
+  if (typeof window === 'undefined') return null
+  try {
+    const u = new URL(window.location.href)
+    const league = (u.searchParams.get('league') || '').trim()
+    if (!league) return null
+    return { league, tool: (u.searchParams.get('fantasyTool') || '').trim() }
+  } catch {
+    return null
+  }
+}
+
+function clearFantasyDeepLink() {
+  try {
+    const u = new URL(window.location.href)
+    if (!u.searchParams.has('league') && !u.searchParams.has('fantasyTool')) return
+    u.searchParams.delete('league')
+    u.searchParams.delete('fantasyTool')
+    const qs = u.searchParams.toString()
+    window.history.replaceState(window.history.state, document.title, `${u.pathname || '/'}${qs ? `?${qs}` : ''}${u.hash || ''}`)
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Main page: one swipe carousel of your matchups per sport. The centered card opens that league. */
 function HomeSportCarousel({ group, entries, cards, onOpen }) {
   const [key, setKey] = useState(null)
@@ -2879,6 +2904,25 @@ export default function FantasyCommandCenter({
     setPageKey(key)
     void onSetPrimary?.(id)
   }
+  // Push / share deep link: `?tab=fantasy&league=<id>&fantasyTool=start` opens that league on that pill, once.
+  const [deepLink, setDeepLink] = useState(readFantasyDeepLink)
+  useEffect(() => {
+    const onPop = () => setDeepLink(readFantasyDeepLink())
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+  const linkedLeague = deepLink ? (leagues || []).find((l) => String(l.id) === deepLink.league) : null
+  if (deepLink && linkedLeague && details?.[linkedLeague.id]) {
+    const page = matchupPages(details[linkedLeague.id]).find((p) => p.yours)
+    setTool(TOOLS.some((t) => t.id === deepLink.tool) ? deepLink.tool : DEFAULT_TOOL)
+    setLeagueId(linkedLeague.id)
+    setPageKey(page?.key || null)
+    setDeepLink(null)
+  }
+  useEffect(() => {
+    if (!deepLink) clearFantasyDeepLink()
+  }, [deepLink])
+
   const openLeagueTool = (id, nextTool) => {
     const page = details?.[id] ? matchupPages(details[id]).find((p) => p.yours) : null
     setTool(nextTool)

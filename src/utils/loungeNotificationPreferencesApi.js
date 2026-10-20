@@ -8,6 +8,7 @@ export const LOUNGE_NOTIFICATION_PREF_DEFAULTS = {
   push_likes: true,
   push_bookmarks: true,
   push_messages: true,
+  push_fantasy_status: true,
 }
 
 export const LOUNGE_NOTIFICATION_PREF_ROWS = [
@@ -18,6 +19,7 @@ export const LOUNGE_NOTIFICATION_PREF_ROWS = [
   { key: 'push_likes', label: 'Likes' },
   { key: 'push_bookmarks', label: 'Bookmarks' },
   { key: 'push_messages', label: 'Direct messages', disabled: true },
+  { key: 'push_fantasy_status', label: 'Fantasy: starter injuries' },
 ]
 
 function mergePrefs(row) {
@@ -44,7 +46,7 @@ export async function fetchLoungeNotificationPreferences(supabaseClient, viewerU
   if (!viewerUserId) return { ...LOUNGE_NOTIFICATION_PREF_DEFAULTS }
   const { data, error } = await supabaseClient
     .from('notification_preferences')
-    .select('push_replies, push_mentions, push_follows, push_reposts, push_likes, push_bookmarks, push_messages')
+    .select('push_replies, push_mentions, push_follows, push_reposts, push_likes, push_bookmarks, push_messages, push_fantasy_status')
     .eq('user_id', viewerUserId)
     .maybeSingle()
   if (error) throw error
@@ -66,7 +68,7 @@ export async function upsertLoungeNotificationPreference(supabaseClient, viewerU
   const { data, error } = await supabaseClient
     .from('notification_preferences')
     .upsert(payload, { onConflict: 'user_id' })
-    .select('push_replies, push_mentions, push_follows, push_reposts, push_likes, push_bookmarks, push_messages')
+    .select('push_replies, push_mentions, push_follows, push_reposts, push_likes, push_bookmarks, push_messages, push_fantasy_status')
     .single()
   if (error) throw error
   return mergePrefs(data)

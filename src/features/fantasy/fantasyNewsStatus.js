@@ -8,11 +8,13 @@ import { injuryKey } from './fantasyStartSit.js'
 const STATUS_WINDOW_MS = 36 * 60 * 60 * 1000
 const FLAG_WINDOW_MS = 24 * 60 * 60 * 1000
 
+/** Forward-looking absence beats any in-game wording in the same note ("expected to miss time after leaving in the 2nd"). */
+const MISS_TIME = /\b((will|expected to|set to|likely to) miss|miss (some|significant|extended|multiple) (time|games|weeks)|out (multiple|several) weeks|out indefinitely)\b/i
 const SEASON = /\b(rest|remainder) of the (season|year)\b|\bseason[- ]ending\b|\bout for the season\b/i
 const IN_GAME = /\b(remainder of|rest of|(won'?t|will not) return|questionable to return|doubtful to return|return to (the )?game|locker room|carted|blue tent|sideline|halftime|in the (first|second|third|fourth) quarter)\b/i
 const ACTIVATED = /\b(activated|reinstated|returns? from|back from)\b.*\b(injured reserve|ir|pup|suspension)\b/i
 const CLEARED = /\b(will play|is active|(listed as )?active (sunday|monday|thursday|saturday|for)|expected to play|cleared|off the injury report|(no|without an|does not have an) injury designation|practiced fully|full participant|will start|set to play|good to go|on track to play)\b/i
-const OUT = /\b(ruled out|will not play|won'?t play|out for (sunday|monday|thursday|saturday|week \d+)|is out (sunday|monday|thursday|saturday|this week)|inactive|injured reserve|(to|on) ir|out indefinitely|will miss)\b/i
+const OUT = /\b(ruled out|will not play|won'?t play|out for (sunday|monday|thursday|saturday|week \d+)|is out (sunday|monday|thursday|saturday|this week)|inactive|injured reserve|(to|on) ir|out indefinitely)\b/i
 const DOUBTFUL = /\bdoubtful\b/i
 const QUESTIONABLE = /\bquestionable\b/i
 
@@ -26,7 +28,7 @@ function noteText(note) {
 /** 'out' | 'doubtful' | 'questionable' | 'cleared' | '' for one note. */
 export function noteStatus(note) {
   const text = noteText(note)
-  if (SEASON.test(text)) return 'out'
+  if (SEASON.test(text) || MISS_TIME.test(text)) return 'out'
   if (IN_GAME.test(text)) return ''
   if (ACTIVATED.test(text)) return 'cleared'
   if (OUT.test(text)) return 'out'

@@ -37,6 +37,8 @@ cd android
 adb install -r app/build/outputs/apk/staging/debug/app-staging-debug.apk
 ```
 
+Ryan's Mac has Homebrew `openjdk@17` + the SDK at `~/Library/Android/sdk` (platform 36, build-tools 36.0.0); the two exports above live in `~/.zshrc`. Verified 2026-10-20 (`assembleStagingDebug` BUILD SUCCESSFUL, Yahoo login sheet).
+
 ### Windows (PC)
 
 One-time (Scoop). JDK 17 + Android cmdline-tools live under `%USERPROFILE%\scoop\apps\…`:

@@ -9,7 +9,8 @@
  * Reads X only inside news windows (ET): Sun 10:30-13:30, 15:00-16:30, 18:30-20:30; Mon 18:30-20:30;
  * Thu 12:00-18:00 + 18:30-20:30; Wed / Fri 12:00-18:00; Sat 14:00-18:00. When a window opens after a gap the
  * search starts from now, so posts outside the windows are never read (or billed).
- * `{ evaluate: [{ handle, text, created_at }] }` judges posts without storing or pushing (validation).
+ * `{ evaluate: [{ handle, text, created_at }] }` judges posts without storing or pushing (validation);
+ * `{ regression: true }` runs the known-answer set in `fantasy_insider_regression` and reports false alarms / misses.
  */
 import { type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
@@ -34,7 +35,7 @@ const CORE = new Set(['adamschefter', 'rapsheet', 'tompelissero', 'mikegarafolo'
 const STATUSES = ['out', 'doubtful', 'ir', 'questionable', 'cleared']
 const RETURNING = /\b(activated|reinstated|coming off|returns? from|returning from|back from|designated to return|window to return|return to practice)\b[^.]{0,80}\b(injured reserve|ir|pup|reserve)\b/i
 
-type Source = { handle: string; display_name: string; team: string | null }
+type Source = { handle: string; display_name: string; team: string | null; push_trusted?: boolean }
 type Tweet = { id: string; text: string; created_at: string; author_id: string; handle: string; name: string }
 type Verdict = {
   status: 'show' | 'duplicate' | 'skip'
@@ -172,7 +173,8 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
       body: JSON.stringify({
         model: resolveOpenAiChatModel(),
         ...openaiChatReasoningNone(),
-        temperature: 0.2,
+        // Deterministic reads keep the weekly regression comparable run to run.
+        temperature: 0,
         ...openaiChatMaxCompletionTokens(320),
         response_format: { type: 'json_object' },
         messages: [
@@ -235,6 +237,19 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
   }
 }
 
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length)
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++
+      out[i] = await fn(items[i])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return out
+}
+
 /** Name the LLM gave → one of the matched sleeper ids (exact, then last-name match). */
 function statusPlayerId(name: string, ids: string[], byId: Map<string, InsiderPlayer>): string | null {
   const n = name.toLowerCase().replace(/[^a-z ]/g, '').trim()
@@ -246,7 +261,8 @@ function statusPlayerId(name: string, ids: string[], byId: Map<string, InsiderPl
   return byLast.length === 1 ? byLast[0] : null
 }
 
-function trusted(handle: string, player: InsiderPlayer | undefined, beatTeam: Map<string, string | null>): boolean {
+function trusted(handle: string, player: InsiderPlayer | undefined, beatTeam: Map<string, string | null>, pushOk?: Set<string>): boolean {
+  if (pushOk && !pushOk.has(handle)) return false
   if (CORE.has(handle)) return true
   const team = beatTeam.get(handle)
   return Boolean(team && player?.team && team === player.team)
@@ -265,40 +281,73 @@ Deno.serve(async (req) => {
     force?: boolean
     dryRun?: boolean
     evaluate?: Array<{ handle?: string; text?: string; created_at?: string }>
+    /** Run the known-answer set (`fantasy_insider_regression`) through the live prompt. */
+    regression?: boolean
   }
   const now = new Date()
 
-  const { data: srcRows, error: srcErr } = await admin.from('fantasy_insider_sources').select('handle, display_name, team').eq('active', true)
+  const { data: srcRows, error: srcErr } = await admin.from('fantasy_insider_sources').select('handle, display_name, team, push_trusted').eq('active', true)
   if (srcErr) return adminOpsJson(500, { error: srcErr.message })
   const sources = (srcRows || []) as Source[]
   const beatTeam = new Map(sources.map((s) => [s.handle, s.team]))
+  const pushOk = new Set(sources.filter((s) => s.push_trusted !== false).map((s) => s.handle))
 
-  // Validation: judge given posts with the live prompt, store nothing, push nothing.
-  if (Array.isArray(body.evaluate)) {
+  // Validation: judge posts with the live prompt, store nothing, push nothing.
+  const judgeAll = async (items: Array<{ handle?: string; text?: string; created_at?: string }>) => {
     const { index, byId } = await playerIndex(admin)
-    const out = []
-    for (const e of body.evaluate.slice(0, 40)) {
+    return mapLimit(items, 6, async (e) => {
       const handle = String(e.handle || '').toLowerCase()
       const t: Tweet = { id: '0', text: String(e.text || ''), created_at: String(e.created_at || ''), author_id: '', handle, name: handle }
       const ids = matchPlayers(t.text, index, beatTeam.get(handle) || null)
-      if (!ids.length) {
-        out.push({ handle, matched: [], verdict: null })
-        continue
-      }
+      if (!ids.length) return { handle, text: t.text.slice(0, 160), matched: [], verdict: null, next: null, next_player: null, trusted: false, headline: '' }
       const v = await judge(t, ids.map((id) => byId.get(id)).filter(Boolean) as InsiderPlayer[], [])
-      const sid = v.next ? statusPlayerId(v.next_player, ids, byId) : null
-      out.push({
+      const sid = v.status !== 'skip' && v.next ? statusPlayerId(v.next_player, ids, byId) : null
+      return {
         handle,
         text: t.text.slice(0, 160),
         matched: ids.map((id) => byId.get(id)?.full_name),
         verdict: v.status,
-        next: v.next,
-        next_player: sid ? byId.get(sid)?.full_name : v.next_player || null,
-        trusted: sid ? trusted(handle, byId.get(sid), beatTeam) : false,
+        next: sid ? v.next : null,
+        next_player: sid ? byId.get(sid)?.full_name || null : null,
+        trusted: sid ? trusted(handle, byId.get(sid), beatTeam, pushOk) : false,
         headline: v.headline,
-      })
-    }
-    return adminOpsJson(200, { ok: true, evaluated: out })
+      }
+    })
+  }
+  if (Array.isArray(body.evaluate)) {
+    return adminOpsJson(200, { ok: true, evaluated: await judgeAll(body.evaluate.slice(0, 40)) })
+  }
+  if (body.regression) {
+    const { data: cases } = await admin.from('fantasy_insider_regression').select('id, handle, text, expected_next, expected_player, origin').limit(400)
+    const list = cases || []
+    const got = await judgeAll(list)
+    const BLOCKS = new Set(['out', 'doubtful', 'ir'])
+    const sameClass = (a: string | null, b: string) => (a === 'ir' || a === 'out' ? ['ir', 'out'].includes(b) : a === b)
+    const results = list.map((c, i) => {
+      const g = got[i]
+      const expected = String(c.expected_next)
+      const pushes = Boolean(g.next && BLOCKS.has(g.next))
+      let pass: boolean
+      let kind = ''
+      if (BLOCKS.has(expected)) {
+        const rightPlayer = !c.expected_player || (g.next_player || '').toLowerCase() === String(c.expected_player).toLowerCase()
+        pass = pushes && sameClass(g.next, expected) && rightPlayer
+        if (!pass) kind = pushes ? 'wrong status or player' : 'missed'
+      } else {
+        pass = !pushes
+        if (!pass) kind = 'false alarm'
+      }
+      return { id: c.id, origin: c.origin, handle: c.handle, expected, expected_player: c.expected_player, got: g.next, got_player: g.next_player, pass, kind, text: String(c.text).slice(0, 200) }
+    })
+    const failures = results.filter((r) => !r.pass)
+    return adminOpsJson(200, {
+      ok: true,
+      cases: results.length,
+      passed: results.length - failures.length,
+      false_alarms: failures.filter((f) => f.kind === 'false alarm').length,
+      misses: failures.filter((f) => f.kind !== 'false alarm').length,
+      failures,
+    })
   }
 
   const token = String(Deno.env.get('X_API_BEARER_TOKEN') || '').trim()
@@ -346,6 +395,9 @@ Deno.serve(async (req) => {
       if (n && (!newest || BigInt(n) > BigInt(newest))) newest = n
     }
 
+    const byHandle: Record<string, number> = {}
+    for (const t of all) byHandle[t.handle] = (byHandle[t.handle] || 0) + 1
+
     const { index, byId } = await playerIndex(admin)
     const matched = all
       .map((t) => ({ t, ids: matchPlayers(t.text, index, beatTeam.get(t.handle) || null) }))
@@ -372,7 +424,7 @@ Deno.serve(async (req) => {
       else if (verdict.status === 'duplicate') duplicate++
       else skipped++
       const sid = verdict.status !== 'skip' && verdict.next ? statusPlayerId(verdict.next_player, ids, byId) : null
-      const isTrusted = sid ? trusted(t.handle, byId.get(sid), beatTeam) : false
+      const isTrusted = sid ? trusted(t.handle, byId.get(sid), beatTeam, pushOk) : false
       if (body.dryRun) continue
       const { data: stored } = await admin
         .from('fantasy_insider_news')
@@ -443,6 +495,7 @@ Deno.serve(async (req) => {
       .from('fantasy_insider_state')
       .update({ since_id: newest, last_error: null, updated_at: new Date().toISOString() })
       .eq('id', 'poll')
+    await admin.from('fantasy_insider_poll_log').insert({ fetched: all.length, matched: matched.length, by_handle: byHandle }).then(() => null, () => null)
     return adminOpsJson(200, {
       ok: true,
       polled: true,

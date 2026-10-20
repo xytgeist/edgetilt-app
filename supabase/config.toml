@@ -82,6 +82,9 @@ verify_jwt = false
 [functions.fantasy-player-news]
 verify_jwt = false
 
+[functions.fantasy-insider-poll]
+verify_jwt = false
+
 [functions.fantasy-cbs-link]
 verify_jwt = false
 

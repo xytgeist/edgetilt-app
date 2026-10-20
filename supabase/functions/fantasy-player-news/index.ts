@@ -1,5 +1,6 @@
 /**
- * Fantasy main page news: recent Rotowire notes (via ESPN fantasy) for the caller's NFL players.
+ * Fantasy main page news: recent Rotowire notes (via ESPN fantasy) plus insider items from X
+ * (`fantasy_insider_news`, written by `fantasy-insider-poll`) for the caller's NFL players.
  * Body: { sleeper_ids: string[] } (max 80). Each player's feed is one shared row in `edge_shared_cache`
  * for 20 minutes, so every user rostering the same player shares a single ESPN read.
  * Returns { ok, notes: PlayerNewsNote[] } newest first.
@@ -28,6 +29,11 @@ const NOTES_PER_PLAYER = 3
 const NOTE_WINDOW_MS = 10 * 24 * 60 * 60 * 1000
 const FEED_TTL_MS = 20 * 60 * 1000
 const CONCURRENCY = 6
+const INSIDER_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
+const MAX_INSIDER = 40
+/** A Rotowire note this soon after an insider item on the same player is the same news. */
+const ECHO_WINDOW_MS = 60 * 60 * 1000
+const ECHO_AFTER_MS = 10 * 60 * 1000
 
 type Obj = Record<string, unknown>
 type FeedNote = { id: string; headline: string; story: string; published: string | null }
@@ -102,26 +108,37 @@ Deno.serve(async (req) => {
     .slice(0, MAX_PLAYERS)
   if (!ids.length) return json(200, { ok: true, notes: [] })
 
-  const { data: players, error } = await admin
-    .from('nfl_players')
-    .select('sleeper_id, espn_id, full_name, position, team, headshot_url')
-    .in('sleeper_id', ids)
-    .not('espn_id', 'is', null)
+  const [{ data: players, error }, { data: insider }] = await Promise.all([
+    admin.from('nfl_players').select('sleeper_id, espn_id, full_name, position, team, headshot_url').in('sleeper_id', ids),
+    admin
+      .from('fantasy_insider_news')
+      .select('tweet_id, handle, author_name, posted_at, url, sleeper_ids, headline, summary, impact')
+      .eq('status', 'show')
+      .overlaps('sleeper_ids', ids)
+      .gte('posted_at', new Date(Date.now() - INSIDER_WINDOW_MS).toISOString())
+      .order('posted_at', { ascending: false })
+      .limit(MAX_INSIDER),
+  ])
   if (error) return json(502, { error: error.message })
 
+  const meta = new Map((players || []).map((p) => [str(p.sleeper_id), p]))
   const list = (players || []).filter((p) => str(p.espn_id))
   const feeds = await mapLimit(list, CONCURRENCY, (p) => playerFeed(str(p.espn_id), admin).catch(() => [] as FeedNote[]))
   const cutoff = Date.now() - NOTE_WINDOW_MS
-  const notes = list.flatMap((p, i) =>
+  const playerFields = (p: Obj) => ({
+    sleeper_id: str(p.sleeper_id),
+    player: str(p.full_name),
+    position: str(p.position),
+    team: str(p.team),
+    headshot_url: str(p.headshot_url) || null,
+  })
+  const notes: Obj[] = list.flatMap((p, i) =>
     (feeds[i] || [])
       .filter((n) => n.published && Date.parse(n.published) >= cutoff)
       .map((n) => ({
         id: n.id,
-        sleeper_id: str(p.sleeper_id),
-        player: str(p.full_name),
-        position: str(p.position),
-        team: str(p.team),
-        headshot_url: str(p.headshot_url) || null,
+        kind: 'rotowire',
+        ...playerFields(p),
         headline: n.headline,
         story: n.story,
         published: n.published,
@@ -129,6 +146,36 @@ Deno.serve(async (req) => {
         url: `https://www.espn.com/nfl/player/_/id/${str(p.espn_id)}`,
       })),
   )
-  notes.sort((a, b) => Date.parse(b.published || '') - Date.parse(a.published || ''))
-  return json(200, { ok: true, notes: notes.slice(0, MAX_NOTES) })
+  const wanted = new Set(ids)
+  for (const row of insider || []) {
+    const id = (row.sleeper_ids as string[] || []).find((x) => wanted.has(String(x)))
+    const p = id ? meta.get(String(id)) : null
+    if (!p) continue
+    notes.push({
+      id: `x:${row.tweet_id}`,
+      kind: 'insider',
+      ...playerFields(p),
+      headline: str(row.headline),
+      story: str(row.summary),
+      impact: str(row.impact),
+      published: row.posted_at,
+      source: `${str(row.author_name) || `@${str(row.handle)}`} on X`,
+      url: str(row.url),
+    })
+  }
+  // Rotowire usually re-reports an insider's post minutes later; keep the insider item and drop the echo.
+  const insiderAt = new Map<string, number[]>()
+  for (const n of notes) {
+    if (n.kind !== 'insider') continue
+    const list = insiderAt.get(str(n.sleeper_id)) || []
+    list.push(Date.parse(str(n.published)))
+    insiderAt.set(str(n.sleeper_id), list)
+  }
+  const kept = notes.filter((n) => {
+    if (n.kind !== 'rotowire') return true
+    const at = Date.parse(str(n.published))
+    return !(insiderAt.get(str(n.sleeper_id)) || []).some((t) => at - t >= -ECHO_AFTER_MS && at - t <= ECHO_WINDOW_MS)
+  })
+  kept.sort((a, b) => Date.parse(str(b.published)) - Date.parse(str(a.published)))
+  return json(200, { ok: true, notes: kept.slice(0, MAX_NOTES) })
 })

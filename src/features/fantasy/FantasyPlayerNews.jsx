@@ -19,9 +19,18 @@ function timeAgo(iso) {
   return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+const BREAKING_MS = 2 * 60 * 60 * 1000
+
+function isBreaking(note) {
+  const posted = Date.parse(note?.published || '')
+  return note?.kind === 'insider' && Number.isFinite(posted) && Date.now() - posted < BREAKING_MS
+}
+
 function NoteRow({ note, tags, bench }) {
   const [open, setOpen] = useState(false)
   const shot = useHeadshotSrc(note.headshot_url, 96)
+  const insider = note.kind === 'insider'
+  const breaking = isBreaking(note)
   return (
     <li>
       <button
@@ -48,11 +57,24 @@ function NoteRow({ note, tags, bench }) {
               {[note.position, note.team].filter(Boolean).join(' · ')}
             </span>
             {bench ? <span className="shrink-0 text-[10px] font-semibold uppercase text-zinc-500">Bench</span> : null}
+            {breaking ? (
+              <span data-fantasy-news-breaking className="shrink-0 rounded px-1 text-[9px] font-bold uppercase">
+                Breaking
+              </span>
+            ) : null}
             <span className="ml-auto shrink-0 text-[11px] text-zinc-500">{timeAgo(note.published)}</span>
           </div>
           {tags ? <div className="truncate text-[10px] font-semibold text-zinc-500">{tags}</div> : null}
-          <div className={`mt-0.5 text-[13px] leading-snug text-zinc-300 ${open ? '' : 'line-clamp-2'}`}>{note.headline}</div>
+          <div className={`mt-0.5 text-[13px] leading-snug ${insider ? 'font-semibold text-zinc-100' : 'text-zinc-300'} ${open ? '' : 'line-clamp-2'}`}>
+            {note.headline}
+          </div>
           {open && note.story ? <div className="mt-1.5 text-[12px] leading-snug text-zinc-400">{note.story}</div> : null}
+          {open && note.impact ? (
+            <div className="mt-1.5 text-[12px] leading-snug text-zinc-300">
+              <span className="font-bold text-zinc-100">Fantasy impact: </span>
+              {note.impact}
+            </div>
+          ) : null}
         </div>
       </button>
       {open && note.url ? (
@@ -60,7 +82,7 @@ function NoteRow({ note, tags, bench }) {
           href={note.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="-mt-1 mb-2 ml-[3.25rem] inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-500"
+          className="-mt-1 mb-2 ml-[3.375rem] inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-500"
         >
           {note.source} <ExternalLink className="h-3 w-3" />
         </a>
@@ -108,7 +130,7 @@ export default function FantasyPlayerNews({ supabaseClient, players, showLeagues
     <section data-fantasy-news className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
       <div className="flex items-baseline justify-between px-3 pb-1.5 pt-2.5">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Player news</div>
-        <div className="text-[10px] text-zinc-500">Rotowire via ESPN</div>
+        <div className="text-[10px] text-zinc-500">Insiders on X · Rotowire</div>
       </div>
       {loading ? (
         <div className="px-3 pb-3 text-[12px] text-zinc-500">Loading news…</div>

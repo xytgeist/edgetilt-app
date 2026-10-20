@@ -12043,6 +12043,15 @@ html.light [data-fantasy-home] [data-fantasy-live-side='right'] {
   background-color: #e11d48;
   color: #ffffff;
 }
+/* Fantasy main page: player news Breaking pill */
+[data-fantasy-news] [data-fantasy-news-breaking] {
+  background-color: rgb(244 63 94 / 0.18);
+  color: #fda4af;
+}
+html.light [data-fantasy-news] [data-fantasy-news-breaking] {
+  background-color: #e11d48;
+  color: #ffffff;
+}
 /* Fantasy main page: player news list dividers */
 html.light [data-fantasy-news] [data-fantasy-news-list] > *,
 html.light [data-fantasy-news] > button {

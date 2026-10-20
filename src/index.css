@@ -12043,6 +12043,11 @@ html.light [data-fantasy-home] [data-fantasy-live-side='right'] {
   background-color: #e11d48;
   color: #ffffff;
 }
+/* Fantasy main page: player news list dividers */
+html.light [data-fantasy-news] [data-fantasy-news-list] > *,
+html.light [data-fantasy-news] > button {
+  border-color: #e4e4e7 !important;
+}
 /* Fantasy Live: opponent play cards get a red outline */
 [data-fantasy-home] [data-fantasy-play-side='right'] {
   border-color: rgb(244 63 94 / 0.6);

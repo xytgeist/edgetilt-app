@@ -344,7 +344,7 @@ const ESPN_BACKOFF_MAX_MS = 10 * 60_000
 let espnBackoffUntil = 0
 let espnBackoffMs = 0
 
-async function espnFetch(url: string, init: RequestInit): Promise<Response> {
+export async function espnFetch(url: string, init: RequestInit): Promise<Response> {
   if (Date.now() < espnBackoffUntil) return new Response(null, { status: 503, headers: { 'x-edge-espn-backoff': '1' } })
   const res = await fetch(url, init)
   if (res.status === 403 || res.status === 429) {

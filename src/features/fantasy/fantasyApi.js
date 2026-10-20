@@ -245,6 +245,14 @@ export async function loadPendingTrades(supabase, leagueId) {
   return finishEdge(data, error, 'Could not load trade offers.')
 }
 
+/** Recent Rotowire notes (via ESPN) for these NFL players, newest first. */
+export async function loadPlayerNews(supabase, sleeperIds) {
+  const ids = [...new Set((sleeperIds || []).map((id) => String(id || '').trim()).filter(Boolean))]
+  if (!ids.length) return { notes: [] }
+  const { data, error } = await supabase.functions.invoke('fantasy-player-news', { body: { sleeper_ids: ids } })
+  return finishEdge(data, error, 'Could not load player news.')
+}
+
 /** Waiver pool plus sniper inputs (boom candidates with Kalshi / depth / matchup, RB handcuffs). */
 export async function loadSniper(supabase, leagueId) {
   const id = String(leagueId || '').trim()

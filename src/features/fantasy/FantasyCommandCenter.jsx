@@ -44,12 +44,12 @@ import { useOddsLogPress } from '../sports-bet-tracker/useOddsLogPress.js'
 
 const TOOLS = [
   {
-    id: 'live',
-    label: 'Live',
+    id: 'start',
+    label: 'Roster',
   },
   {
-    id: 'start',
-    label: 'Start/Sit',
+    id: 'live',
+    label: 'Live',
   },
   {
     id: 'waiver',
@@ -60,6 +60,8 @@ const TOOLS = [
     label: 'Trades',
   },
 ]
+
+const DEFAULT_TOOL = TOOLS[0].id
 
 function providerLabel(provider) {
   if (provider === 'yahoo') return 'Yahoo'
@@ -1161,6 +1163,7 @@ function LivePlayRow({ item, tagFor }) {
       <button
         type="button"
         onClick={() => openGameHub(item.game)}
+        data-fantasy-play-side={item.side}
         className="flex w-full items-start gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 px-2.5 py-2 text-left"
       >
         {item.position === 'DEF' && item.headshotUrl ? (
@@ -1369,7 +1372,7 @@ function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen, prefix = '' })
         {prefix ? <span className="opacity-80">{prefix}: </span> : null}
         {parts.join(' · ')}
       </span>
-      <span className="shrink-0 text-[11px] font-semibold opacity-80">Start/Sit</span>
+      <span className="shrink-0 text-[11px] font-semibold opacity-80">Roster</span>
     </button>
   )
 }
@@ -2694,8 +2697,9 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
 /**
  * Matchups as a snap carousel: the current card centered, neighbors peeking 20px on each side.
  * Bleeds to the screen edge (-mx-4 matches the page gutter). `onSettle` fires once a swipe comes to rest.
+ * A tap on a side card centers it; `renderCard(page, isCurrent)` lets the centered card own its tap.
  */
-function MatchupCarousel({ pages, index, onSettle, renderCard }) {
+function MatchupCarousel({ pages, index, onSettle, renderCard, className = '-mt-3 mb-1' }) {
   const ref = useRef(null)
   const settleRef = useRef(0)
 
@@ -2741,7 +2745,7 @@ function MatchupCarousel({ pages, index, onSettle, renderCard }) {
         window.clearTimeout(settleRef.current)
         settleRef.current = window.setTimeout(settle, 140)
       }}
-      className="relative -mx-4 -mt-3 mb-1 flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-7 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className={`relative -mx-4 ${className} flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-7 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
     >
       {pages.map((page, i) => (
         <div
@@ -2749,10 +2753,55 @@ function MatchupCarousel({ pages, index, onSettle, renderCard }) {
           className={`w-full shrink-0 snap-center snap-always transition-opacity duration-200 ${i === index ? '' : 'opacity-60'}`}
           onClick={i === index ? undefined : () => centerOn(i, 'smooth')}
         >
-          {renderCard(page)}
+          {renderCard(page, i === index)}
         </div>
       ))}
     </div>
+  )
+}
+
+/** Main page: one swipe carousel of your matchups per sport. The centered card opens that league. */
+function HomeSportCarousel({ group, entries, cards, onOpen }) {
+  const [key, setKey] = useState(null)
+  const found = entries.findIndex((e) => e.key === key)
+  const index = found >= 0 ? found : 0
+  return (
+    <section data-fantasy-sport-carousel={group.sport}>
+      <div className="flex items-baseline justify-between gap-2 px-0.5">
+        <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{group.label}</span>
+        {entries.length > 1 ? (
+          <span className="text-[10px] font-semibold tabular-nums text-zinc-500">
+            {index + 1} of {entries.length}
+          </span>
+        ) : null}
+      </div>
+      <MatchupCarousel
+        pages={entries}
+        index={index}
+        className="-mt-1"
+        onSettle={(i) => {
+          const entry = entries[i]
+          if (entry) setKey(entry.key)
+        }}
+        renderCard={(entry, isCurrent) => (
+          <button
+            type="button"
+            onClick={isCurrent ? () => onOpen(entry.lg.id, entry.item.key) : undefined}
+            className="block w-full border-0 bg-transparent p-0 text-left"
+          >
+            <MatchupCard
+              page={entry.item}
+              teams={entry.leagueDetail.teams}
+              week={entry.leagueDetail.week}
+              provider={entry.lg.provider || entry.leagueDetail.league?.provider}
+              cards={cards}
+              scoring={entry.leagueDetail.league?.scoring}
+              sport={group.sport}
+            />
+          </button>
+        )}
+      />
+    </section>
   )
 }
 
@@ -2775,7 +2824,7 @@ export default function FantasyCommandCenter({
 }) {
   const [leagueId, setLeagueId] = useState(null)
   const [pageKey, setPageKey] = useState(null)
-  const [tool, setTool] = useState('live')
+  const [tool, setTool] = useState(DEFAULT_TOOL)
 
   const groups = useMemo(() => {
     const by = new Map()
@@ -2873,34 +2922,20 @@ export default function FantasyCommandCenter({
               if (!leagueDetail) return []
               return matchupPages(leagueDetail)
                 .filter((item) => item.yours)
-                .map((item) => ({ lg, item, leagueDetail }))
+                .map((item) => ({ key: `${lg.id}-${item.key}`, lg, item, leagueDetail }))
             })
-            if (!matchups.length && !loadingDetail) return null
+            if (!matchups.length) return null
             return (
-              <section key={group.sport} className="space-y-2">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{group.label}</div>
-                {matchups.map(({ lg, item, leagueDetail }) => (
-                  <button
-                    key={`${lg.id}-${item.key}`}
-                    type="button"
-                    onClick={() => {
-                      setTool('live')
-                      openMatchup(lg.id, item.key)
-                    }}
-                    className="block w-full border-0 bg-transparent p-0 text-left"
-                  >
-                    <MatchupCard
-                      page={item}
-                      teams={leagueDetail.teams}
-                      week={leagueDetail.week}
-                      provider={lg.provider || leagueDetail.league?.provider}
-                      cards={cards}
-                      scoring={leagueDetail.league?.scoring}
-                      sport={group.sport}
-                    />
-                  </button>
-                ))}
-              </section>
+              <HomeSportCarousel
+                key={group.sport}
+                group={group}
+                entries={matchups}
+                cards={cards}
+                onOpen={(id, key) => {
+                  setTool(DEFAULT_TOOL)
+                  openMatchup(id, key)
+                }}
+              />
             )
           })}
         </>

@@ -12043,6 +12043,22 @@ html.light [data-fantasy-home] [data-fantasy-live-side='right'] {
   background-color: #e11d48;
   color: #ffffff;
 }
+/* Fantasy roster rows: fresh-news dot + news block in the expanded panel */
+[data-fantasy-home] [data-fantasy-news-dot] {
+  background-color: #38bdf8;
+}
+html.light [data-fantasy-home] [data-fantasy-news-dot] {
+  background-color: #0284c7;
+}
+[data-fantasy-home] [data-fantasy-panel-news-label] {
+  color: #7dd3fc;
+}
+html.light [data-fantasy-home] [data-fantasy-panel-news-label] {
+  color: #0369a1;
+}
+html.light [data-fantasy-home] [data-fantasy-panel-news] {
+  border-color: #e4e4e7 !important;
+}
 /* Fantasy main page: player news Breaking pill */
 [data-fantasy-news] [data-fantasy-news-breaking] {
   background-color: rgb(244 63 94 / 0.18);

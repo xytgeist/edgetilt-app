@@ -5,6 +5,8 @@ import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { useLiveGames, useLivePlays } from './useFantasyLive.js'
 import FantasyPlayerNews from './FantasyPlayerNews.jsx'
+import { usePlayerNews } from './usePlayerNews.js'
+import { newsByPlayer, newsTimeAgo, withNews } from './fantasyNewsStatus.js'
 import { leagueRates } from './fantasyBoxScore.js'
 import { requestLoungeSportsGameOpen } from '../lounge/loungeSportsHubNav.js'
 import { loungeSportsGameMatch } from '../../utils/loungeSportsApi.js'
@@ -12,6 +14,7 @@ import { formatFantasyPoints } from '../lounge/gameHub/gameHubPlayFantasy.js'
 import {
   fantasyPosition,
   gameLocked,
+  injuryKey,
   leagueLineupSlots,
   openLineupSlots,
   optimizeLineup,
@@ -385,13 +388,15 @@ function sideOutlook(roster, cards, scoring, sport) {
     const card = row?.sleeper_id ? cards?.[row.sleeper_id] : null
     if (!card || sideStatus(card) !== 'Final') allFinal = false
     if (!card) continue
-    const p = Number(card.projected)
+    const livePts = pointsOf(card, scoring, sport)
+    // A starter ruled out projects zero until his game starts (hosts score him the same way).
+    const ruledOut = !livePts && injuryKey(row.injury_status) === 'out'
+    const p = ruledOut ? 0 : Number(card.projected)
     const hasP = Number.isFinite(p)
     if (hasP) {
       projected += p
       projectedN += 1
     }
-    const livePts = pointsOf(card, scoring, sport)
     if (livePts) {
       started = true
       if (livePts.fromLine) fromLine = true
@@ -674,6 +679,7 @@ function VsHead({ row, align, final = false }) {
             {shortName(row.player_name, row.position)}
           </span>
           {injuryPill(row.injury_status)}
+          {row.news_note ? <span data-fantasy-news-dot aria-label="New news" className="h-1.5 w-1.5 shrink-0 rounded-full" /> : null}
         </div>
         <div className="truncate text-[10px] text-zinc-500">
           {fantasyPos(row.position) || row.position}
@@ -781,6 +787,20 @@ function SidePanel({ row, card }) {
         }}
       >
         <div className="w-full min-w-full shrink-0 snap-start px-2 py-1.5">
+          {row.news_note ? (
+            <div data-fantasy-panel-news className="mb-1.5 border-b border-zinc-800 pb-1.5">
+              <div className="flex items-baseline justify-between gap-1 text-[9px] font-bold uppercase tracking-wide">
+                <span data-fantasy-panel-news-label>News</span>
+                <span className="font-semibold normal-case tracking-normal text-zinc-500">
+                  {newsTimeAgo(row.news_note.published)} · {row.news_note.source}
+                </span>
+              </div>
+              <p className="mt-0.5 line-clamp-3 text-[11px] font-semibold leading-snug text-zinc-200">{row.news_note.headline}</p>
+              {row.news_note.impact ? (
+                <p className="mt-0.5 line-clamp-3 text-[10px] leading-snug text-zinc-400">{row.news_note.impact}</p>
+              ) : null}
+            </div>
+          ) : null}
           <div className="flex items-center justify-between gap-1 text-[9px] font-bold uppercase tracking-wide text-zinc-500">
             <span className={live ? 'text-rose-300' : ''}>{status}</span>
             {gameLine ? <span className="min-w-0 truncate font-semibold normal-case tracking-normal">{gameLine}</span> : null}
@@ -1291,16 +1311,66 @@ function useStartSitPlan(detail, cards, sport) {
   }, [detail, cards, sport])
 }
 
-/** Live banner: open slots and swaps from Start/Sit, one tap to the details. Hidden when there is nothing to do. */
+/** "M. Evans" for sentences (row labels use the all-caps `shortName`). */
+function briefName(name, position) {
+  if (fantasyPos(position) === 'DEF') return String(name || 'DEF')
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length < 2) return parts[0] || ''
+  return `${parts[0].charAt(0).toUpperCase()}. ${parts.slice(1).join(' ')}`
+}
+
+function statusWord(row) {
+  const key = injuryKey(row?.injury_status)
+  if (/\bir\b|reserve/i.test(String(row?.injury_status || ''))) return 'on IR'
+  if (key === 'out') return row?.news_status ? 'ruled out' : 'out'
+  return 'doubtful'
+}
+
+/** Starters still to play who are Out / Doubtful, each with the Start/Sit swap that covers him (if any). */
+function starterStatusAlerts(detail, cards, plan) {
+  const mine = (detail?.teams || []).find((t) => t.is_mine)
+  const rows = mine ? detail?.rostersByTeam?.[mine.id] || [] : []
+  const out = []
+  for (const row of rows) {
+    if (row?.slot !== 'starter' || !row.sleeper_id) continue
+    const key = injuryKey(row.injury_status)
+    if (key !== 'out' && key !== 'doubtful') continue
+    const card = cards?.[row.sleeper_id]
+    if (card?.bye || gameLocked(card)) continue
+    const move = (plan?.moves || []).find((m) => m.bench?.row?.sleeper_id === row.sleeper_id) || null
+    const name = briefName(row.player_name, row.position)
+    out.push({
+      id: String(row.sleeper_id),
+      move,
+      text: move
+        ? `${name} ${statusWord(row)}: start ${briefName(move.start.row.player_name, move.start.row.position)} +${move.gain.toFixed(1)}`
+        : `${name} ${statusWord(row)}: no healthy backup`,
+    })
+  }
+  return out
+}
+
+/**
+ * Live banner: starters ruled out or doubtful (named, with the swap), then any other swaps and open slots.
+ * One tap opens Roster. Hidden when there is nothing to do.
+ */
 function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen, prefix = '' }) {
   const plan = useStartSitPlan(detail, cards, sport)
-  if (cardsLoading || !plan || (!plan.moves.length && !plan.empty.length)) return null
+  if (cardsLoading || !plan) return null
+  const named = starterStatusAlerts(detail, cards, plan)
+  const covered = new Set(named.map((a) => a.move).filter(Boolean))
+  const otherMoves = plan.moves.filter((m) => !covered.has(m))
   const parts = []
   if (plan.empty.length) {
     const names = plan.empty.map(openSlotName)
     parts.push(names.length === 1 ? `${names[0]} is empty` : `${names.length} empty slots`)
   }
-  if (plan.moves.length) parts.push(`${plan.moves.length} swap${plan.moves.length > 1 ? 's' : ''}, +${plan.gain.toFixed(1)} proj`)
+  if (otherMoves.length) {
+    const gain = otherMoves.reduce((acc, m) => acc + m.gain, 0)
+    parts.push(`${otherMoves.length}${named.length ? ' more' : ''} swap${otherMoves.length > 1 ? 's' : ''}, +${gain.toFixed(1)} proj`)
+  }
+  if (!named.length && !parts.length) return null
+  const lines = [...named.map((a) => a.text), ...(parts.length ? [parts.join(' · ')] : [])]
   return (
     <button
       type="button"
@@ -1309,9 +1379,13 @@ function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen, prefix = '' })
       className="flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-[12px] font-bold"
     >
       <AlertTriangle size={15} strokeWidth={2.25} className="shrink-0" aria-hidden />
-      <span className="min-w-0 flex-1 truncate">
-        {prefix ? <span className="opacity-80">{prefix}: </span> : null}
-        {parts.join(' · ')}
+      <span className="min-w-0 flex-1">
+        {lines.map((line, i) => (
+          <span key={line} className="block truncate">
+            {prefix && i === 0 ? <span className="opacity-80">{prefix}: </span> : null}
+            {line}
+          </span>
+        ))}
       </span>
       <span className="shrink-0 text-[11px] font-semibold opacity-80">Roster</span>
     </button>
@@ -2754,7 +2828,7 @@ function HomeSportCarousel({ group, entries, cards, onOpen }) {
 export default function FantasyCommandCenter({
   supabaseClient,
   leagues,
-  details,
+  details: syncedDetails,
   loadingDetail,
   cards,
   cardsLoading,
@@ -2787,7 +2861,11 @@ export default function FantasyCommandCenter({
       }))
   }, [leagues])
 
-  const newsPlayers = useMemo(() => myNflPlayers(leagues, details), [leagues, details])
+  const newsPlayers = useMemo(() => myNflPlayers(leagues, syncedDetails), [leagues, syncedDetails])
+  const news = usePlayerNews(supabaseClient, newsPlayers)
+  const newsMap = useMemo(() => newsByPlayer(news.notes), [news.notes])
+  // Every tool reads rows with fresh news applied: a ruled-out starter is Out for Start/Sit before the host says so.
+  const details = useMemo(() => withNews(syncedDetails, newsMap), [syncedDetails, newsMap])
 
   const selected = leagueId ? (leagues || []).find((lg) => lg.id === leagueId) || null : null
   const detail = selected ? details?.[selected.id] || null : null
@@ -2881,8 +2959,8 @@ export default function FantasyCommandCenter({
             )
           })}
           <FantasyPlayerNews
-            supabaseClient={supabaseClient}
             players={newsPlayers}
+            news={news}
             showLeagues={(leagues || []).filter((lg) => String(lg.sport || 'nfl').toLowerCase() === 'nfl').length > 1}
           />
         </>

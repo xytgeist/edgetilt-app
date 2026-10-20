@@ -1,23 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ExternalLink } from 'lucide-react'
-import { loadPlayerNews } from './fantasyApi.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
+import { newsTimeAgo } from './fantasyNewsStatus.js'
 
 const NOTES_COLLAPSED = 8
-const REFRESH_MS = 10 * 60 * 1000
-
-function timeAgo(iso) {
-  const t = Date.parse(iso || '')
-  if (!Number.isFinite(t)) return ''
-  const mins = Math.max(0, Math.round((Date.now() - t) / 60_000))
-  if (mins < 1) return 'now'
-  if (mins < 60) return `${mins}m`
-  const hrs = Math.round(mins / 60)
-  if (hrs < 24) return `${hrs}h`
-  const days = Math.round(hrs / 24)
-  if (days < 7) return `${days}d`
-  return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
 
 const BREAKING_MS = 2 * 60 * 60 * 1000
 
@@ -62,7 +48,7 @@ function NoteRow({ note, tags, bench }) {
                 Breaking
               </span>
             ) : null}
-            <span className="ml-auto shrink-0 text-[11px] text-zinc-500">{timeAgo(note.published)}</span>
+            <span className="ml-auto shrink-0 text-[11px] text-zinc-500">{newsTimeAgo(note.published)}</span>
           </div>
           {tags ? <div className="truncate text-[10px] font-semibold text-zinc-500">{tags}</div> : null}
           <div className={`mt-0.5 text-[13px] leading-snug ${insider ? 'font-semibold text-zinc-100' : 'text-zinc-300'} ${open ? '' : 'line-clamp-2'}`}>
@@ -92,38 +78,14 @@ function NoteRow({ note, tags, bench }) {
 }
 
 /**
- * Main Fantasy page: Rotowire notes for every NFL player on your rosters, newest first (same source as the
- * game hub News tab). `players` maps sleeper id → { leagues: string[], starting: boolean }.
+ * Main Fantasy page: insider and Rotowire notes for every NFL player on your rosters, newest first.
+ * `players` maps sleeper id → { leagues: string[], starting: boolean }; `news` comes from `usePlayerNews`.
  */
-export default function FantasyPlayerNews({ supabaseClient, players, showLeagues }) {
-  const [state, setState] = useState({ key: '', notes: [], error: '' })
+export default function FantasyPlayerNews({ players, news, showLeagues }) {
   const [all, setAll] = useState(false)
-  const idKey = [...players.keys()].sort().join(',')
-
-  useEffect(() => {
-    if (!supabaseClient || !idKey) return undefined
-    let alive = true
-    const load = () =>
-      loadPlayerNews(supabaseClient, idKey.split(','))
-        .then((data) => {
-          if (alive) setState({ key: idKey, notes: Array.isArray(data?.notes) ? data.notes : [], error: '' })
-        })
-        .catch((e) => {
-          if (alive) setState((prev) => ({ key: idKey, notes: prev.key === idKey ? prev.notes : [], error: e?.message || 'Could not load player news.' }))
-        })
-    void load()
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void load()
-    }, REFRESH_MS)
-    return () => {
-      alive = false
-      window.clearInterval(timer)
-    }
-  }, [supabaseClient, idKey])
-
-  if (!idKey) return null
-  const loading = state.key !== idKey
-  const notes = loading ? [] : state.notes
+  if (!news?.key) return null
+  const { loading, notes } = news
+  const state = news
   const shown = all ? notes : notes.slice(0, NOTES_COLLAPSED)
 
   return (

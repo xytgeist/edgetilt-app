@@ -371,6 +371,7 @@ Reuse existing Edge channels where possible: **APNs / FCM**, Lounge **activity /
 
 ### Layer F deliverables / specifics
 
+- [x] **In-app alert layer (2026-10-19, 1.4.1305):** one Player news fetch (`usePlayerNews`) feeds the main-page list, roster rows, and Roster banner. `fantasyNewsStatus.js` reads status from notes in the last 36h (ruled out / inactive / IR / doubtful / questionable; cleared phrases stop it; in-game notes like "won't return" or "carted" never set next week's status; rest-of-season counts as Out) and `withNews` raises a rostered row's `injury_status` (never lowers it) so Start/Sit swaps a ruled-out starter before Sleeper or the host updates. Banner names each Out / Doubtful starter still to play with his swap ("M. Evans ruled out: start J. Jennings +11.0") or "no healthy backup", then other swaps / open slots. Rows show a blue news dot for notes under 24h and the note (time, source, Fantasy impact) at the top of the expanded panel. A starter ruled out projects 0 on the matchup card before kickoff, so win % reflects it.
 - [ ] Fantasy notification preference matrix (Settings + first-run soft prompt after Connect)
 - [ ] Event bus / Edge jobs: status, lineup lock, matchup final, inbound trade, tool suggestion ready
 - [ ] Deep link scheme: `?tab=fantasy&fantasyView=…&league=&player=` (and hub `game=` when live)

@@ -85,7 +85,7 @@ export function leagueLineupSlots(league, roster) {
   return { slots: out, inferred: true }
 }
 
-function injuryKey(status) {
+export function injuryKey(status) {
   const s = String(status || '').trim().toLowerCase()
   if (!s) return ''
   if (/^(o|out|ir|pup|sus|suspended|na|nfi|cov)$/.test(s) || s.includes('reserve')) return 'out'

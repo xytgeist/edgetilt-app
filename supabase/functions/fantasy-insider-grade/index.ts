@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
     const since = new Date(Date.now() - LOOKBACK_DAYS * 86400_000).toISOString()
     const { data: rows, error } = await admin
       .from('fantasy_insider_news')
-      .select('tweet_id, handle, author_name, posted_at, text, url, next_status, status_sleeper_id, status_trusted, grade')
+      .select('tweet_id, handle, author_name, posted_at, text, url, next_status, status_sleeper_id, status_trusted, next_statuses, grade')
       .in('next_status', ['out', 'ir', 'doubtful'])
       .not('status_sleeper_id', 'is', null)
       .gte('posted_at', since)
@@ -197,7 +197,14 @@ Deno.serve(async (req) => {
       .limit(1000)
     if (error) throw new Error(error.message)
 
-    const sids = [...new Set((rows || []).map((r) => str(r.status_sleeper_id)))]
+    const BLOCKING = new Set(['out', 'ir', 'doubtful'])
+    const entriesOf = (r: Obj): Array<{ sleeper_id: string; status: string }> => {
+      const list = arr(r.next_statuses)
+        .map((e) => ({ sleeper_id: str(e.sleeper_id), status: str(e.status) }))
+        .filter((e) => e.sleeper_id && BLOCKING.has(e.status))
+      return list.length ? list : [{ sleeper_id: str(r.status_sleeper_id), status: str(r.next_status) }]
+    }
+    const sids = [...new Set((rows || []).flatMap((r) => entriesOf(r).map((e) => e.sleeper_id)))]
     const { data: players } = sids.length ? await admin.from('nfl_players').select('sleeper_id, full_name, team').in('sleeper_id', sids) : { data: [] }
     const { data: espn } = sids.length ? await admin.from('nfl_player_status').select('sleeper_id, status, changed_at').in('sleeper_id', sids) : { data: [] }
     const playerBy = new Map((players || []).map((p) => [str(p.sleeper_id), p]))
@@ -208,34 +215,44 @@ Deno.serve(async (req) => {
     let pending = 0
     const newContradictions: Obj[] = []
     for (const r of rows || []) {
-      const sid = str(r.status_sleeper_id)
-      const p = playerBy.get(sid)
       const posted = Date.parse(str(r.posted_at))
-      if (!p?.team || !Number.isFinite(posted)) continue
-      const game = await nextGame(games, str(p.team), posted)
-      let grade: string | null = null
-      let note = ''
-      const e = espnBy.get(sid)
-      const changed = e?.changed_at ? Date.parse(str(e.changed_at)) : NaN
-      const lead = e && ['out', 'ir', 'doubtful'].includes(str(e.status)) && Number.isFinite(changed) && changed > posted
-        ? Math.round((changed - posted) / 60000)
-        : null
-      if (game?.final && season) {
-        const stats = (await weekStats(season, game.week)).get(sid)
+      if (!Number.isFinite(posted)) continue
+      const notes: string[] = []
+      const leads: number[] = []
+      let anyBad = false
+      let allDone = true
+      let badPlayer = ''
+      for (const entry of entriesOf(r)) {
+        const p = playerBy.get(entry.sleeper_id)
+        if (!p?.team) {
+          allDone = false
+          continue
+        }
+        const e = espnBy.get(entry.sleeper_id)
+        const changed = e?.changed_at ? Date.parse(str(e.changed_at)) : NaN
+        if (e && BLOCKING.has(str(e.status)) && Number.isFinite(changed) && changed > posted) leads.push(Math.round((changed - posted) / 60000))
+        const game = await nextGame(games, str(p.team), posted)
+        if (!game?.final || !season) {
+          allDone = false
+          continue
+        }
+        const stats = (await weekStats(season, game.week)).get(entry.sleeper_id)
         const didPlay = played(stats)
-        if (r.next_status === 'doubtful') {
-          if (!didPlay) {
-            grade = 'confirmed'
-            note = `Sat week ${game.week}`
-          }
+        if (entry.status === 'doubtful') {
+          if (didPlay) allDone = false
+          else notes.push(`${p.full_name} sat week ${game.week}`)
         } else if (didPlay) {
-          grade = 'contradicted'
-          note = `Played week ${game.week}${stats?.off_snp ? ` (${stats.off_snp} snaps)` : ''}`
+          anyBad = true
+          badPlayer = badPlayer || str(p.full_name)
+          notes.push(`${p.full_name} played week ${game.week}${stats?.off_snp ? ` (${stats.off_snp} snaps)` : ''}`)
         } else {
-          grade = 'confirmed'
-          note = `Did not play week ${game.week}`
+          notes.push(`${p.full_name} did not play week ${game.week}`)
         }
       }
+      const grade: string | null = anyBad ? 'contradicted' : allDone && notes.length ? 'confirmed' : null
+      const note = notes.join('; ')
+      const lead = leads.length ? Math.min(...leads) : null
+      const p = { full_name: badPlayer || str(playerBy.get(str(r.status_sleeper_id))?.full_name) }
       if (!grade) {
         pending++
         continue

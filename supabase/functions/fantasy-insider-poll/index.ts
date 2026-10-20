@@ -52,10 +52,13 @@ type Verdict = {
   headline: string
   summary: string
   impact: string
-  next: string | null
-  next_player: string
-  injury: string
+  /** Next-game status per player the post sets (one post can cover several: inactives lists, injury rundowns). */
+  statuses: PlayerStatus[]
 }
+
+type PlayerStatus = { next: string; player: string; injury: string }
+
+const SEVERITY: Record<string, number> = { cleared: 0, questionable: 1, doubtful: 2, out: 3, ir: 3 }
 
 function etParts(d = new Date()) {
   const fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false })
@@ -168,7 +171,7 @@ function cleanProse(s: unknown, max: number): string {
 
 function fallbackVerdict(t: Tweet): Verdict {
   const first = t.text.replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim()
-  return { status: 'show', headline: cleanProse(first, 140), summary: '', impact: '', next: null, next_player: '', injury: '' }
+  return { status: 'show', headline: cleanProse(first, 140), summary: '', impact: '', statuses: [] }
 }
 
 async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Promise<Verdict> {
@@ -185,7 +188,7 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
         ...openaiChatReasoningNone(),
         // Deterministic reads keep the weekly regression comparable run to run.
         temperature: 0,
-        ...openaiChatMaxCompletionTokens(320),
+        ...openaiChatMaxCompletionTokens(600),
         response_format: { type: 'json_object' },
         messages: [
           {
@@ -194,7 +197,7 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
               'You write a fantasy football news desk, like FantasyPros player news. Input: one post by an NFL reporter, ' +
               'the players it names, and items we already published on those players in the last 90 minutes.\n' +
               'Return JSON only: {"status":"show"|"duplicate"|"skip","headline":string,"summary":string,"impact":string,' +
-              '"next":"out"|"doubtful"|"ir"|"questionable"|"cleared"|"none","next_player":string,"injury":string}\n' +
+              '"statuses":[{"player":string,"next":"out"|"doubtful"|"ir"|"questionable"|"cleared","injury":string}]}\n' +
               'status:\n' +
               '- "skip" when the post is not fantasy-relevant news about the player: opinions, jokes, highlights with no news, ' +
               'podcast or show plugs, coach quotes with no status or role info, team stat lines.\n' +
@@ -206,15 +209,17 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
               'gains or loses work, what to watch). Never invent facts not in the post; hedge with "likely" or "watch" when ' +
               'unsure. Third person. Never use em dashes, en dashes, or middle dots. For skip / duplicate, headline / summary / ' +
               'impact may be empty.\n' +
-              'next (always fill, even for duplicate / skip): the status the post sets for the player\'s NEXT game. ' +
+              'statuses (always fill, even for duplicate / skip): one entry for EACH named player whose NEXT-game status the ' +
+              'post sets (an inactives list or injury rundown can set several; a player whose status it does not set gets no ' +
+              'entry; [] when it sets none). player: the full name from Players named. next: ' +
               '"out" when it says he will not play it: ruled out, inactive, will not play, will miss, out for Week N, also ' +
               'multi-week absences ("going to miss some time", "out 6-10 weeks", "out three months", "season is over"). ' +
               '"ir" when placed on IR / reserve, or when the coach or team says he will be or is expected to be placed on ' +
               'IR (speculation like "could land on IR" is "none"). "doubtful" / "questionable" when officially listed that way. "cleared" when ' +
               'he will play, is active, practiced fully after an injury, or is activated / coming off IR (a practice window ' +
               'opening or "designated to return" is "none", never "ir"). "none" for anything else, including in-game ' +
-              'injuries (left the game, won\'t return, questionable to return), rumors, and stat lines. next_player: the ' +
-              'full name from Players named that status is about ("" for none). injury: body part if stated ("" if not).',
+              'injuries (left the game, won\'t return, questionable to return), rumors, and stat lines: leave those players ' +
+              'out of statuses. injury: body part if stated ("" if not).',
           },
           {
             role: 'user',
@@ -229,17 +234,24 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
     const body = await res.json()
     const parsed = JSON.parse(String(body?.choices?.[0]?.message?.content || '{}'))
     const status = ['show', 'duplicate', 'skip'].includes(parsed.status) ? parsed.status : 'show'
-    let next = STATUSES.includes(String(parsed.next)) ? String(parsed.next) : null
-    // Activation / return-window posts mention IR but never put a player on it.
-    if ((next === 'ir' || next === 'out') && RETURNING.test(t.text) && !placedInOwnSentence(t.text, String(parsed.next_player || ''))) next = null
+    const raw: Array<Record<string, unknown>> = Array.isArray(parsed.statuses)
+      ? parsed.statuses
+      : parsed.next ? [{ player: parsed.next_player, next: parsed.next, injury: parsed.injury }] : []
+    const statuses: PlayerStatus[] = []
+    for (const r of raw) {
+      const next = STATUSES.includes(String(r?.next)) ? String(r.next) : null
+      const player = cleanProse(r?.player, 80)
+      if (!next || !player) continue
+      // Activation / return-window posts mention IR but never put a player on it.
+      if ((next === 'ir' || next === 'out') && RETURNING.test(t.text) && !placedInOwnSentence(t.text, player)) continue
+      statuses.push({ next, player, injury: cleanProse(r?.injury, 40) })
+    }
     const verdict: Verdict = {
       status,
       headline: cleanProse(parsed.headline, 140),
       summary: cleanProse(parsed.summary, 500),
       impact: cleanProse(parsed.impact, 500),
-      next,
-      next_player: next ? cleanProse(parsed.next_player, 80) : '',
-      injury: next ? cleanProse(parsed.injury, 40) : '',
+      statuses,
     }
     if (status === 'show' && !verdict.headline) return fallbackVerdict(t)
     return verdict
@@ -293,18 +305,33 @@ async function teamInGameAt(team: string, iso: string): Promise<boolean> {
 /** `judge`, then: an Out / Doubtful posted while that player's game is underway is an in-game ruling, not next week's. */
 async function judgeGuarded(t: Tweet, players: InsiderPlayer[], recent: string[]): Promise<Verdict> {
   const v = await judge(t, players, recent)
-  if ((v.next === 'out' || v.next === 'doubtful') && !FUTURE.test(t.text)) {
-    const want = v.next_player.toLowerCase().replace(/[^a-z ]/g, '').trim()
-    const p =
-      players.find((x) => x.full_name.toLowerCase().replace(/[^a-z ]/g, '').trim() === want) ||
-      (players.length === 1 ? players[0] : undefined)
-    if (p?.team && t.created_at && (await teamInGameAt(p.team, t.created_at))) {
-      v.next = null
-      v.next_player = ''
-      v.injury = ''
+  if (FUTURE.test(t.text) || !t.created_at) return v
+  const kept: PlayerStatus[] = []
+  for (const st of v.statuses) {
+    if (st.next === 'out' || st.next === 'doubtful') {
+      const want = st.player.toLowerCase().replace(/[^a-z ]/g, '').trim()
+      const p =
+        players.find((x) => x.full_name.toLowerCase().replace(/[^a-z ]/g, '').trim() === want) ||
+        (players.length === 1 ? players[0] : undefined)
+      if (p?.team && (await teamInGameAt(p.team, t.created_at))) continue
     }
+    kept.push(st)
   }
+  v.statuses = kept
   return v
+}
+
+/** Statuses resolved to sleeper ids (one per player, most severe wins), most severe first. */
+function resolveStatuses(v: Verdict, ids: string[], byId: Map<string, InsiderPlayer>) {
+  if (v.status === 'skip') return [] as Array<PlayerStatus & { sleeper_id: string }>
+  const best = new Map<string, PlayerStatus & { sleeper_id: string }>()
+  for (const st of v.statuses) {
+    const sid = statusPlayerId(st.player, ids, byId)
+    if (!sid) continue
+    const prev = best.get(sid)
+    if (!prev || SEVERITY[st.next] > SEVERITY[prev.next]) best.set(sid, { ...st, sleeper_id: sid })
+  }
+  return [...best.values()].sort((a, b) => SEVERITY[b.next] - SEVERITY[a.next])
 }
 
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -369,17 +396,22 @@ Deno.serve(async (req) => {
       const handle = String(e.handle || '').toLowerCase()
       const t: Tweet = { id: '0', text: String(e.text || ''), created_at: String(e.created_at || ''), author_id: '', handle, name: handle }
       const ids = matchPlayers(t.text, index, beatTeam.get(handle) || null)
-      if (!ids.length) return { handle, text: t.text.slice(0, 160), matched: [], verdict: null, next: null, next_player: null, trusted: false, headline: '' }
+      if (!ids.length) return { handle, text: t.text.slice(0, 160), matched: [], verdict: null, statuses: [], next: null, next_player: null, trusted: false, headline: '' }
       const v = await judgeGuarded(t, ids.map((id) => byId.get(id)).filter(Boolean) as InsiderPlayer[], [])
-      const sid = v.status !== 'skip' && v.next ? statusPlayerId(v.next_player, ids, byId) : null
+      const resolved = resolveStatuses(v, ids, byId).map((r) => ({
+        player: byId.get(r.sleeper_id)?.full_name || r.player,
+        next: r.next,
+        trusted: trusted(handle, byId.get(r.sleeper_id), beatTeam, pushOk),
+      }))
       return {
         handle,
         text: t.text.slice(0, 160),
         matched: ids.map((id) => byId.get(id)?.full_name),
         verdict: v.status,
-        next: sid ? v.next : null,
-        next_player: sid ? byId.get(sid)?.full_name || null : null,
-        trusted: sid ? trusted(handle, byId.get(sid), beatTeam, pushOk) : false,
+        statuses: resolved,
+        next: resolved[0]?.next || null,
+        next_player: resolved[0]?.player || null,
+        trusted: Boolean(resolved[0]?.trusted),
         headline: v.headline,
       }
     })
@@ -394,20 +426,37 @@ Deno.serve(async (req) => {
     const BLOCKS = new Set(['out', 'doubtful', 'ir'])
     const sameClass = (a: string | null, b: string) => (a === 'ir' || a === 'out' ? ['ir', 'out'].includes(b) : a === b)
     const results = list.map((c, i) => {
-      const g = got[i]
+      const g = got[i] as { statuses?: Array<{ player: string; next: string }> }
+      const sts = g.statuses || []
       const expected = String(c.expected_next)
-      const pushes = Boolean(g.next && BLOCKS.has(g.next))
+      const who = String(c.expected_player || '').toLowerCase()
+      const mine = who ? sts.find((x) => x.player.toLowerCase() === who) : sts[0]
+      const blocking = sts.filter((x) => BLOCKS.has(x.next))
       let pass: boolean
       let kind = ''
       if (BLOCKS.has(expected)) {
-        const rightPlayer = !c.expected_player || (g.next_player || '').toLowerCase() === String(c.expected_player).toLowerCase()
-        pass = pushes && sameClass(g.next, expected) && rightPlayer
-        if (!pass) kind = pushes ? 'wrong status or player' : 'missed'
+        pass = Boolean(mine && sameClass(mine.next, expected))
+        if (!pass) kind = mine && BLOCKS.has(mine.next) ? 'wrong status' : 'missed'
+      } else if (who) {
+        // Named player must not be pushed; other players in the post may legitimately be.
+        pass = !(mine && BLOCKS.has(mine.next))
+        if (!pass) kind = 'false alarm'
       } else {
-        pass = !pushes
+        pass = !blocking.length
         if (!pass) kind = 'false alarm'
       }
-      return { id: c.id, origin: c.origin, handle: c.handle, expected, expected_player: c.expected_player, got: g.next, got_player: g.next_player, pass, kind, text: String(c.text).slice(0, 200) }
+      return {
+        id: c.id,
+        origin: c.origin,
+        handle: c.handle,
+        expected,
+        expected_player: c.expected_player,
+        got: mine?.next || (blocking[0]?.next ?? null),
+        got_player: mine?.player || (blocking[0]?.player ?? null),
+        pass,
+        kind,
+        text: String(c.text).slice(0, 200),
+      }
     })
     const failures = results.filter((r) => !r.pass)
     return adminOpsJson(200, {
@@ -493,8 +542,8 @@ Deno.serve(async (req) => {
       if (verdict.status === 'show') shown++
       else if (verdict.status === 'duplicate') duplicate++
       else skipped++
-      const sid = verdict.status !== 'skip' && verdict.next ? statusPlayerId(verdict.next_player, ids, byId) : null
-      const isTrusted = sid ? trusted(t.handle, byId.get(sid), beatTeam, pushOk) : false
+      const resolved = resolveStatuses(verdict, ids, byId).map((r) => ({ ...r, trusted: trusted(t.handle, byId.get(r.sleeper_id), beatTeam, pushOk) }))
+      const top = resolved[0] || null
       if (body.dryRun) continue
       const { data: stored } = await admin
         .from('fantasy_insider_news')
@@ -511,16 +560,19 @@ Deno.serve(async (req) => {
             headline: verdict.headline,
             summary: verdict.summary,
             impact: verdict.impact,
-            next_status: sid ? verdict.next : null,
-            status_sleeper_id: sid,
-            status_injury: sid ? verdict.injury || null : null,
-            status_trusted: isTrusted,
+            next_status: top ? top.next : null,
+            status_sleeper_id: top ? top.sleeper_id : null,
+            status_injury: top ? top.injury || null : null,
+            status_trusted: Boolean(top?.trusted),
+            next_statuses: resolved.map((r) => ({ sleeper_id: r.sleeper_id, status: r.next, injury: r.injury || null, trusted: r.trusted })),
           },
           { onConflict: 'tweet_id', ignoreDuplicates: true },
         )
         .select('tweet_id')
-      if (stored?.length && sid && isTrusted && verdict.next && RANK[verdict.next] >= 2) {
-        statusRows.push({ tweet_id: t.id, sleeper_id: sid, status: verdict.next, injury: verdict.injury })
+      if (stored?.length) {
+        for (const r of resolved) {
+          if (r.trusted && RANK[r.next] >= 2) statusRows.push({ tweet_id: t.id, sleeper_id: r.sleeper_id, status: r.next, injury: r.injury })
+        }
       }
     }
 

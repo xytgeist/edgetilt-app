@@ -69,6 +69,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### STANDING CHECK every session … undeployed `insider-review:` commits
+
+A Cursor Automation ("Fantasy insider weekly review", Tuesdays 7 AM PT) reads the fantasy insider scorecard email and commits fixes to `test` with subjects starting **`insider-review:`**. It cannot deploy. **At the start of any session, after syncing:** `git log origin/test --grep '^insider-review:' --since='14 days ago'`. For each such commit not yet deployed (check `docs/test-buildout-backlog.md` Update log for an "insider-review deployed" line): deploy the functions it names (usually `fantasy-insider-poll`) to **test**, apply any seed / SQL file it adds to **test**, run the regression (`fantasy-insider-poll` `{ regression: true }` via the vault `net.http_post` pattern), and tell Ryan the pass / false alarm / miss counts vs the scorecard before other work. Zero new false alarms is the bar; otherwise revert the commit and tell Ryan. Log "insider-review deployed <hash> … <counts>" in the backlog Update log. Prod only on Ryan's promote. Runbook: **`docs/fantasy-suite.md`** (search "Runbook").
+
 ### Local secrets hygiene ... DONE 2026-09-30 (kill-chat handoff)
 
 **I am Mac Theo (this session dies after docs land).** Ryan unified secrets across machines, rolled the two high-blast items, and is deleting this chat because live keys were pasted while Cursor **Privacy Mode was off**. New chats: assume Privacy Mode is on; still **never paste secrets into chat**.

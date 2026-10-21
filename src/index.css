@@ -15211,3 +15211,11 @@ html.light [data-pval-editor] [role="switch"].bg-zinc-700 {
 
 
 
+
+/* Fantasy Trades: Aggressive ↔ Fair stance slider. */
+[data-fantasy-trade-stance] input[type='range'] {
+  accent-color: #e4e4e7;
+}
+html.light [data-fantasy-trade-stance] input[type='range'] {
+  accent-color: #18181b;
+}

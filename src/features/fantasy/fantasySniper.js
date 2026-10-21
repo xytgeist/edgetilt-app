@@ -2,6 +2,8 @@ import { horizonValue } from './fantasyWaivers.js'
 
 const YARD_STATS = new Set(['pass_yds', 'rush_yds', 'rec_yds'])
 const YARD_WORD = { pass_yds: 'pass yds', rush_yds: 'rush yds', rec_yds: 'rec yds' }
+/** FantasyCalc redraft value at which a one-week streamer is also a rest-of-season hold. */
+const HOLD_MARKET_VALUE = 600
 
 function strike(label) {
   const m = String(label || '').match(/^(\d+(?:\.\d+)?)\+/)
@@ -64,7 +66,13 @@ export function rankBoom({ sniper, scoring, sport = 'nfl', perPos = 2 }) {
       score += 0.5
     }
     if (!reasons.length) continue
-    picks.push({ entry, proj, score, reasons, prop: ladder?.prop || td?.prop || entry.props?.[0] || null })
+    // FantasyCalc only lists players with real trade value: a streamer it prices is worth keeping past this week.
+    const hold = Number(entry.market_value) >= HOLD_MARKET_VALUE
+    if (hold) {
+      reasons.push('worth holding past this week')
+      score += 1
+    }
+    picks.push({ entry, proj, score, reasons, hold, prop: ladder?.prop || td?.prop || entry.props?.[0] || null })
   }
   picks.sort((a, b) => b.score - a.score)
   const count = {}

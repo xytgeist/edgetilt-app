@@ -1,5 +1,6 @@
 import { scoreLine } from './fantasyBoxScore.js'
 import { fantasyPosition } from './fantasyStartSit.js'
+import { seasonProfile } from './fantasyValue.js'
 
 const SLOT_ELIGIBLE = {
   QB: ['QB'],
@@ -92,13 +93,20 @@ function minimumByPos(slots) {
   return need
 }
 
+/** A drop is never someone the market prices this much above the pickup (FantasyCalc scale). */
+const DROP_MARKET_CUSHION = 300
+
 /**
- * Rank the league's available players for this roster. `gain` is how much the best starting lineup
- * improves per week if added; `depth` is the upgrade over the weakest bench player at that position.
- * Each pick carries a drop suggestion that keeps every dedicated slot fillable.
+ * Rank the league's available players for this roster. `gain` is how much the best starting lineup improves per
+ * week if added: over the rest of the season when the Edge sent rest-of-season data (season production blended
+ * with projections, injury-aware games left), else over the next few weeks. `nearGain` is always the next few
+ * weeks. `depth` is the upgrade over the weakest bench player at that position. Each pick carries a drop that
+ * keeps every dedicated slot fillable and is never worth more than the pickup, rest of season or by market value.
  */
 export function rankWaivers({ pool, rosterRows, scoring, slots, sport = 'nfl' }) {
   const rosterById = new Map((pool?.roster || []).map((p) => [String(p.sleeper_id), p]))
+  const ctx = { scoring, sport, weeksLeft: Number(pool?.weeks_left) || 0 }
+  const profileOf = (entry, h, pos) => seasonProfile(entry, h, ctx, pos)
   const candidates = (pool?.players || []).map((entry) => ({ entry, h: horizonValue(entry, scoring, entry.injury_status, sport) }))
   // A rostered player with no projection at all is valued at roughly the best freely available option,
   // so a missing feed does not make every waiver player at that position look like an upgrade.
@@ -119,34 +127,80 @@ export function rankWaivers({ pool, rosterRows, scoring, slots, sport = 'nfl' })
       const entry = rosterById.get(id) || { position: row.position, weeks: [] }
       const h = horizonValue(entry, scoring, row.injury_status, sport)
       const value = h.known || h.injury === 'long' ? h.avg : replacement[pos] || 0
-      return { id, pos, value, h, row, name: row.player_name }
+      const prof = profileOf(entry, h, pos)
+      return {
+        id,
+        pos,
+        value,
+        rosWeekly: prof ? prof.weekly : null,
+        rosTotal: prof ? prof.ppg * prof.games : null,
+        market: Number(entry.market_value) || 0,
+        h,
+        row,
+        name: row.player_name,
+      }
     })
+  const ros = ctx.weeksLeft > 0 && mine.some((p) => p.rosWeekly != null)
+  const rosSeats = (list) => bestSeats(list.map((p) => ({ ...p, value: p.rosWeekly ?? p.value })), slots)
   const base = bestSeats(mine, slots)
+  const baseRos = ros ? rosSeats(mine) : null
   const need = minimumByPos(slots)
   const countPos = (list, pos) => list.filter((p) => p.pos === pos).length
 
   const picks = []
   for (const { entry, h } of candidates) {
     if (h.avg <= 0) continue
-    const cand = { id: String(entry.sleeper_id), pos: fantasyPosition(entry.position), value: h.avg, h, entry, name: entry.name }
+    const candPos = fantasyPosition(entry.position)
+    const prof = profileOf(entry, h, candPos)
+    const cand = {
+      id: String(entry.sleeper_id),
+      pos: candPos,
+      value: h.avg,
+      rosWeekly: prof ? prof.weekly : null,
+      rosTotal: prof ? prof.ppg * prof.games : null,
+      market: Number(entry.market_value) || 0,
+      h,
+      entry,
+      name: entry.name,
+    }
     const trial = bestSeats([...mine, cand], slots)
-    const gain = trial.total - base.total
-    const replaced = gain > 0.05 ? base.seats.map((s) => s.p).find((p) => !trial.seated.has(p.id)) || null : null
+    const nearGain = trial.total - base.total
+    const rosTrial = ros ? rosSeats([...mine, cand]) : null
+    const rosGain = rosTrial ? rosTrial.total - baseRos.total : null
+    const gain = rosGain ?? nearGain
+    const seatedAfter = rosTrial ? rosTrial.seated : trial.seated
+    const before = rosTrial ? baseRos : base
+    const replaced = gain > 0.05 ? before.seats.map((s) => s.p).find((p) => !seatedAfter.has(p.id)) || null : null
 
     const after = [...mine, cand]
-    const benchAfter = after.filter((p) => !trial.seated.has(p.id) && p.id !== cand.id)
-    // Keep-worth is per-game and healthy: byes and IR stashes should not decide who gets cut.
-    const keepValue = (p) => (p.h.known ? Math.max(p.value, p.h.healthy) : p.value)
+    const benchAfter = after.filter((p) => !seatedAfter.has(p.id) && p.id !== cand.id)
+    // Keep-worth: rest-of-season points when we have them (injury-aware), else the healthy per-game rate,
+    // so byes and IR stashes do not decide who gets cut. Never drop someone the market values well above him.
+    const keepValue = (p) => (p.rosTotal != null ? p.rosTotal : p.h.known ? Math.max(p.value, p.h.healthy) : p.value)
+    const candKeep = cand.rosTotal != null ? cand.rosTotal : cand.h.healthy
     const drop = benchAfter
-      .filter((p) => countPos(after, p.pos) - 1 >= (need[p.pos] || 0) && keepValue(p) < cand.h.healthy)
-      .sort((a, b) => keepValue(a) - keepValue(b))[0] || null
+      .filter(
+        (p) =>
+          countPos(after, p.pos) - 1 >= (need[p.pos] || 0) &&
+          keepValue(p) < candKeep &&
+          p.market <= cand.market + DROP_MARKET_CUSHION,
+      )
+      .sort((a, b) => keepValue(a) - keepValue(b) || a.market - b.market)[0] || null
 
     const samePos = mine.filter((p) => p.pos === cand.pos && !base.seated.has(p.id))
     const weakest = samePos.sort((a, b) => a.value - b.value)[0]
     const depth = cand.value - (weakest ? weakest.value : 0)
 
     const reasons = []
-    if (replaced) reasons.push(`+${gain.toFixed(1)}/wk over ${replaced.name}`)
+    if (replaced) {
+      reasons.push(
+        rosGain != null
+          ? `+${rosGain.toFixed(1)}/wk rest of season over ${replaced.name}${nearGain > 0.05 ? ` (+${nearGain.toFixed(1)} now)` : ''}`
+          : `+${gain.toFixed(1)}/wk over ${replaced.name}`,
+      )
+    } else if (nearGain > 0.05) {
+      reasons.push(`+${nearGain.toFixed(1)}/wk short term`)
+    }
     let byeSeat = null
     let byeWeek = null
     for (const seat of base.seats) {
@@ -163,10 +217,10 @@ export function rankWaivers({ pool, rosterRows, scoring, slots, sport = 'nfl' })
     if (hurt) reasons.push(`${hurt.name} is ${hurt.h.injury === 'long' ? 'on IR' : 'out'}`)
     if (!reasons.length && depth > 0.5) reasons.push(`+${depth.toFixed(1)}/wk over your ${cand.pos} depth`)
 
-    if (gain <= 0.05 && depth <= 0.5 && !byeSeat && !hurt) continue
-    picks.push({ cand, gain: Math.max(0, gain), depth, drop, reasons, starter: gain > 0.05 })
+    if (gain <= 0.05 && nearGain <= 0.05 && depth <= 0.5 && !byeSeat && !hurt) continue
+    picks.push({ cand, gain: Math.max(0, gain), nearGain: Math.max(0, nearGain), depth, drop, reasons, starter: gain > 0.05, ros: rosGain != null })
   }
 
-  picks.sort((a, b) => b.gain - a.gain || b.depth - a.depth || b.cand.value - a.cand.value)
+  picks.sort((a, b) => b.gain - a.gain || b.nearGain - a.nearGain || b.depth - a.depth || b.cand.value - a.cand.value)
   return picks
 }

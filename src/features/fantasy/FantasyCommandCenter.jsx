@@ -41,6 +41,7 @@ import {
   findTrades,
   parseOfferText,
   reviewOffer,
+  TRADE_STANCES,
 } from './fantasyTrades.js'
 import { openExternalUrl, shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
@@ -1822,7 +1823,7 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
                 {pick.drop ? (
                   <div className="truncate text-[10px] text-zinc-500">
                     Drop <span className="fantasy-sit-out font-semibold">{shortName(pick.drop.name, pick.drop.row?.position)}</span>{' '}
-                    ({pick.drop.value.toFixed(1)}/wk)
+                    ({(pick.drop.rosWeekly ?? pick.drop.value).toFixed(1)}/wk{pick.drop.rosWeekly != null ? ' rest of season' : ''})
                   </div>
                 ) : null}
               </div>
@@ -1830,10 +1831,10 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
                 <span className="text-[12px] font-bold tabular-nums text-zinc-100">{pick.cand.value.toFixed(1)}</span>
                 <span
                   className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
-                    pick.starter ? 'fantasy-sit-gain' : 'fantasy-sit-ok'
+                    pick.starter || pick.nearGain > 0.05 ? 'fantasy-sit-gain' : 'fantasy-sit-ok'
                   }`}
                 >
-                  {pick.starter ? `+${pick.gain.toFixed(1)}` : 'Depth'}
+                  {pick.starter ? `+${pick.gain.toFixed(1)}` : pick.nearGain > 0.05 ? `+${pick.nearGain.toFixed(1)} now` : 'Depth'}
                 </span>
               </div>
             </li>
@@ -1900,6 +1901,18 @@ const OFFER_STYLES = [
 ]
 
 /** Casual (a text to a friend) or formal (the full pitch). Each keeps its own edits when you switch. */
+const TRADE_STANCE_KEY = 'edge.fantasy.tradeStance'
+const TRADE_STANCE_DEFAULT = 2
+
+function readTradeStance() {
+  try {
+    const n = Number(localStorage.getItem(TRADE_STANCE_KEY))
+    return Number.isInteger(n) && n >= 0 && n < TRADE_STANCES.length ? n : TRADE_STANCE_DEFAULT
+  } catch {
+    return TRADE_STANCE_DEFAULT
+  }
+}
+
 function ComposeOffer({ offer, myTeamName, initialText, casualText }) {
   const [style, setStyle] = useState('casual')
   const [texts, setTexts] = useState(() => ({
@@ -2394,11 +2407,20 @@ function TradesPanel({ supabaseClient, detail, sport }) {
   const state = loaded.id === leagueId ? { ...loaded, loading: false } : { data: null, error: '', loading: true }
 
   const mine = (detail?.teams || []).find((t) => t.is_mine) || null
+  const [stanceStep, setStanceStep] = useState(readTradeStance)
+  const pickStance = (step) => {
+    setStanceStep(step)
+    try {
+      localStorage.setItem(TRADE_STANCE_KEY, String(step))
+    } catch {
+      /* private mode */
+    }
+  }
   const result = useMemo(() => {
     if (!state.data?.league_players?.length || !mine) return null
     const { slots } = leagueLineupSlots(detail?.league, detail?.rostersByTeam?.[mine.id] || [])
-    return findTrades({ values: state.data, detail, scoring: detail?.league?.scoring, slots, sport })
-  }, [state.data, detail, mine, sport])
+    return findTrades({ values: state.data, detail, scoring: detail?.league?.scoring, slots, sport, stance: stanceStep / (TRADE_STANCES.length - 1) })
+  }, [state.data, detail, mine, sport, stanceStep])
   const weeks = state.data?.weeks || []
   const rosWeeks = Number(state.data?.weeks_left) || 0
   const span = weeks.length
@@ -2434,9 +2456,28 @@ function TradesPanel({ supabaseClient, detail, sport }) {
         </div>
       </div>
       <div className="mt-1 text-[10px] text-zinc-500">
-        {view === 'review' ? 'Grade an offer you got' : 'Slightly aggressive'}
+        {view === 'review' ? 'Grade an offer you got' : TRADE_STANCES[stanceStep]}
         {span ? ` · ${span}` : ''}
       </div>
+      {view === 'find' ? (
+        <div data-fantasy-trade-stance className="mt-2">
+          <input
+            type="range"
+            min={0}
+            max={TRADE_STANCES.length - 1}
+            step={1}
+            value={stanceStep}
+            onChange={(e) => pickStance(Number(e.target.value))}
+            aria-label="Offer stance"
+            aria-valuetext={TRADE_STANCES[stanceStep]}
+            className="block w-full"
+          />
+          <div className="mt-0.5 flex justify-between text-[10px] font-semibold text-zinc-500">
+            <span>Aggressive</span>
+            <span>Fair</span>
+          </div>
+        </div>
+      ) : null}
       {view === 'review' ? (
         state.loading ? (
           <div className="mt-2 space-y-1.5" data-edge-skeleton aria-label="Loading trade values">

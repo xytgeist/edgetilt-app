@@ -1,22 +1,30 @@
-import { scoreLine } from './fantasyBoxScore.js'
 import { fantasyPosition } from './fantasyStartSit.js'
 import { bestSeats, horizonValue, rowId } from './fantasyWaivers.js'
+import { seasonProfile } from './fantasyValue.js'
 
 const SLOT_LABEL = { FLEX: 'FLEX', SUPER_FLEX: 'SUPERFLEX', WRRB_FLEX: 'W/R flex', REC_FLEX: 'W/T flex' }
-/** Slightly aggressive, still realistic: their lineup may lose a little. */
-const THEIR_FLOOR = -0.75
+/**
+ * Offer stance, 0 (Aggressive) to 1 (Fair). Aggressive asks more of them (less value back, a bigger lineup hit
+ * allowed); Fair gives them at least what they give and needs their lineup to improve. 0.5 = Balanced.
+ */
+export const TRADE_STANCES = ['Aggressive', 'Leaning aggressive', 'Balanced', 'Leaning fair', 'Fair']
+const lerp = (a, b, t) => a + (b - a) * t
+function stanceLimits(stance = 0.5) {
+  const t = Math.min(1, Math.max(0, Number(stance)))
+  return {
+    theirFloor: lerp(-1.5, 0.25, t),
+    theyGetBack: lerp(0.8, 1.0, t),
+    overpay: lerp(1.0, 1.2, t),
+    theirWeight: lerp(0.2, 0.8, t),
+    edgeWeight: lerp(5, 1, t),
+  }
+}
 const MIN_GAIN = 0.5
 /** Paying more trade value than you get back only makes sense for a real lineup upgrade. */
 const PAY_UP_MIN_GAIN = 1.5
 /** Value gate: never give 15% more trade value than you get back; they get back at least 90% of theirs. */
 const OVERPAY_LIMIT = 1.15
 const THEY_GET_BACK = 0.9
-/** Season production weight once a player has FULL_SAMPLE_GAMES (less before), the rest is Sleeper rest-of-season. */
-const SEASON_WEIGHT = 0.4
-const FULL_SAMPLE_GAMES = 5
-/** Expected games missed by status. IR / PUP with no ESPN return date assumes LONG_MISS_DEFAULT. */
-const MISSED_GAMES = { out: 1, doubtful: 0.75, questionable: 0.15 }
-const LONG_MISS_DEFAULT = 4
 /** Realistic pickup: the second-best free agent at the position (the best one usually gets claimed). */
 const REPLACEMENT_RANK = 1
 /**
@@ -28,42 +36,6 @@ const COUNTER_BAND = 1.75
 
 function slotLabel(slot) {
   return SLOT_LABEL[slot] || slot
-}
-
-function perGame(line, games, scoring, sport, pos) {
-  if (!line || !games) return null
-  const pts = scoreLine(line, scoring, sport, pos)
-  return Number.isFinite(pts) ? pts / games : null
-}
-
-function expectedMissed(injury, returnDate, teamGames) {
-  if (injury === 'long') {
-    const t = returnDate ? Date.parse(returnDate) : NaN
-    const weeks = Number.isFinite(t) ? Math.ceil((t - Date.now()) / (7 * 86_400_000)) : LONG_MISS_DEFAULT
-    return Math.min(teamGames, Math.max(0, weeks))
-  }
-  return Math.min(teamGames, MISSED_GAMES[injury] || 0)
-}
-
-/**
- * Rest-of-season profile from the Edge `trade` block: a blended per-game rate (season production + Sleeper's
- * healthy rest-of-season projection), the games he should play (schedule minus expected misses), and his
- * expected weekly lineup value. Null without the block (older Edge, Sniper mode): callers keep 4-week values.
- */
-function seasonProfile(entry, h, ctx, pos) {
-  const t = entry?.trade
-  if (!t || !ctx.weeksLeft) return null
-  const ros = perGame(t.ros_line, t.ros_games, ctx.scoring, ctx.sport, pos)
-  const season = perGame(t.season_line, t.season_games, ctx.scoring, ctx.sport, pos)
-  let ppg
-  if (ros == null) ppg = season ?? h.healthy
-  else {
-    const w = season == null ? 0 : SEASON_WEIGHT * Math.min(1, t.season_games / FULL_SAMPLE_GAMES)
-    ppg = w * (season ?? 0) + (1 - w) * ros
-  }
-  const teamGames = Number(t.team_games) || 0
-  const games = Math.max(0, teamGames - expectedMissed(h.injury, t.return_date, teamGames))
-  return { ppg, games, weekly: (ppg * games) / ctx.weeksLeft }
 }
 
 /**
@@ -157,7 +129,7 @@ function tradeValue(p, ctx) {
  * Value gate. Trade value given vs received after the exact roster-spot cost: whoever takes more bodies cuts
  * their lowest-value bench player(s), and that value comes off their side.
  */
-function valueGate({ give, get, myAfter, theirAfter, myRoster, theirRoster, ctx }) {
+function valueGate({ give, get, myAfter, theirAfter, myRoster, theirRoster, ctx, overpay = OVERPAY_LIMIT, theyGetBack = THEY_GET_BACK }) {
   const sum = (list) => list.reduce((a, p) => a + tradeValue(p, ctx), 0)
   const cut = (roster, seated, n) =>
     n > 0
@@ -172,7 +144,7 @@ function valueGate({ give, get, myAfter, theirAfter, myRoster, theirRoster, ctx 
   const theirOut = sum(get)
   const mine = theirOut - cut(myRoster, myAfter.seated, get.length - give.length)
   const theirs = out - cut(theirRoster, theirAfter.seated, give.length - get.length)
-  const ok = out <= OVERPAY_LIMIT * Math.max(0, mine) + 0.01 && theirs >= THEY_GET_BACK * theirOut - 0.01
+  const ok = out <= overpay * Math.max(0, mine) + 0.01 && theirs >= theyGetBack * theirOut - 0.01
   return { ok, out, received: mine, ratio: out > 0 ? mine / out : Infinity }
 }
 
@@ -230,8 +202,9 @@ function fairnessFor(theirGain, valueEdge) {
  * A pair is only tried when neither player clears the same deal alone (smallest package first).
  * Returns `{ best, ifDeclined, alsoConsider }` in the shape of the suite plan.
  */
-export function findTrades({ values, detail, scoring, slots, sport = 'nfl' }) {
+export function findTrades({ values, detail, scoring, slots, sport = 'nfl', stance = 0.5 }) {
   const ctx = valueContext(values, scoring, sport)
+  const lim = stanceLimits(stance)
   const teams = detail?.teams || []
   const mine = teams.find((t) => t.is_mine)
   if (!mine || !slots?.length) return { best: null, ifDeclined: [], alsoConsider: [] }
@@ -267,8 +240,18 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl' }) {
         const newTheirs = [...theirs.filter((p) => p.id !== get.id), ...give]
         const theirSeats = seatsOf(newTheirs, slots, ctx)
         const theirGain = theirSeats.total - theirBase
-        if (theirGain < THEIR_FLOOR) continue
-        const gate = valueGate({ give, get: [get], myAfter: mySeats, theirAfter: theirSeats, myRoster: newMine, theirRoster: newTheirs, ctx })
+        if (theirGain < lim.theirFloor) continue
+        const gate = valueGate({
+          give,
+          get: [get],
+          myAfter: mySeats,
+          theirAfter: theirSeats,
+          myRoster: newMine,
+          theirRoster: newTheirs,
+          ctx,
+          overpay: lim.overpay,
+          theyGetBack: lim.theyGetBack,
+        })
         if (!gate.ok || (gate.out > gate.received && myGain < PAY_UP_MIN_GAIN)) continue
         if (give.length === 1) clearedAlone.add(give[0].id)
         const edge = Math.max(-0.3, Math.min(0.3, (Number.isFinite(gate.ratio) ? gate.ratio : 1.3) - 1))
@@ -278,7 +261,7 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl' }) {
           get: [get],
           myGain,
           theirGain,
-          score: myGain + 0.4 * Math.min(theirGain, 3) + 2 * edge - 0.15 * (give.length - 1),
+          score: myGain + lim.theirWeight * Math.min(theirGain, 3) + lim.edgeWeight * edge - 0.15 * (give.length - 1),
           fairness: fairnessFromValue(theirGain, gate.ratio),
           forYou: `${get.name} starts at ${slotLabel(seatOf(mySeats.seats, get.id) || get.pos)} (+${myGain.toFixed(1)}/wk)`,
           forThem: describeFor(give, theirSeats.seats),

@@ -320,18 +320,21 @@ export async function buildFantasyWaivers(
 
   let weeksLeft: number | null = null
   let marketSource: string | null = null
-  if (opts.mode === 'trades') {
+  // Trades, waivers, and sniper all weigh rest-of-season and market value (fill returned above).
+  {
+    const boomEntries = ((sniper as { boom?: WaiverPlayer[] } | null)?.boom || []).filter((p) => p?.sleeper_id)
+    const valued = [...new Set([...leaguePlayers, ...players, ...roster, ...boomEntries])]
     const [tradeBoard, market] = await Promise.all([
       loadTradeBoard(admin, board).catch(() => null),
       loadMarketValues(admin, marketParams(league, teamIds.length)).catch(() => ({} as Record<string, number>)),
     ])
     if (Object.keys(market).length) {
       marketSource = 'fantasycalc'
-      for (const p of [...leaguePlayers, ...players]) p.market_value = market[p.sleeper_id] ?? null
+      for (const p of valued) p.market_value = market[p.sleeper_id] ?? null
     }
     if (tradeBoard) {
       weeksLeft = tradeBoard.weeks_left
-      const withTrade = [...leaguePlayers, ...players]
+      const withTrade = valued
       const ids = [...new Set(withTrade.map((p) => p.sleeper_id))]
       const { data: statusRows } = await admin.from('nfl_player_status').select('sleeper_id, return_date').in('sleeper_id', ids)
       const returnById = new Map((statusRows || []).map((r) => [String(r.sleeper_id), r.return_date ? String(r.return_date) : null]))

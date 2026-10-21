@@ -885,22 +885,30 @@ function liveProjection(card, actual, sport, proj) {
 }
 
 /**
- * Big number = points scored ("-" before kickoff). Small line under it = projection: the pregame number before
- * and after the game, the live-paced number during it (green / red vs the pregame projection).
+ * Big number = points scored; before kickoff it is the projection (a size down, muted, "PROJ" under it).
+ * Small line under a started game = the pregame projection, or the live-paced number during it (green / red vs
+ * the pregame projection).
  */
 function PointsCell({ card, loading, scoring, sport, align }) {
   const status = sideStatus(card)
   const proj = projectedOf(card, scoring, sport)
   const hasProj = Number.isFinite(proj)
   const scored = status === 'Proj' ? null : pointsOf(card, scoring, sport)
+  const pregame = status === 'Proj' && !card?.bye && hasProj
   let main = !card && loading ? '…' : '-'
-  let mainCls = 'text-zinc-100'
+  let mainCls = 'text-[13px] text-zinc-100'
   let sub = card?.bye ? 'BYE' : hasProj ? pts(proj) : ''
   let subCls = 'text-zinc-500'
+  if (pregame) {
+    main = pts(proj) || '0.0'
+    mainCls = 'text-[12px] text-zinc-300'
+    sub = 'PROJ'
+    subCls = 'text-[8px] tracking-wide text-zinc-500'
+  }
   if (scored) {
     main = pts(scored.pts) || '0.0'
     if (status === 'Live') {
-      mainCls = 'fantasy-live-pts'
+      mainCls = 'text-[13px] fantasy-live-pts'
       const paced = liveProjection(card, scored.pts, sport, proj)
       if (paced != null && hasProj) {
         sub = pts(paced)
@@ -911,8 +919,8 @@ function PointsCell({ card, loading, scoring, sport, align }) {
   }
   return (
     <span className={`flex w-8 flex-col leading-none ${align === 'right' ? 'items-start' : 'items-end'}`}>
-      <span className={`text-[13px] font-bold tabular-nums ${mainCls}`}>{main}</span>
-      {sub ? <span className={`mt-0.5 text-[9px] font-semibold tabular-nums ${subCls}`}>{sub}</span> : null}
+      <span className={`font-bold tabular-nums ${mainCls}`}>{main}</span>
+      {sub ? <span className={`mt-0.5 font-semibold tabular-nums ${pregame ? '' : 'text-[9px] '}${subCls}`}>{sub}</span> : null}
     </span>
   )
 }

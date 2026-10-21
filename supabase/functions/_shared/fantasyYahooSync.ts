@@ -199,6 +199,44 @@ function collectByKey(root: unknown, key: string): Record<string, unknown>[] {
   return out
 }
 
+/**
+ * Yahoo wraps each team / player / league as `{ team: [[{team_key}, {name}, …], {team_standings}] }`: every field
+ * sits in its own fragment. Merge the fragments so `name`, `display_position`, `selected_position`, standings,
+ * and points read from one object (picking only the `*_key` fragment loses them all).
+ */
+export function yahooEntities(root: unknown, kind: 'team' | 'player' | 'league'): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = []
+  const seen = new Set<string>()
+  const flatten = (v: unknown, acc: Record<string, unknown>) => {
+    if (Array.isArray(v)) {
+      for (const x of v) flatten(x, acc)
+    } else if (v && typeof v === 'object') {
+      Object.assign(acc, v as Record<string, unknown>)
+    }
+  }
+  const walk = (node: unknown) => {
+    if (!node || typeof node !== 'object') return
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item)
+      return
+    }
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      if (k === kind && Array.isArray(v)) {
+        const merged: Record<string, unknown> = {}
+        flatten(v, merged)
+        const key = str(merged[`${kind}_key`])
+        if (key && !seen.has(key)) {
+          seen.add(key)
+          out.push(merged)
+        }
+      }
+      walk(v)
+    }
+  }
+  walk(root)
+  return out
+}
+
 /** Yahoo scoreboard matchup blocks (nested arrays + objects). */
 function findScoreboardMatchups(root: unknown): Record<string, unknown>[] {
   const out: Record<string, unknown>[] = []
@@ -253,19 +291,23 @@ function playerFullName(player: Record<string, unknown>): string {
   return str(player.name)
 }
 
-function selectedSlot(player: Record<string, unknown>): 'starter' | 'bench' | 'ir' | 'taxi' {
+/** Lineup slot Yahoo has the player in this week ("QB", "W/R/T", "BN", "IR" …). */
+function selectedPosition(player: Record<string, unknown>): string {
   const sel = player.selected_position
-  let pos = ''
   if (Array.isArray(sel)) {
     for (const item of sel) {
       if (item && typeof item === 'object' && 'position' in (item as object)) {
-        pos = str((item as Record<string, unknown>).position).toUpperCase()
-        break
+        return str((item as Record<string, unknown>).position).toUpperCase()
       }
     }
   } else if (sel && typeof sel === 'object') {
-    pos = str((sel as Record<string, unknown>).position).toUpperCase()
+    return str((sel as Record<string, unknown>).position).toUpperCase()
   }
+  return ''
+}
+
+function selectedSlot(player: Record<string, unknown>): 'starter' | 'bench' | 'ir' | 'taxi' {
+  const pos = selectedPosition(player)
   if (pos === 'BN' || pos === 'BENCH') return 'bench'
   if (pos === 'IR' || pos === 'IL' || pos === 'IL+') return 'ir'
   if (pos === 'TAXI') return 'taxi'
@@ -622,7 +664,7 @@ export async function syncYahooConnection(
       access,
       '/users;use_login=1/games;game_keys=nfl/teams',
     )
-    const myTeams = collectByKey(teamsPayload, 'team_key')
+    const myTeams = yahooEntities(teamsPayload, 'team')
     const myByLeague = new Map<string, Record<string, unknown>>()
     for (const t of myTeams) {
       const teamKey = str(t.team_key)
@@ -651,7 +693,7 @@ export async function syncYahooConnection(
 
     for (const leagueKey of uniqueLeagueKeys) {
       const metaPayload = await yahooGet(access, `/league/${encodeURIComponent(leagueKey)}`)
-      const leagues = collectByKey(metaPayload, 'league_key')
+      const leagues = yahooEntities(metaPayload, 'league')
       const lg = leagues.find((x) => str(x.league_key) === leagueKey) || leagues[0]
       if (!lg) continue
 
@@ -701,7 +743,7 @@ export async function syncYahooConnection(
         access,
         `/league/${encodeURIComponent(leagueKey)}/standings`,
       )
-      const standTeams = collectByKey(standingsPayload, 'team_key')
+      const standTeams = yahooEntities(standingsPayload, 'team')
       const myTeam = myByLeague.get(leagueKey)
       const myTeamKey = str(myTeam?.team_key)
 
@@ -774,7 +816,7 @@ export async function syncYahooConnection(
         await admin.from('fantasy_matchups').delete().eq('league_id', leagueId).eq('week', week)
         const seenPairs = new Set<string>()
         for (const mu of findScoreboardMatchups(sb)) {
-          const teamsIn = collectByKey(mu, 'team_key')
+          const teamsIn = yahooEntities(mu, 'team')
           if (teamsIn.length < 2) continue
           const aKey = str(teamsIn[0].team_key)
           const bKey = str(teamsIn[1].team_key)
@@ -819,7 +861,7 @@ export async function syncYahooConnection(
           access,
           `/team/${encodeURIComponent(teamKey)}/roster;week=${week}`,
         )
-        const players = collectByKey(rosterPayload, 'player_key')
+        const players = yahooEntities(rosterPayload, 'player')
         await admin.from('fantasy_rosters').delete().eq('team_id', teamId).eq('week', week)
         const rows = []
         for (const p of players) {
@@ -839,11 +881,7 @@ export async function syncYahooConnection(
             position: position || null,
             nfl_team: nflTeam || null,
             slot,
-            slot_label: str(
-              Array.isArray(p.selected_position)
-                ? (p.selected_position[0] as Record<string, unknown>)?.position
-                : (p.selected_position as Record<string, unknown>)?.position,
-            ) || slot,
+            slot_label: selectedPosition(p) || slot,
           })
         }
         if (rows.length) {

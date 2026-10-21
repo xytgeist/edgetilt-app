@@ -147,7 +147,15 @@ function fantasyPos(position) {
 }
 
 function shortName(name, position) {
-  if (fantasyPos(position) === 'DEF') return String(name || 'DEF').toUpperCase()
+  // Hosts send "Browns", "New England Patriots", "Patriots D/ST", or "Las Vegas Raiders DEF": nickname + D/ST.
+  if (fantasyPos(position) === 'DEF') {
+    const words = String(name || '')
+      .replace(/\b(d\/st|dst|def|defense)\b\.?/gi, '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+    return words.length ? `${words[words.length - 1].toUpperCase()} D/ST` : 'D/ST'
+  }
   const parts = String(name || '')
     .trim()
     .split(/\s+/)

@@ -107,7 +107,7 @@ function kickoffDay(iso: string): string {
   return new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long' }).format(new Date(t))
 }
 
-async function sendWeb(admin: SupabaseClient, userId: string, payload: ApnsAlertPayload) {
+export async function sendWeb(admin: SupabaseClient, userId: string, payload: ApnsAlertPayload) {
   const pub = Deno.env.get('WEB_PUSH_PUBLIC_KEY')
   const priv = Deno.env.get('WEB_PUSH_PRIVATE_KEY')
   if (!pub || !priv) return { sent: 0, skipped: true }

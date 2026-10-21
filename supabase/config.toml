@@ -91,6 +91,9 @@ verify_jwt = false
 [functions.fantasy-status-watch]
 verify_jwt = false
 
+[functions.fantasy-weekly-digest]
+verify_jwt = false
+
 [functions.fantasy-insider-grade]
 verify_jwt = false
 

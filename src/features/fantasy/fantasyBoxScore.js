@@ -69,6 +69,8 @@ const ESPN_POS_SLOT = { DEF: '16', K: '17' }
 
 const ESPN_PA_TIERS = [[0, 0, '0'], [1, 6, '1_6'], [7, 13, '7_13'], [14, 17, '14_17'], [18, 21, '18_21'], [22, 27, '22_27'], [28, 34, '28_34'], [35, 45, '35_45'], [46, Infinity, '46p']]
 const SLEEPER_PA_TIERS = [[0, 0, '0'], [1, 6, '1_6'], [7, 13, '7_13'], [14, 20, '14_20'], [21, 27, '21_27'], [28, 34, '28_34'], [35, Infinity, '35p']]
+/** Yahoo's yards-allowed tiers are 100 wide (300-399), unlike Sleeper's 50 (300-349). */
+const YAHOO_YA_TIERS = [[0, 99, '0_99'], [100, 199, '100_199'], [200, 299, '200_299'], [300, 399, '300_399'], [400, 499, '400_499'], [500, Infinity, '500p']]
 const YA_TIERS = [[0, 99, '0_99', '0_100'], [100, 199, '100_199'], [200, 299, '200_299'], [300, 349, '300_349'], [350, 399, '350_399'], [400, 449, '400_449'], [450, 499, '450_499'], [500, 549, '500_549'], [550, Infinity, '550p']]
 
 function tierFor(tiers, value) {
@@ -96,6 +98,8 @@ function withDerivedStats(line) {
     const t = tierFor(YA_TIERS, ya)
     if (t && out[`espn_ya_${t[2]}`] == null) out[`espn_ya_${t[2]}`] = 1
     if (t && !Object.keys(out).some((k) => /^yds_allow_/.test(k))) out[`yds_allow_${t[3] || t[2]}`] = 1
+    const y = tierFor(YAHOO_YA_TIERS, ya)
+    if (y && out[`yahoo_ya_${y[2]}`] == null) out[`yahoo_ya_${y[2]}`] = 1
   }
   if (out.fgm_0_39 == null && ['fgm_0_19', 'fgm_20_29', 'fgm_30_39'].some((k) => out[k] != null)) {
     out.fgm_0_39 = n('fgm_0_19') + n('fgm_20_29') + n('fgm_30_39')
@@ -215,11 +219,25 @@ function lineValue(line, key) {
   return num(line[alias])
 }
 
+const DEF_RULE = /^(sack|int$|fum_rec|safe|blk_kick|def_|pts_allow|yds_allow|espn_pa_|espn_ya_|yahoo_ya_|tkl_loss)/
+const K_RULE = /^(fgm|fgmiss|xpm|xpmiss)/
+
+/** A team defense line: tagged DEF, or carrying the points / yards allowed totals only defenses have. */
+function isDefenseLine(line, pos) {
+  return pos === 'DEF' || line.pts_allow != null || line.yds_allow != null
+}
+
 /** Points for one player, or null when this league's rules cannot be applied. `pos` matters for DEF / K. */
 export function scoreLine(rawLine, scoring, sport = 'nfl', pos = null) {
   if (!rawLine || typeof rawLine !== 'object') return null
   const rates = leagueRates(scoring, sport, pos)
   if (!rates || !Object.keys(rates).length) return null
+  // Rules saved without any defense (or kicking) stats would score a D/ST on a stray return TD alone.
+  if (sport === 'nfl') {
+    const keys = Object.keys(rates)
+    if (isDefenseLine(rawLine, pos) && !keys.some((k) => DEF_RULE.test(k))) return null
+    if (pos === 'K' && !keys.some((k) => K_RULE.test(k))) return null
+  }
   const line = sport === 'nfl' ? withDerivedStats(rawLine) : rawLine
   let total = 0
   let used = false

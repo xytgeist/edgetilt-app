@@ -29,6 +29,39 @@ const CBS_ABBR: Record<string, string> = {
   IPRTD: 'ret_td',
 }
 
+/**
+ * Yahoo team defense (position type DT) stat ids → Sleeper's D/ST keys, which the projected and live lines carry.
+ * By id, not name: "Interception" / "Touchdown" also name offensive stats. Yards-allowed tiers are 100 wide on
+ * Yahoo, so they get `yahoo_ya_*` keys the client fills from the expected yards allowed. Per-type return TDs
+ * (99-102) are left out: Sleeper puts `def_pr_td` / `def_kr_td` / `pass_int_td` on returners and QBs too.
+ */
+const YAHOO_DT_STAT: Record<number, string> = {
+  31: 'pts_allow',
+  32: 'sack',
+  33: 'int',
+  34: 'fum_rec',
+  35: 'def_td',
+  36: 'safe',
+  37: 'blk_kick',
+  49: 'ret_td',
+  50: 'pts_allow_0',
+  51: 'pts_allow_1_6',
+  52: 'pts_allow_7_13',
+  53: 'pts_allow_14_20',
+  54: 'pts_allow_21_27',
+  55: 'pts_allow_28_34',
+  56: 'pts_allow_35p',
+  68: 'tkl_loss',
+  69: 'yds_allow',
+  71: 'yahoo_ya_0_99',
+  72: 'yahoo_ya_100_199',
+  73: 'yahoo_ya_200_299',
+  74: 'yahoo_ya_300_399',
+  75: 'yahoo_ya_400_499',
+  76: 'yahoo_ya_500p',
+  103: 'blk_kick_td',
+}
+
 function num(value: unknown): number | null {
   if (typeof value === 'string' && !value.trim()) return null
   const n = Number(value)
@@ -69,8 +102,15 @@ export function yahooScoringFromSettings(root: unknown): Record<string, number> 
 
   const out: Record<string, number> = {}
   const misses: number[] = []
-  for (const row of byId.values()) {
-    if (!row.name || row.value == null) continue
+  for (const [id, row] of byId) {
+    if (row.value == null) continue
+    // These ids are DT-only on Yahoo NFL, so a missing position_type still maps.
+    if (YAHOO_DT_STAT[id] && (!row.position || row.position.toUpperCase() === 'DT')) {
+      const key = YAHOO_DT_STAT[id]
+      if (key) put(out, key, row.value)
+      continue
+    }
+    if (!row.name) continue
     const keys = keysForYahooStat(row.name, row.position)
     if (keys.includes('__fgmiss__')) misses.push(row.value)
     for (const key of keys) put(out, key, row.value)

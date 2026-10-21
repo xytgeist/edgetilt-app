@@ -1545,7 +1545,12 @@ function FlipCard({ flip, myTeamName, host, odds }) {
       </div>
       {open ? (
         <>
-          <ComposeOffer offer={flip} myTeamName={myTeamName} initialText={composeFlipMessage(flip, myTeamName)} />
+          <ComposeOffer
+            offer={flip}
+            myTeamName={myTeamName}
+            initialText={composeFlipMessage(flip, myTeamName)}
+            casualText={composeFlipMessage(flip, myTeamName, 'casual')}
+          />
           <p className="mt-1 text-[10px] text-zinc-500">Claim {flip.pickup.name} on {host} first (you need an open roster spot), then send it.</p>
         </>
       ) : null}
@@ -1889,8 +1894,20 @@ function TradeSide({ label, players }) {
   )
 }
 
-function ComposeOffer({ offer, myTeamName, initialText }) {
-  const [text, setText] = useState(() => initialText ?? composeOfferMessage(offer, myTeamName))
+const OFFER_STYLES = [
+  { id: 'casual', label: 'Casual' },
+  { id: 'formal', label: 'Formal' },
+]
+
+/** Casual (a text to a friend) or formal (the full pitch). Each keeps its own edits when you switch. */
+function ComposeOffer({ offer, myTeamName, initialText, casualText }) {
+  const [style, setStyle] = useState('casual')
+  const [texts, setTexts] = useState(() => ({
+    casual: casualText ?? composeOfferMessage(offer, myTeamName, 'casual'),
+    formal: initialText ?? composeOfferMessage(offer, myTeamName),
+  }))
+  const text = texts[style]
+  const setText = (value) => setTexts((prev) => ({ ...prev, [style]: value }))
   const [note, setNote] = useState('')
   const flash = (msg) => {
     setNote(msg)
@@ -1898,6 +1915,23 @@ function ComposeOffer({ offer, myTeamName, initialText }) {
   }
   return (
     <div data-fantasy-trade-compose className="mt-2 space-y-1.5">
+      <div className="flex gap-1" role="tablist" aria-label="Message style">
+        {OFFER_STYLES.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            role="tab"
+            aria-selected={style === s.id}
+            onClick={() => setStyle(s.id)}
+            data-fantasy-offer-style={style === s.id ? 'on' : 'off'}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+              style === s.id ? 'bg-zinc-100 text-zinc-950' : 'border border-zinc-700 text-zinc-300'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -1929,7 +1963,7 @@ function ComposeOffer({ offer, myTeamName, initialText }) {
   )
 }
 
-function OfferCard({ offer, myTeamName, compact = false, composeText }) {
+function OfferCard({ offer, myTeamName, compact = false, composeText, casualText }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
@@ -1970,7 +2004,7 @@ function OfferCard({ offer, myTeamName, compact = false, composeText }) {
           {open ? 'Close' : 'Compose offer'}
         </button>
       </div>
-      {open ? <ComposeOffer offer={offer} myTeamName={myTeamName} initialText={composeText} /> : null}
+      {open ? <ComposeOffer offer={offer} myTeamName={myTeamName} initialText={composeText} casualText={casualText} /> : null}
     </div>
   )
 }
@@ -2302,6 +2336,7 @@ function OfferReview({ values, detail, sport, myName, pending }) {
                 offer={{ ...c, forYou: `${c.why} (+${c.myGain.toFixed(1)}/wk for you)` }}
                 myTeamName={myName}
                 composeText={composeCounterMessage(c, myName)}
+                casualText={composeCounterMessage(c, myName, 'casual')}
               />
             ))}
           </div>

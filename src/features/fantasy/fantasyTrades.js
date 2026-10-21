@@ -141,9 +141,26 @@ function playerLine(p) {
   return `${p.name} (${pos}${p.team ? `, ${p.team}` : ''})`
 }
 
-/** Plain-text offer you can paste into the league app, a text, or an email. */
-export function composeOfferMessage(offer, myTeamName) {
+function nameList(players) {
+  const names = players.map((p) => p.name)
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0] || ''
+}
+
+/** The casual "why" for you: the spot the incoming player fills, without spelling out the whole idea. */
+function helpLine(players) {
+  const pos = players[0]?.pos === 'DEF' ? 'D/ST' : players[0]?.pos
+  return pos ? `I could use some help at ${pos}.` : ''
+}
+
+/** Text-a-friend version: no team names, no stat tags, no pitch for their side. */
+function casualMessage(opener, give, get) {
+  return [opener, '', `${nameList(give)} for ${nameList(get)}?`, '', [helpLine(get), 'Let me know what you think.'].filter(Boolean).join(' ')].join('\n')
+}
+
+/** Plain-text offer you can paste into the league app, a text, or an email. `style` 'casual' reads like a text to a friend. */
+export function composeOfferMessage(offer, myTeamName, style = 'formal') {
   if (!offer) return ''
+  if (style === 'casual') return casualMessage('Interested in a trade?', offer.give, offer.get)
   const them = offer.team?.team_name || 'there'
   const lines = [
     `Hey ${them}, trade idea from ${myTeamName || 'me'}:`,
@@ -277,10 +294,11 @@ export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' 
 }
 
 /** The flip pitch, written as if the pickup already cleared (send it after your claim goes through). */
-export function composeFlipMessage(flip, myTeamName) {
+export function composeFlipMessage(flip, myTeamName, style = 'formal') {
   if (!flip) return ''
   const them = flip.team?.team_name || 'there'
   const status = flip.lost.h.injury === 'long' ? 'on IR' : flip.lost.h.injury === 'doubtful' ? 'banged up' : 'out'
+  if (style === 'casual') return casualMessage(`Saw ${flip.lost.name} is ${status}, that sucks. Interested in a trade?`, flip.give, flip.get)
   return [
     `Hey ${them}, saw ${flip.lost.name} is ${status}. ${myTeamName || 'I'} can help:`,
     '',
@@ -512,8 +530,9 @@ export function parseOfferText(text, detail) {
 }
 
 /** Counter pitch for an offer they sent you. */
-export function composeCounterMessage(counter, myTeamName) {
+export function composeCounterMessage(counter, myTeamName, style = 'formal') {
   if (!counter) return ''
+  if (style === 'casual') return casualMessage('Thanks for the offer! What about this instead?', counter.give, counter.get)
   const them = counter.team?.team_name || 'there'
   return [
     `Hey ${them}, thanks for the offer. ${myTeamName || 'I'} would do this instead:`,

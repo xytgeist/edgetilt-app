@@ -3234,6 +3234,13 @@ function clearFantasyDeepLink() {
 /** Trade-board values per league for the home synopsis, kept across carousel swipes until a roster changes. */
 const synopsisValues = new Map()
 
+function syncedAgo(iso) {
+  const ago = newsTimeAgo(iso)
+  if (!ago) return ''
+  if (ago === 'now') return 'Synced just now'
+  return /^\d+[mhd]$/.test(ago) ? `Synced ${ago} ago` : `Synced ${ago}`
+}
+
 const pctText = (p) => (p == null ? '-' : p >= 0.995 ? '99%+' : p > 0 && p < 0.01 ? '<1%' : `${Math.round(p * 100)}%`)
 
 function SynopsisSection({ title, onOpen, children }) {
@@ -3378,7 +3385,9 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
         className="flex w-full items-center justify-between gap-2 text-left touch-manipulation [-webkit-tap-highlight-color:transparent]"
       >
         <span className="min-w-0">
-          <span className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500">League outlook</span>
+          <span className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+            League outlook{lg?.last_sync_at ? <span className="font-semibold normal-case tracking-normal"> · {syncedAgo(lg.last_sync_at)}</span> : null}
+          </span>
           <span className="block truncate text-[11px] font-semibold text-zinc-200">{summary.join(' · ') || 'No issues this week'}</span>
         </span>
         <span className="shrink-0 text-[10px] font-semibold text-sky-400">{open ? 'Hide' : 'Details'}</span>

@@ -120,6 +120,11 @@ export default function FantasyHomeScreen({
   const [err, setErr] = useState('')
   const [info, setInfo] = useState('')
   const [snap, setSnap] = useState({ connections: [], leagues: [] })
+  // Each league carries its connection's last sync (League outlook shows "Synced 2h ago").
+  const leaguesWithSync = useMemo(() => {
+    const byConn = new Map((snap.connections || []).map((c) => [c.id, c]))
+    return (snap.leagues || []).map((lg) => ({ ...lg, last_sync_at: byConn.get(lg.connection_id)?.last_sync_at || null }))
+  }, [snap.connections, snap.leagues])
   const [booted, setBooted] = useState(false)
   const [shown, setShown] = useState(false)
   const [detailEpoch, setDetailEpoch] = useState(null)
@@ -684,7 +689,7 @@ export default function FantasyHomeScreen({
           <SportsBetLogGameProvider game={FANTASY_BET_GAME} supabaseClient={supabaseClient}>
             <FantasyCommandCenter
               supabaseClient={supabaseClient}
-              leagues={snap.leagues}
+              leagues={leaguesWithSync}
               details={details}
               loadingDetail={loadingDetail}
               cards={cards}

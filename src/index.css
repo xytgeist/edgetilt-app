@@ -11935,7 +11935,15 @@ html.light [data-fantasy-home] [data-pos-pill='C'] { background-color: #eab308 !
 html.light [data-fantasy-home] .fantasy-prop-label {
   text-shadow: 0 0 2px #fff, 0 0 4px rgb(255 255 255 / 0.95), 0 0 6px rgb(255 255 255 / 0.85);
 }
-/* Hurt player's half of a matchup row: red for Out / IR / Doubtful, amber for Questionable / GTD. */
+/* Hurt player's half of a matchup row: red for Out / IR / Doubtful, amber for Questionable / GTD. Fades out toward the center line. */
+[data-fantasy-home] [data-fantasy-injury-side] {
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 35%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 35%, transparent 100%);
+}
+[data-fantasy-home] [data-fantasy-injury-side][data-side='right'] {
+  -webkit-mask-image: linear-gradient(270deg, #000 0%, #000 35%, transparent 100%);
+  mask-image: linear-gradient(270deg, #000 0%, #000 35%, transparent 100%);
+}
 [data-fantasy-home] [data-fantasy-injury-side='out'] {
   background: linear-gradient(90deg, rgb(244 63 94 / 0.2), rgb(244 63 94 / 0.06));
   box-shadow: inset 0 0 22px rgb(244 63 94 / 0.35);

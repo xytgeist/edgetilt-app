@@ -72,7 +72,21 @@ export function rankBoom({ sniper, scoring, sport = 'nfl', perPos = 2 }) {
       reasons.push('worth holding past this week')
       score += 1
     }
-    picks.push({ entry, proj, score, reasons, hold, prop: ladder?.prop || td?.prop || entry.props?.[0] || null })
+    picks.push({
+      entry,
+      proj,
+      score,
+      reasons,
+      hold,
+      prop: ladder?.prop || td?.prop || entry.props?.[0] || null,
+      // Raw signals behind `reasons`, for copy that explains them (weekly digest).
+      signals: {
+        nextUp: entry.next_up?.length ? entry.next_up : null,
+        td: td && td.price >= 0.3 ? { price: td.price } : null,
+        ladder: ladder ? { strike: ladder.strike, stat: ladder.stat, word: YARD_WORD[ladder.stat], price: ladder.price } : null,
+        matchup: entry.matchup_grade === 'A' ? { rank: entry.matchup_rank } : null,
+      },
+    })
   }
   picks.sort((a, b) => b.score - a.score)
   const count = {}

@@ -7,7 +7,8 @@
  * last week; a failed refresh (expired ESPN / CBS login) keeps the last data and the email says so.
  * The cron run fans out one background call per user (each its own Edge time budget).
  * Body (service role / admin): { force?: true (skip the time gate), dryRun?: true (no sends, no dedupe row),
- *   onlyUser?: uuid, noEmail?: true, noRefresh?: true, background?: true (reply 202, work after) }
+ *   onlyUser?: uuid, noEmail?: true, noRefresh?: true, background?: true (reply 202, work after),
+ *   preview?: true (with dryRun: return the email HTML) }
  */
 import { type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
@@ -22,7 +23,7 @@ import { sendWeb } from '../_shared/fantasyStatusPush.ts'
 import { escapeHtml, transactionalEmailParagraph, wrapTransactionalEmailHtml } from '../_shared/transactionalEmail.ts'
 // The app's fantasy math (plain ESM, no browser APIs).
 import { playoffFormat, simulateLeague } from '../../../src/features/fantasy/fantasyLeagueOutlook.js'
-import { findTrades, teamStrength, valueContext } from '../../../src/features/fantasy/fantasyTrades.js'
+import { findFlips, findTrades, teamStrength, valueContext } from '../../../src/features/fantasy/fantasyTrades.js'
 import { rankWaivers, rowId } from '../../../src/features/fantasy/fantasyWaivers.js'
 import { rankBoom } from '../../../src/features/fantasy/fantasySniper.js'
 import { injuryKey, leagueLineupSlots } from '../../../src/features/fantasy/fantasyStartSit.js'
@@ -43,6 +44,11 @@ function ordinal(n: number) {
   if (v >= 11 && v <= 13) return `${n}th`
   return `${n}${['th', 'st', 'nd', 'rd'][n % 10] || 'th'}`
 }
+/** Full name for prose; defenses read as "Raiders D/ST". */
+function displayName(name: string, position?: string | null) {
+  return /^(def|dst|d\/st)$/i.test(str(position)) ? shortName(name, position) : str(name)
+}
+
 function shortName(name: string, position?: string | null) {
   if (/^(def|dst|d\/st)$/i.test(str(position))) {
     const words = str(name).replace(/\b(d\/st|dst|def|defense)\b\.?/gi, '').trim().split(/\s+/).filter(Boolean)
@@ -174,15 +180,25 @@ async function leagueSection(
 
   const hurt = myRows
     .filter((r) => (r.slot === 'starter' || r.slot === 'bench') && injuryKey(r.injury_status))
-    .map((r) => ({ name: shortName(r.player_name, r.position), status: str(r.injury_status), starter: r.slot === 'starter' }))
+    .map((r) => ({ name: displayName(r.player_name, r.position), status: str(r.injury_status), starter: r.slot === 'starter' }))
     .sort((a, b) => Number(b.starter) - Number(a.starter))
 
   const add = data?.players?.length
     ? rankWaivers({ pool: data, rosterRows: myRows, scoring, slots, sport: 'nfl' }).find((p: Obj) => p.starter) || null
     : null
-  const boom = data?.sniper ? rankBoom({ sniper: data.sniper, scoring, sport: 'nfl' })[0] || null : null
+  // Boom pick is a different player from the waiver add, so the email never pitches the same name twice.
+  const addId = add ? str(add.cand.id) : ''
+  const boom = data?.sniper
+    ? rankBoom({ sniper: data.sniper, scoring, sport: 'nfl' }).find((b: Obj) => str(b.entry?.sleeper_id) !== addId) || null
+    : null
   const trades = data?.league_players ? findTrades({ values: data, detail, scoring, slots, sport: 'nfl', stance: 0.5 }) : null
   const trade = trades?.best || null
+  const flips = data?.league_players && data?.players?.length
+    ? findFlips({ values: data, pool: data, detail, scoring, slots, sport: 'nfl' })
+    : []
+  const flip = flips[0] || null
+  const weekly = (p: Obj | null) => (p ? Number(p.rosWeekly ?? p.value) || 0 : 0)
+  const names = (list: Obj[]) => list.map((p) => displayName(p.name, p.pos)).join(' + ')
 
   return {
     leagueId: league.id,
@@ -198,15 +214,56 @@ async function leagueSection(
     strengthRank,
     hurt,
     add: add
-      ? { name: shortName(add.cand.name, add.cand.entry?.position), pos: add.cand.pos, gain: add.gain, drop: add.drop ? shortName(add.drop.name, add.drop.row?.position) : null }
+      ? {
+        name: displayName(add.cand.name, add.cand.entry?.position),
+        pos: str(add.cand.pos),
+        team: str(add.cand.entry?.team),
+        weekly: Number(add.candWeekly) || weekly(add.cand),
+        gain: add.gain,
+        over: add.replaced ? displayName(add.replaced.name, add.replaced.row?.position) : null,
+        overWeekly: weekly(add.replaced),
+        drop: add.drop ? displayName(add.drop.name, add.drop.row?.position) : null,
+        dropWeekly: weekly(add.drop),
+      }
       : null,
-    boom: boom ? { name: shortName(boom.entry.name, boom.entry.position), why: str(boom.reasons?.[0]) } : null,
+    flip: flip
+      ? {
+        pickup: displayName(flip.pickup.name, flip.pickup.pos),
+        pickupPos: str(flip.pickup.pos),
+        team: str(flip.team?.team_name),
+        lost: displayName(flip.lost.name, flip.lost.pos),
+        lostStatus: flip.lost.h?.injury === 'long' ? 'on IR' : flip.lost.h?.injury === 'doubtful' ? 'doubtful' : 'out',
+        fillGain: Number(flip.fillGain) || 0,
+        alsoGive: flip.give.slice(1).map((p: Obj) => displayName(p.name, p.pos)),
+        get: names(flip.get),
+        myGain: Number(flip.myGain) || 0,
+        rivals: Math.max(0, (flip.rivalsWanting?.length || 0) - 1),
+      }
+      : null,
+    boom: boom
+      ? {
+        name: displayName(boom.entry.name, boom.entry.position),
+        pos: str(boom.entry.position),
+        team: str(boom.entry.team),
+        opponent: str(boom.entry.opponent),
+        home: Boolean(boom.entry.home),
+        proj: Number(boom.proj) || 0,
+        hold: Boolean(boom.hold),
+        signals: boom.signals || {},
+      }
+      : null,
     trade: trade
       ? {
-        get: trade.get.map((p: Obj) => shortName(p.name, p.pos)).join(' + '),
-        give: trade.give.map((p: Obj) => shortName(p.name, p.pos)).join(' + '),
+        get: names(trade.get),
+        give: names(trade.give),
         team: str(trade.team?.team_name),
-        gain: trade.myGain,
+        gain: Number(trade.myGain) || 0,
+        slot: (str(trade.forYou).match(/starts at (\S+)/) || [])[1] || '',
+        // The app writes this to the other manager ("would start at RB for you"); the email talks about them.
+        forThem: str(trade.forThemCasual)
+          .replace(/\bfor you\b/g, 'for them')
+          .replace(/\bgives you\b/g, 'gives them')
+          .replace(/\byou'd\b/g, "they'd"),
         fairness: str(trade.fairness),
       }
       : null,
@@ -226,53 +283,228 @@ function pushCopy(sections: Section[], week: number) {
   return { title, body: bits.join('. ').slice(0, 220) }
 }
 
-function emailHtml(sections: Section[], week: number) {
-  const blocks = sections.map((s) => {
-    const lines: string[] = []
-    lines.push(
-      `<strong>${escapeHtml(ordinal(s.place))} of ${s.teams}</strong> (${escapeHtml(s.record)})` +
-        (s.odds ? ` · Playoffs <strong>${pct(s.odds.playoff)}</strong> · Title <strong>${pct(s.odds.title)}</strong>` : ''),
-    )
-    if (s.strength) lines.push(`Rest-of-season lineup ${s.strength.toFixed(1)}/wk (${escapeHtml(ordinal(s.strengthRank))} best in the league)`)
-    if (s.hurt.length) {
-      lines.push(`Injuries: ${s.hurt.slice(0, 5).map((h) => `${escapeHtml(h.name)} (${escapeHtml(h.status)}${h.starter ? ', starting' : ''})`).join(', ')}`)
-    }
-    if (s.add) lines.push(`Waiver add: <strong>${escapeHtml(s.add.name)}</strong> ${escapeHtml(s.add.pos)} +${s.add.gain.toFixed(1)}/wk rest of season${s.add.drop ? ` (drop ${escapeHtml(s.add.drop)})` : ''}`)
-    if (s.boom) lines.push(`Sniper: ${escapeHtml(s.boom.name)}${s.boom.why ? ` · ${escapeHtml(s.boom.why)}` : ''}`)
-    if (s.trade) {
-      lines.push(`Trade idea: get <strong>${escapeHtml(s.trade.get)}</strong> for ${escapeHtml(s.trade.give)} from ${escapeHtml(s.trade.team)} (+${s.trade.gain.toFixed(1)}/wk, ${escapeHtml(s.trade.fairness)})`)
-    }
-    const freshness = s.syncError
-      ? `<span style="color:#b45309;">Could not refresh ${escapeHtml(s.provider)} (${escapeHtml(agoText(s.syncedAt))}). Open Fantasy and reconnect ${escapeHtml(s.provider)} to keep this current.</span>`
-      : `<span style="color:#71717a;">${escapeHtml(s.provider)}, ${escapeHtml(agoText(s.syncedAt))}</span>`
-    return (
-      `<h2 style="margin:20px 0 6px;font-size:17px;line-height:1.3;color:#18181b;">${escapeHtml(s.name)}</h2>` +
-      transactionalEmailParagraph(freshness, { marginBottom: '6px' }) +
-      lines.map((l) => transactionalEmailParagraph(l, { marginBottom: '6px' })).join('')
-    )
-  })
-  const html = wrapTransactionalEmailHtml({
-    title: `Week ${week} fantasy outlook`,
-    headline: `Your week ${week} fantasy outlook`,
-    appUrl: APP_URL,
-    bodyHtml: blocks.join(''),
-    cta: { href: `${APP_URL}/?tab=fantasy`, label: 'Open Fantasy' },
-    footerNoteHtml: 'Turn this email or push off in EdgeTilt Settings, Notifications (Fantasy: weekly outlook).',
-  })
-  const text = sections
-    .map((s) => {
-      const out = [
-        `${s.name}: ${ordinal(s.place)} of ${s.teams} (${s.record})${s.odds ? `, playoffs ${pct(s.odds.playoff)}, title ${pct(s.odds.title)}` : ''}`,
-        s.syncError ? `Could not refresh ${s.provider} (${agoText(s.syncedAt)}); reconnect it in Fantasy.` : `${s.provider}, ${agoText(s.syncedAt)}`,
-      ]
-      if (s.hurt.length) out.push(`Injuries: ${s.hurt.slice(0, 5).map((h) => `${h.name} (${h.status})`).join(', ')}`)
-      if (s.add) out.push(`Waiver add: ${s.add.name} +${s.add.gain.toFixed(1)}/wk${s.add.drop ? ` (drop ${s.add.drop})` : ''}`)
-      if (s.boom) out.push(`Sniper: ${s.boom.name}${s.boom.why ? ` (${s.boom.why})` : ''}`)
-      if (s.trade) out.push(`Trade idea: get ${s.trade.get} for ${s.trade.give} (${s.trade.team})`)
-      return out.join('\n')
+/** Plain-English read on the odds, so the email sounds like a person, not a stat sheet. */
+function oddsTake(s: Section) {
+  const p = s.odds?.playoff
+  if (p == null) return ''
+  const t = s.odds?.title ?? 0
+  const title = t >= 0.01 ? ` and about a ${pct(t)} shot at winning it all` : ''
+  if (p >= 0.85) return `You're in great shape. We give you a ${pct(p)} chance to make the playoffs${title}.`
+  if (p >= 0.6) return `You're looking good: a ${pct(p)} chance at the playoffs${title}.`
+  if (p >= 0.35) return `It's basically a coin flip right now, ${pct(p)} to make the playoffs${title}. A good week or two swings it.`
+  if (p >= 0.1) return `You've got some work to do. We have you at ${pct(p)} to sneak into the playoffs, so every win counts from here.`
+  return `It's an uphill climb (${pct(p)} to make the playoffs), so this is the time to swing for upside.`
+}
+
+function strengthTake(s: Section) {
+  if (!s.strengthRank) return ''
+  if (s.strengthRank <= 3) return `The good news: your lineup projects as the ${ordinal(s.strengthRank)} best in the league the rest of the way, so you've got the horses.`
+  if (s.strengthRank > s.teams - 3) return `On paper your lineup projects ${ordinal(s.strengthRank)} of ${s.teams} the rest of the way, so a move or two would really help.`
+  return `Your lineup projects ${ordinal(s.strengthRank)} of ${s.teams} the rest of the way.`
+}
+
+const statusWord = (st: string) => (/^ir$/i.test(st) ? 'IR' : st.toLowerCase())
+
+const STAT_WORD: Record<string, string> = { pass_yds: 'passing yards', rush_yds: 'rushing yards', rec_yds: 'receiving yards' }
+const joinNames = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0] || '')
+
+type Callout = { kind: 'injury' | 'injuryOut' | 'waiver' | 'flip' | 'boom' | 'trade' | 'warn'; label: string; headline: string; body: string }
+
+function callouts(s: Section): Callout[] {
+  const out: Callout[] = []
+  if (s.syncError) {
+    out.push({
+      kind: 'warn',
+      label: 'Heads up',
+      headline: `We couldn't refresh your ${s.provider} league`,
+      body: `This is ${agoText(s.syncedAt)}, so it might be a step behind. Reconnecting ${s.provider} in Fantasy fixes it, and next week's check-in will be current.`,
     })
-    .join('\n\n')
-  return { html, text: `${text}\n\nOpen Fantasy: ${APP_URL}/?tab=fantasy` }
+  }
+  const starters = s.hurt.filter((h) => h.starter)
+  const bench = s.hurt.filter((h) => !h.starter)
+  if (s.hurt.length) {
+    const anyOut = starters.some((h) => /^(out|ir|o)$/i.test(h.status))
+    const parts: string[] = []
+    if (starters.length) {
+      parts.push(
+        `${joinNames(starters.slice(0, 3).map((h) => `${h.name} (${statusWord(h.status)})`))} ${starters.length > 1 ? 'are' : 'is'} in your starting lineup.` +
+          (anyOut
+            ? ' Anyone ruled out scores zero, so get a healthy player in that spot before kickoff. Start/Sit in the app already has the swap lined up.'
+            : ' Watch the reports before kickoff. If anyone gets ruled out, Start/Sit in the app will tell you who to slide in.'),
+      )
+    }
+    if (bench.length) {
+      parts.push(`On the bench, ${joinNames(bench.slice(0, 3).map((h) => `${h.name} (${statusWord(h.status)})`))} ${bench.length > 1 ? 'are' : 'is'} banged up${bench.some((h) => /ir/i.test(h.status)) ? ', and an IR stash is a roster spot you could use on a pickup' : ''}.`)
+    }
+    out.push({
+      kind: anyOut ? 'injuryOut' : 'injury',
+      label: 'Injuries',
+      headline: starters.length ? `${starters.length} starter${starters.length > 1 ? 's' : ''} banged up` : 'Bench injuries only',
+      body: parts.join(' '),
+    })
+  }
+  if (s.add) {
+    const a = s.add
+    const team = a.team ? `, ${a.team}` : ''
+    const vs = a.over
+      ? `He projects for about ${a.weekly.toFixed(1)} points a week the rest of the season, more than ${a.over} (${a.overWeekly.toFixed(1)}) gives you in that lineup spot. Swapping him in is worth roughly +${a.gain.toFixed(1)} a week.`
+      : `He projects for about ${a.weekly.toFixed(1)} points a week the rest of the season and would crack your starting lineup (+${a.gain.toFixed(1)} a week).`
+    const room = a.drop
+      ? ` To make room, ${a.drop} is the easiest cut: he's your lowest-projected player the rest of the way (${a.dropWeekly.toFixed(1)} a week).`
+      : ' You may need to free up a roster spot to add him.'
+    out.push({ kind: 'waiver', label: 'Waiver pickup', headline: `Grab ${a.name} (${a.pos}${team})`, body: `${a.name} is sitting on your waiver wire. ${vs}${room}` })
+  }
+  if (s.flip) {
+    const f = s.flip
+    const extra = f.alsoGive.length ? ` (plus ${joinNames(f.alsoGive)})` : ''
+    const rivals = f.rivals > 0 ? ` ${f.rivals === 1 ? 'Another team' : `${f.rivals} other teams`} could use him too, so don't sleep on it.` : ''
+    out.push({
+      kind: 'flip',
+      label: 'Snipe and flip',
+      headline: `Snipe ${f.pickup} and trade him to ${f.team}`,
+      body:
+        `${f.team} just lost ${f.lost} (${f.lostStatus}), and ${f.pickup} would slide right into their lineup, about +${f.fillGain.toFixed(1)} a week for them. ` +
+        `Grab him off the wire before they do, then offer him${extra} to ${f.team} for ${f.get}. ` +
+        `${f.get} would start for you, worth about +${f.myGain.toFixed(1)} a week the rest of the way.${rivals}`,
+    })
+  }
+  if (s.boom) {
+    const b = s.boom
+    const sig = b.signals || {}
+    const game = b.opponent ? ` ${b.home ? 'vs' : '@'} ${b.opponent}` : ''
+    const bits: string[] = []
+    if (sig.nextUp?.length) bits.push(`He's next man up with ${joinNames(sig.nextUp)} hurt, so the volume should be there.`)
+    if (sig.ladder) bits.push(`The betting market gives him about a ${Math.round(sig.ladder.price * 100)}% chance at ${sig.ladder.strike}+ ${STAT_WORD[sig.ladder.stat] || sig.ladder.word}.`)
+    if (sig.td) bits.push(`It also has him around ${Math.round(sig.td.price * 100)}% to find the end zone.`)
+    if (sig.matchup) bits.push(`And the matchup is a soft one: that defense ranks #${sig.matchup.rank} easiest for ${b.pos}s.`)
+    bits.push(b.hold ? "He's good enough to hold past this week, too." : "Think of him as a one-week swing for upside, not a long-term add.")
+    out.push({
+      kind: 'boom',
+      label: 'Boom pick',
+      headline: `${b.name} (${b.pos}, ${b.team}${game})`,
+      body: `If you need a ceiling this week, he's the free agent to look at, projecting about ${b.proj.toFixed(1)} points. ${bits.join(' ')}`,
+    })
+  }
+  if (s.trade) {
+    const t = s.trade
+    const fair = /win-win/i.test(t.fairness)
+      ? "It's a win-win, which is the easiest kind of trade to get done."
+      : /you win/i.test(t.fairness)
+        ? 'You come out ahead on value, so expect a little pushback.'
+        : /they win/i.test(t.fairness)
+          ? 'They come out ahead on value, which should make it an easy yes for them.'
+          : 'The value is about even.'
+    out.push({
+      kind: 'trade',
+      label: 'Trade idea',
+      headline: `${t.give} for ${t.get}`,
+      body:
+        `Offer ${t.give} to ${t.team} for ${t.get}. ${t.get} would start${t.slot ? ` at ${t.slot}` : ''} for you, worth about +${t.gain.toFixed(1)} a week the rest of the way.` +
+        `${t.forThem ? ` For them, ${t.forThem}.` : ''} ${fair}`,
+    })
+  }
+  return out
+}
+
+const CALLOUT_STYLE: Record<Callout['kind'], { bar: string; tint: string; label: string }> = {
+  warn: { bar: '#d97706', tint: '#fffbeb', label: '#b45309' },
+  injury: { bar: '#f59e0b', tint: '#fffbeb', label: '#b45309' },
+  injuryOut: { bar: '#e11d48', tint: '#fff1f2', label: '#be123c' },
+  waiver: { bar: '#16a34a', tint: '#f0fdf4', label: '#15803d' },
+  flip: { bar: '#7c3aed', tint: '#f5f3ff', label: '#6d28d9' },
+  boom: { bar: '#ea580c', tint: '#fff7ed', label: '#c2410c' },
+  trade: { bar: '#2563eb', tint: '#eff6ff', label: '#1d4ed8' },
+}
+
+function calloutHtml(c: Callout) {
+  const st = CALLOUT_STYLE[c.kind]
+  return (
+    `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 12px;border-collapse:separate;">` +
+    `<tr><td width="4" style="width:4px;background:${st.bar};border-radius:4px 0 0 4px;font-size:0;line-height:0;">&nbsp;</td>` +
+    `<td style="padding:12px 14px;background:${st.tint};border-radius:0 12px 12px 0;">` +
+    `<div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:${st.label};">${escapeHtml(c.label)}</div>` +
+    `<div style="margin:3px 0 5px;font-size:16px;font-weight:700;line-height:1.35;color:#18181b;">${escapeHtml(c.headline)}</div>` +
+    `<div style="font-size:14px;line-height:1.6;color:#3f3f46;">${escapeHtml(c.body)}</div>` +
+    `</td></tr></table>`
+  )
+}
+
+function statCell(value: string, label: string) {
+  return (
+    `<td align="center" style="padding:6px 4px;">` +
+    `<div style="font-size:22px;font-weight:800;line-height:1.1;color:#fafafa;">${escapeHtml(value)}</div>` +
+    `<div style="margin-top:3px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#a1a1aa;">${escapeHtml(label)}</div>` +
+    `</td>`
+  )
+}
+
+function leagueCardHtml(s: Section) {
+  const p = s.odds?.playoff ?? null
+  const fill = p == null ? 0 : Math.max(2, Math.min(100, Math.round(p * 100)))
+  const barColor = p == null ? '#52525b' : p >= 0.6 ? '#22c55e' : p >= 0.3 ? '#f59e0b' : '#f43f5e'
+  const meta = `${s.provider} · ${agoText(s.syncedAt)}`
+  const bar =
+    p == null
+      ? ''
+      : `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:12px;border-collapse:separate;">` +
+        `<tr><td style="padding:0;background:#3f3f46;border-radius:999px;height:8px;font-size:0;line-height:0;">` +
+        `<table role="presentation" width="${fill}%" cellspacing="0" cellpadding="0"><tr><td style="background:${barColor};border-radius:999px;height:8px;font-size:0;line-height:0;">&nbsp;</td></tr></table>` +
+        `</td></tr></table>` +
+        `<div style="margin-top:6px;font-size:11px;color:#a1a1aa;">Playoff odds from 3,000 simulated rest-of-seasons</div>`
+  const summary = [oddsTake(s), strengthTake(s)].filter(Boolean).join(' ')
+  return (
+    `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:24px 0 0;border:1px solid #e4e4e7;border-radius:18px;border-collapse:separate;overflow:hidden;">` +
+    `<tr><td style="padding:18px 18px 16px;background:#18181b;border-radius:18px 18px 0 0;">` +
+    `<div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#71717a;">${escapeHtml(meta)}</div>` +
+    `<div style="margin-top:3px;font-size:20px;font-weight:800;line-height:1.25;color:#fafafa;">${escapeHtml(s.name)}</div>` +
+    `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:12px;"><tr>` +
+    statCell(ordinal(s.place), `of ${s.teams}`) +
+    statCell(s.record, 'Record') +
+    statCell(pct(s.odds?.playoff), 'Playoffs') +
+    statCell(pct(s.odds?.title), 'Title') +
+    `</tr></table>` +
+    bar +
+    `</td></tr>` +
+    `<tr><td style="padding:16px 16px 6px;background:#ffffff;border-radius:0 0 18px 18px;">` +
+    (summary ? `<div style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#27272a;">${escapeHtml(summary)}</div>` : '') +
+    callouts(s).map(calloutHtml).join('') +
+    `</td></tr></table>`
+  )
+}
+
+function emailHtml(sections: Section[], week: number, firstName: string) {
+  const hello = firstName ? `Hey ${firstName},` : 'Hey there,'
+  const intro =
+    `Here's your week ${week} check-in. ${sections.length > 1 ? `We looked at all ${sections.length} of your leagues` : 'We looked at your league'}: ` +
+    `where you stand, who's banged up, and a few moves worth making before the waiver run.`
+  const outro = `Good luck this week. Everything here is live in the app with the full breakdown, so tap in before you make a move.`
+  const html = wrapTransactionalEmailHtml({
+    title: `Your week ${week} fantasy check-in`,
+    headline: hello,
+    appUrl: APP_URL,
+    bodyHtml:
+      transactionalEmailParagraph(escapeHtml(intro)) +
+      sections.map(leagueCardHtml).join('') +
+      `<div style="margin:24px 0 16px;font-size:15px;line-height:1.6;color:#52525b;">${escapeHtml(outro)}</div>`,
+    cta: { href: `${APP_URL}/?tab=fantasy`, label: 'Open Fantasy' },
+    footerNoteHtml: "Don't want these? Turn them off in EdgeTilt Settings, Notifications (Fantasy: weekly outlook).",
+  })
+  const text = [
+    hello,
+    '',
+    intro,
+    '',
+    ...sections.flatMap((s) => [
+      `${s.name.toUpperCase()} (${s.provider}, ${agoText(s.syncedAt)})`,
+      `${ordinal(s.place)} of ${s.teams} · ${s.record} · Playoffs ${pct(s.odds?.playoff)} · Title ${pct(s.odds?.title)}`,
+      [oddsTake(s), strengthTake(s)].filter(Boolean).join(' '),
+      ...callouts(s).map((c) => `${c.label}: ${c.headline}. ${c.body}`),
+      '',
+    ]),
+    outro,
+    `Open Fantasy: ${APP_URL}/?tab=fantasy`,
+  ].join('\n')
+  return { html, text }
 }
 
 async function sendEmail(to: string, subject: string, html: string, text: string) {
@@ -289,7 +521,16 @@ async function sendEmail(to: string, subject: string, html: string, text: string
   return { id: body?.id ? String(body.id) : null }
 }
 
-type Opts = { force?: boolean; dryRun?: boolean; onlyUser?: string; noEmail?: boolean; noRefresh?: boolean; background?: boolean }
+type Opts = {
+  force?: boolean
+  dryRun?: boolean
+  onlyUser?: string
+  noEmail?: boolean
+  noRefresh?: boolean
+  background?: boolean
+  /** With dryRun: also return the rendered email HTML. */
+  preview?: boolean
+}
 
 /** One user's digest: refresh stale hosts, build every NFL league's section, push + email once per week. */
 async function processUser(admin: SupabaseClient, userId: string, season: number, week: number, opts: Opts) {
@@ -330,7 +571,12 @@ async function processUser(admin: SupabaseClient, userId: string, season: number
   if (!sections.length) return { userId, skipped: 'no leagues' }
   const { title, body: text } = pushCopy(sections, week)
   const refreshed = [...fresh.values()].map((f) => ({ provider: f.provider, syncedAt: f.syncedAt, error: f.error }))
-  if (opts.dryRun) return { userId, title, body: text, refreshed, sections }
+  if (opts.dryRun) {
+    if (!opts.preview) return { userId, title, body: text, refreshed, sections }
+    const { data: profile } = await admin.from('profiles').select('display_name').eq('id', userId).maybeSingle()
+    const { html } = emailHtml(sections, week, str(profile?.display_name).split(/\s+/)[0] || '')
+    return { userId, title, body: text, refreshed, sections, html }
+  }
 
   const { data: inserted } = await admin
     .from('fantasy_weekly_digests')
@@ -358,8 +604,10 @@ async function processUser(admin: SupabaseClient, userId: string, season: number
     const { data: user } = await admin.auth.admin.getUserById(userId)
     const to = str(user?.user?.email)
     if (to && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
-      const { html, text: plain } = emailHtml(sections, week)
-      sent.email = await sendEmail(to, `Your week ${week} fantasy outlook`, html, plain).catch((e) => ({ error: String(e) }))
+      const { data: profile } = await admin.from('profiles').select('display_name').eq('id', userId).maybeSingle()
+      const firstName = str(profile?.display_name).split(/\s+/)[0] || ''
+      const { html, text: plain } = emailHtml(sections, week, firstName)
+      sent.email = await sendEmail(to, `Your week ${week} fantasy check-in`, html, plain).catch((e) => ({ error: String(e) }))
       emailed = Boolean((sent.email as Obj)?.id)
     }
   }

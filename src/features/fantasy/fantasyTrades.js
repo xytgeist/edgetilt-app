@@ -61,14 +61,26 @@ export function valueContext(values, scoring, sport = 'nfl', { market = true, wa
     const h = horizonValue(fa, scoring, fa.injury_status, sport)
     if (h.injury === 'long' || h.injury === 'out') continue
     const prof = seasonProfile(fa, h, ctx, pos)
-    ;(byPos[pos] ||= []).push({ ppg: prof ? prof.ppg : h.healthy, weekly: prof ? prof.weekly : h.avg })
+    ;(byPos[pos] ||= []).push({ ppg: prof ? prof.ppg : h.healthy, weekly: prof ? prof.weekly : h.avg, fa })
   }
   for (const [pos, list] of Object.entries(byPos)) {
     list.sort((a, b) => b.ppg - a.ppg)
     const pick = list[Math.min(REPLACEMENT_RANK, list.length - 1)]
     ctx.repl[pos] = pick?.ppg || 0
     if (waivers && pick) {
-      ctx.waivers.push({ id: `waiver:${pos}`, pos, value: pick.weekly, keep: pick.ppg, games: 0, market: 0, waiver: true, name: `a waiver ${pos}`, h: { injury: '' } })
+      ctx.waivers.push({
+        id: `waiver:${pos}`,
+        pos,
+        value: pick.weekly,
+        keep: pick.ppg,
+        games: 0,
+        market: 0,
+        waiver: true,
+        // Math stays on the 2nd-best free agent (the best may get claimed); the pitch names the best one.
+        name: list[0]?.fa?.name || pick.fa?.name || `a waiver ${pos}`,
+        team: list[0]?.fa?.team || pick.fa?.team || '',
+        h: { injury: '' },
+      })
     }
   }
   return ctx
@@ -113,7 +125,12 @@ function fillIns(before, after, arrivals) {
 
 function fillLine(list) {
   if (!list.length) return ''
-  return list.map((p) => (p.waiver ? `${p.name} (pickup)` : `${p.name} (${p.pos} ${p.value.toFixed(1)}/wk)`)).join(', ')
+  return list.map((p) => (p.waiver ? `${p.name} off waivers (${p.pos} ${p.value.toFixed(1)}/wk)` : `${p.name} (${p.pos} ${p.value.toFixed(1)}/wk)`)).join(', ')
+}
+
+/** Free agents their side counts on to fill in, named for the pitch. */
+function pickupNames(list) {
+  return list.filter((p) => p.waiver && !/^a waiver /.test(p.name)).map((p) => p.name)
 }
 
 /**
@@ -268,6 +285,7 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl', stan
           forThemCasual: describeForCasual(give, theirSeats.seats),
           myFill: fillLine(fillIns(myBefore, mySeats, [get])),
           theirFill: fillLine(fillIns(theirBefore, theirSeats, give)),
+          theirPickups: pickupNames(fillIns(theirBefore, theirSeats, give)),
         })
       }
     }
@@ -314,8 +332,14 @@ function sentence(text) {
 }
 
 /** Text-a-friend version: no team names, no stat tags, no labels. Why it works for them, then a light why for you. */
+function pickupClause(names, casual) {
+  if (!names?.length) return ''
+  const who = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]} are` : `${names[0]} is`
+  return casual ? `${who} on waivers if you need a fill-in.` : `If you need a fill-in, ${who.replace(/ (is|are)$/, '')} ${names.length > 1 ? 'are' : 'is'} available on waivers.`
+}
+
 function casualMessage(opener, offer) {
-  const theirs = sentence(offer.forThemCasual)
+  const theirs = [sentence(offer.forThemCasual), pickupClause(offer.theirPickups, true)].filter(Boolean).join(' ')
   const lift = offer.theirGain >= 1 ? 'Should bump your lineup a bit too.' : ''
   return [
     opener,
@@ -338,6 +362,7 @@ export function composeOfferMessage(offer, myTeamName, style = 'formal') {
     `I get: ${offer.get.map(playerLine).join(' + ')}`,
     '',
     `Why it works for you: ${offer.forThem}${offer.theirGain >= 0.25 ? `, about +${offer.theirGain.toFixed(1)} projected pts a week for your lineup` : ''}.`,
+    ...(offer.theirPickups?.length ? [pickupClause(offer.theirPickups, false)] : []),
     '',
     'Open to tweaks if you want to counter.',
   ]
@@ -572,6 +597,7 @@ export function reviewOffer({ values, detail, scoring, slots, sport = 'nfl', tea
       fairness: fairnessFor(c.theirGain, -c.valueEdge),
       forThem: describeFor(c.give, c.theirAfter.seats),
       forThemCasual: describeForCasual(c.give, c.theirAfter.seats),
+      theirPickups: pickupNames(c.theirMoves.inn.filter((p) => !c.give.some((g) => g.id === p.id))),
       score: c.myGain + 0.6 * Math.min(c.theirGain, 3) - 0.2 * Math.max(0, c.give.length + c.get.length - 2),
     })
   }
@@ -715,5 +741,6 @@ export function composeCounterMessage(counter, myTeamName, style = 'formal') {
     `I get: ${counter.get.map(playerLine).join(' + ')}`,
     '',
     `Why it still works for you: ${counter.forThem}${counter.theirGain >= 0.25 ? `, about +${counter.theirGain.toFixed(1)} projected pts a week for your lineup` : ''}.`,
+    ...(counter.theirPickups?.length ? [pickupClause(counter.theirPickups, false)] : []),
   ].join('\n')
 }

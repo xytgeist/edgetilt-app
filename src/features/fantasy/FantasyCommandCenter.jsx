@@ -360,6 +360,14 @@ function gameStarted(card) {
   return false
 }
 
+/** This week's projection in this league's rules (projected stat line), else Sleeper's PPR number. */
+function projectedOf(card, scoring, sport) {
+  const fromLine = card?.proj_line ? scoreLine(card.proj_line, scoring, sport, card.pos || null) : null
+  if (Number.isFinite(fromLine)) return fromLine
+  const p = Number(card?.projected)
+  return Number.isFinite(p) ? p : NaN
+}
+
 /** Our box × this league's rules, else the host/Sleeper number once the game has started. */
 function pointsOf(card, scoring, sport) {
   if (!card || !gameStarted(card)) return null
@@ -391,7 +399,7 @@ function sideOutlook(roster, cards, scoring, sport) {
     const livePts = pointsOf(card, scoring, sport)
     // A starter ruled out projects zero until his game starts (hosts score him the same way).
     const ruledOut = !livePts && injuryKey(row.injury_status) === 'out'
-    const p = ruledOut ? 0 : Number(card.projected)
+    const p = ruledOut ? 0 : projectedOf(card, scoring, sport)
     const hasP = Number.isFinite(p)
     if (hasP) {
       projected += p
@@ -869,8 +877,7 @@ function gameProgressOf(card, sport) {
 }
 
 /** Live projection: points so far plus the original projection for the share of the game still to play. */
-function liveProjection(card, actual, sport) {
-  const proj = Number(card?.projected)
+function liveProjection(card, actual, sport, proj) {
   if (!Number.isFinite(proj)) return null
   const progress = gameProgressOf(card, sport)
   if (progress == null) return null
@@ -883,7 +890,7 @@ function liveProjection(card, actual, sport) {
  */
 function PointsCell({ card, loading, scoring, sport, align }) {
   const status = sideStatus(card)
-  const proj = Number(card?.projected)
+  const proj = projectedOf(card, scoring, sport)
   const hasProj = Number.isFinite(proj)
   const scored = status === 'Proj' ? null : pointsOf(card, scoring, sport)
   let main = !card && loading ? '…' : '-'
@@ -894,7 +901,7 @@ function PointsCell({ card, loading, scoring, sport, align }) {
     main = pts(scored.pts) || '0.0'
     if (status === 'Live') {
       mainCls = 'fantasy-live-pts'
-      const paced = liveProjection(card, scored.pts, sport)
+      const paced = liveProjection(card, scored.pts, sport, proj)
       if (paced != null && hasProj) {
         sub = pts(paced)
         const delta = paced - proj

@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
   try {
     const list = players as Array<Record<string, string>>
     const result = sport === 'nba' || sport === 'nhl' || sport === 'mlb'
-      ? await buildSportLineupCards(list, sport)
+      ? await buildSportLineupCards(list, sport, admin)
       : await buildFantasyLineupCards(admin, list)
     return json(200, { ok: true, ...result })
   } catch (err) {

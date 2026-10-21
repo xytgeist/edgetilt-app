@@ -13,7 +13,7 @@ const MISS_TIME = /\b((will|expected to|set to|likely to) miss|miss (some|signif
 const SEASON = /\b(rest|remainder) of the (season|year)\b|\bseason[- ]ending\b|\bout for the season\b/i
 const IN_GAME = /\b(remainder of|rest of|(won'?t|will not) return|questionable to return|doubtful to return|return to (the )?game|locker room|carted|blue tent|sideline|halftime|in the (first|second|third|fourth) quarter)\b/i
 const ACTIVATED = /\b(activated|reinstated|returns? from|back from)\b.*\b(injured reserve|ir|pup|suspension)\b/i
-const CLEARED = /\b(will play|is active|(listed as )?active (sunday|monday|thursday|saturday|for)|expected to play|cleared|off the injury report|(no|without an|does not have an) injury designation|practiced fully|full participant|will start|set to play|good to go|on track to play)\b/i
+const CLEARED = /\b(will play|is active|(listed as )?active (sunday|monday|thursday|saturday|for)|expected to play|cleared|off the injury report|(no|without an|does not have an) injury designation|practiced fully|full participant|will start|set to play|good to go|on track to play|(listed as )?probable)\b/i
 const OUT = /\b(ruled out|will not play|won'?t play|out for (sunday|monday|thursday|saturday|week \d+)|is out (sunday|monday|thursday|saturday|this week)|inactive|injured reserve|(to|on) ir|out indefinitely)\b/i
 const DOUBTFUL = /\bdoubtful\b/i
 const QUESTIONABLE = /\bquestionable\b/i
@@ -21,8 +21,14 @@ const QUESTIONABLE = /\bquestionable\b/i
 const RANK = { '': 0, questionable: 1, doubtful: 2, out: 3 }
 const LABEL = { questionable: 'Questionable', doubtful: 'Doubtful', out: 'Out' }
 
+/** Hypotheticals ("If Curry suffers a setback ... he'll miss time") never set a status. */
+const CONDITIONAL = /^(if|should|in the event|assuming)\b/i
+
 function noteText(note) {
   return `${note?.headline || ''} ${note?.story || ''}`
+    .split(/(?<=[.!?])\s+/)
+    .filter((sentence) => !CONDITIONAL.test(sentence.trim()))
+    .join(' ')
 }
 
 /** 'out' | 'doubtful' | 'questionable' | 'cleared' | '' for one note. */

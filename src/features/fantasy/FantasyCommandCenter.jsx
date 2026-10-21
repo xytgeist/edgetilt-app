@@ -1433,6 +1433,32 @@ function HomeAlerts({ leagues, details, cards, cardsLoading, onOpenLeague }) {
 }
 
 /** Every NFL player on your teams (all slots) → the leagues they are on and whether you start them anywhere. */
+/** Sleeper NBA rows have no photo of their own; the lineup cards carry one (ESPN via our R2). */
+function withCardHeadshots(details, cards, sport) {
+  if (!details || !cards) return details
+  const next = {}
+  for (const [leagueId, detail] of Object.entries(details)) {
+    const byTeam = detail?.rostersByTeam
+    if (!byTeam || String(detail?.league?.sport || 'nfl').toLowerCase() !== sport) {
+      next[leagueId] = detail
+      continue
+    }
+    const patch = (row) => {
+      const url = !row?.headshot_url && row?.sleeper_id ? cards[row.sleeper_id]?.headshot_url : null
+      return url ? { ...row, headshot_url: url } : row
+    }
+    const rosters = {}
+    for (const [teamId, rows] of Object.entries(byTeam)) rosters[teamId] = (rows || []).map(patch)
+    next[leagueId] = {
+      ...detail,
+      rostersByTeam: rosters,
+      mineRoster: (detail.mineRoster || []).map(patch),
+      oppRoster: (detail.oppRoster || []).map(patch),
+    }
+  }
+  return next
+}
+
 function myPlayers(leagues, details, sport = 'nfl') {
   const out = new Map()
   for (const lg of leagues || []) {
@@ -3161,9 +3187,10 @@ export default function FantasyCommandCenter({
   const nflNewsMap = useMemo(() => newsByPlayer(nflNews.notes), [nflNews.notes])
   const nbaNewsMap = useMemo(() => newsByPlayer(nbaNews.notes), [nbaNews.notes])
   // Every tool reads rows with fresh news applied: a ruled-out starter is Out for Start/Sit before the host says so.
+  const nbaCards = cardsBySport?.nba || null
   const details = useMemo(
-    () => withNews(withNews(syncedDetails, nflNewsMap, 'nfl'), nbaNewsMap, 'nba'),
-    [syncedDetails, nflNewsMap, nbaNewsMap],
+    () => withCardHeadshots(withNews(withNews(syncedDetails, nflNewsMap, 'nfl'), nbaNewsMap, 'nba'), nbaCards, 'nba'),
+    [syncedDetails, nflNewsMap, nbaNewsMap, nbaCards],
   )
   // One Player news list; NBA ids get a prefix there so they do not collide with NFL ones.
   const { newsPlayers, news } = useMemo(() => {

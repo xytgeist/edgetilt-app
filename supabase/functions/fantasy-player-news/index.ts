@@ -12,6 +12,7 @@ import { userIdFromJwt } from '../_shared/userJwt.ts'
 import { decodeHtmlEntities } from '../_shared/decodeHtmlEntities.ts'
 import { sharedCached } from '../_shared/edgeSharedCache.ts'
 import { espnFetch } from '../_shared/loungeSportsScoreboard.ts'
+import { lookupNbaEspnId, nbaEspnIds } from '../_shared/nbaEspnIds.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,48 +79,6 @@ function playerFeed(espnId: string, admin: SupabaseClient) {
   return sharedCached(`fantasy:news:${espnId}`, { ttlMs: FEED_TTL_MS, leaseMs: 20_000, admin }, () => readPlayerFeed(espnId))
 }
 
-const NBA_ESPN_TEAMS = [
-  'atl', 'bos', 'bkn', 'cha', 'chi', 'cle', 'dal', 'den', 'det', 'gs', 'hou', 'ind', 'lac', 'lal', 'mem',
-  'mia', 'mil', 'min', 'no', 'ny', 'okc', 'orl', 'phi', 'phx', 'por', 'sac', 'sa', 'tor', 'utah', 'wsh',
-]
-/** ESPN NBA abbreviations -> Sleeper's. */
-const NBA_TEAM_ALIAS: Record<string, string> = { GS: 'GSW', SA: 'SAS', NO: 'NOP', NY: 'NYK', UTAH: 'UTA', WSH: 'WAS' }
-const nbaTeam = (t: unknown) => {
-  const k = str(t).toUpperCase().replace(/[^A-Z]/g, '')
-  return NBA_TEAM_ALIAS[k] || k
-}
-const nameKey = (n: unknown) => str(n).toLowerCase().replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '').replace(/[^a-z0-9]/g, '')
-
-/** [`name|TEAM` or `name`, ESPN athlete id] from every NBA roster. */
-async function readNbaEspnIds(): Promise<Array<[string, string]>> {
-  const out: Array<[string, string]> = []
-  const rosters = await mapLimit(NBA_ESPN_TEAMS, CONCURRENCY, async (abbr) => {
-    const res = await espnFetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${abbr}/roster`, {
-      headers: { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' },
-      signal: AbortSignal.timeout(6_000),
-    }).catch(() => null)
-    if (!res?.ok) return [] as Obj[]
-    const body = (await res.json().catch(() => ({}))) as Obj
-    return (Array.isArray(body?.athletes) ? body.athletes : []).map((a) => ({ ...(a as Obj), team: abbr }))
-  })
-  for (const a of rosters.flat()) {
-    const id = str(a.id)
-    const key = nameKey(a.displayName || a.fullName)
-    if (!id || !key) continue
-    out.push([`${key}|${nbaTeam(a.team)}`, id], [key, id])
-  }
-  return out
-}
-
-async function nbaEspnIds(admin: SupabaseClient): Promise<Map<string, string>> {
-  const entries = await sharedCached(
-    'fantasy:nba-espn-ids',
-    { ttlMs: 24 * 60 * 60 * 1000, staleMaxMs: 7 * 24 * 60 * 60 * 1000, leaseMs: 30_000, admin, shouldStore: (v) => v.length > 400 },
-    readNbaEspnIds,
-  )
-  return new Map(entries)
-}
-
 function nbaFeed(espnId: string, admin: SupabaseClient) {
   return sharedCached(`fantasy:news:fba:${espnId}`, { ttlMs: FEED_TTL_MS, leaseMs: 20_000, admin }, () => readPlayerFeed(espnId, 'fba'))
 }
@@ -133,7 +92,7 @@ async function nbaNotes(raw: unknown, admin: SupabaseClient): Promise<Obj[]> {
   if (!players.length) return []
   const ids = await nbaEspnIds(admin).catch(() => new Map<string, string>())
   const list = players
-    .map((p) => ({ p, espnId: ids.get(`${nameKey(p.name)}|${nbaTeam(p.team)}`) || ids.get(nameKey(p.name)) || '' }))
+    .map((p) => ({ p, espnId: lookupNbaEspnId(ids, p.name, p.team) }))
     .filter((x) => x.espnId)
   const feeds = await mapLimit(list, CONCURRENCY, (x) => nbaFeed(x.espnId, admin).catch(() => [] as FeedNote[]))
   const cutoff = Date.now() - NOTE_WINDOW_MS

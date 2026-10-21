@@ -12,6 +12,7 @@ import { loadFantasyLiveMap, lookupLive, lookupLiveDefense } from './fantasyLive
 import { kalshiMarketUrls } from './loungeNflGameFantasy.ts'
 import { loadMarketLines, marketLineFor } from './fantasyMarketProjections.ts'
 import { loadNbaBoard, teamWeek } from './fantasyNbaBoard.ts'
+import { lookupNbaEspnId, nbaEspnIds } from './nbaEspnIds.ts'
 
 const KALSHI_BASE = 'https://external-api.kalshi.com/trade-api/v2'
 const PROP_SERIES = ['KXNFLPASSYDS', 'KXNFLRSHYDS', 'KXNFLRECYDS', 'KXNFLREC', 'KXNFLTD'] as const
@@ -73,6 +74,8 @@ export type LineupCard = {
   games_week?: number | null
   games_left?: number | null
   games_played?: number | null
+  /** NBA: our R2 copy of the ESPN photo (else ESPN's); NFL rows read nfl_players. */
+  headshot_url?: string | null
 }
 
 export type GameRow = {
@@ -587,6 +590,34 @@ async function mergeLiveLines(
   }
 }
 
+async function attachNbaHeadshots(
+  cards: Record<string, LineupCard>,
+  list: PlayerIn[],
+  espnIds: Map<string, string>,
+  admin?: SupabaseClient,
+) {
+  const byCard = new Map<string, string>()
+  for (const raw of list) {
+    const espnId = lookupNbaEspnId(espnIds, raw.name, raw.team)
+    if (espnId) byCard.set(String(raw.sleeper_id), espnId)
+  }
+  if (!byCard.size) return
+  const stored = new Map<string, string>()
+  if (admin) {
+    const { data } = await admin
+      .from('player_headshots')
+      .select('espn_id, full_url')
+      .eq('league', 'nba')
+      .eq('status', 'ok')
+      .in('espn_id', [...new Set(byCard.values())])
+    for (const r of data || []) if (r?.full_url) stored.set(String(r.espn_id), String(r.full_url))
+  }
+  for (const [id, espnId] of byCard) {
+    const card = cards[id]
+    if (card) card.headshot_url = stored.get(espnId) || `https://a.espncdn.com/i/headshots/nba/players/full/${espnId}.png`
+  }
+}
+
 /**
  * NBA: Sleeper per-game projection + this week's schedule; the live line only while a game is on.
  * NHL and MLB: the ESPN line plus the tip time.
@@ -594,6 +625,7 @@ async function mergeLiveLines(
 export async function buildSportLineupCards(
   players: PlayerIn[],
   sport: string,
+  admin?: SupabaseClient,
 ): Promise<{ season: string; week: number; cards: Record<string, LineupCard> }> {
   const cards: Record<string, LineupCard> = {}
   const seen = new Set<string>()
@@ -611,8 +643,12 @@ export async function buildSportLineupCards(
     return { season: '', week: 0, cards }
   }
 
-  const board = await loadNbaBoard()
-  await mergeLiveLines(cards, list, sport, {})
+  const [board, espnIds] = await Promise.all([
+    loadNbaBoard(),
+    nbaEspnIds(admin).catch(() => new Map<string, string>()),
+    mergeLiveLines(cards, list, sport, {}),
+  ])
+  await attachNbaHeadshots(cards, list, espnIds, admin)
   if (!board) return { season: '', week: 0, cards }
   for (const raw of list) {
     const card = cards[String(raw.sleeper_id)]

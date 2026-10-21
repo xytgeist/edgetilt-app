@@ -276,6 +276,17 @@ const ESPN_LINEUP_SLOT: Record<number, string> = {
 }
 
 /** Starting slots from `settings.rosterSettings.lineupSlotCounts` (mSettings), e.g. ['QB','RB','RB','WR','WR','TE','FLEX','DEF','K']. */
+/** Regular season length + playoff team count, saved under Sleeper's key names. */
+function espnPlayoffs(settings: Record<string, unknown>): { playoff_week_start?: number; playoff_teams?: number } {
+  const sched = asRecord(settings.scheduleSettings)
+  const regular = Number(sched?.matchupPeriodCount)
+  const teams = Number(sched?.playoffTeamCount)
+  return {
+    ...(Number.isFinite(regular) && regular > 0 ? { playoff_week_start: regular + 1 } : {}),
+    ...(Number.isFinite(teams) && teams > 0 ? { playoff_teams: teams } : {}),
+  }
+}
+
 function espnLineupSlots(settings: Record<string, unknown>): string[] {
   const roster = asRecord(settings.rosterSettings)
   const counts = asRecord(roster?.lineupSlotCounts)
@@ -442,7 +453,12 @@ async function syncEspnConnection(
             season,
             sport: 'nfl',
             scoring: asRecord(settings.scoringSettings) || {},
-            settings: { size: settings.size ?? null, lineup_slots: espnLineupSlots(settings), waiver: espnWaiver(settings) },
+            settings: {
+              size: settings.size ?? null,
+              lineup_slots: espnLineupSlots(settings),
+              waiver: espnWaiver(settings),
+              ...espnPlayoffs(settings),
+            },
           },
           { onConflict: 'connection_id,external_league_id' },
         )

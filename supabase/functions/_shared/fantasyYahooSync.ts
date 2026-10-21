@@ -528,6 +528,28 @@ function yahooLineupSlots(root: unknown): string[] {
   return out
 }
 
+/** Playoff start week + team count, saved under Sleeper's key names so the app reads one shape. */
+function yahooPlayoffs(root: unknown): { playoff_week_start?: number; playoff_teams?: number } {
+  const out: { playoff_week_start?: number; playoff_teams?: number } = {}
+  const seen = new Set<unknown>()
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== 'object' || seen.has(node)) return
+    seen.add(node)
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item)
+      return
+    }
+    const obj = node as Record<string, unknown>
+    const start = Number(obj.playoff_start_week)
+    const teams = Number(obj.num_playoff_teams)
+    if (out.playoff_week_start == null && Number.isFinite(start) && start > 0) out.playoff_week_start = start
+    if (out.playoff_teams == null && Number.isFinite(teams) && teams > 0) out.playoff_teams = teams
+    for (const value of Object.values(obj)) visit(value)
+  }
+  visit(root)
+  return out
+}
+
 function yahooWaiver(payload: unknown): Record<string, unknown> | null {
   const pick = (key: string) => {
     const hit = collectByKey(payload, key)[0]
@@ -734,11 +756,13 @@ export async function syncYahooConnection(
       let scoring: Record<string, number> = {}
       let waiver: Record<string, unknown> | null = null
       let lineupSlots: string[] = []
+      let playoffs: { playoff_week_start?: number; playoff_teams?: number } = {}
       try {
         const settingsPayload = await yahooGet(access, `/league/${encodeURIComponent(leagueKey)}/settings`)
         scoring = yahooScoringFromSettings(settingsPayload)
         waiver = yahooWaiver(settingsPayload)
         lineupSlots = yahooLineupSlots(settingsPayload)
+        playoffs = yahooPlayoffs(settingsPayload)
       } catch {
         scoring = {}
       }
@@ -761,6 +785,7 @@ export async function syncYahooConnection(
               scoring_type: str(lg.scoring_type),
               ...(waiver ? { waiver } : {}),
               ...(lineupSlots.length ? { lineup_slots: lineupSlots } : {}),
+              ...playoffs,
             },
             updated_at: new Date().toISOString(),
           },

@@ -443,6 +443,10 @@ Notifications (F) deep-link into the relevant tab; prefs live under Settings (an
 
 ---
 
+## League outlook (home synopsis)
+
+Shipped 1.4.1345 (NFL): one expandable card per league under the home matchup card. Summary: playoff / title odds (season simulation on rest-of-season lineup strength, `fantasyLeagueOutlook.js`), standing, injuries, empty slots, lineup gain. Details: Start/Sit moves, waiver adds, sniper picks, trade ideas, each linking into its tab. Planned: a Tuesday late-afternoon push + email digest of the same synopsis per league; real remaining schedules from each host in place of random pairings; NBA after phase 2 (waivers / trades).
+
 ## Open decisions (Ryan)
 
 Record answers here when locked:

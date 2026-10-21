@@ -112,6 +112,11 @@ function teamPlayers(rows, ctx) {
     })
 }
 
+/** A team's rest-of-season strength: points per week of its best lineup (no waiver fill-ins). */
+export function teamStrength(rows, ctx, slots) {
+  return bestSeats(teamPlayers(rows, ctx), slots).total
+}
+
 /** Best lineup from this roster plus a waiver pickup at each position (fill-ins for traded starters). */
 function seatsOf(list, slots, ctx) {
   return bestSeats(ctx?.waivers?.length ? [...list, ...ctx.waivers] : list, slots)

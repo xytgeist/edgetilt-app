@@ -42,8 +42,11 @@ import {
   findTrades,
   parseOfferText,
   reviewOffer,
+  teamStrength,
   TRADE_STANCES,
+  valueContext,
 } from './fantasyTrades.js'
+import { playoffFormat, simulateLeague, weekPairs } from './fantasyLeagueOutlook.js'
 import { openExternalUrl, shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
 import { sportsBetPropTapPayload, useSportsBetOddsActions } from '../sports-bet-tracker/sportsBetLogContext.jsx'
@@ -3220,7 +3223,269 @@ function clearFantasyDeepLink() {
 }
 
 /** Main page: one swipe carousel of your matchups per sport. The centered card opens that league. */
-function HomeSportCarousel({ group, entries, cards, onOpen }) {
+/** Trade-board values per league for the home synopsis, kept across carousel swipes until a roster changes. */
+const synopsisValues = new Map()
+
+const pctText = (p) => (p == null ? '-' : p >= 0.995 ? '99%+' : p > 0 && p < 0.01 ? '<1%' : `${Math.round(p * 100)}%`)
+
+function SynopsisSection({ title, onOpen, children }) {
+  return (
+    <div className="border-t border-zinc-800 pt-2">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{title}</span>
+        {onOpen ? (
+          <button type="button" onClick={onOpen} className="text-[10px] font-semibold text-sky-400">
+            Open
+          </button>
+        ) : null}
+      </div>
+      <div className="space-y-0.5 text-[11px] leading-snug text-zinc-300">{children}</div>
+    </div>
+  )
+}
+
+/**
+ * League synopsis under the home matchup card (NFL): playoff / title odds from a season simulation, injuries,
+ * lineup fixes, and, once opened, the top waiver adds, sniper picks, and trade ideas. The summary line loads with
+ * home (one trade-board read per league, shared-cached on the Edge); waivers and sniper load on open.
+ */
+function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }) {
+  const leagueId = lg?.id || null
+  const rosterStamp = useRosterStamp(detail)
+  const [open, setOpen] = useState(false)
+  const [loaded, setLoaded] = useState({ key: '', data: null })
+  const [extra, setExtra] = useState({ id: null, waivers: null, sniper: null })
+  const nfl = sport === 'nfl'
+
+  useEffect(() => {
+    if (!supabaseClient || !leagueId || !nfl) return undefined
+    if (synopsisValues.get(leagueId)?.stamp === rosterStamp) return undefined
+    let alive = true
+    loadLeagueValues(supabaseClient, leagueId)
+      .then((data) => {
+        synopsisValues.set(leagueId, { stamp: rosterStamp, data })
+        if (alive) setLoaded({ key: `${leagueId}|${rosterStamp}`, data })
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [supabaseClient, leagueId, rosterStamp, nfl])
+
+  useEffect(() => {
+    if (!open || !supabaseClient || !leagueId || !nfl || extra.id === leagueId) return undefined
+    let alive = true
+    Promise.all([loadWaivers(supabaseClient, leagueId).catch(() => null), loadSniper(supabaseClient, leagueId).catch(() => null)]).then(
+      ([waivers, sniper]) => {
+        if (alive) setExtra({ id: leagueId, waivers, sniper })
+      },
+    )
+    return () => {
+      alive = false
+    }
+  }, [open, supabaseClient, leagueId, nfl, extra.id])
+
+  const cached = synopsisValues.get(leagueId)
+  const values =
+    loaded.key === `${leagueId}|${rosterStamp}` ? loaded.data : cached?.stamp === rosterStamp ? cached.data : null
+  const teams = useMemo(() => detail?.teams || [], [detail])
+  const mine = teams.find((t) => t.is_mine) || null
+  const myRows = useMemo(() => (mine ? detail?.rostersByTeam?.[mine.id] || [] : []), [detail, mine])
+  const slots = useMemo(() => leagueLineupSlots(detail?.league, myRows).slots, [detail, myRows])
+  const scoring = detail?.league?.scoring
+
+  const outlook = useMemo(() => {
+    if (!values || !mine || !slots.length) return null
+    const ctx = valueContext(values, scoring, sport, { market: false, waivers: false })
+    const strength = {}
+    for (const t of teams) strength[t.id] = teamStrength(detail?.rostersByTeam?.[t.id] || [], ctx, slots)
+    const format = playoffFormat(detail?.league, teams.length)
+    const odds = simulateLeague({
+      teams: teams.map((t) => ({ id: t.id, wins: t.wins, losses: t.losses, ties: t.ties, pointsFor: t.points_for })),
+      strength,
+      week: detail?.week,
+      pairs: weekPairs(detail?.matchups),
+      format,
+    })
+    const order = [...teams].sort((a, b) => (b.wins || 0) - (a.wins || 0) || (Number(b.points_for) || 0) - (Number(a.points_for) || 0))
+    const strengthRank = [...teams].sort((a, b) => (strength[b.id] || 0) - (strength[a.id] || 0)).findIndex((t) => t.id === mine.id) + 1
+    return {
+      odds: odds?.[mine.id] || null,
+      format,
+      place: order.findIndex((t) => t.id === mine.id) + 1,
+      strength: strength[mine.id] || 0,
+      strengthRank,
+    }
+  }, [values, mine, slots, teams, detail, scoring, sport])
+
+  const hurt = useMemo(
+    () =>
+      myRows
+        .filter((r) => (r.slot === 'starter' || r.slot === 'bench') && injuryTone(r.injury_status))
+        .map((r) => ({ row: r, tone: injuryTone(r.injury_status), starter: r.slot === 'starter' }))
+        .sort((a, b) => Number(b.starter) - Number(a.starter) || (a.tone === 'out' ? -1 : 1)),
+    [myRows],
+  )
+  const empty = useMemo(() => {
+    const open = slots.length ? openLineupSlots(myRows, slots) : {}
+    return Object.entries(open).map(([pos, n]) => `${n > 1 ? `${n} ` : ''}${pos}`)
+  }, [myRows, slots])
+  const lineup = useMemo(
+    () => (cards && slots.length ? optimizeLineup({ roster: myRows, cards, scoring, slots, sport }) : null),
+    [cards, slots, myRows, scoring, sport],
+  )
+
+  const waiverPicks = useMemo(() => {
+    if (!extra.waivers?.players?.length || !myRows.length || !slots.length) return []
+    return rankWaivers({ pool: extra.waivers, rosterRows: myRows, scoring, slots, sport }).filter((p) => p.starter).slice(0, 3)
+  }, [extra.waivers, myRows, scoring, slots, sport])
+  const boom = useMemo(
+    () => (extra.sniper?.sniper ? rankBoom({ sniper: extra.sniper.sniper, scoring, sport }).slice(0, 2) : []),
+    [extra.sniper, scoring, sport],
+  )
+  const trades = useMemo(() => {
+    if (!open || !values || !slots.length) return []
+    const step = readTradeStance()
+    const res = findTrades({ values, detail, scoring, slots, sport, stance: step / (TRADE_STANCES.length - 1) })
+    return [res.best, ...(res.alsoConsider || [])].filter(Boolean).slice(0, 2)
+  }, [open, values, detail, scoring, slots, sport])
+
+  if (!nfl || !mine) return null
+  const hurtStarters = hurt.filter((h) => h.starter).length
+  const summary = [
+    outlook?.odds ? `Playoffs ${pctText(outlook.odds.playoff)} · Title ${pctText(outlook.odds.title)}` : values ? null : 'Odds loading…',
+    outlook?.place ? `${ordinal(outlook.place)} of ${teams.length}` : null,
+    hurtStarters ? `${hurtStarters} hurt starter${hurtStarters > 1 ? 's' : ''}` : null,
+    empty.length ? `Empty ${empty.join(', ')}` : null,
+    lineup?.gain > 0.05 ? `Lineup +${lineup.gain.toFixed(1)}` : null,
+  ].filter(Boolean)
+  const toolOpen = (tool) => () => onOpenTool?.(tool)
+
+  return (
+    <div data-fantasy-synopsis className="mt-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 text-left touch-manipulation [-webkit-tap-highlight-color:transparent]"
+      >
+        <span className="min-w-0">
+          <span className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500">League outlook</span>
+          <span className="block truncate text-[11px] font-semibold text-zinc-200">{summary.join(' · ') || 'No issues this week'}</span>
+        </span>
+        <span className="shrink-0 text-[10px] font-semibold text-sky-400">{open ? 'Hide' : 'Details'}</span>
+      </button>
+      {open ? (
+        <div className="mt-2 space-y-2">
+          <SynopsisSection title="Outlook">
+            {outlook ? (
+              <>
+                <div>
+                  {ordinal(outlook.place)} of {teams.length} ({mine.wins || 0}-{mine.losses || 0}
+                  {mine.ties ? `-${mine.ties}` : ''}, {Math.round(Number(mine.points_for) || 0)} PF).
+                  {outlook.odds
+                    ? ` Playoffs ${pctText(outlook.odds.playoff)}, title ${pctText(outlook.odds.title)}.`
+                    : ' Regular season is over.'}
+                </div>
+                <div className="text-zinc-500">
+                  Rest-of-season lineup {outlook.strength.toFixed(1)}/wk ({ordinal(outlook.strengthRank)} best). Top {outlook.format.teams} make
+                  the playoffs from week {outlook.format.start}; remaining opponents are simulated.
+                </div>
+              </>
+            ) : (
+              <div className="text-zinc-500">Loading league values…</div>
+            )}
+          </SynopsisSection>
+          <SynopsisSection title="Injuries" onOpen={hurt.length ? toolOpen('start') : null}>
+            {hurt.length ? (
+              hurt.slice(0, 5).map(({ row, tone, starter }) => (
+                <div key={rowId(row) || row.player_name} className="flex items-baseline justify-between gap-2">
+                  <span className="min-w-0 truncate">
+                    {shortName(row.player_name, row.position)} <span className="text-zinc-500">{fantasyPos(row.position)}</span>
+                  </span>
+                  <span className={`shrink-0 font-semibold ${tone === 'out' ? 'text-rose-300' : 'text-amber-300'}`}>
+                    {injuryLabel(row.injury_status)}
+                    {starter ? ' · starting' : ' · bench'}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="text-zinc-500">No injury tags on your roster.</div>
+            )}
+            {empty.length ? <div className="text-amber-300">Empty lineup slot: {empty.join(', ')}</div> : null}
+          </SynopsisSection>
+          {lineup?.moves?.length ? (
+            <SynopsisSection title="Lineup this week" onOpen={toolOpen('start')}>
+              {lineup.moves.slice(0, 3).map((m) => (
+                <div key={m.start.row.sleeper_id}>
+                  Start {shortName(m.start.row.player_name, m.start.row.position)}
+                  {m.bench ? ` over ${shortName(m.bench.row.player_name, m.bench.row.position)}` : ''}{' '}
+                  <span className="fantasy-proj-up font-semibold">+{m.gain.toFixed(1)}</span>
+                </div>
+              ))}
+            </SynopsisSection>
+          ) : null}
+          <SynopsisSection title="Waiver adds" onOpen={toolOpen('waiver')}>
+            {extra.id !== leagueId ? (
+              <div className="text-zinc-500">Loading…</div>
+            ) : waiverPicks.length ? (
+              waiverPicks.map((pick) => (
+                <div key={pick.cand.id} className="flex items-baseline justify-between gap-2">
+                  <span className="min-w-0 truncate">
+                    {shortName(pick.cand.name, pick.cand.entry.position)} <span className="text-zinc-500">{pick.cand.pos}</span>
+                    {pick.drop ? <span className="text-zinc-500"> · drop {shortName(pick.drop.name, pick.drop.row?.position)}</span> : null}
+                  </span>
+                  <span className="fantasy-proj-up shrink-0 font-semibold">+{pick.gain.toFixed(1)}/wk</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-zinc-500">No free agent beats your lineup right now.</div>
+            )}
+          </SynopsisSection>
+          <SynopsisSection title="Sniper" onOpen={toolOpen('waiver')}>
+            {extra.id !== leagueId ? (
+              <div className="text-zinc-500">Loading…</div>
+            ) : boom.length ? (
+              boom.map((pick) => (
+                <div key={pick.entry.sleeper_id} className="flex items-baseline justify-between gap-2">
+                  <span className="min-w-0 truncate">
+                    {shortName(pick.entry.name, pick.entry.position)} <span className="text-zinc-500">{pick.entry.position}</span>
+                    {pick.reasons?.[0] ? <span className="text-zinc-500"> · {pick.reasons[0]}</span> : null}
+                  </span>
+                  <span className="shrink-0 font-semibold tabular-nums text-zinc-200">{pick.proj.toFixed(1)}</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-zinc-500">No boom candidates this week.</div>
+            )}
+          </SynopsisSection>
+          <SynopsisSection title="Trade ideas" onOpen={toolOpen('trade')}>
+            {!values ? (
+              <div className="text-zinc-500">Loading…</div>
+            ) : trades.length ? (
+              trades.map((offer) => (
+                <div key={`${offer.team?.id}-${offer.get?.[0]?.id}`} className="min-w-0">
+                  <div className="truncate">
+                    Get {offer.get.map((p) => shortName(p.name, p.pos)).join(' + ')} for{' '}
+                    {offer.give.map((p) => shortName(p.name, p.pos)).join(' + ')}
+                    <span className="text-zinc-500"> · {offer.team?.team_name}</span>
+                  </div>
+                  <div className="text-zinc-500">
+                    <span className="fantasy-proj-up font-semibold">+{offer.myGain.toFixed(1)}/wk</span> · {offer.fairness}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-zinc-500">No trade clears both lineups right now.</div>
+            )}
+          </SynopsisSection>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOpenTool }) {
   const [key, setKey] = useState(null)
   const found = entries.findIndex((e) => e.key === key)
   const index = found >= 0 ? found : 0
@@ -3260,6 +3525,17 @@ function HomeSportCarousel({ group, entries, cards, onOpen }) {
           </button>
         )}
       />
+      {entries[index] ? (
+        <LeagueSynopsis
+          key={entries[index].lg.id}
+          supabaseClient={supabaseClient}
+          lg={entries[index].lg}
+          detail={entries[index].leagueDetail}
+          cards={cards}
+          sport={group.sport}
+          onOpenTool={(tool) => onOpenTool?.(entries[index].lg.id, entries[index].item.key, tool)}
+        />
+      ) : null}
     </section>
   )
 }
@@ -3451,8 +3727,13 @@ export default function FantasyCommandCenter({
                 group={group}
                 entries={matchups}
                 cards={cardsFor(group.sport)}
+                supabaseClient={supabaseClient}
                 onOpen={(id, key) => {
                   setTool(DEFAULT_TOOL)
+                  openMatchup(id, key)
+                }}
+                onOpenTool={(id, key, tool) => {
+                  setTool(tool)
                   openMatchup(id, key)
                 }}
               />

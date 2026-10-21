@@ -15260,3 +15260,48 @@ html:not(.light) [data-fantasy-trade-stance] input[type='range']::-moz-range-thu
   background: #ffffff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
 }
+
+/* Fantasy: league sync status strip (auto-sync on open + Sync button). */
+@keyframes fantasy-sync-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+[data-fantasy-home] [data-fantasy-sync-strip] {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(14, 165, 233, 0.1);
+  color: #bae6fd;
+}
+[data-fantasy-home] [data-fantasy-sync-strip='done'] {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(16, 185, 129, 0.1);
+  color: #a7f3d0;
+}
+[data-fantasy-home] [data-fantasy-sync-track] {
+  background: rgba(56, 189, 248, 0.18);
+}
+[data-fantasy-home] [data-fantasy-sync-bar] {
+  background: #38bdf8;
+  animation: fantasy-sync-slide 1.1s ease-in-out infinite;
+}
+html.light [data-fantasy-home] [data-fantasy-sync-strip] {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #075985;
+}
+html.light [data-fantasy-home] [data-fantasy-sync-strip='done'] {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #065f46;
+}
+html.light [data-fantasy-home] [data-fantasy-sync-track] {
+  background: #e0f2fe;
+}
+html.light [data-fantasy-home] [data-fantasy-sync-bar] {
+  background: #0284c7;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-fantasy-home] [data-fantasy-sync-bar] {
+    animation: none;
+    width: 100%;
+  }
+}

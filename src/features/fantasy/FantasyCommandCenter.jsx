@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Check, RefreshCw } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
@@ -3027,6 +3027,33 @@ function HomeSportCarousel({ group, entries, cards, onOpen }) {
  * Home is the matchup cards, grouped by sport. A tap opens that league:
  * the matchup stays on top, the lineup sits under it, and the other games are a swipe.
  */
+const SYNC_HOST_LABEL = { sleeper: 'Sleeper', yahoo: 'Yahoo', espn: 'ESPN', cbs: 'CBS' }
+
+/** "Syncing your Yahoo and Sleeper leagues…" with an indeterminate bar, then a short "up to date". */
+function SyncStatusStrip({ syncing, providers }) {
+  const names = (providers || []).map((p) => SYNC_HOST_LABEL[p] || p)
+  const hosts = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0] || ''
+  return (
+    <div data-fantasy-sync-strip={syncing ? 'syncing' : 'done'} role="status" aria-live="polite" className="overflow-hidden rounded-xl border px-3 py-2">
+      <div className="flex items-center gap-2 text-[12px] font-semibold">
+        {syncing ? (
+          <RefreshCw size={13} strokeWidth={2.5} className="shrink-0 animate-spin" aria-hidden />
+        ) : (
+          <Check size={14} strokeWidth={2.75} className="shrink-0" aria-hidden />
+        )}
+        <span className="min-w-0 truncate">
+          {syncing ? `Syncing your ${hosts ? `${hosts} ` : ''}leagues…` : 'Leagues up to date'}
+        </span>
+      </div>
+      {syncing ? (
+        <div className="mt-1.5 h-0.5 overflow-hidden rounded-full" data-fantasy-sync-track>
+          <div className="h-full w-1/3 rounded-full" data-fantasy-sync-bar />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export default function FantasyCommandCenter({
   supabaseClient,
   leagues,
@@ -3038,6 +3065,9 @@ export default function FantasyCommandCenter({
   onSetPrimary,
   onOpenManage,
   onSync,
+  syncing = false,
+  syncProviders = [],
+  syncDone = false,
 }) {
   const [leagueId, setLeagueId] = useState(null)
   const [pageKey, setPageKey] = useState(null)
@@ -3123,11 +3153,21 @@ export default function FantasyCommandCenter({
         <div className="flex shrink-0 gap-2">
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || syncing}
             onClick={() => void onSync()}
-            className="rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 disabled:opacity-40"
+            data-fantasy-sync-btn={syncing ? 'on' : undefined}
+            className={`inline-flex items-center gap-1.5 rounded-full border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 ${
+              syncing ? '' : 'disabled:opacity-40'
+            }`}
           >
-            {busy ? '…' : 'Sync'}
+            {syncing ? (
+              <>
+                <RefreshCw size={12} strokeWidth={2.5} className="animate-spin" aria-hidden />
+                Syncing
+              </>
+            ) : (
+              'Sync'
+            )}
           </button>
           <button
             type="button"
@@ -3138,6 +3178,8 @@ export default function FantasyCommandCenter({
           </button>
         </div>
       </div>
+
+      {syncing || syncDone ? <SyncStatusStrip syncing={syncing} providers={syncProviders} /> : null}
 
       {!loadingDetail && !(leagues || []).length ? (
         <div className="rounded-2xl border border-zinc-800 p-4 text-[13px] text-zinc-400">

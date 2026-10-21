@@ -541,11 +541,27 @@ export default function FantasyHomeScreen({
     }
   }
 
+  // Sync status strip: which hosts are syncing now, and a brief "up to date" once they finish.
+  const [syncState, setSyncState] = useState({ manual: false, providers: [], done: false })
+  const syncDoneTimerRef = useRef(0)
+  const startSyncStatus = (connections, manual) =>
+    setSyncState((prev) => ({
+      manual: manual || prev.manual,
+      providers: [...new Set((connections || []).filter((c) => c.status !== 'revoked').map((c) => c.provider))],
+      done: false,
+    }))
+  const finishSyncStatus = (manual) => {
+    setSyncState((prev) => ({ ...prev, manual: manual ? false : prev.manual, done: true }))
+    window.clearTimeout(syncDoneTimerRef.current)
+    syncDoneTimerRef.current = window.setTimeout(() => setSyncState((prev) => ({ ...prev, done: false })), 2500)
+  }
+
   const onSync = async () => {
     if (!signedIn) return
     setBusy(true)
     setErr('')
     setInfo('')
+    startSyncStatus(snap.connections, true)
     try {
       const result = await syncAllFantasy(supabaseClient, snap.connections)
       if (result.warnings?.length) setInfo(result.warnings.join(' '))
@@ -555,6 +571,7 @@ export default function FantasyHomeScreen({
       setErr(e?.message || 'Sync failed.')
     } finally {
       setBusy(false)
+      finishSyncStatus(true)
     }
   }
 
@@ -583,11 +600,15 @@ export default function FantasyHomeScreen({
     if (!stale.length) return
     autoSyncAtRef.current = now
     setAutoSyncing(true)
+    startSyncStatus(stale, false)
     void syncAllFantasy(supabaseClient, stale)
       .then(() => refresh())
       .then(() => setDetailNonce((n) => n + 1))
       .catch(() => {})
-      .finally(() => setAutoSyncing(false))
+      .finally(() => {
+        setAutoSyncing(false)
+        finishSyncStatus(false)
+      })
   }, [supabaseClient, signedIn, booted, busy, snap.connections, wake, refresh])
 
   const onSetPrimary = async (id) => {
@@ -683,6 +704,9 @@ export default function FantasyHomeScreen({
               cards={cards}
               cardsLoading={cardsLoading}
               busy={busy || autoSyncing}
+              syncing={autoSyncing || syncState.manual}
+              syncProviders={syncState.providers}
+              syncDone={syncState.done && !autoSyncing && !syncState.manual}
               onSetPrimary={onSetPrimary}
               onOpenManage={() => setManageOpen(true)}
               onSync={onSync}

@@ -51,6 +51,8 @@ Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves 
 | `fantasy-espn-sync` | user JWT | re-sync using the stored ESPN cookie |
 | `fantasy-lineup-cards` | user JWT | `{ sport?, players: [{ sleeper_id, name, position, team }] }` → kickoff, season total / average, this-week projection, position rank, points-allowed matchup grade, open Kalshi lines (`stat`, yes ask, no ask), and a raw `line` from the ESPN box (NFL, NBA, NHL, MLB). The client multiplies `line` by `fantasy_leagues.scoring`. The NFL game hub uses that same map for the Fantasy tab, the per-play pills, and the landscape fantasy rail. With no league (or an empty map) those stay on the device Std / Half / PPR toggle. Sleeper and ESPN save that map on sync. Yahoo reads `/league/{key}/settings` and CBS reads `league/rules`, then stores the same flat keys (`pass_yd`, `rec`, …). A rules miss leaves `scoring` empty and the host total stays the fallback. No new SQL. |
 
+**Auto-sync on open (2026-10-20):** `FantasyHomeScreen` re-syncs every active connection whose `last_sync_at` is over 5 minutes old when the screen opens and when the page becomes visible again, in the background (Sync button shows `…`), then reloads league detail. Throttled on the last attempt so a failing host does not retry in a loop. There is no server cron for roster sync.
+
 Shared: **`fantasySleeperSync.ts`**, **`fantasyYahooSync.ts`**, **`fantasyEspnSync.ts`**. `verify_jwt = false` (manual JWT via `userIdFromJwt` except the Yahoo callback).
 
 ### Yahoo secrets (test + prod)

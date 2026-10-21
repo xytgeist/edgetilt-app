@@ -33,6 +33,7 @@ import { SportsBetLogGameProvider } from '../sports-bet-tracker/sportsBetLogCont
 
 /** Each lineup pill carries its own game fields; the provider only needs a non-null game to enable logging. */
 const FANTASY_BET_GAME = {}
+const AUTO_SYNC_STALE_MS = 5 * 60_000
 
 const YAHOO_HANDOFF_KEY = 'edge.fantasy.yahooHandoff'
 
@@ -557,6 +558,38 @@ export default function FantasyHomeScreen({
     }
   }
 
+  // Hosts change lineups and rosters outside EdgeTilt, so opening (or returning to) the screen re-syncs stale links.
+  const [autoSyncing, setAutoSyncing] = useState(false)
+  const [wake, setWake] = useState(0)
+  const autoSyncAtRef = useRef(0)
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined
+    const onVis = () => {
+      if (document.visibilityState === 'visible') setWake((n) => n + 1)
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
+  useEffect(() => {
+    if (!supabaseClient || !signedIn || !booted || busy) return
+    const now = Date.now()
+    // Keyed on the last attempt, not last_sync_at: a failing sync never moves last_sync_at and would retry forever.
+    if (now - autoSyncAtRef.current < AUTO_SYNC_STALE_MS) return
+    const stale = (snap.connections || []).filter((c) => {
+      if (c.status === 'revoked') return false
+      const at = Date.parse(c.last_sync_at || '')
+      return !Number.isFinite(at) || now - at > AUTO_SYNC_STALE_MS
+    })
+    if (!stale.length) return
+    autoSyncAtRef.current = now
+    setAutoSyncing(true)
+    void syncAllFantasy(supabaseClient, stale)
+      .then(() => refresh())
+      .then(() => setDetailNonce((n) => n + 1))
+      .catch(() => {})
+      .finally(() => setAutoSyncing(false))
+  }, [supabaseClient, signedIn, booted, busy, snap.connections, wake, refresh])
+
   const onSetPrimary = async (id) => {
     if (!signedIn || !id) return
     setBusy(true)
@@ -649,7 +682,7 @@ export default function FantasyHomeScreen({
               loadingDetail={loadingDetail}
               cards={cards}
               cardsLoading={cardsLoading}
-              busy={busy}
+              busy={busy || autoSyncing}
               onSetPrimary={onSetPrimary}
               onOpenManage={() => setManageOpen(true)}
               onSync={onSync}

@@ -1696,7 +1696,7 @@ function WaiverAvatar({ url, pos, team }) {
       <img
         src={shot.src}
         alt=""
-        className="absolute inset-0 h-full w-full origin-[center_22%] scale-[1.42] object-cover object-[center_18%]"
+        className="absolute inset-0 h-full w-full origin-[center_30%] scale-[1.75] object-cover"
         loading="lazy"
         decoding="async"
         onError={shot.onError}

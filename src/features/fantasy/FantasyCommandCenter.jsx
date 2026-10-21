@@ -103,7 +103,8 @@ function TeamLogo({ team }) {
     <img
       src={url}
       alt=""
-      className="h-10 w-10 shrink-0 object-contain"
+      data-fantasy-team-logo
+      className="h-10 w-10 shrink-0 rounded-[10px] object-cover"
       onError={() => setFailed(true)}
     />
   )
@@ -686,7 +687,11 @@ function VsHead({ row, align, final = false }) {
             {shortName(row.player_name, row.position)}
           </span>
           {injuryPill(row.injury_status)}
-          {row.news_note ? <span data-fantasy-news-dot aria-label="New news" className="h-1.5 w-1.5 shrink-0 rounded-full" /> : null}
+          {row.news_note ? (
+            <span data-fantasy-news-dot aria-label="New news" className="shrink-0 rounded px-1 py-px text-[8px] font-extrabold leading-none tracking-wide">
+              NEWS
+            </span>
+          ) : null}
         </div>
         <div className="truncate text-[10px] text-zinc-500">
           {fantasyPos(row.position) || row.position}
@@ -2010,6 +2015,13 @@ function OfferCard({ offer, myTeamName, compact = false, composeText, casualText
           ) : null}
         </div>
       ) : null}
+      {offer.value ? (
+        <div className="mt-1 text-[10px] tabular-nums text-zinc-500">
+          {offer.value.unit === 'market' ? 'Trade value (FantasyCalc)' : 'Value (pts above waivers, rest of season)'}: you give{' '}
+          <span className="font-semibold text-zinc-300">{Math.round(offer.value.give).toLocaleString('en-US')}</span> · you get{' '}
+          <span className="font-semibold text-zinc-300">{Math.round(offer.value.get).toLocaleString('en-US')}</span>
+        </div>
+      ) : null}
       <div className="mt-1.5 flex items-center justify-between gap-2">
         <span className="text-[11px] font-bold tabular-nums">
           <span className="fantasy-sit-in">+{offer.myGain.toFixed(1)}/wk you</span>
@@ -2471,6 +2483,7 @@ function TradesPanel({ supabaseClient, detail, sport }) {
             aria-label="Offer stance"
             aria-valuetext={TRADE_STANCES[stanceStep]}
             className="block w-full"
+            style={{ '--fill': `${(stanceStep / (TRADE_STANCES.length - 1)) * 100}%` }}
           />
           <div className="mt-0.5 flex justify-between text-[10px] font-semibold text-zinc-500">
             <span>Aggressive</span>

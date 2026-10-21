@@ -165,11 +165,17 @@ function valueGate({ give, get, myAfter, theirAfter, myRoster, theirRoster, ctx,
   return { ok, out, received: mine, ratio: out > 0 ? mine / out : Infinity }
 }
 
+/** Pill: lineups first (both improve = win-win), else who comes out ahead on trade value. */
 function fairnessFromValue(theirGain, ratio) {
-  if (ratio < 0.95) return 'Value for them'
-  if (theirGain >= 0.25) return 'Win-win'
-  if (ratio > 1.08) return 'Slight edge you'
-  return 'Even'
+  if (theirGain >= 0.25 && ratio >= 0.95) return 'Win-win'
+  if (ratio < 0.95) return 'They win the value'
+  if (ratio > 1.05) return 'You win the value'
+  return theirGain >= 0.25 ? 'Win-win' : 'Even'
+}
+
+/** Value line for the card: what each side gives in trade value, in market or points-above-waivers units. */
+function valueSummary(gate, ctx) {
+  return { give: gate.out, get: gate.received, unit: ctx.useMarket ? 'market' : 'pts' }
 }
 
 function seatOf(seats, id) {
@@ -207,9 +213,9 @@ function describeForCasual(players, seats) {
 
 function fairnessFor(theirGain, valueEdge) {
   if (theirGain >= 0.25) return 'Win-win'
-  if (valueEdge >= 1) return 'Value for them'
+  if (valueEdge >= 1) return 'They win the value'
   if (theirGain >= -0.25) return 'Even'
-  return 'Slight edge you'
+  return 'You win the value'
 }
 
 /**
@@ -280,6 +286,7 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl', stan
           theirGain,
           score: myGain + lim.theirWeight * Math.min(theirGain, 3) + lim.edgeWeight * edge - 0.15 * (give.length - 1),
           fairness: fairnessFromValue(theirGain, gate.ratio),
+          value: valueSummary(gate, ctx),
           forYou: `${get.name} starts at ${slotLabel(seatOf(mySeats.seats, get.id) || get.pos)} (+${myGain.toFixed(1)}/wk)`,
           forThem: describeFor(give, theirSeats.seats),
           forThemCasual: describeForCasual(give, theirSeats.seats),
@@ -478,6 +485,7 @@ export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' 
             theirGain,
             score,
             fairness: fairnessFromValue(theirGain, gate.ratio),
+            value: valueSummary(gate, ctx),
             forYou: `${z.name} starts at ${slotLabel(seatOf(myAfter.seats, z.id) || z.pos)} (+${myGain.toFixed(1)}/wk)`,
             forThem: `${need.x.name} steps in for ${need.lost.name}${give.length > 1 ? `, plus ${give.slice(1).map((p) => p.name).join(' and ')}` : ''}`,
             forThemCasual: `${lastName(need.x.name)} could step right in for ${lastName(need.lost.name)}${give.length > 1 ? `, and you'd get ${give.slice(1).map((p) => lastName(p.name)).join(' and ')} too` : ''}`,

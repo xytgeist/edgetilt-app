@@ -12045,10 +12045,14 @@ html.light [data-fantasy-home] [data-fantasy-live-side='right'] {
 }
 /* Fantasy roster rows: fresh-news dot + news block in the expanded panel */
 [data-fantasy-home] [data-fantasy-news-dot] {
-  background-color: #38bdf8;
+  background-color: #0ea5e9;
+  color: #f0f9ff;
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.55), 0 0 8px rgba(14, 165, 233, 0.55);
 }
 html.light [data-fantasy-home] [data-fantasy-news-dot] {
   background-color: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(2, 132, 199, 0.35);
 }
 [data-fantasy-home] [data-fantasy-panel-news-label] {
   color: #7dd3fc;
@@ -15213,9 +15217,45 @@ html.light [data-pval-editor] [role="switch"].bg-zinc-700 {
 
 
 /* Fantasy Trades: Aggressive ↔ Fair stance slider. */
-[data-fantasy-trade-stance] input[type='range'] {
-  accent-color: #e4e4e7;
-}
 html.light [data-fantasy-trade-stance] input[type='range'] {
   accent-color: #18181b;
+}
+/* Dark: a dim custom track (filled to the knob via --fill) instead of the bright native one. */
+html:not(.light) [data-fantasy-trade-stance] input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  background: transparent;
+}
+html:not(.light) [data-fantasy-trade-stance] input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #52525b 0 var(--fill, 50%), #27272a var(--fill, 50%) 100%);
+}
+html:not(.light) [data-fantasy-trade-stance] input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border-radius: 999px;
+  background: #a1a1aa;
+  border: 2px solid #3f3f46;
+}
+html:not(.light) [data-fantasy-trade-stance] input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: #27272a;
+}
+html:not(.light) [data-fantasy-trade-stance] input[type='range']::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: #52525b;
+}
+html:not(.light) [data-fantasy-trade-stance] input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #a1a1aa;
+  border: 2px solid #3f3f46;
 }

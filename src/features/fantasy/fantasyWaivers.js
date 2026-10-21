@@ -95,6 +95,13 @@ function minimumByPos(slots) {
 
 /** A drop is never someone the market prices this much above the pickup (FantasyCalc scale). */
 const DROP_MARKET_CUSHION = 300
+/** A handcuff can go only if another non-starting RB is worth this share of the starter he backs up. */
+const DECENT_RB_SHARE = 0.7
+
+function sameTeam(a, b) {
+  const t = (x) => String(x || '').toUpperCase().replace(/[^A-Z]/g, '')
+  return Boolean(t(a)) && t(a) === t(b)
+}
 
 /**
  * Rank the league's available players for this roster. `gain` is how much the best starting lineup improves per
@@ -178,12 +185,26 @@ export function rankWaivers({ pool, rosterRows, scoring, slots, sport = 'nfl' })
     // so byes and IR stashes do not decide who gets cut. Never drop someone the market values well above him.
     const keepValue = (p) => (p.rosTotal != null ? p.rosTotal : p.h.known ? Math.max(p.value, p.h.healthy) : p.value)
     const candKeep = cand.rosTotal != null ? cand.rosTotal : cand.h.healthy
+    // Handcuffs: a bench RB on the same NFL team as one of your starting RBs. Keep him unless another
+    // non-starting RB (the pickup counts) could hold that starter's spot if he goes down.
+    const startingRbs = before.seats.map((s) => s.p).filter((p) => p.pos === 'RB')
+    const weekly = (p) => p.rosWeekly ?? p.value
+    const cuffProtected = (p) => {
+      if (p.pos !== 'RB') return false
+      const starter = startingRbs.find((st) => st.id !== p.id && sameTeam(st.row?.nfl_team, p.row?.nfl_team))
+      if (!starter) return false
+      if (p.h.healthy < (replacement.RB || 0) * 0.8) return false
+      const others = after.filter((o) => o.pos === 'RB' && o.id !== p.id && o.id !== starter.id && !startingRbs.some((st) => st.id === o.id))
+      const bestOther = Math.max(0, ...others.map(weekly))
+      return bestOther < DECENT_RB_SHARE * weekly(starter)
+    }
     const drop = benchAfter
       .filter(
         (p) =>
           countPos(after, p.pos) - 1 >= (need[p.pos] || 0) &&
           keepValue(p) < candKeep &&
-          p.market <= cand.market + DROP_MARKET_CUSHION,
+          p.market <= cand.market + DROP_MARKET_CUSHION &&
+          !cuffProtected(p),
       )
       .sort((a, b) => keepValue(a) - keepValue(b) || a.market - b.market)[0] || null
 

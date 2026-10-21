@@ -1985,6 +1985,16 @@ function OfferCard({ offer, myTeamName, compact = false, composeText, casualText
           <div className="text-zinc-400">
             <span className="font-bold text-zinc-300">Them:</span> {offer.forThem}
           </div>
+          {offer.myFill ? (
+            <div className="text-zinc-400">
+              <span className="font-bold text-zinc-300">Your fill-in:</span> {offer.myFill}
+            </div>
+          ) : null}
+          {offer.theirFill ? (
+            <div className="text-zinc-400">
+              <span className="font-bold text-zinc-300">Their fill-in:</span> {offer.theirFill}
+            </div>
+          ) : null}
         </div>
       ) : null}
       <div className="mt-1.5 flex items-center justify-between gap-2">

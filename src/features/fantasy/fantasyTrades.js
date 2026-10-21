@@ -70,7 +70,7 @@ function seasonProfile(entry, h, ctx, pos) {
  * Shared inputs for every trade tool: player lookup, league scoring, weeks left, replacement level by position,
  * and whether the value gate prices players by market value (FantasyCalc, what managers actually trade for).
  */
-export function valueContext(values, scoring, sport = 'nfl', { market = true } = {}) {
+export function valueContext(values, scoring, sport = 'nfl', { market = true, waivers = true } = {}) {
   const byId = new Map((values?.league_players || []).map((p) => [String(p.sleeper_id), p]))
   const ctx = {
     byId,
@@ -79,18 +79,25 @@ export function valueContext(values, scoring, sport = 'nfl', { market = true } =
     weeksLeft: Number(values?.weeks_left) || 0,
     repl: {},
     useMarket: market && values?.market_source === 'fantasycalc',
+    /** One waiver pickup per position either team could add if a trade leaves them thin. */
+    waivers: [],
   }
   const byPos = {}
   for (const fa of values?.players || []) {
     const pos = fantasyPosition(fa.position)
+    if (pos === 'K' || pos === 'DEF') continue
     const h = horizonValue(fa, scoring, fa.injury_status, sport)
     if (h.injury === 'long' || h.injury === 'out') continue
     const prof = seasonProfile(fa, h, ctx, pos)
-    ;(byPos[pos] ||= []).push(prof ? prof.ppg : h.healthy)
+    ;(byPos[pos] ||= []).push({ ppg: prof ? prof.ppg : h.healthy, weekly: prof ? prof.weekly : h.avg })
   }
   for (const [pos, list] of Object.entries(byPos)) {
-    list.sort((a, b) => b - a)
-    ctx.repl[pos] = list[Math.min(REPLACEMENT_RANK, list.length - 1)] || 0
+    list.sort((a, b) => b.ppg - a.ppg)
+    const pick = list[Math.min(REPLACEMENT_RANK, list.length - 1)]
+    ctx.repl[pos] = pick?.ppg || 0
+    if (waivers && pick) {
+      ctx.waivers.push({ id: `waiver:${pos}`, pos, value: pick.weekly, keep: pick.ppg, games: 0, market: 0, waiver: true, name: `a waiver ${pos}`, h: { injury: '' } })
+    }
   }
   return ctx
 }
@@ -119,6 +126,22 @@ function teamPlayers(rows, ctx) {
         team: row.nfl_team || entry.team || '',
       }
     })
+}
+
+/** Best lineup from this roster plus a waiver pickup at each position (fill-ins for traded starters). */
+function seatsOf(list, slots, ctx) {
+  return bestSeats(ctx?.waivers?.length ? [...list, ...ctx.waivers] : list, slots)
+}
+
+/** Who steps into the lineup for the players leaving: everyone new to the lineup except the arrivals. */
+function fillIns(before, after, arrivals) {
+  const arriving = new Set(arrivals.map((p) => p.id))
+  return lineupMoves(before, after).inn.filter((p) => !arriving.has(p.id))
+}
+
+function fillLine(list) {
+  if (!list.length) return ''
+  return list.map((p) => (p.waiver ? `${p.name} (pickup)` : `${p.name} (${p.pos} ${p.value.toFixed(1)}/wk)`)).join(', ')
 }
 
 /**
@@ -212,9 +235,9 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl' }) {
   const teams = detail?.teams || []
   const mine = teams.find((t) => t.is_mine)
   if (!mine || !slots?.length) return { best: null, ifDeclined: [], alsoConsider: [] }
-  const total = (list) => bestSeats(list, slots).total
   const myPlayers = teamPlayers(detail.rostersByTeam?.[mine.id], ctx)
-  const myBase = total(myPlayers)
+  const myBefore = seatsOf(myPlayers, slots, ctx)
+  const myBase = myBefore.total
   const tradeable = (list) => list.filter((p) => p.pos !== 'K' && p.pos !== 'DEF' && p.keep > 0)
   const myOut = tradeable(myPlayers).sort((a, b) => b.keep - a.keep)
   const pairs = []
@@ -229,7 +252,8 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl' }) {
     if (team.id === mine.id) continue
     const theirs = teamPlayers(detail.rostersByTeam?.[team.id], ctx)
     if (!theirs.length) continue
-    const theirBase = total(theirs)
+    const theirBefore = seatsOf(theirs, slots, ctx)
+    const theirBase = theirBefore.total
     const offers = []
     for (const get of tradeable(theirs)) {
       const clearedAlone = new Set()
@@ -237,11 +261,11 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl' }) {
         if (give.length > 1 && give.some((p) => clearedAlone.has(p.id))) continue
         const giveIds = new Set(give.map((p) => p.id))
         const newMine = [...myPlayers.filter((p) => !giveIds.has(p.id)), get]
-        const mySeats = bestSeats(newMine, slots)
+        const mySeats = seatsOf(newMine, slots, ctx)
         const myGain = mySeats.total - myBase
         if (myGain < MIN_GAIN) continue
         const newTheirs = [...theirs.filter((p) => p.id !== get.id), ...give]
-        const theirSeats = bestSeats(newTheirs, slots)
+        const theirSeats = seatsOf(newTheirs, slots, ctx)
         const theirGain = theirSeats.total - theirBase
         if (theirGain < THEIR_FLOOR) continue
         const gate = valueGate({ give, get: [get], myAfter: mySeats, theirAfter: theirSeats, myRoster: newMine, theirRoster: newTheirs, ctx })
@@ -259,6 +283,8 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl' }) {
           forYou: `${get.name} starts at ${slotLabel(seatOf(mySeats.seats, get.id) || get.pos)} (+${myGain.toFixed(1)}/wk)`,
           forThem: describeFor(give, theirSeats.seats),
           forThemCasual: describeForCasual(give, theirSeats.seats),
+          myFill: fillLine(fillIns(myBefore, mySeats, [get])),
+          theirFill: fillLine(fillIns(theirBefore, theirSeats, give)),
         })
       }
     }
@@ -346,7 +372,7 @@ function isHurt(p) {
  */
 export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' }) {
   // A flip sells their need for a fill-in, which market value does not see; price it on lineup value.
-  const ctx = valueContext(values, scoring, sport, { market: false })
+  const ctx = valueContext(values, scoring, sport, { market: false, waivers: false })
   const teams = detail?.teams || []
   const mine = teams.find((t) => t.is_mine)
   if (!mine || !slots?.length) return []
@@ -488,13 +514,13 @@ function moveLine({ inn, out }, whose) {
   return [inn.length ? `In: ${fmt(inn)}` : '', out.length ? `Out: ${fmt(out)}` : ''].filter(Boolean).join('. ')
 }
 
-function evaluate({ myPlayers, theirs, giveIds, getIds, slots }) {
+function evaluate({ myPlayers, theirs, giveIds, getIds, slots, ctx }) {
   const give = myPlayers.filter((p) => giveIds.has(p.id))
   const get = theirs.filter((p) => getIds.has(p.id))
-  const myBefore = bestSeats(myPlayers, slots)
-  const theirBefore = bestSeats(theirs, slots)
-  const myAfter = bestSeats([...myPlayers.filter((p) => !giveIds.has(p.id)), ...get], slots)
-  const theirAfter = bestSeats([...theirs.filter((p) => !getIds.has(p.id)), ...give], slots)
+  const myBefore = seatsOf(myPlayers, slots, ctx)
+  const theirBefore = seatsOf(theirs, slots, ctx)
+  const myAfter = seatsOf([...myPlayers.filter((p) => !giveIds.has(p.id)), ...get], slots, ctx)
+  const theirAfter = seatsOf([...theirs.filter((p) => !getIds.has(p.id)), ...give], slots, ctx)
   const giveKeep = give.reduce((a, p) => a + p.keep, 0)
   const getKeep = get.reduce((a, p) => a + p.keep, 0)
   return {
@@ -526,7 +552,7 @@ export function reviewOffer({ values, detail, scoring, slots, sport = 'nfl', tea
   const give = new Set([...giveIds].map(String))
   const get = new Set([...getIds].map(String))
   if (!give.size || !get.size) return null
-  const ev = evaluate({ myPlayers, theirs, giveIds: give, getIds: get, slots })
+  const ev = evaluate({ myPlayers, theirs, giveIds: give, getIds: get, slots, ctx })
 
   // Receiving more bodies than you send means a cut; name the weakest bench player that keeps slots legal.
   const extra = ev.get.length - ev.give.length
@@ -546,7 +572,7 @@ export function reviewOffer({ values, detail, scoring, slots, sport = 'nfl', tea
     if (!g.size || !t.size) return
     const key = `${[...g].sort().join(',')}|${[...t].sort().join(',')}`
     if (counters.some((x) => x.key === key)) return
-    const c = evaluate({ myPlayers, theirs, giveIds: g, getIds: t, slots })
+    const c = evaluate({ myPlayers, theirs, giveIds: g, getIds: t, slots, ctx })
     if (c.myGain < Math.max(ev.myGain + 0.75, MIN_GAIN) || c.theirGain < COUNTER_FLOOR) return
     const giveKeep = c.give.reduce((a, p) => a + p.keep, 0)
     const getKeep = c.get.reduce((a, p) => a + p.keep, 0)

@@ -3354,3 +3354,5 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Ryan smoked phone landscape day
 
 **I am Mac Theo.** Ryan signed off today’s phone landscape chrome stack on device (`1.4.1041`–`1.4.1053` on prod). Backlog Update log has the sign-off. No open follow-ups from him on this pass.
+
+**TheRundown downgrade (2026-10-20, Mac Theo):** switch TheRundown Pro -> Starter (25M/mo) at the Nov 5 renewal. Code is ready (rate limit follows x-rate-limit, shared hub live state, daily usage row + alert email, props blend ~1.5M/mo). Check edge_shared_cache rundown:usage:* rows for real daily spend before switching.

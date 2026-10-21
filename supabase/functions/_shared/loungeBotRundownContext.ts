@@ -5,6 +5,7 @@
  * Test sandbox never calls TheRundown (same live key as prod). Scoreboard / Scott
  * on lvslotpro use ESPN where available; prod keeps scores-only + shop.
  */
+import { noteRundownUsage } from './rundownUsage.ts'
 import type { LineMovementAlert } from './loungeBotLineMovement.ts'
 import { isTestSupabaseProject } from './publicAppOrigin.ts'
 
@@ -243,8 +244,16 @@ function eventsMatchTeamsAndTime(
   return Math.abs(commenceMs - eventMs) <= COMMENCE_MATCH_MS
 }
 
-/** TheRundown allows 5 requests / second (`x-rate-limit`). Stay at 4 per isolate so bursts are not refused. */
-const RUNDOWN_MAX_PER_SEC = 4
+/**
+ * Requests per second per isolate, from TheRundown's own `x-rate-limit` header (Pro 5, Starter 2): one under
+ * the plan limit from 4 up, else the limit itself. Starts at Starter's 2 until a response says otherwise.
+ */
+let rundownMaxPerSec = 2
+function adoptRateLimit(headers: Headers) {
+  const limit = Number(headers.get('x-rate-limit'))
+  if (!Number.isFinite(limit) || limit < 1) return
+  rundownMaxPerSec = limit >= 4 ? limit - 1 : limit
+}
 const rundownStarts: number[] = []
 let rundownQueue: Promise<void> = Promise.resolve()
 
@@ -253,7 +262,7 @@ function rundownSlot(): Promise<void> {
     for (;;) {
       const now = Date.now()
       while (rundownStarts.length && now - rundownStarts[0] >= 1000) rundownStarts.shift()
-      if (rundownStarts.length < RUNDOWN_MAX_PER_SEC) {
+      if (rundownStarts.length < rundownMaxPerSec) {
         rundownStarts.push(now)
         return
       }
@@ -279,7 +288,11 @@ export async function rundownRequest<T>(path: string, opts: { timeoutMs?: number
         headers: { 'X-TheRundown-Key': key },
         ...(opts.timeoutMs ? { signal: AbortSignal.timeout(opts.timeoutMs) } : {}),
       })
-      if (res.ok) return await res.json() as T
+      adoptRateLimit(res.headers)
+      if (res.ok) {
+        noteRundownUsage(res.headers)
+        return await res.json() as T
+      }
       console.warn(`[rundown] ${res.status} ${route}${attempt === 0 && res.status === 429 ? ' (retrying)' : ''}`)
       if (res.status !== 429 || attempt > 0) return null
       await new Promise((r) => setTimeout(r, 1200))

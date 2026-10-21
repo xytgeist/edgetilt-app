@@ -10,6 +10,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { loadFantasyLiveMap, lookupLive, lookupLiveDefense } from './fantasyLiveLines.ts'
 import { kalshiMarketUrls } from './loungeNflGameFantasy.ts'
+import { loadMarketLines, marketLineFor } from './fantasyMarketProjections.ts'
 
 const KALSHI_BASE = 'https://external-api.kalshi.com/trade-api/v2'
 const PROP_SERIES = ['KXNFLPASSYDS', 'KXNFLRSHYDS', 'KXNFLRECYDS', 'KXNFLREC', 'KXNFLTD'] as const
@@ -63,6 +64,8 @@ export type LineupCard = {
   line?: Record<string, number> | null
   /** Sleeper's projected counting stats for this week (same keys as `line`). */
   proj_line?: Record<string, number> | null
+  /** Sportsbook-implied counting stats, only the ones a prop market covers (same keys as `proj_line`). */
+  market_line?: Record<string, number> | null
   /** Share of this player's game played (0-1), live only; the app paces the projection with it. */
   game_progress?: number | null
 }
@@ -473,6 +476,7 @@ export async function buildFantasyLineupCards(
   players: PlayerIn[],
 ): Promise<{ season: string; week: number; cards: Record<string, LineupCard> }> {
   const board = await loadBoard(admin)
+  const marketLines = await loadMarketLines(admin, board.season, board.week, board.kickoffByTeam.values()).catch(() => ({}))
   const cards: Record<string, LineupCard> = {}
   const seen = new Set<string>()
   for (const raw of players) {
@@ -518,6 +522,9 @@ export async function buildFantasyLineupCards(
       props,
       line: null,
       proj_line: board.projLine?.get(id) || null,
+      market_line: game && name && pos !== 'DEF' && pos !== 'K'
+        ? marketLineFor(marketLines, name, team, pos, board.projLine?.get(id))
+        : null,
     }
   }
   await mergeLiveLines(cards, players, 'nfl', { season: board.season, week: board.week })

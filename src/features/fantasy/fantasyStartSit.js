@@ -1,4 +1,4 @@
-import { scoreLine } from './fantasyBoxScore.js'
+import { projectionOf } from './fantasyProjection.js'
 
 /** Which player positions can fill each lineup slot. */
 const SLOT_ELIGIBLE = {
@@ -105,10 +105,9 @@ export function gameLocked(card) {
   return Number.isFinite(t) && t <= Date.now()
 }
 
-/** This week's projection in league scoring (projected stat line when we have it), then injury and bye. */
+/** This week's projection in league scoring (Sleeper + props blend, `fantasyProjection.js`), then injury and bye. */
 export function weekValue(row, card, scoring, sport = 'nfl') {
-  const fromLine = card?.proj_line ? scoreLine(card.proj_line, scoring, sport, fantasyPosition(row?.position)) : null
-  const base = Number.isFinite(fromLine) ? fromLine : Number(card?.projected)
+  const base = projectionOf(card, scoring, sport, fantasyPosition(row?.position))
   const proj = Number.isFinite(base) ? base : 0
   if (card?.bye) return { value: 0, proj, why: 'bye' }
   const injury = injuryKey(row?.injury_status)

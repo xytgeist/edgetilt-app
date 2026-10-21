@@ -2782,6 +2782,19 @@ async function rundownGet<T>(path: string): Promise<T | null> {
   return rundownRequest<T>(path, { timeoutMs: 10_000 })
 }
 
+/**
+ * Hub live-state backup (scores-only event). One fetch per game per 30s for every viewer: TheRundown data
+ * runs 30s (Pro) to 60s (Starter) behind, so each open hub's ~5s refresh calling it bought nothing.
+ */
+const RUNDOWN_LIVE_EVENT_TTL_MS = 30_000
+function cachedRundownLiveEvent(rundownId: string): Promise<unknown> {
+  return sharedCached<unknown>(
+    `rundown:live-event:${rundownId}`,
+    { ttlMs: RUNDOWN_LIVE_EVENT_TTL_MS, shouldStore: (value) => value != null },
+    () => rundownGet<unknown>(`/events/${rundownId}?affiliate_ids=0`),
+  )
+}
+
 /** ESPN timeout / period rows carry stale spots and no down/distance … never a LOS source. */
 /** ESPN `isTurnover` misses plain interceptions and flags blocked FGs, so key off the play type instead. */
 const ESPN_TURNOVER_PLAY_TYPE = /interception|fumble\s+recovery\s*\(opponent\)|fumble\s+return\s+touchdown/i
@@ -4408,7 +4421,7 @@ export async function fetchLoungeSportsGameDetail(
   // Player stats come from the ESPN box score (`statsFromPlayerBox`); TheRundown `/players/stats` cost ~515
   // datapoints a call on every 4s live hub refresh.
   const [eventRaw, oddsPack, pinPack, shopEvents] = await Promise.all([
-    rundownId ? rundownGet<unknown>(`/events/${rundownId}?affiliate_ids=0`) : Promise.resolve(null),
+    rundownId ? cachedRundownLiveEvent(rundownId) : Promise.resolve(null),
     cachedSportOdds(game.sport_key, liveHub),
     cachedPinnacleOdds(game.sport_key, liveHub),
     cachedRundownShop(String(game.sport_key || ''), [shopDay], liveHub),

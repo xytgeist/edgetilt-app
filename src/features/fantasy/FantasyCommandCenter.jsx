@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
+import { projectionOf } from './fantasyProjection.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { useLiveGames, useLivePlays } from './useFantasyLive.js'
@@ -360,12 +361,9 @@ function gameStarted(card) {
   return false
 }
 
-/** This week's projection in this league's rules (projected stat line), else Sleeper's PPR number. */
+/** This week's projection in this league's rules: Sleeper + sportsbook props blend (`fantasyProjection.js`). */
 function projectedOf(card, scoring, sport) {
-  const fromLine = card?.proj_line ? scoreLine(card.proj_line, scoring, sport, card.pos || null) : null
-  if (Number.isFinite(fromLine)) return fromLine
-  const p = Number(card?.projected)
-  return Number.isFinite(p) ? p : NaN
+  return projectionOf(card, scoring, sport, card?.pos || null)
 }
 
 /** Our box × this league's rules, else the host/Sleeper number once the game has started. */

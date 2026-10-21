@@ -194,6 +194,15 @@ async function sendBillingOpsEmail(subject: string, lines: string[]) {
   console.log('billingAdminAlert: sent', { to: recipients, subject })
 }
 
+/** Plain ops email to BILLING_ADMIN_ALERT_EMAILS (quota and infra alerts). Never throws. */
+export async function sendOpsAlertEmail(subject: string, lines: string[]) {
+  try {
+    await sendBillingOpsEmail(subject, lines)
+  } catch (err) {
+    console.warn('billingAdminAlert: ops email error', err instanceof Error ? err.message : String(err))
+  }
+}
+
 /**
  * Email ops when stripe-webhook processing fails (returns 400). Never throws.
  */

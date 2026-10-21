@@ -781,11 +781,6 @@ function VsHead({ row, align, final = false, gamesLeft = null }) {
             {shortName(row.player_name, row.position)}
           </span>
           {injuryPill(row.injury_status)}
-          {row.news_note ? (
-            <span data-fantasy-news-dot aria-label="New news" className="shrink-0 rounded px-1 py-px text-[8px] font-extrabold leading-none tracking-wide">
-              NEWS
-            </span>
-          ) : null}
         </div>
         <div className="truncate text-[10px] text-zinc-500">
           {fantasyPos(row.position) || row.position}
@@ -1106,6 +1101,24 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               aria-hidden
               className="fantasy-row-divider pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2"
             />
+            {pair.left?.news_note ? (
+              <span
+                data-fantasy-news-corner
+                aria-label="New news"
+                className="pointer-events-none absolute left-0 top-0 z-[2] rounded-br-lg px-1.5 py-[3px] text-[7.5px] font-extrabold leading-none tracking-wide"
+              >
+                NEWS
+              </span>
+            ) : null}
+            {pair.right?.news_note ? (
+              <span
+                data-fantasy-news-corner
+                aria-label="New news"
+                className="pointer-events-none absolute right-0 top-0 z-[2] rounded-bl-lg px-1.5 py-[3px] text-[7.5px] font-extrabold leading-none tracking-wide"
+              >
+                NEWS
+              </span>
+            ) : null}
             <div
               role="button"
               tabIndex={0}

@@ -378,7 +378,7 @@ export async function loadLeagueDetail(supabase, leagueId) {
   if (week && teamIds.length) {
     const { data: rows, error: rErr } = await supabase
       .from('fantasy_rosters')
-      .select('team_id, sleeper_id, player_name, position, nfl_team, slot')
+      .select('team_id, sleeper_id, player_name, position, nfl_team, slot, slot_label')
       .in('team_id', teamIds)
       .eq('week', week)
     if (rErr) throw new Error(rErr.message)

@@ -81,7 +81,7 @@ import LoungeAppSplash from '../../components/LoungeAppSplash.jsx'
 import EdgeKeyboardAccessorySync from '../../components/EdgeKeyboardAccessorySync.jsx'
 import ComposerPortraitRotateHint from '../../components/ComposerPortraitRotateHint.jsx'
 import { useLoungeColdBootSplash } from '../lounge/useLoungeColdBootSplash.js'
-import { LOUNGE_COLD_BOOT_RESUME_EVENT } from '../../utils/loungeColdBootSplash.js'
+import { LOUNGE_COLD_BOOT_RESUME_EVENT, markLoungeColdBootSplashCycleDone } from '../../utils/loungeColdBootSplash.js'
 import { LEGAL_CONTACT_EMAIL } from '../legal/legalPolicyVersion.js'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import {
@@ -540,6 +540,12 @@ export default function AppShell({
     if (tab === 'fantasy' && prev !== 'fantasy' && prev !== 'sports-bets') {
       fantasyReturnRef.current = { tab: prev || 'home', hubFilter: takeFantasyHubReturn() }
     }
+  }, [tab])
+  // The cold-boot splash belongs to a launch that lands on the Lounge. A session that starts anywhere else (a
+  // fantasy push, the Yahoo sign-in return, a deep link) spends it, so the first Lounge mount after closing that
+  // surface does not play the launch animation as if the app had restarted.
+  useEffect(() => {
+    if (tab !== 'home') markLoungeColdBootSplashCycleDone()
   }, [tab])
   const returnFromFantasy = useCallback(() => {
     const { tab: back, hubFilter } = fantasyReturnRef.current

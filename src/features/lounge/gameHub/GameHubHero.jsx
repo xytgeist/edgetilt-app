@@ -5066,6 +5066,8 @@ export default function GameHubHero({
   marketProps = null,
   /** Fullscreen only: ESPN per-player box lines `{ home, away }` for the fantasy + props rail pages. */
   playerBox = null,
+  /** Field play anim started (true) / ended (false). */
+  onFieldAnimActive = null,
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(feedGame)
   const isNflGame = String(feedGame?.sport_key || '').includes('americanfootball_nfl')
@@ -5113,10 +5115,14 @@ export default function GameHubHero({
     }, PLAY_SCORE_GRACE_MS)
     return () => clearTimeout(t)
   }, [playScoreId])
-  const onFieldAnimActiveChange = useCallback((active) => {
-    fieldAnimActiveRef.current = active
-    if (!active && playScoreReadyRef.current) setPlayScoreShownId(playScoreReadyRef.current)
-  }, [])
+  const onFieldAnimActiveChange = useCallback(
+    (active) => {
+      fieldAnimActiveRef.current = active
+      if (!active && playScoreReadyRef.current) setPlayScoreShownId(playScoreReadyRef.current)
+      onFieldAnimActive?.(active)
+    },
+    [onFieldAnimActive],
+  )
   // ESPN's board total can lag the PBP row … once the scoring play has animated, show the higher of the two.
   const game = useMemo(() => {
     if (!playScore || playScoreShownId !== playScore.id || feedGame?.status !== 'in') return feedGame

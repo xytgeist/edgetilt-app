@@ -41,6 +41,7 @@ import { useGameHubChat } from './gameHub/useGameHubChat.js'
 import { KalshiGamePropsBoard } from './gameHub/GameHubKalshiProps.jsx'
 import { BoxScoreCard, OddsTable, PlayList, PlayerStats, PostList } from './gameHub/GameHubPanes.jsx'
 import {
+  isFieldReplayablePlay,
   liveClockLabel,
   mergeFieldRoster,
   resolvePlayStartSpot,
@@ -57,6 +58,8 @@ import { fetchHubFantasyPins } from '../fantasy/fantasyApi.js'
 import { applyFantasyPinsFromLeague } from './gameHub/gameHubFantasyPins.js'
 
 const EMPTY_DETAIL = { odds: [], plays: [], stats: [], live: null, splits: null }
+/** After the hub's data lands, how long the live feed gets to start its own play anim before the open replay. */
+const HUB_INTRO_REPLAY_GRACE_MS = 900
 
 /** Both sides filled … only then is it safe to ask the server to stop resending rosters. */
 function hasRosterIds(players) {
@@ -596,6 +599,46 @@ function LoungeMatchupGameHubModal({
     setHubOpenNonce((n) => n + 1)
   }, [game?.id, game?.status, game?.sport_key])
 
+  // Opening a live football game replays its last play once (same path as tapping it in Plays), unless the
+  // live feed already animated something since the open.
+  const openKey = game?.id ? `${game.id}:${hubOpenNonce}` : ''
+  const openKeyRef = useRef('')
+  openKeyRef.current = openKey
+  const hubGameId = game?.id ? String(game.id) : ''
+  const hubGameIdLiveRef = useRef('')
+  hubGameIdLiveRef.current = hubGameId
+  /** Game whose field animated since the hub opened … cleared on close, so a reopen counts fresh. */
+  const fieldAnimSeenRef = useRef('')
+  if (!hubGameId && fieldAnimSeenRef.current) fieldAnimSeenRef.current = ''
+  const onFieldAnimActive = useCallback((active) => {
+    if (active) fieldAnimSeenRef.current = hubGameIdLiveRef.current
+  }, [])
+  const introKeyRef = useRef('')
+  const playsRef = useRef(detail.plays)
+  playsRef.current = detail.plays
+  const hubPresented = Boolean(game?.id) && presentedId === game.id
+  const hasPlays = Array.isArray(detail.plays) && detail.plays.length > 0
+  useEffect(() => {
+    if (!hubPresented || !hasPlays || !openKey || introKeyRef.current === openKey) return undefined
+    if (game?.status !== 'in' || !String(game?.sport_key || '').includes('americanfootball')) return undefined
+    introKeyRef.current = openKey
+    const t = setTimeout(() => {
+      if (openKeyRef.current !== openKey || fieldAnimSeenRef.current === hubGameId) return
+      const plays = playsRef.current
+      const play = sortPlaysNewestFirst(plays)[0]
+      const text = String(play?.description || '').trim()
+      if (!text || !isFieldReplayablePlay(text)) return
+      const team = play?.team === 'home' || play?.team === 'away' ? play.team : null
+      setFieldReplay((prev) => ({
+        text,
+        team,
+        startSpot: resolvePlayStartSpot(plays, { play, text }),
+        nonce: (Number(prev.nonce) || 0) + 1,
+      }))
+    }, HUB_INTRO_REPLAY_GRACE_MS)
+    return () => clearTimeout(t)
+  }, [hubPresented, hasPlays, openKey, hubGameId, game?.status, game?.sport_key])
+
   const pillsScrollRef = useRef(null)
   const landscapePillsScrollRef = useRef(null)
   const tickerGames = useMemo(() => {
@@ -900,6 +943,7 @@ function LoungeMatchupGameHubModal({
         live={live}
         lastPlay={fieldPlayText}
         playReplayNonce={fieldReplay.nonce}
+        onFieldAnimActive={onFieldAnimActive}
         replayTeam={feedTeamForFieldPlay}
         playStartSpot={fieldPlayStartSpot}
         topBar={hubTopBar}
@@ -1045,6 +1089,7 @@ function LoungeMatchupGameHubModal({
           live={live}
           lastPlay={fieldPlayText}
           playReplayNonce={fieldReplay.nonce}
+          onFieldAnimActive={onFieldAnimActive}
           replayTeam={feedTeamForFieldPlay}
           playStartSpot={fieldPlayStartSpot}
           splits={detail.splits}

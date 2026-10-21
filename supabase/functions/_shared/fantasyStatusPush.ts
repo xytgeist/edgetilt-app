@@ -71,7 +71,9 @@ export async function weekGames(): Promise<{ week: number; season: string; games
 
 /** Positions that may fill a host lineup slot label ("WR2", "FLEX", "W/R/T", "SUPER_FLEX" …). */
 function slotFits(slotLabel: string | null, starterPos: string): string[] {
-  const s = String(slotLabel || '').toUpperCase().replace(/\d+$/, '').replace(/\s+/g, '')
+  // Sleeper / ESPN labels end in the slot name (`starter:3:FLEX`); Yahoo's is the slot name itself.
+  const last = String(slotLabel || '').split(':').pop() || ''
+  const s = last.toUpperCase().replace(/\d+$/, '').replace(/\s+/g, '')
   if (['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].includes(s)) return [s]
   if (s === 'PK') return ['K']
   if (s === 'D/ST' || s === 'DST') return ['DEF']

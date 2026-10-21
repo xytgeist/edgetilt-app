@@ -171,7 +171,10 @@ function benchOf(rows) {
   return (rows || []).filter((r) => r.slot !== 'starter')
 }
 
-/** Host slot names (Yahoo `slot_label`) to a pairing key; flex slots keep their own row whoever fills them. */
+/**
+ * Host slot names to a pairing key; flex slots keep their own row whoever fills them. Yahoo's `slot_label` is the
+ * slot name; Sleeper / ESPN end theirs with it (`starter:3:FLEX`).
+ */
 const LINEUP_SLOT_KEY = {
   QB: 'QB',
   RB: 'RB',
@@ -193,13 +196,15 @@ const LINEUP_SLOT_KEY = {
   OP: 'SFLX',
   SUPERFLEX: 'SFLX',
   SUPER_FLEX: 'SFLX',
+  WRRB_FLEX: 'WRRB',
+  REC_FLEX: 'WRTE',
 }
 /** A slot a QB can also fill reads FLEX; W/R/T-only flex reads WRT. */
 const FLEX_PILL = { FLEX: 'WRT', WRRB: 'W/R', WRTE: 'W/T', SFLX: 'FLEX' }
 
 function lineupSlotKey(row, bySlot) {
   if (bySlot && row?.slot === 'starter') {
-    const key = LINEUP_SLOT_KEY[String(row.slot_label || '').trim().toUpperCase()]
+    const key = LINEUP_SLOT_KEY[(String(row.slot_label || '').split(':').pop() || '').trim().toUpperCase()]
     if (key) return key
   }
   return fantasyPos(row?.position)

@@ -519,7 +519,8 @@ async function syncEspnConnection(
             position: position || null,
             nfl_team: nflTeam || null,
             slot,
-            slot_label: `${slot}:${espnPlayerId}`,
+            // `slot:espnPlayerId` (pending trades read the id), plus the lineup slot a starter fills (`starter:123:FLEX`).
+            slot_label: `${slot}:${espnPlayerId}${slot === 'starter' && ESPN_LINEUP_SLOT[lineupSlot] ? `:${ESPN_LINEUP_SLOT[lineupSlot]}` : ''}`,
           })
         }
         if (inserts.length) {

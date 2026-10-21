@@ -384,7 +384,11 @@ export async function syncSleeperConnection(
             position: meta?.position || null,
             nfl_team: meta?.team || null,
             slot,
-            slot_label: sport === 'nba' ? lineupLabel(pid) : `${slot}:${idx}`,
+            // NFL: `slot:idx`, plus the lineup slot a starter fills (`starter:3:FLEX`) from roster_positions order.
+            slot_label:
+              sport === 'nba'
+                ? lineupLabel(pid)
+                : `${slot}:${idx}${slot === 'starter' && slotNames[starterOrder.indexOf(pid)] ? `:${slotNames[starterOrder.indexOf(pid)]}` : ''}`,
           }
         })
         if (rosterInserts.length) {

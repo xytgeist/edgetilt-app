@@ -1734,6 +1734,7 @@ function FlipCard({ flip, myTeamName, host, odds }) {
 
 function SniperView({ supabaseClient, detail, sport }) {
   const leagueId = detail?.league?.id || null
+  const rosterStamp = useRosterStamp(detail)
   const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
   useEffect(() => {
     if (!supabaseClient || !leagueId) return undefined
@@ -1744,7 +1745,7 @@ function SniperView({ supabaseClient, detail, sport }) {
     return () => {
       alive = false
     }
-  }, [supabaseClient, leagueId])
+  }, [supabaseClient, leagueId, rosterStamp])
   const state = loaded.id === leagueId ? { ...loaded, loading: false } : { data: null, error: '', loading: true }
   const scoring = detail?.league?.scoring
   const boom = useMemo(() => rankBoom({ sniper: state.data?.sniper, scoring, sport }).slice(0, 6), [state.data, scoring, sport])
@@ -1893,9 +1894,24 @@ function SniperView({ supabaseClient, detail, sport }) {
   )
 }
 
+/**
+ * Every team's player ids. The waiver / sniper / trade pools are read from the saved rosters, so they reload when a
+ * sync changes any roster (a read during an older sync could list a team's players as free agents).
+ */
+function useRosterStamp(detail) {
+  return useMemo(() => {
+    const byTeam = detail?.rostersByTeam || {}
+    return Object.keys(byTeam)
+      .sort()
+      .map((teamId) => `${teamId}:${(byTeam[teamId] || []).map((r) => r.sleeper_id || r.player_name || '').sort().join(',')}`)
+      .join('|')
+  }, [detail])
+}
+
 /** Waivers: best adds available in this league for your lineup, with a safe drop. Claims happen on the host. */
 function WaiversPanel({ supabaseClient, detail, sport }) {
   const leagueId = detail?.league?.id || null
+  const rosterStamp = useRosterStamp(detail)
   const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
   const [pos, setPos] = useState('All')
   const [view, setView] = useState('adds')
@@ -1908,7 +1924,7 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
     return () => {
       alive = false
     }
-  }, [supabaseClient, leagueId])
+  }, [supabaseClient, leagueId, rosterStamp])
   const state = loaded.id === leagueId ? { ...loaded, loading: false } : { id: leagueId, data: null, error: '', loading: true }
 
   const mine = (detail?.teams || []).find((t) => t.is_mine) || null
@@ -2559,6 +2575,7 @@ function OfferReview({ values, detail, sport, myName, pending }) {
 /** Trade Finder: offers that raise your best lineup, realistic for the other side, with a pasteable message. */
 function TradesPanel({ supabaseClient, detail, sport }) {
   const leagueId = detail?.league?.id || null
+  const rosterStamp = useRosterStamp(detail)
   const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
   const [view, setView] = useState('find')
   const [pendingLoaded, setPendingLoaded] = useState({ id: null, data: null, error: '' })
@@ -2583,7 +2600,7 @@ function TradesPanel({ supabaseClient, detail, sport }) {
     return () => {
       alive = false
     }
-  }, [supabaseClient, leagueId])
+  }, [supabaseClient, leagueId, rosterStamp])
   const state = loaded.id === leagueId ? { ...loaded, loading: false } : { data: null, error: '', loading: true }
 
   const mine = (detail?.teams || []).find((t) => t.is_mine) || null

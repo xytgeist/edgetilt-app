@@ -895,7 +895,6 @@ export async function syncYahooConnection(
           `/team/${encodeURIComponent(teamKey)}/roster;week=${week}`,
         )
         const players = yahooEntities(rosterPayload, 'player')
-        await admin.from('fantasy_rosters').delete().eq('team_id', teamId).eq('week', week)
         const rows = []
         for (const p of players) {
           const yahooKey = str(p.player_key)
@@ -917,6 +916,9 @@ export async function syncYahooConnection(
             slot_label: selectedPosition(p) || slot,
           })
         }
+        // Clear and write back to back: the Sleeper id lookups above take seconds, and a waiver / trade read in
+        // that gap saw the team empty and listed its whole roster as free agents.
+        await admin.from('fantasy_rosters').delete().eq('team_id', teamId).eq('week', week)
         if (rows.length) {
           const { error: rErr } = await admin.from('fantasy_rosters').insert(rows)
           if (rErr) throw new Error(rErr.message)

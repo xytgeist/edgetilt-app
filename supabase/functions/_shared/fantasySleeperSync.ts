@@ -337,8 +337,6 @@ export async function syncSleeperConnection(
         teamIdByRoster.set(r.roster_id, String(teamRow.id))
         if (isMine) mineTeamId = String(teamRow.id)
 
-        // Replace this week's roster rows for the team.
-        await admin.from('fantasy_rosters').delete().eq('team_id', teamRow.id).eq('week', week)
 
         const starterOrder = (r.starters || []).map(String)
         const starters = new Set(starterOrder.filter((id) => id && id !== '0'))
@@ -403,6 +401,8 @@ export async function syncSleeperConnection(
               : {}),
           }
         })
+        // Replace this week's rows back to back so a waiver / trade read never sees the team empty.
+        await admin.from('fantasy_rosters').delete().eq('team_id', teamRow.id).eq('week', week)
         if (rosterInserts.length) {
           const { error: rostErr } = await admin.from('fantasy_rosters').insert(rosterInserts)
           if (rostErr) throw new Error(rostErr.message)

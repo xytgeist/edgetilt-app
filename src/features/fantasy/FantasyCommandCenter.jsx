@@ -242,7 +242,7 @@ function SideBust({ row, align, live, final = false }) {
     <span
       aria-hidden
       data-fantasy-final-side={final ? '' : undefined}
-      className={`pointer-events-none absolute bottom-0 h-[80px] aspect-[600/436] ${right ? '-right-7' : '-left-7'}`}
+      className={`pointer-events-none absolute bottom-0 h-[74px] aspect-[600/436] ${right ? '-right-7' : '-left-7'}`}
     >
       {live ? <span className="fantasy-live-glow absolute -inset-x-10 -top-4 bottom-0" /> : null}
       {bust ? (
@@ -1009,7 +1009,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                   <PointsCell card={rightCard} loading={cardsLoading} scoring={scoring} sport={sport} align="right" />
                 </div>
               </div>
-              <div className="relative z-[1] mt-[25px] grid min-h-[14px] grid-cols-2 gap-1.5 px-1">
+              <div className="relative z-[1] mt-[17px] grid min-h-[14px] grid-cols-2 gap-1.5 px-1">
                 <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />
                 <CenterMarket prop={rightMain} align="right" row={pair.right} card={rightCard} />
               </div>

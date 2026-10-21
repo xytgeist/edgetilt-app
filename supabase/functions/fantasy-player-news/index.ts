@@ -94,7 +94,16 @@ async function nbaNotes(raw: unknown, admin: SupabaseClient): Promise<Obj[]> {
   const list = players
     .map((p) => ({ p, espnId: lookupNbaEspnId(ids, p.name, p.team) }))
     .filter((x) => x.espnId)
-  const feeds = await mapLimit(list, CONCURRENCY, (x) => nbaFeed(x.espnId, admin).catch(() => [] as FeedNote[]))
+  const [feeds, { data: shots }] = await Promise.all([
+    mapLimit(list, CONCURRENCY, (x) => nbaFeed(x.espnId, admin).catch(() => [] as FeedNote[])),
+    admin
+      .from('player_headshots')
+      .select('espn_id, full_url')
+      .eq('league', 'nba')
+      .eq('status', 'ok')
+      .in('espn_id', [...new Set(list.map((x) => x.espnId))]),
+  ])
+  const photo = new Map((shots || []).map((r) => [str(r.espn_id), str(r.full_url)]))
   const cutoff = Date.now() - NOTE_WINDOW_MS
   return list.flatMap(({ p, espnId }, i) =>
     (feeds[i] || [])
@@ -107,7 +116,7 @@ async function nbaNotes(raw: unknown, admin: SupabaseClient): Promise<Obj[]> {
         player: str(p.name),
         position: str(p.position),
         team: str(p.team),
-        headshot_url: null,
+        headshot_url: photo.get(espnId) || `https://a.espncdn.com/i/headshots/nba/players/full/${espnId}.png`,
         headline: n.headline,
         story: n.story,
         published: n.published,

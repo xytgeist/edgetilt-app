@@ -194,7 +194,8 @@ const LINEUP_SLOT_KEY = {
   SUPERFLEX: 'SFLX',
   SUPER_FLEX: 'SFLX',
 }
-const FLEX_PILL = { FLEX: 'WRT', WRRB: 'W/R', WRTE: 'W/T', SFLX: 'SFLX' }
+/** A slot a QB can also fill reads FLEX; W/R/T-only flex reads WRT. */
+const FLEX_PILL = { FLEX: 'WRT', WRRB: 'W/R', WRTE: 'W/T', SFLX: 'FLEX' }
 
 function lineupSlotKey(row, bySlot) {
   if (bySlot && row?.slot === 'starter') {

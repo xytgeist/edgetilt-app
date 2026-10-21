@@ -498,6 +498,36 @@ export function yahooOAuthReturnModeFromState(state: string): YahooOAuthReturnMo
 }
 
 /** Yahoo waiver rules: `uses_faab`, `waiver_type` (R rolling / FR FAAB / others), `waiver_time` days. */
+/**
+ * Starting lineup slots from league settings (`roster_positions`: position + count + is_starting_position).
+ * Saved as `settings.lineup_slots` so the app knows a K / DEF / FLEX slot exists even when it is empty
+ * (the roster only lists players, so an empty slot cannot be inferred). Bench / IR are not starting slots.
+ */
+function yahooLineupSlots(root: unknown): string[] {
+  const out: string[] = []
+  const seen = new Set<unknown>()
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== 'object' || seen.has(node)) return
+    seen.add(node)
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item)
+      return
+    }
+    const obj = node as Record<string, unknown>
+    const rp = obj.roster_position as Record<string, unknown> | undefined
+    if (rp && typeof rp === 'object' && !Array.isArray(rp)) {
+      const position = String(rp.position || '').trim().toUpperCase()
+      const count = Math.max(0, Math.min(10, Number(rp.count) || 0))
+      const starting = rp.is_starting_position == null ? !['BN', 'IR', 'IR+', 'NA'].includes(position) : Number(rp.is_starting_position) === 1
+      if (position && starting) for (let i = 0; i < count; i++) out.push(position)
+      return
+    }
+    for (const value of Object.values(obj)) visit(value)
+  }
+  visit(root)
+  return out
+}
+
 function yahooWaiver(payload: unknown): Record<string, unknown> | null {
   const pick = (key: string) => {
     const hit = collectByKey(payload, key)[0]
@@ -703,10 +733,12 @@ export async function syncYahooConnection(
       const leagueName = str(lg.name) || 'Yahoo League'
       let scoring: Record<string, number> = {}
       let waiver: Record<string, unknown> | null = null
+      let lineupSlots: string[] = []
       try {
         const settingsPayload = await yahooGet(access, `/league/${encodeURIComponent(leagueKey)}/settings`)
         scoring = yahooScoringFromSettings(settingsPayload)
         waiver = yahooWaiver(settingsPayload)
+        lineupSlots = yahooLineupSlots(settingsPayload)
       } catch {
         scoring = {}
       }
@@ -728,6 +760,7 @@ export async function syncYahooConnection(
               num_teams: num(lg.num_teams),
               scoring_type: str(lg.scoring_type),
               ...(waiver ? { waiver } : {}),
+              ...(lineupSlots.length ? { lineup_slots: lineupSlots } : {}),
             },
             updated_at: new Date().toISOString(),
           },

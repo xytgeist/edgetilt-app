@@ -1327,7 +1327,18 @@ function useStartSitPlan(detail, cards, sport) {
     const mine = (detail?.teams || []).find((t) => t.is_mine)
     const roster = mine ? detail?.rostersByTeam?.[mine.id] || [] : []
     if (!roster.length) return null
-    const { slots, inferred } = leagueLineupSlots(detail?.league, roster)
+    const { slots: own, inferred } = leagueLineupSlots(detail?.league, roster)
+    // Guessed from your starters, an empty K / DEF slot vanishes; if another team starts one, the league has it.
+    const slots = [...own]
+    if (inferred) {
+      for (const pos of ['K', 'DEF']) {
+        if (slots.includes(pos)) continue
+        const leagueHas = Object.values(detail?.rostersByTeam || {}).some((rows) =>
+          (rows || []).some((r) => r?.slot === 'starter' && fantasyPos(r.position) === pos),
+        )
+        if (leagueHas) slots.push(pos)
+      }
+    }
     if (!slots.length) return null
     return { inferred, ...optimizeLineup({ roster, cards, scoring: detail?.league?.scoring, slots, sport }) }
   }, [detail, cards, sport])

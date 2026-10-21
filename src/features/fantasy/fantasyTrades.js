@@ -53,6 +53,23 @@ function describeFor(players, seats) {
     .join('; ')
 }
 
+function lastName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter((w) => !/^(jr|sr|ii|iii|iv|v)\.?$/i.test(w))
+  return parts.length > 1 ? parts[parts.length - 1] : parts[0] || ''
+}
+
+/** `describeFor` in text-message words: same facts (starts / depth / stash), no point tags. */
+function describeForCasual(players, seats) {
+  const bits = players.map((p) => {
+    const who = lastName(p.name)
+    const slot = seatOf(seats, p.id)
+    if (p.h.injury === 'long' || p.h.injury === 'out') return `${who} is a nice stash once he's healthy`
+    if (slot) return `${who} would start at ${slotLabel(slot).replace(/^FLEX$/, 'flex')} for you`
+    return `${who} gives you ${p.pos} depth for byes`
+  })
+  return bits.length > 1 ? `${bits.slice(0, -1).join(', ')}, and ${bits[bits.length - 1]}` : bits[0] || ''
+}
+
 function fairnessFor(theirGain, valueEdge) {
   if (theirGain >= 0.25) return 'Win-win'
   if (valueEdge >= 1) return 'Value for them'
@@ -112,6 +129,7 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl' }) {
           fairness: fairnessFor(theirGain, giveKeep - get.keep),
           forYou: `${get.name} starts at ${slotLabel(seatOf(mySeats.seats, get.id) || get.pos)} (+${myGain.toFixed(1)}/wk)`,
           forThem: describeFor(give, theirSeats.seats),
+          forThemCasual: describeForCasual(give, theirSeats.seats),
         })
       }
     }
@@ -152,15 +170,28 @@ function helpLine(players) {
   return pos ? `I could use some help at ${pos}.` : ''
 }
 
-/** Text-a-friend version: no team names, no stat tags, no pitch for their side. */
-function casualMessage(opener, give, get) {
-  return [opener, '', `${nameList(give)} for ${nameList(get)}?`, '', [helpLine(get), 'Let me know what you think.'].filter(Boolean).join(' ')].join('\n')
+function sentence(text) {
+  const t = String(text || '').trim()
+  return t ? `${t[0].toUpperCase()}${t.slice(1)}${/[.!?]$/.test(t) ? '' : '.'}` : ''
+}
+
+/** Text-a-friend version: no team names, no stat tags, no labels. Why it works for them, then a light why for you. */
+function casualMessage(opener, offer) {
+  const theirs = sentence(offer.forThemCasual)
+  const lift = offer.theirGain >= 1 ? 'Should bump your lineup a bit too.' : ''
+  return [
+    opener,
+    '',
+    `${nameList(offer.give)} for ${nameList(offer.get)}?`,
+    '',
+    [theirs, lift, helpLine(offer.get), 'Let me know what you think.'].filter(Boolean).join(' '),
+  ].join('\n')
 }
 
 /** Plain-text offer you can paste into the league app, a text, or an email. `style` 'casual' reads like a text to a friend. */
 export function composeOfferMessage(offer, myTeamName, style = 'formal') {
   if (!offer) return ''
-  if (style === 'casual') return casualMessage('Interested in a trade?', offer.give, offer.get)
+  if (style === 'casual') return casualMessage('Interested in a trade?', offer)
   const them = offer.team?.team_name || 'there'
   const lines = [
     `Hey ${them}, trade idea from ${myTeamName || 'me'}:`,
@@ -283,6 +314,7 @@ export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' 
             fairness: theirGain >= 0.25 ? 'Win-win' : theirGain >= -0.25 ? 'Even' : 'Slight edge you',
             forYou: `${z.name} starts at ${slotLabel(seatOf(myAfter.seats, z.id) || z.pos)} (+${myGain.toFixed(1)}/wk)`,
             forThem: `${need.x.name} steps in for ${need.lost.name}${give.length > 1 ? `, plus ${give.slice(1).map((p) => p.name).join(' and ')}` : ''}`,
+            forThemCasual: `${lastName(need.x.name)} could step right in for ${lastName(need.lost.name)}${give.length > 1 ? `, and you'd get ${give.slice(1).map((p) => lastName(p.name)).join(' and ')} too` : ''}`,
           }
         }
       }
@@ -298,7 +330,7 @@ export function composeFlipMessage(flip, myTeamName, style = 'formal') {
   if (!flip) return ''
   const them = flip.team?.team_name || 'there'
   const status = flip.lost.h.injury === 'long' ? 'on IR' : flip.lost.h.injury === 'doubtful' ? 'banged up' : 'out'
-  if (style === 'casual') return casualMessage(`Saw ${flip.lost.name} is ${status}, that sucks. Interested in a trade?`, flip.give, flip.get)
+  if (style === 'casual') return casualMessage(`Saw ${flip.lost.name} is ${status}, that sucks. Interested in a trade?`, flip)
   return [
     `Hey ${them}, saw ${flip.lost.name} is ${status}. ${myTeamName || 'I'} can help:`,
     '',
@@ -398,6 +430,7 @@ export function reviewOffer({ values, detail, scoring, slots, sport = 'nfl', tea
       theirGain: c.theirGain,
       fairness: fairnessFor(c.theirGain, -c.valueEdge),
       forThem: describeFor(c.give, c.theirAfter.seats),
+      forThemCasual: describeForCasual(c.give, c.theirAfter.seats),
       score: c.myGain + 0.6 * Math.min(c.theirGain, 3) - 0.2 * Math.max(0, c.give.length + c.get.length - 2),
     })
   }
@@ -532,7 +565,7 @@ export function parseOfferText(text, detail) {
 /** Counter pitch for an offer they sent you. */
 export function composeCounterMessage(counter, myTeamName, style = 'formal') {
   if (!counter) return ''
-  if (style === 'casual') return casualMessage('Thanks for the offer! What about this instead?', counter.give, counter.get)
+  if (style === 'casual') return casualMessage('Thanks for the offer! What about this instead?', counter)
   const them = counter.team?.team_name || 'there'
   return [
     `Hey ${them}, thanks for the offer. ${myTeamName || 'I'} would do this instead:`,

@@ -104,6 +104,15 @@ export async function syncYahooFantasy(supabase, body = {}) {
   return finishEdge(data, error, 'Yahoo sync failed.')
 }
 
+/** A request that never got an answer (app backgrounded, connection dropped, a sync already running). */
+function syncFailure(host, e) {
+  const msg = String(e?.message || '')
+  if (/failed to send a request|failed to fetch|network|load failed|aborted/i.test(msg)) {
+    return `${host} sync didn't finish (the connection dropped). Tap Sync to try again.`
+  }
+  return msg || `${host} sync failed.`
+}
+
 /** Sync every active provider the user has linked. */
 export async function syncAllFantasy(supabase, connections = []) {
   const list = Array.isArray(connections) ? connections : []
@@ -114,28 +123,28 @@ export async function syncAllFantasy(supabase, connections = []) {
     try {
       if (has('sleeper')) out.sleeper = await syncSleeperFantasy(supabase)
     } catch (e) {
-      errors.push(e?.message || 'Sleeper sync failed.')
+      errors.push(syncFailure('Sleeper', e))
     }
   }
   if (has('yahoo')) {
     try {
       out.yahoo = await syncYahooFantasy(supabase)
     } catch (e) {
-      errors.push(e?.message || 'Yahoo sync failed.')
+      errors.push(syncFailure('Yahoo', e))
     }
   }
   if (has('espn')) {
     try {
       out.espn = await syncEspnFantasy(supabase)
     } catch (e) {
-      errors.push(e?.message || 'ESPN sync failed.')
+      errors.push(syncFailure('ESPN', e))
     }
   }
   if (has('cbs')) {
     try {
       out.cbs = await syncCbsFantasy(supabase)
     } catch (e) {
-      errors.push(e?.message || 'CBS sync failed.')
+      errors.push(syncFailure('CBS', e))
     }
   }
   if (errors.length && !out.sleeper && !out.yahoo && !out.espn && !out.cbs) {

@@ -14,7 +14,9 @@ const GUARD_SHARE = 0.35
 export function baselineProjection(card, scoring, sport = 'nfl', pos = null) {
   const fromLine = card?.proj_line ? scoreLine(card.proj_line, scoring, sport, pos || card?.pos || null) : null
   if (Number.isFinite(fromLine)) return fromLine
-  const p = Number(card?.projected)
+  // No projection yet (e.g. a fresh pickup before his card fills in) is unknown, not 0: Number(null) is 0.
+  if (card?.projected == null || card.projected === '') return NaN
+  const p = Number(card.projected)
   return Number.isFinite(p) ? p : NaN
 }
 

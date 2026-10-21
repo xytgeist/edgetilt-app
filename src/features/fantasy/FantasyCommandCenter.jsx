@@ -2483,6 +2483,7 @@ function TradesPanel({ supabaseClient, detail, sport }) {
             aria-label="Offer stance"
             aria-valuetext={TRADE_STANCES[stanceStep]}
             className="block w-full"
+            style={{ '--fill': `${(stanceStep / (TRADE_STANCES.length - 1)) * 100}%` }}
           />
           <div className="mt-0.5 flex justify-between text-[10px] font-semibold text-zinc-500">
             <span>Aggressive</span>

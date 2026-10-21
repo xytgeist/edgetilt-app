@@ -15220,7 +15220,43 @@ html.light [data-pval-editor] [role="switch"].bg-zinc-700 {
 html.light [data-fantasy-trade-stance] input[type='range'] {
   accent-color: #18181b;
 }
-/* Dark: native slider, darker fill on the left of the knob. */
+/* Dark: native look (light track, white knob) with a darker fill left of the knob (--fill set inline). */
 html:not(.light) [data-fantasy-trade-stance] input[type='range'] {
-  accent-color: #52525b;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 24px;
+  background: transparent;
+}
+html:not(.light) [data-fantasy-trade-stance] input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #52525b 0 var(--fill, 50%), #e4e4e7 var(--fill, 50%) 100%);
+}
+html:not(.light) [data-fantasy-trade-stance] input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+html:not(.light) [data-fantasy-trade-stance] input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e4e4e7;
+}
+html:not(.light) [data-fantasy-trade-stance] input[type='range']::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #52525b;
+}
+html:not(.light) [data-fantasy-trade-stance] input[type='range']::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
 }

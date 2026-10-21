@@ -1944,6 +1944,62 @@ function useRosterStamp(detail) {
   }, [detail])
 }
 
+const KEEP_LABEL = {
+  drop: 'Drop: lowest rest of season',
+  need: 'Keep: needed to fill your lineup',
+  better: 'Keep: worth more than the pickup',
+  market: 'Keep: market value too high to cut',
+  cuff: 'Keep: handcuff',
+  higher: 'Keep: worth more than the drop',
+}
+
+/** Tap-open detail for a waiver pick: the lineup swap, the pickup's numbers, and why each bench player stays or goes. */
+function WaiverBreakdown({ pick, span }) {
+  const ros = pick.ros
+  const unit = ros ? 'rest of season' : 'next weeks'
+  const fmt = (n) => (Number.isFinite(n) ? n.toFixed(1) : '-')
+  return (
+    <div data-fantasy-waiver-breakdown className="mt-2 space-y-2 border-t border-zinc-800 pt-2 text-[10px] leading-snug">
+      <div>
+        <div className="font-bold uppercase tracking-wide text-zinc-500">Pickup</div>
+        <div className="text-zinc-300">
+          {pick.cand.name}: {fmt(pick.candWeekly)}/wk {unit}
+          {ros ? ` · ${fmt(pick.cand.value)}/wk ${span || 'next weeks'}` : ''}
+        </div>
+      </div>
+      {pick.replaced ? (
+        <div>
+          <div className="font-bold uppercase tracking-wide text-zinc-500">Lineup</div>
+          <div className="text-zinc-300">
+            {pick.cand.name} starts, {pick.replaced.name} ({fmt(pick.replaced.rosWeekly ?? pick.replaced.value)}/wk) moves to the bench:
+            +{pick.gain.toFixed(1)}/wk {unit}
+          </div>
+        </div>
+      ) : null}
+      {pick.bench?.length ? (
+        <div>
+          <div className="font-bold uppercase tracking-wide text-zinc-500">Bench after the move</div>
+          <ul className="mt-0.5 space-y-0.5">
+            {pick.bench.map(({ p, weekly, near, keep }) => (
+              <li key={p.id} className="flex items-baseline justify-between gap-2">
+                <span className={`min-w-0 truncate ${keep === 'drop' ? 'fantasy-sit-out font-semibold' : 'text-zinc-300'}`}>
+                  {shortName(p.name, p.row?.position)} <span className="text-zinc-500">{p.pos}</span>
+                </span>
+                <span className="shrink-0 tabular-nums text-zinc-400">
+                  {fmt(weekly)}/wk{ros ? ` · ${fmt(near)} soon` : ''}
+                </span>
+                <span className={`w-[44%] shrink-0 text-right ${keep === 'drop' ? 'fantasy-sit-out' : 'text-zinc-500'}`}>
+                  {KEEP_LABEL[keep] || KEEP_LABEL.higher}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 /** Waivers: best adds available in this league for your lineup, with a safe drop. Claims happen on the host. */
 function WaiversPanel({ supabaseClient, detail, sport }) {
   const leagueId = detail?.league?.id || null
@@ -1951,6 +2007,7 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
   const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
   const [pos, setPos] = useState('All')
   const [view, setView] = useState('adds')
+  const [openPick, setOpenPick] = useState(null)
   useEffect(() => {
     if (!supabaseClient || !leagueId) return undefined
     let alive = true
@@ -2031,7 +2088,20 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
       ) : (
         <ul className="mt-2 space-y-1.5">
           {shown.map((pick) => (
-            <li key={pick.cand.id} className="flex items-center gap-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
+            <li key={pick.cand.id} className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-expanded={openPick === pick.cand.id}
+              onClick={() => setOpenPick((id) => (id === pick.cand.id ? null : pick.cand.id))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setOpenPick((id) => (id === pick.cand.id ? null : pick.cand.id))
+                }
+              }}
+              className="flex cursor-pointer items-center gap-2.5 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+            >
               <WaiverAvatar url={pick.cand.entry.headshot_url} pos={pick.cand.pos} team={pick.cand.entry.team} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-1.5">
@@ -2048,7 +2118,8 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
                 {pick.drop ? (
                   <div className="truncate text-[10px] text-zinc-500">
                     Drop <span className="fantasy-sit-out font-semibold">{shortName(pick.drop.name, pick.drop.row?.position)}</span>{' '}
-                    ({(pick.drop.rosWeekly ?? pick.drop.value).toFixed(1)}/wk{pick.drop.rosWeekly != null ? ' rest of season' : ''})
+                    ({(pick.drop.rosWeekly ?? pick.drop.value).toFixed(1)}/wk{pick.drop.rosWeekly != null ? ' rest of season' : ''}
+                    {pick.replaced && pick.drop.id !== pick.replaced.id ? ', lowest on your bench' : ''})
                   </div>
                 ) : null}
               </div>
@@ -2062,6 +2133,8 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
                   {pick.starter ? `+${pick.gain.toFixed(1)}` : pick.nearGain > 0.05 ? `+${pick.nearGain.toFixed(1)} now` : 'Depth'}
                 </span>
               </div>
+            </div>
+            {openPick === pick.cand.id ? <WaiverBreakdown pick={pick} span={span} /> : null}
             </li>
           ))}
         </ul>

@@ -198,15 +198,20 @@ export function rankWaivers({ pool, rosterRows, scoring, slots, sport = 'nfl' })
       const bestOther = Math.max(0, ...others.map(weekly))
       return bestOther < DECENT_RB_SHARE * weekly(starter)
     }
+    // Why each bench player after the move is (or is not) the cut, for the card's breakdown.
+    const keepReason = (p) => {
+      if (countPos(after, p.pos) - 1 < (need[p.pos] || 0)) return 'need'
+      if (keepValue(p) >= candKeep) return 'better'
+      if (p.market > cand.market + DROP_MARKET_CUSHION) return 'market'
+      if (cuffProtected(p)) return 'cuff'
+      return ''
+    }
     const drop = benchAfter
-      .filter(
-        (p) =>
-          countPos(after, p.pos) - 1 >= (need[p.pos] || 0) &&
-          keepValue(p) < candKeep &&
-          p.market <= cand.market + DROP_MARKET_CUSHION &&
-          !cuffProtected(p),
-      )
+      .filter((p) => !keepReason(p))
       .sort((a, b) => keepValue(a) - keepValue(b) || a.market - b.market)[0] || null
+    const bench = benchAfter
+      .map((p) => ({ p, weekly: weekly(p), near: p.value, keep: p === drop ? 'drop' : keepReason(p) || 'higher' }))
+      .sort((a, b) => a.weekly - b.weekly)
 
     const samePos = mine.filter((p) => p.pos === cand.pos && !base.seated.has(p.id))
     const weakest = samePos.sort((a, b) => a.value - b.value)[0]
@@ -214,10 +219,12 @@ export function rankWaivers({ pool, rosterRows, scoring, slots, sport = 'nfl' })
 
     const reasons = []
     if (replaced) {
+      // The player he starts over moves to the bench; the cut can be someone else (the weakest bench player).
+      const benched = drop && drop.id !== replaced.id ? ' (to bench)' : ''
       reasons.push(
         rosGain != null
-          ? `+${rosGain.toFixed(1)}/wk rest of season over ${replaced.name}${nearGain > 0.05 ? ` (+${nearGain.toFixed(1)} now)` : ''}`
-          : `+${gain.toFixed(1)}/wk over ${replaced.name}`,
+          ? `Starts over ${replaced.name}${benched}: +${rosGain.toFixed(1)}/wk rest of season${nearGain > 0.05 ? ` (+${nearGain.toFixed(1)} now)` : ''}`
+          : `Starts over ${replaced.name}${benched}: +${gain.toFixed(1)}/wk`,
       )
     } else if (nearGain > 0.05) {
       reasons.push(`+${nearGain.toFixed(1)}/wk short term`)
@@ -239,7 +246,19 @@ export function rankWaivers({ pool, rosterRows, scoring, slots, sport = 'nfl' })
     if (!reasons.length && depth > 0.5) reasons.push(`+${depth.toFixed(1)}/wk over your ${cand.pos} depth`)
 
     if (gain <= 0.05 && nearGain <= 0.05 && depth <= 0.5 && !byeSeat && !hurt) continue
-    picks.push({ cand, gain: Math.max(0, gain), nearGain: Math.max(0, nearGain), depth, drop, reasons, starter: gain > 0.05, ros: rosGain != null })
+    picks.push({
+      cand,
+      gain: Math.max(0, gain),
+      nearGain: Math.max(0, nearGain),
+      depth,
+      drop,
+      replaced,
+      bench,
+      candWeekly: weekly(cand),
+      reasons,
+      starter: gain > 0.05,
+      ros: rosGain != null,
+    })
   }
 
   picks.sort((a, b) => b.gain - a.gain || b.nearGain - a.nearGain || b.depth - a.depth || b.cand.value - a.cand.value)

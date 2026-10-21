@@ -996,7 +996,8 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                   <PointsCell card={rightCard} loading={cardsLoading} scoring={scoring} sport={sport} align="right" />
                 </div>
               </div>
-              <div className="relative z-[1] mt-1 grid min-h-[14px] grid-cols-2 gap-1.5 px-1">
+              {/* As tall as the names block so the scoreboard lands on the card's vertical middle; props sit at its bottom. */}
+              <div className="relative z-[1] mt-1 grid min-h-[30px] grid-cols-2 items-end gap-1.5 px-1">
                 <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />
                 <CenterMarket prop={rightMain} align="right" row={pair.right} card={rightCard} />
               </div>

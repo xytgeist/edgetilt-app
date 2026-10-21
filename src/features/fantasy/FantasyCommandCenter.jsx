@@ -171,7 +171,40 @@ function benchOf(rows) {
   return (rows || []).filter((r) => r.slot !== 'starter')
 }
 
-function pairLineup(leftRows, rightRows) {
+/** Host slot names (Yahoo `slot_label`) to a pairing key; flex slots keep their own row whoever fills them. */
+const LINEUP_SLOT_KEY = {
+  QB: 'QB',
+  RB: 'RB',
+  WR: 'WR',
+  TE: 'TE',
+  K: 'K',
+  PK: 'K',
+  DEF: 'DEF',
+  'D/ST': 'DEF',
+  DST: 'DEF',
+  'W/R/T': 'FLEX',
+  'RB/WR/TE': 'FLEX',
+  FLEX: 'FLEX',
+  'W/R': 'WRRB',
+  'RB/WR': 'WRRB',
+  'W/T': 'WRTE',
+  'WR/TE': 'WRTE',
+  'Q/W/R/T': 'SFLX',
+  OP: 'SFLX',
+  SUPERFLEX: 'SFLX',
+  SUPER_FLEX: 'SFLX',
+}
+const FLEX_PILL = { FLEX: 'WRT', WRRB: 'W/R', WRTE: 'W/T', SFLX: 'SFLX' }
+
+function lineupSlotKey(row, bySlot) {
+  if (bySlot && row?.slot === 'starter') {
+    const key = LINEUP_SLOT_KEY[String(row.slot_label || '').trim().toUpperCase()]
+    if (key) return key
+  }
+  return fantasyPos(row?.position)
+}
+
+function pairLineup(leftRows, rightRows, { bySlot = false } = {}) {
   const left = leftRows || []
   const right = rightRows || []
   const nfl = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
@@ -179,11 +212,12 @@ function pairLineup(leftRows, rightRows) {
   if (sample.length && !sample.some((row) => nfl.has(fantasyPos(row.position)))) {
     return pairBySlot(left, right)
   }
-  const order = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+  // Flex rows sit right after the last WR (host lineup order), superflex after TE.
+  const order = ['QB', 'RB', 'WR', 'FLEX', 'WRRB', 'WRTE', 'TE', 'SFLX', 'K', 'DEF']
   const bucket = (rows) => {
     const map = {}
     for (const row of rows) {
-      const pos = fantasyPos(row.position)
+      const pos = lineupSlotKey(row, bySlot)
       if (!map[pos]) map[pos] = []
       map[pos].push(row)
     }
@@ -196,10 +230,11 @@ function pairLineup(leftRows, rightRows) {
     const a = leftBuckets[pos] || []
     const b = rightBuckets[pos] || []
     const n = Math.max(a.length, b.length)
+    const base = FLEX_PILL[pos] || pos
     for (let i = 0; i < n; i++) {
       pairs.push({
         key: `${pos}-${i}`,
-        label: n > 1 ? `${pos}${i + 1}` : pos,
+        label: n > 1 ? `${base}${i + 1}` : base,
         left: a[i] || null,
         right: b[i] || null,
       })
@@ -209,7 +244,7 @@ function pairLineup(leftRows, rightRows) {
 }
 
 function pairStarters(leftRows, rightRows) {
-  return pairLineup(startersOf(leftRows), startersOf(rightRows))
+  return pairLineup(startersOf(leftRows), startersOf(rightRows), { bySlot: true })
 }
 
 function pairBench(leftRows, rightRows) {

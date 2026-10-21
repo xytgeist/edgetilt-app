@@ -1,11 +1,24 @@
+import { scoreLine } from './fantasyBoxScore.js'
 import { fantasyPosition } from './fantasyStartSit.js'
 import { bestSeats, horizonValue, rowId } from './fantasyWaivers.js'
 
 const SLOT_LABEL = { FLEX: 'FLEX', SUPER_FLEX: 'SUPERFLEX', WRRB_FLEX: 'W/R flex', REC_FLEX: 'W/T flex' }
-/** Slightly aggressive, still realistic: they may lose a little lineup value and get ~88% of the value back. */
+/** Slightly aggressive, still realistic: their lineup may lose a little. */
 const THEIR_FLOOR = -0.75
-const VALUE_BAND = 0.88
 const MIN_GAIN = 0.5
+/** Paying more trade value than you get back only makes sense for a real lineup upgrade. */
+const PAY_UP_MIN_GAIN = 1.5
+/** Value gate: never give 15% more trade value than you get back; they get back at least 90% of theirs. */
+const OVERPAY_LIMIT = 1.15
+const THEY_GET_BACK = 0.9
+/** Season production weight once a player has FULL_SAMPLE_GAMES (less before), the rest is Sleeper rest-of-season. */
+const SEASON_WEIGHT = 0.4
+const FULL_SAMPLE_GAMES = 5
+/** Expected games missed by status. IR / PUP with no ESPN return date assumes LONG_MISS_DEFAULT. */
+const MISSED_GAMES = { out: 1, doubtful: 0.75, questionable: 0.15 }
+const LONG_MISS_DEFAULT = 4
+/** Realistic pickup: the second-best free agent at the position (the best one usually gets claimed). */
+const REPLACEMENT_RANK = 1
 /**
  * Counters answer an offer they started, so they get more room than a cold offer: up to -2/wk, and up to 1.75x
  * the per-game value back (2-for-1 consolidation premium for the side landing the best piece).
@@ -17,24 +30,134 @@ function slotLabel(slot) {
   return SLOT_LABEL[slot] || slot
 }
 
-function teamPlayers(rows, byId, scoring, sport) {
+function perGame(line, games, scoring, sport, pos) {
+  if (!line || !games) return null
+  const pts = scoreLine(line, scoring, sport, pos)
+  return Number.isFinite(pts) ? pts / games : null
+}
+
+function expectedMissed(injury, returnDate, teamGames) {
+  if (injury === 'long') {
+    const t = returnDate ? Date.parse(returnDate) : NaN
+    const weeks = Number.isFinite(t) ? Math.ceil((t - Date.now()) / (7 * 86_400_000)) : LONG_MISS_DEFAULT
+    return Math.min(teamGames, Math.max(0, weeks))
+  }
+  return Math.min(teamGames, MISSED_GAMES[injury] || 0)
+}
+
+/**
+ * Rest-of-season profile from the Edge `trade` block: a blended per-game rate (season production + Sleeper's
+ * healthy rest-of-season projection), the games he should play (schedule minus expected misses), and his
+ * expected weekly lineup value. Null without the block (older Edge, Sniper mode): callers keep 4-week values.
+ */
+function seasonProfile(entry, h, ctx, pos) {
+  const t = entry?.trade
+  if (!t || !ctx.weeksLeft) return null
+  const ros = perGame(t.ros_line, t.ros_games, ctx.scoring, ctx.sport, pos)
+  const season = perGame(t.season_line, t.season_games, ctx.scoring, ctx.sport, pos)
+  let ppg
+  if (ros == null) ppg = season ?? h.healthy
+  else {
+    const w = season == null ? 0 : SEASON_WEIGHT * Math.min(1, t.season_games / FULL_SAMPLE_GAMES)
+    ppg = w * (season ?? 0) + (1 - w) * ros
+  }
+  const teamGames = Number(t.team_games) || 0
+  const games = Math.max(0, teamGames - expectedMissed(h.injury, t.return_date, teamGames))
+  return { ppg, games, weekly: (ppg * games) / ctx.weeksLeft }
+}
+
+/**
+ * Shared inputs for every trade tool: player lookup, league scoring, weeks left, replacement level by position,
+ * and whether the value gate prices players by market value (FantasyCalc, what managers actually trade for).
+ */
+export function valueContext(values, scoring, sport = 'nfl', { market = true } = {}) {
+  const byId = new Map((values?.league_players || []).map((p) => [String(p.sleeper_id), p]))
+  const ctx = {
+    byId,
+    scoring,
+    sport,
+    weeksLeft: Number(values?.weeks_left) || 0,
+    repl: {},
+    useMarket: market && values?.market_source === 'fantasycalc',
+  }
+  const byPos = {}
+  for (const fa of values?.players || []) {
+    const pos = fantasyPosition(fa.position)
+    const h = horizonValue(fa, scoring, fa.injury_status, sport)
+    if (h.injury === 'long' || h.injury === 'out') continue
+    const prof = seasonProfile(fa, h, ctx, pos)
+    ;(byPos[pos] ||= []).push(prof ? prof.ppg : h.healthy)
+  }
+  for (const [pos, list] of Object.entries(byPos)) {
+    list.sort((a, b) => b - a)
+    ctx.repl[pos] = list[Math.min(REPLACEMENT_RANK, list.length - 1)] || 0
+  }
+  return ctx
+}
+
+function teamPlayers(rows, ctx) {
   return (rows || [])
     .filter((row) => rowId(row) && (row.slot === 'starter' || row.slot === 'bench'))
     .map((row) => {
       const id = rowId(row)
-      const entry = byId.get(id) || { position: row.position, weeks: [] }
-      const h = horizonValue(entry, scoring, row.injury_status ?? entry.injury_status, sport)
+      const entry = ctx.byId.get(id) || { position: row.position, weeks: [] }
+      const pos = fantasyPosition(row.position)
+      const h = horizonValue(entry, ctx.scoring, row.injury_status ?? entry.injury_status, ctx.sport)
+      const prof = seasonProfile(entry, h, ctx, pos)
       return {
         id,
-        pos: fantasyPosition(row.position),
-        value: h.avg,
-        keep: h.known ? Math.max(h.avg, h.healthy) : h.avg,
+        pos,
+        // Lineup math: expected points per week (rest of season when we have it, else the 4-week average).
+        value: prof ? prof.weekly : h.avg,
+        // Per-game worth when he plays: blended rest-of-season rate, else the 4-week healthy rate.
+        keep: prof ? prof.ppg : h.known ? Math.max(h.avg, h.healthy) : h.avg,
+        games: prof ? prof.games : (entry.weeks || []).filter((w) => !w.bye).length,
+        market: Number.isFinite(Number(entry.market_value)) && entry.market_value != null ? Number(entry.market_value) : null,
         h,
         row,
         name: row.player_name,
         team: row.nfl_team || entry.team || '',
       }
     })
+}
+
+/**
+ * Trade value. Market (FantasyCalc redraft value for this league's format; unlisted players are worth ~0 in a
+ * trade) when the Edge sent it, else points above a realistic pickup times the games he should play (RAROS).
+ */
+function tradeValue(p, ctx) {
+  if (ctx.useMarket) return p.market || 0
+  return Math.max(0, p.keep - (ctx.repl[p.pos] || 0)) * (Number(p.games) || 0)
+}
+
+/**
+ * Value gate. Trade value given vs received after the exact roster-spot cost: whoever takes more bodies cuts
+ * their lowest-value bench player(s), and that value comes off their side.
+ */
+function valueGate({ give, get, myAfter, theirAfter, myRoster, theirRoster, ctx }) {
+  const sum = (list) => list.reduce((a, p) => a + tradeValue(p, ctx), 0)
+  const cut = (roster, seated, n) =>
+    n > 0
+      ? roster
+          .filter((p) => !seated.has(p.id))
+          .map((p) => tradeValue(p, ctx))
+          .sort((a, b) => a - b)
+          .slice(0, n)
+          .reduce((a, v) => a + v, 0)
+      : 0
+  const out = sum(give)
+  const theirOut = sum(get)
+  const mine = theirOut - cut(myRoster, myAfter.seated, get.length - give.length)
+  const theirs = out - cut(theirRoster, theirAfter.seated, give.length - get.length)
+  const ok = out <= OVERPAY_LIMIT * Math.max(0, mine) + 0.01 && theirs >= THEY_GET_BACK * theirOut - 0.01
+  return { ok, out, received: mine, ratio: out > 0 ? mine / out : Infinity }
+}
+
+function fairnessFromValue(theirGain, ratio) {
+  if (ratio < 0.95) return 'Value for them'
+  if (theirGain >= 0.25) return 'Win-win'
+  if (ratio > 1.08) return 'Slight edge you'
+  return 'Even'
 }
 
 function seatOf(seats, id) {
@@ -78,17 +201,19 @@ function fairnessFor(theirGain, valueEdge) {
 }
 
 /**
- * Trade Finder v1: 1-for-1 and 2-for-1 offers that raise your best starting lineup per week while the
- * other team loses little or gains, inside a value band so the offer is one they could accept.
+ * Trade Finder: 1-for-1 and 2-for-1 offers that pass two gates. Lineup: your best starting lineup gains per week
+ * over the rest of the season while theirs loses little. Value: you never give 15% more trade value (points
+ * above replacement over the games left) than you get, they get back 90%+ of theirs, after the roster-spot cut.
+ * A pair is only tried when neither player clears the same deal alone (smallest package first).
  * Returns `{ best, ifDeclined, alsoConsider }` in the shape of the suite plan.
  */
 export function findTrades({ values, detail, scoring, slots, sport = 'nfl' }) {
-  const byId = new Map((values?.league_players || []).map((p) => [String(p.sleeper_id), p]))
+  const ctx = valueContext(values, scoring, sport)
   const teams = detail?.teams || []
   const mine = teams.find((t) => t.is_mine)
   if (!mine || !slots?.length) return { best: null, ifDeclined: [], alsoConsider: [] }
   const total = (list) => bestSeats(list, slots).total
-  const myPlayers = teamPlayers(detail.rostersByTeam?.[mine.id], byId, scoring, sport)
+  const myPlayers = teamPlayers(detail.rostersByTeam?.[mine.id], ctx)
   const myBase = total(myPlayers)
   const tradeable = (list) => list.filter((p) => p.pos !== 'K' && p.pos !== 'DEF' && p.keep > 0)
   const myOut = tradeable(myPlayers).sort((a, b) => b.keep - a.keep)
@@ -102,15 +227,15 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl' }) {
   const byTeam = []
   for (const team of teams) {
     if (team.id === mine.id) continue
-    const theirs = teamPlayers(detail.rostersByTeam?.[team.id], byId, scoring, sport)
+    const theirs = teamPlayers(detail.rostersByTeam?.[team.id], ctx)
     if (!theirs.length) continue
     const theirBase = total(theirs)
     const offers = []
     for (const get of tradeable(theirs)) {
+      const clearedAlone = new Set()
       for (const give of gives) {
+        if (give.length > 1 && give.some((p) => clearedAlone.has(p.id))) continue
         const giveIds = new Set(give.map((p) => p.id))
-        const giveKeep = give.reduce((a, p) => a + p.keep, 0)
-        if (giveKeep < VALUE_BAND * get.keep) continue
         const newMine = [...myPlayers.filter((p) => !giveIds.has(p.id)), get]
         const mySeats = bestSeats(newMine, slots)
         const myGain = mySeats.total - myBase
@@ -119,14 +244,18 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl' }) {
         const theirSeats = bestSeats(newTheirs, slots)
         const theirGain = theirSeats.total - theirBase
         if (theirGain < THEIR_FLOOR) continue
+        const gate = valueGate({ give, get: [get], myAfter: mySeats, theirAfter: theirSeats, myRoster: newMine, theirRoster: newTheirs, ctx })
+        if (!gate.ok || (gate.out > gate.received && myGain < PAY_UP_MIN_GAIN)) continue
+        if (give.length === 1) clearedAlone.add(give[0].id)
+        const edge = Math.max(-0.3, Math.min(0.3, (Number.isFinite(gate.ratio) ? gate.ratio : 1.3) - 1))
         offers.push({
           team,
           give,
           get: [get],
           myGain,
           theirGain,
-          score: myGain + 0.4 * Math.min(theirGain, 3) - 0.15 * (give.length - 1),
-          fairness: fairnessFor(theirGain, giveKeep - get.keep),
+          score: myGain + 0.4 * Math.min(theirGain, 3) + 2 * edge - 0.15 * (give.length - 1),
+          fairness: fairnessFromValue(theirGain, gate.ratio),
           forYou: `${get.name} starts at ${slotLabel(seatOf(mySeats.seats, get.id) || get.pos)} (+${myGain.toFixed(1)}/wk)`,
           forThem: describeFor(give, theirSeats.seats),
           forThemCasual: describeForCasual(give, theirSeats.seats),
@@ -213,15 +342,16 @@ function isHurt(p) {
 /**
  * Snipe & flip: a rival lost a starter (out / IR / doubtful) and the best free player at that position would
  * fill the hole. Claim him, then offer him (alone or with one of your surplus players) for one of theirs that
- * improves your lineup. Same acceptance band as the trade finder.
+ * improves your lineup. Same lineup and value gates as the trade finder.
  */
 export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' }) {
-  const byId = new Map((values?.league_players || []).map((p) => [String(p.sleeper_id), p]))
+  // A flip sells their need for a fill-in, which market value does not see; price it on lineup value.
+  const ctx = valueContext(values, scoring, sport, { market: false })
   const teams = detail?.teams || []
   const mine = teams.find((t) => t.is_mine)
   if (!mine || !slots?.length) return []
   const total = (list) => bestSeats(list, slots).total
-  const myPlayers = teamPlayers(detail.rostersByTeam?.[mine.id], byId, scoring, sport)
+  const myPlayers = teamPlayers(detail.rostersByTeam?.[mine.id], ctx)
   const mySeats = bestSeats(myPlayers, slots)
   const myBase = mySeats.total
   const surplus = myPlayers
@@ -237,6 +367,7 @@ export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' 
         pos: fantasyPosition(entry.position),
         value: h.avg,
         keep: h.known ? Math.max(h.avg, h.healthy) : h.avg,
+        games: (entry.weeks || []).filter((w) => !w.bye).length,
         h,
         row: { position: entry.position, injury_status: entry.injury_status },
         name: entry.name,
@@ -251,7 +382,7 @@ export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' 
   const rosters = new Map()
   for (const team of teams) {
     if (team.id === mine.id) continue
-    const list = teamPlayers(detail.rostersByTeam?.[team.id], byId, scoring, sport)
+    const list = teamPlayers(detail.rostersByTeam?.[team.id], ctx)
     if (list.length) rosters.set(team.id, { team, list, base: total(list) })
   }
   /** Every rival whose lineup this free player would lift by 1.5+/wk (they would put in a claim too). */
@@ -288,8 +419,6 @@ export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' 
     let best = null
     for (const z of theirs.filter((p) => p.pos !== 'K' && p.pos !== 'DEF' && !isHurt(p))) {
       for (const give of packages) {
-        const giveKeep = give.reduce((a, p) => a + p.keep, 0)
-        if (giveKeep < 0.88 * z.keep) continue
         const mineIds = new Set(give.map((p) => p.id))
         const newMine = [...myPlayers.filter((p) => !mineIds.has(p.id)), z]
         const myAfter = bestSeats(newMine, slots)
@@ -299,6 +428,9 @@ export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' 
         const theirAfter = bestSeats(newTheirs, slots)
         const theirGain = theirAfter.total - theirBase
         if (theirGain < -0.75) continue
+        // The pickup is yours once the claim clears, so he counts on your side of the roster-spot math.
+        const gate = valueGate({ give, get: [z], myAfter, theirAfter, myRoster: newMine, theirRoster: newTheirs, ctx })
+        if (!gate.ok || (gate.out > gate.received && myGain < PAY_UP_MIN_GAIN)) continue
         const score = myGain + 0.3 * Math.min(theirGain, 4) - 0.2 * (give.length - 1)
         if (!best || score > best.score) {
           best = {
@@ -311,7 +443,7 @@ export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' 
             myGain,
             theirGain,
             score,
-            fairness: theirGain >= 0.25 ? 'Win-win' : theirGain >= -0.25 ? 'Even' : 'Slight edge you',
+            fairness: fairnessFromValue(theirGain, gate.ratio),
             forYou: `${z.name} starts at ${slotLabel(seatOf(myAfter.seats, z.id) || z.pos)} (+${myGain.toFixed(1)}/wk)`,
             forThem: `${need.x.name} steps in for ${need.lost.name}${give.length > 1 ? `, plus ${give.slice(1).map((p) => p.name).join(' and ')}` : ''}`,
             forThemCasual: `${lastName(need.x.name)} could step right in for ${lastName(need.lost.name)}${give.length > 1 ? `, and you'd get ${give.slice(1).map((p) => lastName(p.name)).join(' and ')} too` : ''}`,
@@ -384,13 +516,13 @@ function evaluate({ myPlayers, theirs, giveIds, getIds, slots }) {
  * stay inside the Finder's "they could accept it" band.
  */
 export function reviewOffer({ values, detail, scoring, slots, sport = 'nfl', teamId, giveIds, getIds }) {
-  const byId = new Map((values?.league_players || []).map((p) => [String(p.sleeper_id), p]))
+  const ctx = valueContext(values, scoring, sport)
   const teams = detail?.teams || []
   const mine = teams.find((t) => t.is_mine)
   const team = teams.find((t) => t.id === teamId)
   if (!mine || !team || !slots?.length) return null
-  const myPlayers = teamPlayers(detail.rostersByTeam?.[mine.id], byId, scoring, sport)
-  const theirs = teamPlayers(detail.rostersByTeam?.[team.id], byId, scoring, sport)
+  const myPlayers = teamPlayers(detail.rostersByTeam?.[mine.id], ctx)
+  const theirs = teamPlayers(detail.rostersByTeam?.[team.id], ctx)
   const give = new Set([...giveIds].map(String))
   const get = new Set([...getIds].map(String))
   if (!give.size || !get.size) return null

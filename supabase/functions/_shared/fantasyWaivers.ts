@@ -17,6 +17,7 @@ import {
   statMap,
   type GameRow,
 } from './fantasyLineupCards.ts'
+import { sharedCached } from './edgeSharedCache.ts'
 
 const WEEKS_AHEAD = 4
 const CACHE_MS = 20 * 60 * 1000
@@ -33,7 +34,53 @@ export type WaiverPlayer = {
   injury_status: string | null
   headshot_url: string | null
   weeks: WeekOut[]
+  /** Trades mode only: rest-of-season + season lines, team games left, ESPN return date. */
+  trade?: (TradeEntry & { team_games: number; return_date: string | null }) | null
+  /** Trades mode only: FantasyCalc redraft trade value for this league's format (null when unlisted). */
+  market_value?: number | null
 }
+
+type MarketParams = { numTeams: number; numQbs: 1 | 2; ppr: 0 | 0.5 | 1 }
+
+/** FantasyCalc formats: team counts it prices, superflex when a lineup can start two QBs, PPR from the rules. */
+function marketParams(league: { scoring?: unknown; settings?: unknown }, teamCount: number): MarketParams {
+  const sizes = [8, 10, 12, 14, 16]
+  const numTeams = sizes.reduce((best, n) => (Math.abs(n - teamCount) < Math.abs(best - teamCount) ? n : best), 12)
+  const settings = (league.settings && typeof league.settings === 'object' ? league.settings : {}) as Record<string, unknown>
+  const slots = (Array.isArray(settings.lineup_slots) ? settings.lineup_slots : Array.isArray(settings.roster_positions) ? settings.roster_positions : []) as unknown[]
+  const names = slots.map((x) => String(x || '').toUpperCase())
+  const superflex = names.some((n) => /SUPER|^OP$|Q\/W\/R\/T/.test(n)) || names.filter((n) => n === 'QB').length >= 2
+  const rec = Number((league.scoring as Record<string, unknown> | null)?.rec) || 0
+  const ppr = rec >= 0.75 ? 1 : rec >= 0.25 ? 0.5 : 0
+  return { numTeams, numQbs: superflex ? 2 : 1, ppr }
+}
+
+/** Sleeper id -> FantasyCalc redraft value (built from real trades). Shared 6h per format. */
+function loadMarketValues(admin: SupabaseClient, params: MarketParams): Promise<Record<string, number>> {
+  const key = `fantasy:market-values:${params.numTeams}:${params.numQbs}:${params.ppr}`
+  return sharedCached<Record<string, number>>(
+    key,
+    { ttlMs: 6 * 60 * 60_000, leaseMs: 60_000, staleMaxMs: 48 * 60 * 60_000, admin, shouldStore: (v) => Object.keys(v).length > 0 },
+    async () => {
+      const url = `https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=${params.numQbs}&numTeams=${params.numTeams}&ppr=${params.ppr}`
+      const rows = (await fetchJson(url).catch(() => [])) as Array<{ value?: number; player?: { sleeperId?: string | number } }>
+      const out: Record<string, number> = {}
+      for (const r of Array.isArray(rows) ? rows : []) {
+        const id = String(r.player?.sleeperId || '')
+        const v = Number(r.value)
+        if (id && Number.isFinite(v)) out[id] = v
+      }
+      return out
+    },
+  )
+}
+
+/** Last week the trade value counts (fantasy playoffs end week 17). */
+const TRADE_LAST_WEEK = 17
+
+/** Rest-of-season and season-to-date stat lines, summed, for trade value. The app scores them in league rules. */
+type TradeEntry = { ros_line: Record<string, number>; ros_games: number; season_line: Record<string, number>; season_games: number }
+type TradeBoard = { start: number; weeks_left: number; team_games: Record<string, number>; players: Record<string, TradeEntry> }
 
 type ProjBoard = {
   at: number
@@ -110,6 +157,59 @@ function weeksFor(board: ProjBoard, id: string, team: string | null): WeekOut[] 
   })
 }
 
+function addLine(into: Record<string, number>, line: Record<string, number> | null) {
+  if (!line) return
+  for (const [k, v] of Object.entries(line)) into[k] = Math.round(((into[k] || 0) + v) * 100) / 100
+}
+
+/**
+ * Every Sleeper projection from the horizon start through week 17 plus every played week so far, summed per
+ * player. Sleeper projects injured weeks at 0, so `ros_games` only counts weeks with a projection (a healthy
+ * per-game rate); games left come from `team_games` minus expected misses in the app. Shared 6h (~7 MB pull).
+ */
+function loadTradeBoard(admin: SupabaseClient, board: ProjBoard): Promise<TradeBoard> {
+  const start = board.weeks[0] || board.week
+  return sharedCached<TradeBoard>(
+    `fantasy:trade-board:${board.season}:${start}`,
+    { ttlMs: 6 * 60 * 60_000, leaseMs: 120_000, staleMaxMs: 24 * 60 * 60_000, admin },
+    async () => {
+      const rosWeeks: number[] = []
+      for (let w = start; w <= TRADE_LAST_WEEK; w++) rosWeeks.push(w)
+      const pastWeeks: number[] = []
+      for (let w = 1; w < start; w++) pastWeeks.push(w)
+      const [rosMaps, pastMaps] = await Promise.all([
+        Promise.all(rosWeeks.map((w) => board.proj.get(w) ? Promise.resolve(board.proj.get(w)!) : fetchJson(`https://api.sleeper.app/v1/projections/nfl/regular/${board.season}/${w}`).then(statMap).catch(() => new Map()))),
+        Promise.all(pastWeeks.map((w) => fetchJson(`https://api.sleeper.app/v1/stats/nfl/regular/${board.season}/${w}`).then(statMap).catch(() => new Map()))),
+      ])
+      const players: Record<string, TradeEntry> = {}
+      const entry = (id: string) => (players[id] ||= { ros_line: {}, ros_games: 0, season_line: {}, season_games: 0 })
+      for (const map of rosMaps as Map<string, Record<string, unknown>>[]) {
+        for (const [id, stats] of map) {
+          if (!((ptsOf(stats) ?? 0) > 0)) continue
+          const e = entry(id)
+          addLine(e.ros_line, projStatLine(stats))
+          e.ros_games += 1
+        }
+      }
+      for (const map of pastMaps as Map<string, Record<string, unknown>>[]) {
+        for (const [id, stats] of map) {
+          if (!(Number(stats.gp) > 0) || !ptsOf(stats)) continue
+          const e = entry(id)
+          addLine(e.season_line, projStatLine(stats))
+          e.season_games += 1
+        }
+      }
+      const teamGames: Record<string, number> = {}
+      for (const g of board.games) {
+        if (g.week < start || g.week > TRADE_LAST_WEEK) continue
+        teamGames[g.home] = (teamGames[g.home] || 0) + 1
+        teamGames[g.away] = (teamGames[g.away] || 0) + 1
+      }
+      return { start, weeks_left: rosWeeks.length, team_games: teamGames, players }
+    },
+  )
+}
+
 function horizonPpr(weeks: WeekOut[]): number {
   return weeks.reduce((acc, w) => acc + (Number(w.ppr) || 0), 0)
 }
@@ -124,7 +224,7 @@ export async function buildFantasyWaivers(
   const withSniper = opts.mode === 'sniper'
   const { data: league, error: lgErr } = await admin
     .from('fantasy_leagues')
-    .select('id, sport')
+    .select('id, sport, scoring, settings')
     .eq('id', leagueId)
     .eq('user_id', userId)
     .maybeSingle()
@@ -218,11 +318,41 @@ export async function buildFantasyWaivers(
     ? await buildSniper(admin, board, playersRes.data || [], rostered, mineIds)
     : null
 
+  let weeksLeft: number | null = null
+  let marketSource: string | null = null
+  if (opts.mode === 'trades') {
+    const [tradeBoard, market] = await Promise.all([
+      loadTradeBoard(admin, board).catch(() => null),
+      loadMarketValues(admin, marketParams(league, teamIds.length)).catch(() => ({} as Record<string, number>)),
+    ])
+    if (Object.keys(market).length) {
+      marketSource = 'fantasycalc'
+      for (const p of [...leaguePlayers, ...players]) p.market_value = market[p.sleeper_id] ?? null
+    }
+    if (tradeBoard) {
+      weeksLeft = tradeBoard.weeks_left
+      const withTrade = [...leaguePlayers, ...players]
+      const ids = [...new Set(withTrade.map((p) => p.sleeper_id))]
+      const { data: statusRows } = await admin.from('nfl_player_status').select('sleeper_id, return_date').in('sleeper_id', ids)
+      const returnById = new Map((statusRows || []).map((r) => [String(r.sleeper_id), r.return_date ? String(r.return_date) : null]))
+      const empty: TradeEntry = { ros_line: {}, ros_games: 0, season_line: {}, season_games: 0 }
+      for (const p of withTrade) {
+        p.trade = {
+          ...(tradeBoard.players[p.sleeper_id] || empty),
+          team_games: p.team ? tradeBoard.team_games[p.team] || 0 : 0,
+          return_date: returnById.get(p.sleeper_id) || null,
+        }
+      }
+    }
+  }
+
   return {
     supported: true,
     season: board.season,
     week: board.week,
     weeks: board.weeks,
+    ...(weeksLeft != null ? { weeks_left: weeksLeft } : {}),
+    ...(marketSource ? { market_source: marketSource } : {}),
     players,
     roster,
     ...(withLeague ? { league_players: leaguePlayers } : {}),

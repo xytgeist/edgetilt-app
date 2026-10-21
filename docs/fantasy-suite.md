@@ -233,6 +233,8 @@ Example shape: “Your RB bench is weak (two RB1s on bye same week). Offer Leagu
 **Depends on:** Layer A league scoring + full league rosters (not just mine).  
 **Trust order:** Start/Sit + Waiver before Trade Finder (lower stakes to calibrate values).
 
+**Trade Finder valuation (2026-10-20):** two gates, both required. *Value:* market trade value from FantasyCalc redraft values for the league's format (team count, 1QB vs superflex, PPR from the rules; `fantasy-waivers` mode `trades`, shared cache 6h, unlisted players ~0), falling back to replacement-adjusted rest-of-season points (blended PPG = up to 40% season production at 5+ games + Sleeper rest-of-season rate, minus the league's 2nd-best free agent at the position, times games left = team games minus expected misses; IR without an ESPN return date assumes 4). You never give more than 15% more value than you get, they get back 90%+, and whoever takes more bodies loses their lowest-value bench player from their side. *Lineup:* best starting lineup gains per week over the rest of the season (1.5/wk when you pay extra value), their lineup loses under 0.75. Pairs are only tried when neither player clears the deal alone. Flips stay on lineup value (their need is the pitch). Code: `src/features/fantasy/fantasyTrades.js` (`valueContext`, `valueGate`), Edge `_shared/fantasyWaivers.ts` (`loadTradeBoard`, `loadMarketValues`). Next: usage-supported outperformance weight, playoff-week weighting, bye fit.
+
 ---
 
 ## Layer C … Live Fantasy HQ

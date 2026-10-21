@@ -2390,7 +2390,12 @@ function TradesPanel({ supabaseClient, detail, sport }) {
     return findTrades({ values: state.data, detail, scoring: detail?.league?.scoring, slots, sport })
   }, [state.data, detail, mine, sport])
   const weeks = state.data?.weeks || []
-  const span = weeks.length ? `wk ${weeks[0]}${weeks.length > 1 ? `-${weeks[weeks.length - 1]}` : ''}` : ''
+  const rosWeeks = Number(state.data?.weeks_left) || 0
+  const span = weeks.length
+    ? rosWeeks
+      ? `wk ${weeks[0]}-${weeks[0] + rosWeeks - 1}`
+      : `wk ${weeks[0]}${weeks.length > 1 ? `-${weeks[weeks.length - 1]}` : ''}`
+    : ''
   const myName = mine?.team_name || ''
 
   return (
@@ -2473,7 +2478,12 @@ function TradesPanel({ supabaseClient, detail, sport }) {
         </div>
       )}
       <p className="mt-2 text-[10px] text-zinc-500">
-        Based on next-four-week projections in your league scoring. Send the offer on {providerLabel(detail?.league?.provider)} or paste the message anywhere.
+        {state.data?.market_source === 'fantasycalc'
+          ? 'Fair by market trade value (FantasyCalc, your league format), never more than 15% overpaid; helps you by rest-of-season lineup points in your scoring.'
+          : rosWeeks
+            ? 'Rest-of-season value in your league scoring: season production blended with projections, above what the waiver wire offers. Never more than 15% overpaid.'
+            : 'Based on next-four-week projections in your league scoring.'}{' '}
+        Send the offer on {providerLabel(detail?.league?.provider)} or paste the message anywhere.
       </p>
     </div>
   )

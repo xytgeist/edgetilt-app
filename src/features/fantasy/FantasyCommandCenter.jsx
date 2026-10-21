@@ -1047,7 +1047,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                     </span>
                   ) : (
                     <span
-                      className="fantasy-slot-pill rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold"
+                      className="fantasy-slot-pill rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-zinc-500/60"
                       style={{ color: '#fff' }}
                     >
                       {pair.label}
@@ -3032,7 +3032,7 @@ export default function FantasyCommandCenter({
   leagues,
   details: syncedDetails,
   loadingDetail,
-  cards,
+  cards: cardsBySport,
   cardsLoading,
   busy,
   onSetPrimary,
@@ -3072,6 +3072,9 @@ export default function FantasyCommandCenter({
 
   const selected = leagueId ? (leagues || []).find((lg) => lg.id === leagueId) || null : null
   const detail = selected ? details?.[selected.id] || null : null
+  // `cards` arrives per sport ({ nfl: {...}, nba: {...} }): ids collide across sports, so each league reads its own.
+  const cardsFor = (sport) => cardsBySport?.[String(sport || 'nfl').toLowerCase()] || null
+  const cards = cardsFor(selected?.sport || detail?.league?.sport)
   const pages = useMemo(() => (detail ? matchupPages(detail) : []), [detail])
   const keyed = pages.findIndex((item) => item.key === pageKey)
   const safePage = keyed >= 0 ? keyed : 0
@@ -3161,7 +3164,7 @@ export default function FantasyCommandCenter({
           <HomeAlerts
             leagues={leagues}
             details={details}
-            cards={cards}
+            cards={cardsFor('nfl')}
             cardsLoading={cardsLoading}
             onOpenLeague={openLeagueTool}
           />
@@ -3182,7 +3185,7 @@ export default function FantasyCommandCenter({
                 key={group.sport}
                 group={group}
                 entries={matchups}
-                cards={cards}
+                cards={cardsFor(group.sport)}
                 onOpen={(id, key) => {
                   setTool(DEFAULT_TOOL)
                   openMatchup(id, key)

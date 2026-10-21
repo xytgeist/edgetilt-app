@@ -356,8 +356,11 @@ export default function FantasyHomeScreen({
       )
         .then((maps) => {
           if (cancelled) return
+          // One map per sport: Sleeper NFL and NBA ids overlap (1945 is Chris Boswell and Trae Young).
           const next = {}
-          for (const map of maps) Object.assign(next, map || {})
+          sports.forEach((sport, i) => {
+            next[sport] = maps[i] || {}
+          })
           setCards(next)
         })
         .finally(() => {
@@ -369,7 +372,7 @@ export default function FantasyHomeScreen({
     }
     void pull(false)
     const timer = setInterval(() => {
-      if (Object.values(cardsRef.current || {}).some((card) => cardIsLive(card))) void pull(true)
+      if (Object.values(cardsRef.current || {}).some((map) => Object.values(map || {}).some((card) => cardIsLive(card)))) void pull(true)
     }, 30_000)
     return () => {
       cancelled = true

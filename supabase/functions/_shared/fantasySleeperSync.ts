@@ -45,7 +45,7 @@ export async function fetchNflState(): Promise<{ season: string; week: number; s
   return sleeperGet(`/state/nfl`)
 }
 
-type NamedPlayer = { full_name: string; position: string; team: string }
+type NamedPlayer = { full_name: string; position: string; team: string; injury_status?: string | null; eligible?: string[] }
 
 async function loadNbaPlayers(ids: string[]): Promise<Map<string, NamedPlayer>> {
   const map = new Map<string, NamedPlayer>()
@@ -64,6 +64,8 @@ async function loadNbaPlayers(ids: string[]): Promise<Map<string, NamedPlayer>> 
           position?: string
           pos?: string
           team?: string | null
+          injury_status?: string | null
+          fantasy_positions?: string[] | null
         }>(`/players/nba/${encodeURIComponent(id)}`)
         const name = String(
           p?.full_name || `${p?.first_name || p?.first || ''} ${p?.last_name || p?.last || ''}`,
@@ -72,6 +74,8 @@ async function loadNbaPlayers(ids: string[]): Promise<Map<string, NamedPlayer>> 
           full_name: name || id,
           position: String(p?.position || p?.pos || ''),
           team: String(p?.team || ''),
+          injury_status: p?.injury_status ? String(p.injury_status) : null,
+          eligible: Array.isArray(p?.fantasy_positions) ? p!.fantasy_positions!.map(String).filter(Boolean) : [],
         })
       } catch {
         map.set(id, { full_name: id, position: '', team: '' })
@@ -372,6 +376,7 @@ export async function syncSleeperConnection(
           }
         }
 
+        const weekPoints = (matchups || []).find((m) => m?.roster_id === r.roster_id)?.players_points || {}
         const rosterInserts = players.map((pid, idx) => {
           const meta = named.get(pid)
           const slot = slotForPlayer(pid, starters, reserve, taxi)
@@ -389,6 +394,13 @@ export async function syncSleeperConnection(
               sport === 'nba'
                 ? lineupLabel(pid)
                 : `${slot}:${idx}${slot === 'starter' && slotNames[starterOrder.indexOf(pid)] ? `:${slotNames[starterOrder.indexOf(pid)]}` : ''}`,
+            ...(sport === 'nba'
+              ? {
+                week_points: Number.isFinite(Number(weekPoints[pid])) ? Number(weekPoints[pid]) : null,
+                injury_status: meta?.injury_status || null,
+                eligible_positions: meta?.eligible?.length ? meta.eligible : null,
+              }
+              : {}),
           }
         })
         if (rosterInserts.length) {

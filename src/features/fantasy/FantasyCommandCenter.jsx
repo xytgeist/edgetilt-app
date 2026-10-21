@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
+import { nbaWeekOf } from './fantasyNbaWeek.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { useLiveGames, useLivePlays } from './useFantasyLive.js'
@@ -147,7 +148,8 @@ function shortName(name, position) {
 
 function slotPill(row, index) {
   const raw = String(row?.slot_label || '')
-  const named = raw.includes(':') ? raw.split(':').slice(1).join(':') : raw
+  // Sleeper numbers repeat slots ("00:UTIL", "08:UTIL2"); the row shows the slot name.
+  const named = (raw.includes(':') ? raw.split(':').slice(1).join(':') : raw).replace(/(\D)\d+$/, '$1')
   if (named && !/^\d+$/.test(named)) return named
   return fantasyPos(row?.position) || `${index + 1}`
 }
@@ -425,6 +427,7 @@ function pointsOf(card, scoring, sport) {
  */
 function sideOutlook(roster, cards, scoring, sport) {
   const starters = startersOf(roster)
+  if (sport === 'nba') return nbaSideOutlook(starters, cards, scoring)
   let projected = 0
   let projectedN = 0
   let scored = 0
@@ -471,6 +474,46 @@ function sideOutlook(roster, cards, scoring, sport) {
   }
 }
 
+/** NBA side: host week-to-date + live points it has not caught yet, plus per-game projections x games left. */
+function nbaSideOutlook(starters, cards, scoring) {
+  let projected = 0
+  let projectedN = 0
+  let scored = 0
+  let boost = 0
+  let remaining = 0
+  let started = false
+  let outlookOk = false
+  let allDone = starters.length > 0
+  for (const row of starters) {
+    const card = row?.sleeper_id ? cards?.[row.sleeper_id] : null
+    if (!card) {
+      allDone = false
+      continue
+    }
+    const w = nbaWeekOf(row, card, scoring)
+    if (Number.isFinite(w.pregame)) {
+      projected += w.pregame
+      projectedN += 1
+    }
+    if (w.played > 0 || w.host) started = true
+    if (w.live || w.gamesLeft > 0) allDone = false
+    scored += w.scored
+    boost += w.boost
+    remaining += w.remaining
+    outlookOk = true
+  }
+  return {
+    live: started,
+    final: started && allDone,
+    fromLine: false,
+    boost,
+    projected: projectedN ? projected : null,
+    scored: started ? scored : null,
+    remaining,
+    outlook: outlookOk ? scored + remaining : null,
+  }
+}
+
 function displayScore(outlook, hostScore) {
   if (!outlook?.live) {
     if (outlook?.projected != null) return { text: outlook.projected.toFixed(1), live: false }
@@ -478,7 +521,7 @@ function displayScore(outlook, hostScore) {
   }
   if (outlook.fromLine && outlook.scored != null) return { text: outlook.scored.toFixed(1), live: true }
   const host = Number(hostScore)
-  if (Number.isFinite(host) && host > 0) return { text: host.toFixed(1), live: true }
+  if (Number.isFinite(host) && host > 0) return { text: (host + (Number(outlook.boost) || 0)).toFixed(1), live: true }
   if (outlook.scored != null) return { text: outlook.scored.toFixed(1), live: true }
   return { text: '0.0', live: true }
 }
@@ -492,15 +535,17 @@ function normCdf(x) {
 }
 
 /**
- * Points of variance per projected point still to play. Sets the pregame spread near 28 for two ~115-point
- * lineups (a typical weekly fantasy margin, not a book price), and tightens as the week plays out.
+ * Points of variance per projected point still to play. NFL: a pregame spread near 28 for two ~115-point
+ * lineups (a typical weekly fantasy margin, not a book price). NBA: ~35 games a side make a week steadier
+ * per point (two ~1,300-point lineups spread near 75). Tightens as the week plays out.
  */
-const WIN_VAR_PER_POINT = 3.4
+const WIN_VAR_PER_POINT = { nfl: 3.4, nba: 2.1 }
 
 /** Weekly win chance from the two projected finishes and the projected points both sides still have to play. */
-function winChance(left, right, remaining) {
+function winChance(left, right, remaining, sport = 'nfl') {
   if (left == null || right == null) return null
-  const sigma = Math.sqrt(WIN_VAR_PER_POINT * Math.max(0, Number(remaining) || 0))
+  const perPoint = WIN_VAR_PER_POINT[sport] || WIN_VAR_PER_POINT.nfl
+  const sigma = Math.sqrt(perPoint * Math.max(0, Number(remaining) || 0))
   if (sigma < 0.5) return left > right ? 1 : left < right ? 0 : 0.5
   return Math.min(0.99, Math.max(0.01, normCdf((left - right) / sigma)))
 }
@@ -715,7 +760,7 @@ function CenterMarket({ prop, align, row, card }) {
   )
 }
 
-function VsHead({ row, align, final = false }) {
+function VsHead({ row, align, final = false, gamesLeft = null }) {
   if (!row) return <div />
   return (
     <div
@@ -737,6 +782,7 @@ function VsHead({ row, align, final = false }) {
         <div className="truncate text-[10px] text-zinc-500">
           {fantasyPos(row.position) || row.position}
           {row.nfl_team ? ` · ${row.nfl_team}` : ''}
+          {gamesLeft != null ? ` · ${gamesLeft} left` : ''}
         </div>
       </div>
     </div>
@@ -934,7 +980,8 @@ function liveProjection(card, actual, sport, proj) {
  * Small line under a started game = the pregame projection, or the live-paced number during it (green / red vs
  * the pregame projection).
  */
-function PointsCell({ card, loading, scoring, sport, align }) {
+function PointsCell({ card, row, loading, scoring, sport, align }) {
+  if (sport === 'nba') return <NbaPointsCell card={card} row={row} loading={loading} scoring={scoring} align={align} />
   const status = sideStatus(card)
   const proj = projectedOf(card, scoring, sport)
   const hasProj = Number.isFinite(proj)
@@ -970,6 +1017,39 @@ function PointsCell({ card, loading, scoring, sport, align }) {
   )
 }
 
+/**
+ * NBA: big number = week-to-date points (green while a game is on); before his first game it is the week's
+ * projection (muted, "PROJ"). Small line = projected week total, green / red vs the start-of-week projection.
+ */
+function NbaPointsCell({ card, row, loading, scoring, align }) {
+  const w = card ? nbaWeekOf(row, card, scoring) : null
+  const hasProj = Number.isFinite(w?.pregame)
+  const pregame = !!w && w.played === 0 && !w.host
+  let main = !card && loading ? '…' : '-'
+  let mainCls = 'text-[13px] text-zinc-100'
+  let sub = ''
+  let subCls = 'text-zinc-500'
+  if (pregame && hasProj) {
+    main = pts(w.pregame) || '0.0'
+    mainCls = 'text-[12px] text-zinc-300'
+    sub = 'PROJ'
+    subCls = 'text-[8px] tracking-wide text-zinc-500'
+  } else if (w && !pregame) {
+    main = pts(w.scored) || '0.0'
+    if (w.live) mainCls = 'text-[13px] fantasy-live-pts'
+    if (hasProj) {
+      sub = pts(w.total)
+      const delta = w.total - w.pregame
+      subCls = delta >= 0.5 ? 'fantasy-proj-up' : delta <= -0.5 ? 'fantasy-proj-down' : 'text-zinc-400'
+    }
+  }
+  return (
+    <span className={`flex w-8 flex-col leading-none ${align === 'right' ? 'items-start' : 'items-end'}`}>
+      <span className={`font-bold tabular-nums ${mainCls}`}>{main}</span>
+      {sub ? <span className={`mt-0.5 font-semibold tabular-nums ${pregame ? '' : 'text-[9px] '}${subCls}`}>{sub}</span> : null}
+    </span>
+  )
+}
 
 function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
   const [openKeys, setOpenKeys] = useState(() => new Set())
@@ -1020,12 +1100,22 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               <SideBust row={pair.right} align="right" live={rightLive} final={sideStatus(rightCard) === 'Final'} />
               <div className="relative z-[1] grid w-full grid-cols-2 items-center gap-3 px-10">
                 {pair.left || !pair.leftOpen ? (
-                  <VsHead row={pair.left} align="left" final={sideStatus(leftCard) === 'Final'} />
+                  <VsHead
+                    row={pair.left}
+                    align="left"
+                    final={sideStatus(leftCard) === 'Final'}
+                    gamesLeft={sport === 'nba' && leftCard ? Number(leftCard.games_left) || 0 : null}
+                  />
                 ) : (
                   <OpenSlotTag align="left" />
                 )}
                 {pair.right || !pair.rightOpen ? (
-                  <VsHead row={pair.right} align="right" final={sideStatus(rightCard) === 'Final'} />
+                  <VsHead
+                    row={pair.right}
+                    align="right"
+                    final={sideStatus(rightCard) === 'Final'}
+                    gamesLeft={sport === 'nba' && rightCard ? Number(rightCard.games_left) || 0 : null}
+                  />
                 ) : (
                   <OpenSlotTag align="right" />
                 )}
@@ -1033,7 +1123,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               {/* Pinned to the card's vertical middle; it clears the name line above and the props row below. */}
               <div className="absolute inset-x-0 top-1/2 z-[1] flex -translate-y-1/2 justify-center">
                 <div className="flex items-center gap-1">
-                  <PointsCell card={leftCard} loading={cardsLoading} scoring={scoring} sport={sport} align="left" />
+                  <PointsCell card={leftCard} row={pair.left} loading={cardsLoading} scoring={scoring} sport={sport} align="left" />
                   {bench ? (
                     <span data-fantasy-bench-pill className="rounded-md px-1.5 py-0.5 text-[10px] font-bold">
                       BN
@@ -1053,7 +1143,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                       {pair.label}
                     </span>
                   )}
-                  <PointsCell card={rightCard} loading={cardsLoading} scoring={scoring} sport={sport} align="right" />
+                  <PointsCell card={rightCard} row={pair.right} loading={cardsLoading} scoring={scoring} sport={sport} align="right" />
                 </div>
               </div>
               <div className="relative z-[1] mt-[17px] grid min-h-[14px] grid-cols-2 gap-1.5 px-1">
@@ -1343,17 +1433,17 @@ function HomeAlerts({ leagues, details, cards, cardsLoading, onOpenLeague }) {
 }
 
 /** Every NFL player on your teams (all slots) → the leagues they are on and whether you start them anywhere. */
-function myNflPlayers(leagues, details) {
+function myPlayers(leagues, details, sport = 'nfl') {
   const out = new Map()
   for (const lg of leagues || []) {
-    if (String(lg.sport || 'nfl').toLowerCase() !== 'nfl') continue
+    if (String(lg.sport || 'nfl').toLowerCase() !== sport) continue
     const detail = details?.[lg.id]
     const mine = (detail?.teams || []).find((t) => t.is_mine)
     if (!mine) continue
     for (const row of detail.rostersByTeam?.[mine.id] || []) {
       const id = String(row?.sleeper_id || '').trim()
       if (!/^\d+$/.test(id)) continue
-      const entry = out.get(id) || { leagues: [], starting: false }
+      const entry = out.get(id) || { leagues: [], starting: false, name: row.player_name || '', team: row.nfl_team || '', position: row.position || '' }
       const name = shortLeagueName(lg)
       if (!entry.leagues.includes(name)) entry.leagues.push(name)
       if (row.slot === 'starter') entry.starting = true
@@ -2783,8 +2873,8 @@ function ScoreLine({ outlook, hostScore, align, lead, projUp, projFinal: finish 
   )
 }
 
-function WinBar({ left, right, remaining }) {
-  const p = winChance(left, right, remaining)
+function WinBar({ left, right, remaining, sport }) {
+  const p = winChance(left, right, remaining, sport)
   if (p == null) return null
   const leftPct = Math.round(p * 100)
   const rightPct = 100 - leftPct
@@ -2879,7 +2969,7 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
       </div>
       {page.right ? (
         <div className="relative">
-          <WinBar left={lo} right={ro} remaining={leftOut.remaining + rightOut.remaining} />
+          <WinBar left={lo} right={ro} remaining={leftOut.remaining + rightOut.remaining} sport={sport} />
         </div>
       ) : null}
     </div>
@@ -3064,11 +3154,33 @@ export default function FantasyCommandCenter({
       }))
   }, [leagues])
 
-  const newsPlayers = useMemo(() => myNflPlayers(leagues, syncedDetails), [leagues, syncedDetails])
-  const news = usePlayerNews(supabaseClient, newsPlayers)
-  const newsMap = useMemo(() => newsByPlayer(news.notes), [news.notes])
+  const nflPlayers = useMemo(() => myPlayers(leagues, syncedDetails, 'nfl'), [leagues, syncedDetails])
+  const nbaPlayers = useMemo(() => myPlayers(leagues, syncedDetails, 'nba'), [leagues, syncedDetails])
+  const nflNews = usePlayerNews(supabaseClient, nflPlayers, 'nfl')
+  const nbaNews = usePlayerNews(supabaseClient, nbaPlayers, 'nba')
+  const nflNewsMap = useMemo(() => newsByPlayer(nflNews.notes), [nflNews.notes])
+  const nbaNewsMap = useMemo(() => newsByPlayer(nbaNews.notes), [nbaNews.notes])
   // Every tool reads rows with fresh news applied: a ruled-out starter is Out for Start/Sit before the host says so.
-  const details = useMemo(() => withNews(syncedDetails, newsMap), [syncedDetails, newsMap])
+  const details = useMemo(
+    () => withNews(withNews(syncedDetails, nflNewsMap, 'nfl'), nbaNewsMap, 'nba'),
+    [syncedDetails, nflNewsMap, nbaNewsMap],
+  )
+  // One Player news list; NBA ids get a prefix there so they do not collide with NFL ones.
+  const { newsPlayers, news } = useMemo(() => {
+    const merged = new Map(nflPlayers)
+    for (const [id, p] of nbaPlayers) merged.set(`nba:${id}`, p)
+    const notes = [...nflNews.notes, ...nbaNews.notes.map((n) => ({ ...n, sleeper_id: `nba:${n.sleeper_id}` }))]
+    notes.sort((a, b) => Date.parse(b.published || '') - Date.parse(a.published || ''))
+    return {
+      newsPlayers: merged,
+      news: {
+        key: [nflNews.key, nbaNews.key].filter(Boolean).join('|'),
+        notes,
+        loading: nflNews.loading || nbaNews.loading,
+        error: nflNews.error || nbaNews.error,
+      },
+    }
+  }, [nflPlayers, nbaPlayers, nflNews, nbaNews])
 
   const selected = leagueId ? (leagues || []).find((lg) => lg.id === leagueId) || null : null
   const detail = selected ? details?.[selected.id] || null : null
@@ -3196,7 +3308,7 @@ export default function FantasyCommandCenter({
           <FantasyPlayerNews
             players={newsPlayers}
             news={news}
-            showLeagues={(leagues || []).filter((lg) => String(lg.sport || 'nfl').toLowerCase() === 'nfl').length > 1}
+            showLeagues={(leagues || []).filter((lg) => ['nfl', 'nba'].includes(String(lg.sport || 'nfl').toLowerCase())).length > 1}
           />
         </>
       ) : (

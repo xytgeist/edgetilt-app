@@ -3,6 +3,8 @@
  * (`fantasy_insider_news`, written by `fantasy-insider-poll`) for the caller's NFL players.
  * Body: { sleeper_ids: string[] } (max 80). Each player's feed is one shared row in `edge_shared_cache`
  * for 20 minutes, so every user rostering the same player shares a single ESPN read.
+ * NBA: Body { sport: 'nba', players: [{ sleeper_id, name, team, position }] } … Sleeper NBA ids have no ESPN id,
+ * so names map through ESPN's team rosters (one shared row a day); Rotowire notes come from ESPN fantasy basketball.
  * Returns { ok, notes: PlayerNewsNote[] } newest first.
  */
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -52,9 +54,9 @@ function isoOrNull(v: unknown): string | null {
 }
 
 /** Throws on any failure so neither cache layer keeps a refusal or an empty read. */
-async function readPlayerFeed(espnId: string): Promise<FeedNote[]> {
+async function readPlayerFeed(espnId: string, game = 'ffl'): Promise<FeedNote[]> {
   const res = await espnFetch(
-    `https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?playerId=${encodeURIComponent(espnId)}&limit=8`,
+    `https://site.api.espn.com/apis/fantasy/v2/games/${game}/news/players?playerId=${encodeURIComponent(espnId)}&limit=8`,
     { headers: { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }, signal: AbortSignal.timeout(6_000) },
   )
   if (!res.ok) throw new Error(`ESPN news ${res.status}`)
@@ -74,6 +76,86 @@ async function readPlayerFeed(espnId: string): Promise<FeedNote[]> {
 
 function playerFeed(espnId: string, admin: SupabaseClient) {
   return sharedCached(`fantasy:news:${espnId}`, { ttlMs: FEED_TTL_MS, leaseMs: 20_000, admin }, () => readPlayerFeed(espnId))
+}
+
+const NBA_ESPN_TEAMS = [
+  'atl', 'bos', 'bkn', 'cha', 'chi', 'cle', 'dal', 'den', 'det', 'gs', 'hou', 'ind', 'lac', 'lal', 'mem',
+  'mia', 'mil', 'min', 'no', 'ny', 'okc', 'orl', 'phi', 'phx', 'por', 'sac', 'sa', 'tor', 'utah', 'wsh',
+]
+/** ESPN NBA abbreviations -> Sleeper's. */
+const NBA_TEAM_ALIAS: Record<string, string> = { GS: 'GSW', SA: 'SAS', NO: 'NOP', NY: 'NYK', UTAH: 'UTA', WSH: 'WAS' }
+const nbaTeam = (t: unknown) => {
+  const k = str(t).toUpperCase().replace(/[^A-Z]/g, '')
+  return NBA_TEAM_ALIAS[k] || k
+}
+const nameKey = (n: unknown) => str(n).toLowerCase().replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '').replace(/[^a-z0-9]/g, '')
+
+/** [`name|TEAM` or `name`, ESPN athlete id] from every NBA roster. */
+async function readNbaEspnIds(): Promise<Array<[string, string]>> {
+  const out: Array<[string, string]> = []
+  const rosters = await mapLimit(NBA_ESPN_TEAMS, CONCURRENCY, async (abbr) => {
+    const res = await espnFetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${abbr}/roster`, {
+      headers: { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' },
+      signal: AbortSignal.timeout(6_000),
+    }).catch(() => null)
+    if (!res?.ok) return [] as Obj[]
+    const body = (await res.json().catch(() => ({}))) as Obj
+    return (Array.isArray(body?.athletes) ? body.athletes : []).map((a) => ({ ...(a as Obj), team: abbr }))
+  })
+  for (const a of rosters.flat()) {
+    const id = str(a.id)
+    const key = nameKey(a.displayName || a.fullName)
+    if (!id || !key) continue
+    out.push([`${key}|${nbaTeam(a.team)}`, id], [key, id])
+  }
+  return out
+}
+
+async function nbaEspnIds(admin: SupabaseClient): Promise<Map<string, string>> {
+  const entries = await sharedCached(
+    'fantasy:nba-espn-ids',
+    { ttlMs: 24 * 60 * 60 * 1000, staleMaxMs: 7 * 24 * 60 * 60 * 1000, leaseMs: 30_000, admin, shouldStore: (v) => v.length > 400 },
+    readNbaEspnIds,
+  )
+  return new Map(entries)
+}
+
+function nbaFeed(espnId: string, admin: SupabaseClient) {
+  return sharedCached(`fantasy:news:fba:${espnId}`, { ttlMs: FEED_TTL_MS, leaseMs: 20_000, admin }, () => readPlayerFeed(espnId, 'fba'))
+}
+
+async function nbaNotes(raw: unknown, admin: SupabaseClient): Promise<Obj[]> {
+  const seen = new Set<string>()
+  const players = (Array.isArray(raw) ? raw : [])
+    .map((p) => p as Obj)
+    .filter((p) => /^\d+$/.test(str(p?.sleeper_id)) && str(p?.name) && !seen.has(str(p.sleeper_id)) && seen.add(str(p.sleeper_id)))
+    .slice(0, MAX_PLAYERS)
+  if (!players.length) return []
+  const ids = await nbaEspnIds(admin).catch(() => new Map<string, string>())
+  const list = players
+    .map((p) => ({ p, espnId: ids.get(`${nameKey(p.name)}|${nbaTeam(p.team)}`) || ids.get(nameKey(p.name)) || '' }))
+    .filter((x) => x.espnId)
+  const feeds = await mapLimit(list, CONCURRENCY, (x) => nbaFeed(x.espnId, admin).catch(() => [] as FeedNote[]))
+  const cutoff = Date.now() - NOTE_WINDOW_MS
+  return list.flatMap(({ p, espnId }, i) =>
+    (feeds[i] || [])
+      .filter((n) => n.published && Date.parse(n.published) >= cutoff)
+      .map((n) => ({
+        id: n.id,
+        kind: 'rotowire',
+        sport: 'nba',
+        sleeper_id: str(p.sleeper_id),
+        player: str(p.name),
+        position: str(p.position),
+        team: str(p.team),
+        headshot_url: null,
+        headline: n.headline,
+        story: n.story,
+        published: n.published,
+        source: 'Rotowire via ESPN',
+        url: `https://www.espn.com/nba/player/_/id/${espnId}`,
+      })),
+  )
 }
 
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -103,7 +185,12 @@ Deno.serve(async (req) => {
   const userId = await userIdFromJwt(authHeader.replace(/^Bearer\s+/i, '').trim(), admin)
   if (!userId) return json(401, { error: 'Invalid session.' })
 
-  const body = (await req.json().catch(() => ({}))) as { sleeper_ids?: unknown }
+  const body = (await req.json().catch(() => ({}))) as { sleeper_ids?: unknown; sport?: unknown; players?: unknown }
+  if (str(body.sport).toLowerCase() === 'nba') {
+    const notes = await nbaNotes(body.players, admin)
+    notes.sort((a, b) => Date.parse(str(b.published)) - Date.parse(str(a.published)))
+    return json(200, { ok: true, notes: notes.slice(0, MAX_NOTES) })
+  }
   const ids = [...new Set((Array.isArray(body.sleeper_ids) ? body.sleeper_ids : []).map(str).filter((id) => /^\d+$/.test(id)))]
     .slice(0, MAX_PLAYERS)
   if (!ids.length) return json(200, { ok: true, notes: [] })

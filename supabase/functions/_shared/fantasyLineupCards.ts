@@ -11,6 +11,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { loadFantasyLiveMap, lookupLive, lookupLiveDefense } from './fantasyLiveLines.ts'
 import { kalshiMarketUrls } from './loungeNflGameFantasy.ts'
 import { loadMarketLines, marketLineFor } from './fantasyMarketProjections.ts'
+import { loadNbaBoard, teamWeek } from './fantasyNbaBoard.ts'
 
 const KALSHI_BASE = 'https://external-api.kalshi.com/trade-api/v2'
 const PROP_SERIES = ['KXNFLPASSYDS', 'KXNFLRSHYDS', 'KXNFLRECYDS', 'KXNFLREC', 'KXNFLTD'] as const
@@ -68,6 +69,10 @@ export type LineupCard = {
   market_line?: Record<string, number> | null
   /** Share of this player's game played (0-1), live only; the app paces the projection with it. */
   game_progress?: number | null
+  /** NBA: games this fantasy week, not yet tipped, and finished (proj_line is per game). */
+  games_week?: number | null
+  games_left?: number | null
+  games_played?: number | null
 }
 
 export type GameRow = {
@@ -582,7 +587,10 @@ async function mergeLiveLines(
   }
 }
 
-/** NBA, NHL, and MLB have no Sleeper football board. The card is the ESPN line plus the tip time. */
+/**
+ * NBA: Sleeper per-game projection + this week's schedule; the live line only while a game is on.
+ * NHL and MLB: the ESPN line plus the tip time.
+ */
 export async function buildSportLineupCards(
   players: PlayerIn[],
   sport: string,
@@ -598,6 +606,35 @@ export async function buildSportLineupCards(
     list.push({ ...raw, sleeper_id: id })
     cards[id] = emptyCard(id)
   }
+  if (sport !== 'nba') {
+    await mergeLiveLines(cards, list, sport, {})
+    return { season: '', week: 0, cards }
+  }
+
+  const board = await loadNbaBoard()
   await mergeLiveLines(cards, list, sport, {})
-  return { season: '', week: 0, cards }
+  if (!board) return { season: '', week: 0, cards }
+  for (const raw of list) {
+    const card = cards[String(raw.sleeper_id)]
+    const wk = teamWeek(board, raw.team)
+    card.pos = String(raw.position || '').toUpperCase() || null
+    card.proj_line = board.projLine[card.sleeper_id] || null
+    card.games_week = wk.games_week
+    card.games_left = wk.games_left
+    card.games_played = wk.games_played
+    if (wk.live) {
+      card.game_status = 'in_progress'
+      card.kickoff = wk.live.date
+    } else {
+      // Yesterday's final is already in the host's week points; show the next tip instead.
+      card.game_status = null
+      card.line = null
+      card.game_progress = null
+      card.kickoff = wk.next?.date || null
+    }
+    card.game_date = card.kickoff ? card.kickoff.slice(0, 10) : null
+    card.opponent = wk.opponent
+    card.home = wk.home
+  }
+  return { season: board.season, week: board.week, cards }
 }

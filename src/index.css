@@ -11920,6 +11920,11 @@ html.light [data-fantasy-home] [data-pos-pill='WR'] { background-color: #c2410c 
 html.light [data-fantasy-home] [data-pos-pill='TE'] { background-color: #be185d !important; }
 html.light [data-fantasy-home] [data-pos-pill='K'] { background-color: #eab308 !important; color: #18181b !important; }
 html.light [data-fantasy-home] [data-pos-pill='DEF'] { background-color: #1e4e7c !important; }
+html.light [data-fantasy-home] [data-pos-pill='PG'] { background-color: #1d4ed8 !important; }
+html.light [data-fantasy-home] [data-pos-pill='SG'] { background-color: #15803d !important; }
+html.light [data-fantasy-home] [data-pos-pill='SF'] { background-color: #c2410c !important; }
+html.light [data-fantasy-home] [data-pos-pill='PF'] { background-color: #be185d !important; }
+html.light [data-fantasy-home] [data-pos-pill='C'] { background-color: #eab308 !important; color: #18181b !important; }
 /* Halo so card-face prop labels stay readable where they cross the player bust */
 [data-fantasy-home] .fantasy-prop-label {
   /* Truncate clips at the padding box; give the halo room so it does not end in square edges. */

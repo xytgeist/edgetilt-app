@@ -67,12 +67,13 @@ export function newsByPlayer(notes, now = Date.now()) {
 }
 
 /** Copy of league details with news applied to rostered rows: `news_note`, and a raised `injury_status`. */
-export function withNews(details, news) {
+export function withNews(details, news, sport = 'nfl') {
   if (!details || !news?.size) return details
   const next = {}
   for (const [leagueId, detail] of Object.entries(details)) {
     const byTeam = detail?.rostersByTeam
-    if (!byTeam) {
+    // News is keyed by Sleeper ids per sport; sports reuse the same numbers (1945 is Boswell and Trae Young).
+    if (!byTeam || String(detail?.league?.sport || 'nfl').toLowerCase() !== sport) {
       next[leagueId] = detail
       continue
     }

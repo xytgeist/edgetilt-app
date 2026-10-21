@@ -263,10 +263,12 @@ export async function loadPendingTrades(supabase, leagueId) {
 }
 
 /** Recent Rotowire notes (via ESPN) for these NFL players, newest first. */
-export async function loadPlayerNews(supabase, sleeperIds) {
+/** NFL: by Sleeper id. NBA: `players` [{ sleeper_id, name, team, position }] (the server maps names to ESPN). */
+export async function loadPlayerNews(supabase, sleeperIds, { sport = 'nfl', players = [] } = {}) {
   const ids = [...new Set((sleeperIds || []).map((id) => String(id || '').trim()).filter(Boolean))]
   if (!ids.length) return { notes: [] }
-  const { data, error } = await supabase.functions.invoke('fantasy-player-news', { body: { sleeper_ids: ids } })
+  const body = sport === 'nba' ? { sport, players } : { sleeper_ids: ids }
+  const { data, error } = await supabase.functions.invoke('fantasy-player-news', { body })
   return finishEdge(data, error, 'Could not load player news.')
 }
 
@@ -378,7 +380,7 @@ export async function loadLeagueDetail(supabase, leagueId) {
   if (week && teamIds.length) {
     const { data: rows, error: rErr } = await supabase
       .from('fantasy_rosters')
-      .select('team_id, sleeper_id, player_name, position, nfl_team, slot, slot_label')
+      .select('team_id, sleeper_id, player_name, position, nfl_team, slot, slot_label, week_points, injury_status, eligible_positions, created_at')
       .in('team_id', teamIds)
       .eq('week', week)
     if (rErr) throw new Error(rErr.message)
@@ -416,7 +418,8 @@ export async function loadLeagueDetail(supabase, leagueId) {
     rostersByTeam[key].push({
       ...row,
       // ESPN's game designation (kept fresh by fantasy-status-watch) wins over the weekly Sleeper sync.
-      injury_status: row.sleeper_id && String(row.sleeper_id) in freshById ? freshById[String(row.sleeper_id)] : tag?.injury_status || null,
+      // Other sports carry the host's tag on the roster row.
+      injury_status: row.sleeper_id && String(row.sleeper_id) in freshById ? freshById[String(row.sleeper_id)] : tag?.injury_status || row.injury_status || null,
       player_status: tag?.status || null,
       headshot_url: tag?.headshot_url || tag?.local_headshot_path || null,
     })

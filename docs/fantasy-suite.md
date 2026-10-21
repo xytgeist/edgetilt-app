@@ -448,7 +448,7 @@ Notifications (F) deep-link into the relevant tab; prefs live under Settings (an
 Record answers here when locked:
 
 1. Aggressive↔Fair default for Trade Analyzer? **Locked 2026-10-18: slightly aggressive, still realistic.**
-2. First second-sport after NFL? (plan lean: NBA or MLB)
+2. First second-sport after NFL? **Locked 2026-10-21: NBA, Sleeper first, points leagues first (categories later).** Phase 1 shipped 1.4.1337: matchups, per-game projection x games left, win %, slots, injuries, news (`fantasyNbaBoard.ts`, `fantasyNbaWeek.js`). Phase 2: roster daily lineup, streaming waivers by games left, trades on our rest-of-season value (FantasyCalc has no NBA). Phase 3: Yahoo / ESPN NBA, category leagues, NBA props blend.
 3. DFS v1 sites? (plan: DK + FD via CSV)
 4. Emotional hedge: show estimated cost in units by default?
 5. Freemium: which tools free vs Slots Edge / future Fantasy add-on? (TBD … see `docs/entitlements-matrix.md`)

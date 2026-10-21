@@ -385,9 +385,11 @@ export async function loadLeagueDetail(supabase, leagueId) {
     rosterRows = rows || []
   }
 
-  rosterRows = await attachMissingSleeperIds(supabase, rosterRows)
+  // NFL tables only: Sleeper NBA / NHL / MLB ids overlap NFL ones (1945 is Trae Young and Chris Boswell).
+  const nflLeague = String(league.sport || 'nfl').toLowerCase() === 'nfl'
+  if (nflLeague) rosterRows = await attachMissingSleeperIds(supabase, rosterRows)
 
-  const sleeperIds = [...new Set(rosterRows.map((r) => r.sleeper_id).filter(Boolean))]
+  const sleeperIds = nflLeague ? [...new Set(rosterRows.map((r) => r.sleeper_id).filter(Boolean))] : []
   const injuryById = {}
   const freshById = {}
   if (sleeperIds.length) {

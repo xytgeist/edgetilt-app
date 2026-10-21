@@ -121,6 +121,14 @@ function injuryLabel(status) {
   return s.length > 12 ? s.slice(0, 12) : s
 }
 
+/** Row tint for a hurt player: 'out' (Out, IR, Doubtful) or 'q' (Questionable, GTD / day-to-day). */
+function injuryTone(status) {
+  const key = injuryKey(status)
+  if (key === 'out' || key === 'doubtful') return 'out'
+  if (key === 'questionable' || /^(gtd|dtd|day[- ]to[- ]day|game[- ]time decision)$/i.test(String(status || '').trim())) return 'q'
+  return ''
+}
+
 function startersOf(rows) {
   return (rows || []).filter((r) => r.slot === 'starter')
 }
@@ -1079,6 +1087,21 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               bench ? 'fantasy-bench-row border-dashed' : 'fantasy-card-lift border-zinc-800 bg-zinc-900/60'
             }`}
           >
+            {injuryTone(pair.left?.injury_status) ? (
+              <span
+                aria-hidden
+                data-fantasy-injury-side={injuryTone(pair.left.injury_status)}
+                className="pointer-events-none absolute inset-y-0 left-0 w-1/2"
+              />
+            ) : null}
+            {injuryTone(pair.right?.injury_status) ? (
+              <span
+                aria-hidden
+                data-fantasy-injury-side={injuryTone(pair.right.injury_status)}
+                data-side="right"
+                className="pointer-events-none absolute inset-y-0 right-0 w-1/2"
+              />
+            ) : null}
             <span
               aria-hidden
               className="fantasy-row-divider pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2"

@@ -225,6 +225,114 @@ export async function withStoredHeadshots<T>(admin: SupabaseClient, body: T): Pr
   }
 }
 
+/** Sports whose photos are copied ahead of time from ESPN team rosters (NFL comes from nfl_players instead). */
+const ROSTER_SPORTS: Record<string, { path: string; league: string }> = {
+  nba: { path: 'basketball/nba', league: 'nba' },
+  nhl: { path: 'hockey/nhl', league: 'nhl' },
+  mlb: { path: 'baseball/mlb', league: 'mlb' },
+  mls: { path: 'soccer/usa.1', league: 'soccer' },
+  cfb: { path: 'football/college-football', league: 'college-football' },
+}
+
+const teamListCache = new Map<string, { at: number; ids: string[] }>()
+
+async function espnJson(url: string): Promise<Record<string, unknown> | null> {
+  const res = await fetch(url, { headers: { Accept: 'application/json', 'User-Agent': ESPN_HEADERS['User-Agent'] } })
+  if (!res.ok) return null
+  return (await res.json()) as Record<string, unknown>
+}
+
+/** ESPN team ids for a roster sport. CFB is FBS only (ESPN group 80). */
+async function rosterTeamIds(sport: string): Promise<string[]> {
+  const hit = teamListCache.get(sport)
+  if (hit && Date.now() - hit.at < 6 * 60 * 60_000) return hit.ids
+  let ids: string[] = []
+  if (sport === 'cfb') {
+    const year = new Date().getUTCMonth() < 1 ? new Date().getUTCFullYear() - 1 : new Date().getUTCFullYear()
+    const body = await espnJson(
+      `https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/${year}/types/2/groups/80/teams?limit=300`,
+    )
+    ids = ((body?.items as Array<{ $ref?: string }>) || []).map((i) => String(i.$ref || '').match(/\/teams\/(\d+)/)?.[1] || '').filter(Boolean)
+  } else {
+    const body = await espnJson(`https://site.api.espn.com/apis/site/v2/sports/${ROSTER_SPORTS[sport].path}/teams?limit=300`)
+    const leagues = ((body?.sports as Array<Record<string, unknown>>) || [])[0]?.leagues as Array<Record<string, unknown>> | undefined
+    const teams = (leagues?.[0]?.teams as Array<{ team?: { id?: string } }>) || []
+    ids = teams.map((t) => String(t.team?.id || '')).filter(Boolean)
+  }
+  teamListCache.set(sport, { at: Date.now(), ids })
+  return ids
+}
+
+/**
+ * Ops: copy every photo on a slice of a sport's ESPN team rosters into R2 (full + thumb + card), skipping ones we
+ * already have or know are missing. Call with team_from = previous `next` until `next` is null.
+ */
+export async function backfillRosterHeadshots(
+  admin: SupabaseClient,
+  sport: string,
+  opts: { teamFrom?: number; teams?: number; concurrency?: number } = {},
+): Promise<Record<string, unknown>> {
+  const cfg = readLoungeCfR2Config()
+  if (!cfg) throw new Error('R2 is not configured.')
+  const spec = ROSTER_SPORTS[sport]
+  if (!spec) throw new Error(`Unknown sport ${sport}. Use one of ${Object.keys(ROSTER_SPORTS).join(', ')}.`)
+  const all = await rosterTeamIds(sport)
+  const from = Math.max(0, Number(opts.teamFrom) || 0)
+  const count = Math.max(1, Math.min(10, Number(opts.teams) || 3))
+  const slice = all.slice(from, from + count)
+  await ensureLeague(admin, spec.league)
+
+  const ids = new Set<string>()
+  for (const teamId of slice) {
+    const roster = await espnJson(`https://site.api.espn.com/apis/site/v2/sports/${spec.path}/teams/${teamId}/roster`)
+    const found = new Set<string>()
+    collectStrings(roster, found)
+    for (const url of found) {
+      const hit = parseEspnHeadshot(url)
+      if (hit && hit.league === spec.league) ids.add(hit.id)
+    }
+    await sleep(COPY_GAP_MS)
+  }
+  const pending = [...ids].filter((id) => !known.has(keyOf(spec.league, id)))
+  let copied = 0
+  let missing = 0
+  let failed = 0
+  let next = 0
+  const workers = Math.max(1, Math.min(6, Number(opts.concurrency) || 4))
+  await Promise.all(
+    Array.from({ length: workers }, async () => {
+      while (next < pending.length) {
+        const id = pending[next++]
+        try {
+          await copyOne(admin, cfg, spec.league, id)
+          const k = known.get(keyOf(spec.league, id))
+          if (k?.status === 'ok') copied++
+          else if (k?.status === 'missing') missing++
+          else failed++
+        } catch {
+          failed++
+        }
+        await sleep(COPY_GAP_MS)
+      }
+    }),
+  )
+  const end = from + slice.length
+  return {
+    ok: true,
+    sport,
+    league: spec.league,
+    teams_total: all.length,
+    team_from: from,
+    teams_done: slice.length,
+    photos_on_rosters: ids.size,
+    already_known: ids.size - pending.length,
+    copied,
+    missing,
+    failed,
+    next: end < all.length ? end : null,
+  }
+}
+
 /** Ops: thumb + card for NFL masters already on R2 (no ESPN fetch). */
 export async function backfillNflHeadshotVariants(
   admin: SupabaseClient,

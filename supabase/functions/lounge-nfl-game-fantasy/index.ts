@@ -9,7 +9,7 @@
  *   { mirror_nflcom_headshots: true, items: [{ sleeper_id, espn_id, source_url }] }
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { backfillNflHeadshotVariants, withStoredHeadshots } from '../_shared/playerHeadshotStore.ts'
+import { backfillNflHeadshotVariants, backfillRosterHeadshots, withStoredHeadshots } from '../_shared/playerHeadshotStore.ts'
 import { userIdFromJwt } from '../_shared/userJwt.ts'
 import { isKnownServiceRoleBearer } from '../_shared/adminAuth.ts'
 import { buildNflGameFantasy } from '../_shared/loungeNflGameFantasy.ts'
@@ -85,6 +85,22 @@ Deno.serve(async (req) => {
       return json(200, result)
     } catch (err) {
       return json(502, { error: err instanceof Error ? err.message : 'Headshot mirror failed.' })
+    }
+  }
+
+  // Ops: copy NBA / NHL / MLB / MLS / CFB roster photos into R2 (full + thumb + card), a few teams per call
+  if (body?.headshot_backfill) {
+    if (!isKnownServiceRoleBearer(jwt, serviceKey, supabaseUrl)) {
+      return json(403, { error: 'Service role required for headshot backfill.' })
+    }
+    try {
+      return json(200, await backfillRosterHeadshots(admin, String(body.headshot_backfill), {
+        teamFrom: Number(body.team_from) || 0,
+        teams: Number(body.teams) || 3,
+        concurrency: Number(body.concurrency) || 4,
+      }))
+    } catch (err) {
+      return json(502, { error: err instanceof Error ? err.message : 'Headshot backfill failed.' })
     }
   }
 

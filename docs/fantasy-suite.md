@@ -46,6 +46,8 @@ Running list of shipped work that still needs a real-data check. **Add a line wh
 
 - [ ] Composer: typing TNF / SNF / MNF (or spelled out) offers that night's game pill (MNF doubleheader offers both).
 
+- [ ] Matchup cards show league name + NBA format chip (dark + light); long ESPN names truncate cleanly.
+
 **Checked**
 - [x] 2026-10-22 Stream on Dallas Pro (Edge Lord session): next-week plan, open nights, picks match real schedules, pick-one note.
 - [x] 2026-10-22 Schedule card on Dallas Pro: next week, 40 vs 37 starts, nightly starts, back-to-backs, fits a phone after the grid fix.

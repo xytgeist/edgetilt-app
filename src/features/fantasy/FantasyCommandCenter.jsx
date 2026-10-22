@@ -3446,7 +3446,21 @@ function projectedFinish(outlook, hostScore) {
   return shown + remaining
 }
 
-function MatchupCard({ page, teams, week, provider, settings = null, cards, scoring, sport, categories = null, upcoming = false }) {
+/** NBA league formats vary a lot (one host can run five); the chip tells same-host leagues apart. NFL is all points. */
+function leagueFormatLabel(provider, sport, settings) {
+  if (String(sport || '').toLowerCase() !== 'nba') return ''
+  if (String(provider || '').toLowerCase() === 'sleeper') return 'Lock-In'
+  if (settings?.high_score) return 'High Score'
+  const t = String(settings?.scoring_type || '').toUpperCase()
+  if (t === 'H2H_MOST_CATEGORIES') return 'Most Cats'
+  if (t === 'H2H_CATEGORY' || t === 'HEAD') return 'H2H Cats'
+  if (t === 'H2H_POINTS' || t === 'HEADPOINT') return 'H2H Points'
+  if (t === 'ROTO') return 'Roto'
+  if (t === 'TOTAL_SEASON_POINTS' || t === 'POINT') return 'Season Points'
+  return ''
+}
+
+function MatchupCard({ page, teams, week, provider, settings = null, leagueName = '', cards, scoring, sport, categories = null, upcoming = false }) {
   const lockIn = nbaLockIn(provider, sport, settings)
   const leftOut = sideOutlook(page.roster, cards, scoring, sport, lockIn, upcoming)
   const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport, lockIn, upcoming)
@@ -3459,6 +3473,7 @@ function MatchupCard({ page, teams, week, provider, settings = null, cards, scor
   const lead = page.right && ls != null && rs != null && ls !== rs ? (ls > rs ? 'left' : 'right') : null
   const lo = projectedFinish(leftOut, page.leftScore)
   const ro = page.right ? projectedFinish(rightOut, page.rightScore) : null
+  const format = leagueFormatLabel(provider, sport, settings)
   return (
     <div
       className="fantasy-card-lift relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900"
@@ -3470,8 +3485,18 @@ function MatchupCard({ page, teams, week, provider, settings = null, cards, scor
       }}
     >
       <span aria-hidden className="fantasy-vs-glow pointer-events-none absolute inset-0" />
+      {leagueName || format ? (
+        <div data-fantasy-card-league className="relative flex items-center gap-2 px-3 pt-2.5">
+          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-zinc-400">{leagueName}</span>
+          {format ? (
+            <span className="shrink-0 rounded-full border border-zinc-700 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-zinc-300">
+              {format}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {/* Names get the full width on top; the site badge sits between the scores below. */}
-      <div className={`relative grid gap-3 px-3 pt-3 ${page.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
+      <div className={`relative grid gap-3 px-3 ${leagueName || format ? 'pt-1.5' : 'pt-3'} ${page.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
         <TeamHead team={page.left} teams={teams} align="left" />
         {page.right ? <TeamHead team={page.right} teams={teams} align="right" /> : null}
       </div>
@@ -4016,6 +4041,7 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
               week={entry.leagueDetail.week}
               provider={entry.lg.provider || entry.leagueDetail.league?.provider}
               settings={entry.leagueDetail.league?.settings || entry.lg.settings}
+              leagueName={entry.lg.name || entry.leagueDetail.league?.name || ''}
               cards={cards}
               scoring={entry.leagueDetail.league?.scoring}
               sport={group.sport}
@@ -4277,6 +4303,7 @@ export default function FantasyCommandCenter({
                   week={detail?.week}
                   provider={selected?.provider || detail?.league?.provider}
                   settings={detail?.league?.settings || selected?.settings}
+                  leagueName={detail?.league?.name || selected?.name || ''}
                   cards={cards}
                   scoring={detail?.league?.scoring}
                   sport={selected?.sport || detail?.league?.sport}

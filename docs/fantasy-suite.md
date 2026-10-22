@@ -39,6 +39,7 @@ Running list of shipped work that still needs a real-data check. **Add a line wh
 - [ ] League outlook alert (pill + collapsed line + Needs attention box) in dark mode (light checked 2026-10-22).
 - [ ] Stream shortlist by better week: next-week streamers show late in a week (check on a Sunday).
 - [ ] Jordan Pike keeps posting on prod; portal Run pipeline / Dry run buttons work for sports_news.
+- [ ] Jordan Pike roundups post one line per item (worst first) and most game posts carry a game pill (this-week window, ~40% budget, up to 3 pills on mixed roundups).
 
 **Checked**
 - [x] 2026-10-22 Stream on Dallas Pro (Edge Lord session): next-week plan, open nights, picks match real schedules, pick-one note.

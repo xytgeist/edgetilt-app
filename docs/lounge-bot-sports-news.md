@@ -30,7 +30,8 @@ Ryan 2026-10-22: post more information without posting more often.
 - A **single** post needs news under 2h old that clears the threshold.
 - Everything else scoring **35+** (or fresh news that missed a slot) waits up to **6h** in a pool.
 - When the pool has **3 items**, or **2 that have waited 3h**, one roundup posts (counts as one post toward caps). Up to 6 headlines, one line per player (that player's other notes are claimed too, so they never post later).
-- Header: `{AWAY} at {HOME} notes` when 2+ items share a game (game pill if within 24h and the pill budget lasts); `{Weekday} practice notes` when every line is a practice note; else `NFL news roundup`.
+- Header: `{AWAY} at {HOME} notes` when 2+ items share a game; `{Weekday} practice notes` when every line is a practice note; else `NFL news roundup`.
+- Format (Ryan 2026-10-22): one `• headline` line per item, worst status first (out, doubtful, questionable / limited, then cleared). Posts publish with `keepLines: true` so the shared caption cleanup keeps single line breaks (other bots unchanged).
 - Each item keeps its `dedupe_key` row under lane `bundle` (migration `20261022020000`).
 
 ## Extra lanes
@@ -38,10 +39,12 @@ Ryan 2026-10-22: post more information without posting more often.
 - **Key absences roundup:** one post per kickoff window, 55-85 min before kick, listing ranked players ESPN has Out / IR (`nfl_player_status`), up to 6 names.
 - **Line move:** a status / QB post stores the home spread at post time. Within 3h, if the board spread moves 1+ pt before kickoff, one follow-up posts ("Line move: LAR at SF is now SF -6.5, from -3 when the ... news broke.").
 
-## Game pills (~20%)
+## Game pills (~40%)
+
+Pills are the reason Jordan exists (Ryan 2026-10-22), so most game news carries one.
 
 - Always: key absences roundup, line move.
-- Status / QB / in-game posts: only when the game is live or within 24h, and only while the day's pill budget lasts (`round(0.2 × max_posts_per_day)`).
+- Status / QB / in-game posts and roundups: when the team's game is live or this week (within 7 days), while the day's pill budget lasts (`round(0.4 × max_posts_per_day)`). A game's notes roundup pills that game; a mixed roundup pills up to 3 of its top items' games.
 - Transactions: never.
 
 Uses `publishLoungeBotPost({ sportsGameEventIds })` → `community_feed_posts.sports_game` (same shape the composer writes).

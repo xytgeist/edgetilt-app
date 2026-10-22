@@ -26,6 +26,8 @@ export type BotPublishInput = {
   creatorFanOnly?: boolean
   /** Lounge game pill(s): board event ids (`community_feed_posts.sports_game`, same shape the composer writes). */
   sportsGameEventIds?: string[]
+  /** Keep single line breaks (lists): each line is cleaned on its own instead of per paragraph. */
+  keepLines?: boolean
 }
 
 export type BotPublishResult = {
@@ -95,7 +97,16 @@ export async function publishLoungeBotPost(
   input: BotPublishInput,
 ): Promise<BotPublishResult> {
   // Lounge feed keeps markdown. Chat/X must use toPlainOutboundText (loungeBotSubChatPublish / future X publisher).
-  const caption = stripXTwitterUrlsFromText(sanitizeBotProse(String(input.caption || '').trim()))
+  const rawCaption = String(input.caption || '').trim()
+  const cleaned = input.keepLines
+    ? rawCaption
+        .split('\n')
+        .map((line) => (line.trim() ? sanitizeBotProse(line) : ''))
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+    : sanitizeBotProse(rawCaption)
+  const caption = stripXTwitterUrlsFromText(cleaned)
   const imageUrls = normalizeBotImageUrls(input.imageUrls)
   if (!caption && !imageUrls.length) return { postId: null, error: 'Caption or image required.' }
   if (caption.length > LOUNGE_BOT_CAPTION_MAX) {

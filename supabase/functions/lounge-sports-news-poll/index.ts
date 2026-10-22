@@ -12,8 +12,9 @@
  *   line_move   follow-up when the spread moves 1+ pts within 3h of a status / qb post
  *   bundle      near-miss items (score 35+, or fresh news that missed a slot) roll into one roundup post: a game's
  *               notes when 2+ share a game, else a mixed roundup; posts at 3 items or once 2 have waited 3h
- * Game pill: always on inactives + line_move; on status / qb / in_game within 24h of kickoff while the day's pill
- * budget (~20% of the daily cap) lasts; never on transactions.
+ * Game pill: always on inactives + line_move; on status / qb / in_game and roundups (a game's notes, or up to 3 of a
+ * mixed roundup's games) when the team's game is this week, while the day's pill budget (~40% of the daily cap) lasts;
+ * never on transactions. Roundups post as one line per item, worst status first.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
@@ -23,7 +24,10 @@ import { cachedLoungeSportsScoreboard, type LoungeSportsGame } from '../_shared/
 const SLUG = 'jordan-pike'
 const NFL = 'americanfootball_nfl'
 const DEFAULT_THRESHOLD = 55
-const PILL_SHARE = 0.2
+const PILL_SHARE = 0.4
+/** Pills show the team's game for the week (the board carries the current NFL week). */
+const PILL_WINDOW_H = 7 * 24
+const ROUNDUP_PILLS_MAX = 3
 const LOOKBACK_OVERLAP_MS = 2 * 60 * 1000
 const FIRST_RUN_LOOKBACK_MS = 30 * 60 * 1000
 const LINE_WATCH_MS = 3 * 60 * 60 * 1000
@@ -58,6 +62,8 @@ type Candidate = {
   pillWanted: 'always' | 'near' | 'never'
   followRowId?: string
   headline?: string
+  /** Insider next status (out / doubtful / questionable / cleared), orders roundup lines. */
+  next?: string
   postedAt?: number
   /** Same-player items folded into this one in a roundup (claimed so they never post later). */
   alsoKeys?: string[]
@@ -149,7 +155,8 @@ function nflGames(games: LoungeSportsGame[]): LoungeSportsGame[] {
 function gameFor(games: LoungeSportsGame[], teamCode: string): LoungeSportsGame | null {
   const t = team(teamCode)
   const mine = games.filter((g) => team(g.home?.abbrev) === t || team(g.away?.abbrev) === t)
-  return mine.find((g) => g.status === 'in') || mine.sort((a, b) => Date.parse(a.commence_time) - Date.parse(b.commence_time))[0] || null
+  const ahead = mine.filter((g) => g.status !== 'post')
+  return mine.find((g) => g.status === 'in') || (ahead.length ? ahead : mine).sort((a, b) => Date.parse(a.commence_time) - Date.parse(b.commence_time))[0] || null
 }
 
 function hoursToKick(game: LoungeSportsGame | null): number | null {
@@ -209,7 +216,7 @@ function insiderCandidates(rows: Obj[], pc: NonNullable<typeof playerCache>, gam
     const tierW = lane === 'qb' && (kind === 'role' || pc.qbStarter.has(sid)) ? 1 : tier === 'A' ? 1 : tier === 'B' ? 0.75 : 0.45
     const source = row.status_trusted === true || CORE.has(str(row.handle).toLowerCase()) ? 1 : 0.85
     const prox = lane === 'transaction' ? 1 : proximity(game)
-    const near = game ? (game.status === 'in' || (hoursToKick(game) ?? 99) <= 24) : false
+    const near = pillable(game)
     out.push({
       lane,
       dedupeKey: `news:${sid}:${next || kind || 'news'}:${lane === 'transaction' ? day : game?.id || day}`,
@@ -222,14 +229,27 @@ function insiderCandidates(rows: Obj[], pc: NonNullable<typeof playerCache>, gam
       pillEventIds: game && lane !== 'transaction' && near ? [game.id] : [],
       pillWanted: lane === 'transaction' ? 'never' : 'near',
       headline: str(row.headline),
+      next,
       postedAt: Date.parse(str(row.posted_at)) || Date.now(),
     })
   }
   return out
 }
 
-function nearKick(game: LoungeSportsGame | null): boolean {
-  return Boolean(game && (game.status === 'in' || (hoursToKick(game) ?? 99) <= 24))
+function pillable(game: LoungeSportsGame | null): boolean {
+  if (!game || game.status === 'post') return false
+  const h = hoursToKick(game)
+  return game.status === 'in' || (h != null && h >= -4 && h <= PILL_WINDOW_H)
+}
+
+/** Worst news first in a roundup: out, then doubtful, questionable / limited, then cleared and the rest. */
+function severity(c: Candidate): number {
+  const n = String(c.next || '')
+  const h = String(c.headline || '').toLowerCase()
+  if (n === 'out' || /\b(ruled out|out for|misses|did not practice|placed on ir|out\b)/.test(h)) return 0
+  if (n === 'doubtful' || /doubtful/.test(h)) return 1
+  if (n === 'questionable' || /questionable|limited/.test(h)) return 2
+  return 3
 }
 
 function bundleReady(items: Candidate[]): boolean {
@@ -260,12 +280,21 @@ function buildBundle(rawPool: Candidate[]): Bundle | null {
   const header = game
     ? `${str(game.away?.abbrev)} at ${str(game.home?.abbrev)} notes`
     : items.every((c) => /practice/i.test(c.headline || '')) ? `${weekday} practice notes` : 'NFL news roundup'
+  const lines = [...items]
+    .sort((a, b) => severity(a) - severity(b) || b.score - a.score)
+    .map((c) => (c.headline ? `• ${c.headline}` : ''))
+    .filter(Boolean)
+  // A game's notes pill that game; a mixed roundup pills the games of its top items (this week only).
+  const pillGames = game
+    ? [game]
+    : [...items].sort((a, b) => b.score - a.score).map((c) => c.game).filter((g): g is LoungeSportsGame => Boolean(g))
+  const pillEventIds = [...new Set(pillGames.filter(pillable).map((g) => g.id))].slice(0, ROUNDUP_PILLS_MAX)
   return {
     items,
-    caption: `${header}\n\n${items.map((c) => c.headline).filter(Boolean).join('\n')}`,
+    caption: `${header}\n\n${lines.join('\n')}`,
     score: Math.max(...items.map((c) => c.score)),
     game,
-    pillEventIds: game && nearKick(game) ? [game.id] : [],
+    pillEventIds,
   }
 }
 
@@ -298,7 +327,7 @@ async function inactivesCandidates(admin: SupabaseClient, pc: NonNullable<typeof
       .sort((a, b) => a.p.search_rank - b.p.search_rank)
       .slice(0, 6)
     if (!absent.length) continue
-    const lines = absent.map(({ r, p }) => `${p.full_name} (${p.team}${str(r.injury) ? `, ${str(r.injury).toLowerCase()}` : ''}) out`)
+    const lines = absent.map(({ r, p }) => `• ${p.full_name} (${p.team}${str(r.injury) ? `, ${str(r.injury).toLowerCase()}` : ''}) out`)
     const eventIds = slate
       .filter((g) => absent.some(({ p }) => team(g.home?.abbrev) === p.team || team(g.away?.abbrev) === p.team))
       .map((g) => g.id)
@@ -518,6 +547,7 @@ Deno.serve(async (req) => {
         caption: c.caption,
         categoryPills: bot.category_pills_default?.length ? bot.category_pills_default : ['sports'],
         sportsGameEventIds: pill ? c.pillEventIds : [],
+        keepLines: true,
       })
       await admin.from('lounge_bot_publish_log').insert({
         bot_user_id: bot.user_id,
@@ -560,6 +590,7 @@ Deno.serve(async (req) => {
           caption: bundle.caption,
           categoryPills: bot.category_pills_default?.length ? bot.category_pills_default : ['sports'],
           sportsGameEventIds: bundlePill ? bundle.pillEventIds : [],
+          keepLines: true,
         })
         await admin.from('lounge_bot_publish_log').insert({
           bot_user_id: bot.user_id,

@@ -151,11 +151,20 @@ function computePerformanceStats(pickList) {
         ? `+${avgUnitsPerPick.toFixed(2)}`
         : avgUnitsPerPick.toFixed(2)
 
-  // Real CLV only ... synthetic backfill clv_beat without clv_pts does not count.
-  // Beat % is beats vs misses. Even CLV (called -3, close -3) is off the board.
-  const withClv = gradedPicks.filter((p) => typeof p.metadata?.clv_pts === 'number')
-  const clvBeats = withClv.filter((p) => Number(p.metadata.clv_pts) > 0).length
-  const clvMisses = withClv.filter((p) => Number(p.metadata.clv_pts) < 0).length
+  // Real CLV only ... synthetic backfill clv_beat without clv_pts / clv_prob does not count.
+  // Spreads / totals grade on points (clv_pts), moneylines on closing price (clv_prob, implied-prob points).
+  // Beat % is beats vs misses. Even CLV (called -3, close -3) is off the board but shown in the counts.
+  const clvSign = (p) => {
+    const pts = p.metadata?.clv_pts
+    if (typeof pts === 'number') return pts > 0 ? 1 : pts < 0 ? -1 : 0
+    const prob = p.metadata?.clv_prob
+    if (typeof prob === 'number') return prob >= 0.25 ? 1 : prob <= -0.25 ? -1 : 0
+    return null
+  }
+  const clvSigns = gradedPicks.map(clvSign).filter((s) => s != null)
+  const clvBeats = clvSigns.filter((s) => s > 0).length
+  const clvMisses = clvSigns.filter((s) => s < 0).length
+  const clvEven = clvSigns.filter((s) => s === 0).length
   const clvDecided = clvBeats + clvMisses
   const clvRate = clvDecided > 0 ? ((clvBeats / clvDecided) * 100).toFixed(1) : null
   const clvSample = clvDecided
@@ -178,6 +187,9 @@ function computePerformanceStats(pickList) {
     displayAvgUnits,
     clvRate,
     clvSample,
+    clvBeats,
+    clvMisses,
+    clvEven,
     hammer: groupConsensusGames(hammerPicks),
     consensus: groupConsensusGames(consensusPicks),
   }
@@ -294,7 +306,7 @@ function SyndicatePerformanceTicker({
             {`${stats.clvRate}%`}
           </div>
           <div className="text-[10px] sm:text-[11px] text-zinc-500">
-            {`beats vs misses · n=${stats.clvSample}`}
+            {`${stats.clvBeats} beat · ${stats.clvEven} even · ${stats.clvMisses} miss`}
           </div>
         </div>
       ) : null}
@@ -1635,8 +1647,9 @@ export function SyndicateApp() {
                 </div>
                 <h3 className="text-lg font-bold text-white">When CLV shows up</h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Closing-line value appears on the performance ticker only after picks have a locked market-file close
-                  (`clv_pts`). Beat rate is beats vs misses only ... calling the same number as the close does not count
+                  Closing-line value appears on the performance ticker only after picks have a locked market-file close.
+                  Spreads and totals grade on the number (`clv_pts`), moneylines on the closing price (`clv_prob`). Beat
+                  rate is beats vs misses ... calling the same number as the close is even, shown in the counts but not
                   against the desk. Until then the tile stays hidden ... ledger ATS still grades from final scores.
                 </p>
               </div>

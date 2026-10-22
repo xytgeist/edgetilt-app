@@ -93,6 +93,9 @@ import {
 } from './loungeBotDeskEquations.ts'
 import {
   computePickClvPts,
+  computePickClvProb,
+  PICK_CLV_PROB_TIE,
+  PICK_CLV_VERSION,
   mapConsensusTypeToBucket,
 } from './loungeBotSyndicateScoreboard.ts'
 import { isTestSupabaseProject } from './publicAppOrigin.ts'
@@ -2946,14 +2949,20 @@ export async function gradePendingPicks(
   const pendingUpdates: Array<{ id: string; payload: Record<string, unknown> }> = []
 
   const pendingEventIds = [...new Set(pendingPicks.map((p) => p.event_id).filter(Boolean))]
-  const closeByEvent = new Map<string, { close_locked: boolean; close_spread_home: number | null; close_total: number | null }>()
+  const closeByEvent = new Map<string, {
+    close_locked: boolean
+    close_spread_home: number | null
+    close_total: number | null
+    close_home_ml: number | null
+    close_away_ml: number | null
+  }>()
   if (pendingEventIds.length > 0) {
     const chunkSize = 80
     for (let i = 0; i < pendingEventIds.length; i += chunkSize) {
       const chunk = pendingEventIds.slice(i, i + chunkSize)
       const { data: mfiles } = await admin
         .from('lounge_market_files')
-        .select('event_id, close_locked, close_spread_home, close_total')
+        .select('event_id, close_locked, close_spread_home, close_total, close_home_ml, close_away_ml')
         .in('event_id', chunk)
       for (const row of mfiles || []) {
         closeByEvent.set(row.event_id, row)
@@ -3166,6 +3175,7 @@ export async function gradePendingPicks(
 
         const mfile = closeByEvent.get(pick.event_id) || null
         const clvPts = computePickClvPts(pick, mfile)
+        const clvProb = clvPts == null ? computePickClvProb(pick, mfile) : null
         const clvMeta = clvPts != null
           ? {
               clv_pts: Math.round(clvPts * 100) / 100,
@@ -3173,8 +3183,18 @@ export async function gradePendingPicks(
               close_spread_home: mfile?.close_spread_home ?? null,
               close_total: mfile?.close_total ?? null,
               close_locked: mfile?.close_locked ?? false,
+              clv_v: PICK_CLV_VERSION,
             }
-          : {}
+          : clvProb != null
+            ? {
+                clv_prob: clvProb,
+                clv_beat: clvProb >= PICK_CLV_PROB_TIE ? true : clvProb <= -PICK_CLV_PROB_TIE ? false : null,
+                close_home_ml: mfile?.close_home_ml ?? null,
+                close_away_ml: mfile?.close_away_ml ?? null,
+                close_locked: mfile?.close_locked ?? false,
+                clv_v: PICK_CLV_VERSION,
+              }
+            : {}
 
         pendingUpdates.push({
           id: pick.id,

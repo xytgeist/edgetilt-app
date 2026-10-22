@@ -182,13 +182,44 @@ export function computePickClvPts(
 
   if (pick.market_key === 'totals') {
     if (pick.pick_line == null || close.close_total == null) return null
+    // Over beats a higher close (got the lower number); Under beats a lower close.
     const isOver = /^over/i.test(String(pick.pick_name || ''))
     return isOver
-      ? Number(pick.pick_line) - Number(close.close_total)
-      : Number(close.close_total) - Number(pick.pick_line)
+      ? Number(close.close_total) - Number(pick.pick_line)
+      : Number(pick.pick_line) - Number(close.close_total)
   }
 
   return null
+}
+
+/** CLV metadata version. v2 = totals sign fixed + moneyline price CLV (migration 20261022040000 skips v2 rows). */
+export const PICK_CLV_VERSION = 2
+
+/** Price CLV under this many implied-probability points is even. */
+export const PICK_CLV_PROB_TIE = 0.25
+
+function americanImplied(odds: number | null | undefined): number | null {
+  const o = Number(odds)
+  if (!Number.isFinite(o) || o === 0) return null
+  return o < 0 ? -o / (-o + 100) : 100 / (o + 100)
+}
+
+/**
+ * Moneyline CLV in implied-probability points (x100): closing price implied prob minus the pick price implied prob.
+ * Positive = beat. Null unless the pick is h2h with a locked closing moneyline on its side.
+ */
+export function computePickClvProb(
+  pick: { market_key: string; pick_name: string; home_team: string; away_team: string; pick_price?: number | null },
+  close: { close_locked?: boolean; close_home_ml?: number | null; close_away_ml?: number | null } | null,
+): number | null {
+  if (!close || close.close_locked !== true || pick.market_key !== 'h2h') return null
+  const home = isTeamMatch(pick.pick_name, pick.home_team)
+  const away = !home && isTeamMatch(pick.pick_name, pick.away_team)
+  if (!home && !away) return null
+  const closeImp = americanImplied(home ? close.close_home_ml : close.close_away_ml)
+  const pickImp = americanImplied(pick.pick_price)
+  if (closeImp == null || pickImp == null) return null
+  return Math.round((closeImp - pickImp) * 10000) / 100
 }
 
 function monthWindow(asOf: Date, monthsBack = 1): { start: Date; end: Date; label: string } {

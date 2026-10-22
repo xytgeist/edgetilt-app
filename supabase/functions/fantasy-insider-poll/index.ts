@@ -52,12 +52,15 @@ type Verdict = {
   headline: string
   summary: string
   impact: string
+  /** News type for the Lounge sports news bot (null when the model did not say). */
+  kind: string | null
   /** Next-game status per player the post sets (one post can cover several: inactives lists, injury rundowns). */
   statuses: PlayerStatus[]
 }
 
 type PlayerStatus = { next: string; player: string; injury: string }
 
+const KINDS = ['status', 'transaction', 'in_game', 'role', 'other']
 const SEVERITY: Record<string, number> = { cleared: 0, questionable: 1, doubtful: 2, out: 3, ir: 3 }
 
 function etParts(d = new Date()) {
@@ -171,7 +174,7 @@ function cleanProse(s: unknown, max: number): string {
 
 function fallbackVerdict(t: Tweet): Verdict {
   const first = t.text.replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim()
-  return { status: 'show', headline: cleanProse(first, 140), summary: '', impact: '', statuses: [] }
+  return { status: 'show', headline: cleanProse(first, 140), summary: '', impact: '', kind: null, statuses: [] }
 }
 
 async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Promise<Verdict> {
@@ -197,6 +200,7 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
               'You write a fantasy football news desk, like FantasyPros player news. Input: one post by an NFL reporter, ' +
               'the players it names, and items we already published on those players in the last 90 minutes.\n' +
               'Return JSON only: {"status":"show"|"duplicate"|"skip","headline":string,"summary":string,"impact":string,' +
+              '"kind":"status"|"transaction"|"in_game"|"role"|"other",' +
               '"statuses":[{"player":string,"next":"out"|"doubtful"|"ir"|"questionable"|"cleared","injury":string}]}\n' +
               'status:\n' +
               '- "skip" when the post is not fantasy-relevant news about the player: opinions, jokes, highlights with no news, ' +
@@ -209,6 +213,11 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
               'gains or loses work, what to watch). Never invent facts not in the post; hedge with "likely" or "watch" when ' +
               'unsure. Third person. Never use em dashes, en dashes, or middle dots. For skip / duplicate, headline / summary / ' +
               'impact may be empty.\n' +
+              'kind (always fill): "in_game" for an injury during a game in progress (left the game, questionable / doubtful ' +
+              'to return, ruled out for the rest of the game, carted off). "transaction" for trades, signings, releases, ' +
+              'waiver claims, practice-squad elevations, contract extensions. "role" for starting-job or depth-chart changes ' +
+              '(named the starter, benched, demoted, promoted). "status" for availability news about an upcoming game ' +
+              '(practice participation, injury designations, inactives, IR moves, return timelines). "other" for anything else.\n' +
               'statuses (always fill, even for duplicate / skip): one entry for EACH named player whose NEXT-game status the ' +
               'post sets (an inactives list or injury rundown can set several; a player whose status it does not set gets no ' +
               'entry; [] when it sets none). player: the full name from Players named. next: ' +
@@ -251,6 +260,7 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
       headline: cleanProse(parsed.headline, 140),
       summary: cleanProse(parsed.summary, 500),
       impact: cleanProse(parsed.impact, 500),
+      kind: KINDS.includes(String(parsed.kind)) ? String(parsed.kind) : null,
       statuses,
     }
     if (status === 'show' && !verdict.headline) return fallbackVerdict(t)
@@ -413,6 +423,7 @@ Deno.serve(async (req) => {
         next_player: resolved[0]?.player || null,
         trusted: Boolean(resolved[0]?.trusted),
         headline: v.headline,
+        kind: v.kind,
       }
     })
   }
@@ -560,6 +571,7 @@ Deno.serve(async (req) => {
             headline: verdict.headline,
             summary: verdict.summary,
             impact: verdict.impact,
+            kind: verdict.kind,
             next_status: top ? top.next : null,
             status_sleeper_id: top ? top.sleeper_id : null,
             status_injury: top ? top.injury || null : null,

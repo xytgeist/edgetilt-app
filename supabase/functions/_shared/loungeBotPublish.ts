@@ -24,6 +24,8 @@ export type BotPublishInput = {
    * Requires the bot's creator_monetization_profiles to be live (Connect + go live).
    */
   creatorFanOnly?: boolean
+  /** Lounge game pill(s): board event ids (`community_feed_posts.sports_game`, same shape the composer writes). */
+  sportsGameEventIds?: string[]
 }
 
 export type BotPublishResult = {
@@ -130,6 +132,8 @@ export async function publishLoungeBotPost(
     // Text/image bot posts are live immediately (NULL is reserved for staged Stream uploads).
     feed_visible_at: new Date().toISOString(),
   }
+  const gameIds = [...new Set((input.sportsGameEventIds || []).map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 6)
+  if (gameIds.length) row.sports_game = gameIds.length === 1 ? { event_id: gameIds[0], event_ids: gameIds } : { event_ids: gameIds }
 
   const { data, error } = await admin
     .from('community_feed_posts')

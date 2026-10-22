@@ -117,6 +117,9 @@ verify_jwt = false
 [functions.lounge-news-poll]
 verify_jwt = false
 
+[functions.lounge-sports-news-poll]
+verify_jwt = false
+
 [functions.lounge-odds-poll]
 verify_jwt = false
 

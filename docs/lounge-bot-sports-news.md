@@ -38,7 +38,7 @@ Uses `publishLoungeBotPost({ sportsGameEventIds })` → `community_feed_posts.sp
 
 ## Captions
 
-Insider headline, Fantasy Impact line, `Per {reporter}.` No X links … `publishLoungeBotPost` strips X URLs from bot posts by design.
+Insider headline + Fantasy Impact line. No reporter credit line (Ryan 2026-10-22: posted news is public). No X links … `publishLoungeBotPost` strips X URLs from bot posts by design.
 
 ## Ops
 

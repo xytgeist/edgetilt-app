@@ -150,13 +150,8 @@ function proximity(game: LoungeSportsGame | null): number {
   return 0.7
 }
 
-function credit(row: Obj): string {
-  const who = str(row.author_name) || (str(row.handle) ? `@${str(row.handle)}` : '')
-  return who ? `Per ${who}.` : ''
-}
-
 function newsCaption(row: Obj): string {
-  return [str(row.headline), str(row.impact), credit(row)].filter(Boolean).join('\n\n')
+  return [str(row.headline), str(row.impact)].filter(Boolean).join('\n\n')
 }
 
 const CORE = new Set(['adamschefter', 'rapsheet', 'tompelissero', 'mikegarafolo', 'underdognfl', 'caplannfl'])

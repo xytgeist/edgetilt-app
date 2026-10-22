@@ -1846,34 +1846,40 @@ function NbaSchedulePanel({ page, cards, league }) {
         ) : null}
       </div>
       <div className="mt-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <table className="w-full border-separate border-spacing-0 text-[10px]">
+        <table className="w-full table-fixed border-separate border-spacing-0 text-[10px]">
+          <colgroup>
+            <col className="w-[4.75rem]" />
+            {plan.dates.map((d) => (
+              <col key={d} />
+            ))}
+            <col className="w-5" />
+          </colgroup>
           <thead>
             <tr>
               <th className="pr-1" />
               {plan.dates.map((d) => (
-                <th key={d} className={`px-0.5 pb-1 text-center font-bold uppercase ${d === plan.today ? 'text-sky-400' : 'text-zinc-500'}`}>
+                <th key={d} className={`pb-1 text-center font-bold uppercase ${d === plan.today ? 'text-sky-400' : 'text-zinc-500'}`}>
                   {nightLabel(d).slice(0, 2)}
                 </th>
               ))}
-              <th className="pb-1 pl-1 text-right font-semibold text-zinc-500">Left</th>
+              <th className="pb-1 text-right font-semibold text-zinc-500">L</th>
             </tr>
           </thead>
           <tbody>
             {plan.rows.map((p) => (
               <tr key={p.id} className={p.row.slot === 'bench' ? 'opacity-80' : ''}>
-                <td className="max-w-[6rem] truncate py-0.5 pr-1 font-semibold text-zinc-200">
+                <td className="truncate py-0.5 pr-1 font-semibold text-zinc-200">
                   {shortName(p.row.player_name, p.row.position)}
-                  {p.out ? <span className="ml-1 font-bold text-rose-300">OUT</span> : null}
                 </td>
                 {plan.dates.map((d) => {
                   const g = p.games.get(d)
                   const past = d < plan.today || g?.state === 'post'
                   return (
-                    <td key={d} className="px-0.5 py-0.5 text-center">
+                    <td key={d} className="py-0.5 text-center">
                       {g ? (
                         <span
                           data-fantasy-sched-b2b={g.b2b && !past ? '' : undefined}
-                          className={`inline-block rounded px-0.5 text-[9px] font-semibold tabular-nums ${
+                          className={`inline-block rounded px-[1px] text-[8.5px] font-semibold tracking-tight ${
                             past || p.out ? 'text-zinc-600' : g.state === 'in' ? 'fantasy-sit-gain' : 'bg-zinc-800 text-zinc-200'
                           }`}
                         >
@@ -1886,7 +1892,9 @@ function NbaSchedulePanel({ page, cards, league }) {
                     </td>
                   )
                 })}
-                <td className="py-0.5 pl-1 text-right font-bold tabular-nums text-zinc-200">{p.left}</td>
+                <td className="py-0.5 text-right font-bold tabular-nums text-zinc-200">
+                  {p.out ? <span className="text-[8px] text-rose-300">OUT</span> : p.left}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1896,7 +1904,7 @@ function NbaSchedulePanel({ page, cards, league }) {
               {plan.dates.map((d) => {
                 const n = plan.starts[d]
                 return (
-                  <td key={d} className="px-0.5 pt-1 text-center tabular-nums">
+                  <td key={d} className="pt-1 text-center text-[9px] tabular-nums">
                     {n == null ? (
                       <span className="text-zinc-700">-</span>
                     ) : (
@@ -1913,7 +1921,7 @@ function NbaSchedulePanel({ page, cards, league }) {
         </table>
       </div>
       <p className="mt-2 text-[10px] text-zinc-500">
-        Starts = lineup slots you can fill with healthy players who play that night. Underlined: second night of a back-to-back (rest risk).
+        Starts = lineup slots you can fill with healthy players who play that night. L = games left. Underlined: second night of a back-to-back (rest risk).
         {lockIn ? ' Lock-In counts one game a player, so extra games are extra shots at a big night.' : ''}
       </p>
     </div>

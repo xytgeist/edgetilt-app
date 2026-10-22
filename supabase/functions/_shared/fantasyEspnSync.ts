@@ -643,6 +643,13 @@ async function syncEspnConnection(
   }
 }
 
+/** US Eastern date `days` from today (YYYY-MM-DD). */
+function etDateOffset(days: number): string {
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
+  const [y, m, d] = fmt.format(new Date()).split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
+}
+
 function nbaNameKey(name: string): string {
   return String(name || '')
     .toLowerCase()
@@ -735,6 +742,11 @@ async function syncEspnNba(
     }
     const week = Math.max(1, Number(status.currentMatchupPeriod) || 1)
     const espnSeason = Number(lg.seasonId) || ref.season
+    // ESPN NBA scoring periods are days. Before the first one (`firstScoringPeriod` > today's `latestScoringPeriod`)
+    // the first matchup is upcoming; its first day is today plus the gap.
+    const firstDay = Number(status.firstScoringPeriod) || 0
+    const today = Number(status.latestScoringPeriod) || 0
+    const matchupWeekStart = firstDay > today && today > 0 ? etDateOffset(firstDay - today) : null
     const { data: leagueRow, error: lgErr } = await admin
       .from('fantasy_leagues')
       .upsert(
@@ -755,6 +767,7 @@ async function syncEspnNba(
             ...(categoriesLeague ? { category_value: true, category_pct: categoryPct } : {}),
             daily_lineups: String(roster.lineupLocktimeType || '') !== 'WEEKLY',
             lineup_slots: lineupSlots,
+            ...(matchupWeekStart ? { matchup_week_start: matchupWeekStart } : {}),
             current_week: week,
             waiver: espnWaiver(settings),
             ...espnPlayoffs(settings),

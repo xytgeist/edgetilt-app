@@ -26,7 +26,13 @@ function liveProgress(card, now) {
  *   progress: number, host: number, boost: number, scored: number, remaining: number, total: number,
  *   pregame: number }}
  */
-export function nbaWeekOf(row, card, scoring, now = Date.now(), { lockIn = false } = {}) {
+export function nbaWeekOf(row, card, scoring, now = Date.now(), { lockIn = false, upcoming = false } = {}) {
+  if (upcoming) {
+    // The synced matchup week has not started: nothing played yet, next week's games still to come.
+    const next = Number(card?.games_next) || 0
+    card = card ? { ...card, games_week: next, games_left: next, games_played: 0, game_status: null, line: null } : card
+    row = { ...row, week_points: 0 }
+  }
   if (lockIn) return lockInWeekOf(row, card, scoring, now)
   const perGame = card ? projectionOf(card, scoring, 'nba', card.pos || null) : NaN
   const hasPer = Number.isFinite(perGame)
@@ -114,4 +120,12 @@ function lockInWeekOf(row, card, scoring, now) {
     pregame: hasPer ? lockInValue(perGame, gamesWeek) : NaN,
     lockIn: true,
   }
+}
+
+const ET_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/** The league's synced matchup week starts after today (the sync saves its first day before a league begins). */
+export function nbaMatchupUpcoming(league, now = Date.now()) {
+  const start = String(league?.settings?.matchup_week_start || '')
+  return Boolean(start) && start > ET_DATE.format(now)
 }

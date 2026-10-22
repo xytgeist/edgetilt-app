@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
-import { nbaWeekOf } from './fantasyNbaWeek.js'
+import { nbaMatchupUpcoming, nbaWeekOf } from './fantasyNbaWeek.js'
 import { lockInCall, nbaLockIn } from './fantasyLockIn.js'
 import { CategoryBoard, CategoryScoreLine, leagueCategories, useCategoryMatchup } from './FantasyCategoryBoard.jsx'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
@@ -446,9 +446,9 @@ function pointsOf(card, scoring, sport) {
  * Starter total. Before kickoff this is the projection. After, live points so far plus what is still to play:
  * full projections for players yet to start, the paced share for players mid-game, nothing once final.
  */
-function sideOutlook(roster, cards, scoring, sport, lockIn = false) {
+function sideOutlook(roster, cards, scoring, sport, lockIn = false, upcoming = false) {
   const starters = startersOf(roster)
-  if (sport === 'nba') return nbaSideOutlook(starters, cards, scoring, lockIn)
+  if (sport === 'nba') return nbaSideOutlook(starters, cards, scoring, lockIn, upcoming)
   let projected = 0
   let projectedN = 0
   let scored = 0
@@ -496,7 +496,7 @@ function sideOutlook(roster, cards, scoring, sport, lockIn = false) {
 }
 
 /** NBA side: host week-to-date + live points it has not caught yet, plus per-game projections x games left (Lock-In: one game counts). */
-function nbaSideOutlook(starters, cards, scoring, lockIn = false) {
+function nbaSideOutlook(starters, cards, scoring, lockIn = false, upcoming = false) {
   let projected = 0
   let projectedN = 0
   let scored = 0
@@ -511,7 +511,7 @@ function nbaSideOutlook(starters, cards, scoring, lockIn = false) {
       allDone = false
       continue
     }
-    const w = nbaWeekOf(row, card, scoring, undefined, { lockIn })
+    const w = nbaWeekOf(row, card, scoring, undefined, { lockIn, upcoming })
     if (Number.isFinite(w.pregame)) {
       projected += w.pregame
       projectedN += 1
@@ -996,8 +996,8 @@ function liveProjection(card, actual, sport, proj) {
  * Small line under a started game = the pregame projection, or the live-paced number during it (green / red vs
  * the pregame projection).
  */
-function PointsCell({ card, row, loading, scoring, sport, align, lockIn = false }) {
-  if (sport === 'nba') return <NbaPointsCell card={card} row={row} loading={loading} scoring={scoring} align={align} lockIn={lockIn} />
+function PointsCell({ card, row, loading, scoring, sport, align, lockIn = false, upcoming = false }) {
+  if (sport === 'nba') return <NbaPointsCell card={card} row={row} loading={loading} scoring={scoring} align={align} lockIn={lockIn} upcoming={upcoming} />
   const status = sideStatus(card)
   const proj = projectedOf(card, scoring, sport)
   const hasProj = Number.isFinite(proj)
@@ -1037,8 +1037,8 @@ function PointsCell({ card, row, loading, scoring, sport, align, lockIn = false 
  * NBA: big number = week-to-date points (green while a game is on); before his first game it is the week's
  * projection (muted, "PROJ"). Small line = projected week total, green / red vs the start-of-week projection.
  */
-function NbaPointsCell({ card, row, loading, scoring, align, lockIn = false }) {
-  const w = card ? nbaWeekOf(row, card, scoring, undefined, { lockIn }) : null
+function NbaPointsCell({ card, row, loading, scoring, align, lockIn = false, upcoming = false }) {
+  const w = card ? nbaWeekOf(row, card, scoring, undefined, { lockIn, upcoming }) : null
   const hasProj = Number.isFinite(w?.pregame)
   const pregame = !!w && w.played === 0 && !w.host
   let main = !card && loading ? '…' : '-'
@@ -1067,7 +1067,7 @@ function NbaPointsCell({ card, row, loading, scoring, align, lockIn = false }) {
   )
 }
 
-function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn = false }) {
+function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn = false, upcoming = false }) {
   const [openKeys, setOpenKeys] = useState(() => new Set())
   const toggle = (key) =>
     setOpenKeys((prev) => {
@@ -1172,7 +1172,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
               {/* Pinned to the card's vertical middle; it clears the name line above and the props row below. */}
               <div className="absolute inset-x-0 top-1/2 z-[1] flex -translate-y-1/2 justify-center">
                 <div className="flex items-center gap-1">
-                  <PointsCell card={leftCard} row={pair.left} loading={cardsLoading} scoring={scoring} sport={sport} align="left" lockIn={lockIn} />
+                  <PointsCell card={leftCard} row={pair.left} loading={cardsLoading} scoring={scoring} sport={sport} align="left" lockIn={lockIn} upcoming={upcoming} />
                   {bench ? (
                     <span data-fantasy-bench-pill className="rounded-md px-1.5 py-0.5 text-[10px] font-bold">
                       BN
@@ -1192,7 +1192,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
                       {pair.label}
                     </span>
                   )}
-                  <PointsCell card={rightCard} row={pair.right} loading={cardsLoading} scoring={scoring} sport={sport} align="right" lockIn={lockIn} />
+                  <PointsCell card={rightCard} row={pair.right} loading={cardsLoading} scoring={scoring} sport={sport} align="right" lockIn={lockIn} upcoming={upcoming} />
                 </div>
               </div>
               <div className="relative z-[1] mt-[17px] grid min-h-[14px] grid-cols-2 gap-1.5 px-1">
@@ -2996,7 +2996,7 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
   }
   return (
     <ul className="space-y-1.5">
-      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} />
+      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} />
       {bench.length ? (
         <li data-fantasy-bench-divider className="flex items-center gap-2 px-1 pb-0.5 pt-3" aria-label="Bench">
           <span className="h-px flex-1" />
@@ -3004,7 +3004,7 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
           <span className="h-px flex-1" />
         </li>
       ) : null}
-      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} />
+      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} />
     </ul>
   )
 }
@@ -3180,13 +3180,13 @@ function projectedFinish(outlook, hostScore) {
   return shown + remaining
 }
 
-function MatchupCard({ page, teams, week, provider, cards, scoring, sport, categories = null }) {
+function MatchupCard({ page, teams, week, provider, cards, scoring, sport, categories = null, upcoming = false }) {
   const lockIn = nbaLockIn(provider, sport)
-  const leftOut = sideOutlook(page.roster, cards, scoring, sport, lockIn)
-  const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport, lockIn)
+  const leftOut = sideOutlook(page.roster, cards, scoring, sport, lockIn, upcoming)
+  const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport, lockIn, upcoming)
   const leftAccent = useTeamAccent(page.left?.avatar_url, page.left?.id || page.left?.team_name)
   const rightRaw = useTeamAccent(page.right?.avatar_url, page.right?.id || page.right?.team_name)
-  const cat = useCategoryMatchup(page, cards, categories)
+  const cat = useCategoryMatchup(page, cards, categories, upcoming)
   const rightAccent = distinctTeamAccent(rightRaw, leftAccent)
   const ls = scoreValue(leftOut, page.leftScore)
   const rs = scoreValue(rightOut, page.rightScore)
@@ -3674,6 +3674,7 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
               scoring={entry.leagueDetail.league?.scoring}
               sport={group.sport}
               categories={leagueCategories(entry.leagueDetail.league)}
+              upcoming={group.sport === 'nba' && nbaMatchupUpcoming(entry.leagueDetail.league)}
             />
           </button>
         )}
@@ -3928,13 +3929,14 @@ export default function FantasyCommandCenter({
                   scoring={detail?.league?.scoring}
                   sport={selected?.sport || detail?.league?.sport}
                   categories={leagueCategories(detail?.league)}
+                  upcoming={(selected?.sport || detail?.league?.sport) === 'nba' && nbaMatchupUpcoming(detail?.league)}
                 />
               )}
             />
           ) : null}
 
           {current && leagueCategories(detail?.league) ? (
-            <CategoryBoard page={current} cards={cards} categories={leagueCategories(detail?.league)} />
+            <CategoryBoard page={current} cards={cards} categories={leagueCategories(detail?.league)} upcoming={nbaMatchupUpcoming(detail?.league)} />
           ) : null}
 
           <div className="flex gap-2 overflow-x-auto pb-1">

@@ -792,7 +792,9 @@ export async function syncYahooConnection(
           const lg = leagues.find((x) => str(x.league_key) === leagueKey) || leagues[0]
           if (!lg) continue
 
-          const leagueWeek = num(lg.current_week) || num(lg.edit_key_week) || week
+          // Before the first scoring week (`start_week` > `current_week`), sync that first matchup so the league
+          // shows its real opponents and rosters ahead of time.
+          const leagueWeek = Math.max(num(lg.current_week) || num(lg.edit_key_week) || week, num(lg.start_week) || 0)
           week = leagueWeek || week
           const leagueSeason = num(lg.season) || season
           const leagueName = str(lg.name) || 'Yahoo League'
@@ -823,6 +825,15 @@ export async function syncYahooConnection(
             scoring = {}
           }
 
+          const leagueSettings: Record<string, unknown> = {
+            current_week: week,
+            num_teams: num(lg.num_teams),
+            scoring_type: str(lg.scoring_type),
+            ...nbaExtra,
+            ...(waiver ? { waiver } : {}),
+            ...(lineupSlots.length ? { lineup_slots: lineupSlots } : {}),
+            ...playoffs,
+          }
           const { data: leagueRow, error: lgErr } = await admin
             .from('fantasy_leagues')
             .upsert(
@@ -835,15 +846,7 @@ export async function syncYahooConnection(
                 season: leagueSeason,
                 sport,
                 scoring,
-                settings: {
-                  current_week: week,
-                  num_teams: num(lg.num_teams),
-                  scoring_type: str(lg.scoring_type),
-                  ...nbaExtra,
-                  ...(waiver ? { waiver } : {}),
-                  ...(lineupSlots.length ? { lineup_slots: lineupSlots } : {}),
-                  ...playoffs,
-                },
+                settings: leagueSettings,
                 updated_at: new Date().toISOString(),
               },
               { onConflict: 'connection_id,external_league_id' },
@@ -928,6 +931,14 @@ export async function syncYahooConnection(
             sb = null
           }
           if (sb) {
+            // The synced matchup week's first day lets the app tell an upcoming week from a live one.
+            const weekStart = str(collectByKey(sb, 'week_start')[0]?.week_start)
+            if (weekStart && sport === 'nba') {
+              await admin
+                .from('fantasy_leagues')
+                .update({ settings: { ...leagueSettings, matchup_week_start: weekStart } })
+                .eq('id', leagueId)
+            }
             await admin.from('fantasy_matchups').delete().eq('league_id', leagueId).eq('week', week)
             const seenPairs = new Set<string>()
             for (const mu of findScoreboardMatchups(sb)) {

@@ -22,34 +22,35 @@ export function leagueCategories(league) {
 }
 
 /** One side's starters: per-game lines (market blended) with games still to play and games already in the host totals. */
-function categorySide(roster, cards) {
+function categorySide(roster, cards, upcoming = false) {
   const remaining = []
   const played = []
   for (const row of startersOf(roster)) {
     const card = row?.sleeper_id ? cards?.[row.sleeper_id] : null
     if (!card?.proj_line) continue
     const line = { ...card.proj_line, ...(card.market_line || {}) }
-    const live = card.game_status === 'in_progress'
-    let left = Number(card.games_left) || 0
+    // An upcoming week (not started): next week's games, nothing played yet.
+    const live = !upcoming && card.game_status === 'in_progress'
+    let left = upcoming ? Number(card.games_next) || 0 : Number(card.games_left) || 0
     if (!live && String(row.injury_status || '').toLowerCase() === 'out' && left > 0) left -= 1
     const progress = live ? Math.min(1, Math.max(0, Number(card.game_progress) || 0.5)) : 0
     remaining.push({ line, games: left + (live ? 1 - progress : 0) })
-    played.push({ line, games: (Number(card.games_played) || 0) + (live ? progress : 0) })
+    played.push({ line, games: upcoming ? 0 : (Number(card.games_played) || 0) + (live ? progress : 0) })
   }
   return { remaining, played }
 }
 
 /** Category-by-category projection and win chances for a categories matchup (null for points leagues / byes). */
-export function useCategoryMatchup(page, cards, categories) {
+export function useCategoryMatchup(page, cards, categories, upcoming = false) {
   return useMemo(() => {
     if (!categories?.length || !page?.right) return null
-    const c = page.categories || {}
-    const L = categorySide(page.roster, cards)
-    const R = categorySide(page.oppRoster, cards)
+    const c = upcoming ? {} : page.categories || {}
+    const L = categorySide(page.roster, cards, upcoming)
+    const R = categorySide(page.oppRoster, cards, upcoming)
     const left = sideProjection(categories, c.left || {}, L.remaining, L.played)
     const right = sideProjection(categories, c.right || {}, R.remaining, R.played)
     return { ...categoryOutlook(categories, left, right), record: { wins: Number(c.wins) || 0, losses: Number(c.losses) || 0, ties: Number(c.ties) || 0 } }
-  }, [page, cards, categories])
+  }, [page, cards, categories, upcoming])
 }
 
 function catValue(side, digits = 0) {
@@ -76,8 +77,8 @@ export function CategoryScoreLine({ won, expected, align, lead }) {
 }
 
 /** Categories table under a categories matchup: each category's projected final for both sides and your win chance. */
-export function CategoryBoard({ page, cards, categories }) {
-  const cat = useCategoryMatchup(page, cards, categories)
+export function CategoryBoard({ page, cards, categories, upcoming = false }) {
+  const cat = useCategoryMatchup(page, cards, categories, upcoming)
   if (!cat) return null
   return (
     <div data-fantasy-cat-board className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
@@ -106,7 +107,9 @@ export function CategoryBoard({ page, cards, categories }) {
         ))}
       </div>
       <p className="mt-2 text-[10px] text-zinc-500">
-        Projected finals: totals so far plus each starter's per-game projection for the games left this week.
+        {upcoming
+          ? "Projected finals for next week: each starter's per-game projection times his games that week."
+          : "Projected finals: totals so far plus each starter's per-game projection for the games left this week."}
       </p>
     </div>
   )

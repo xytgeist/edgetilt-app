@@ -9,9 +9,10 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { loadFantasyLiveMap, lookupLive, lookupLiveDefense } from './fantasyLiveLines.ts'
+import { sharedCached } from './edgeSharedCache.ts'
 import { kalshiMarketUrls } from './loungeNflGameFantasy.ts'
 import { loadMarketLines, marketLineFor } from './fantasyMarketProjections.ts'
-import { loadNbaBoard, nbaTeam, teamWeek } from './fantasyNbaBoard.ts'
+import { loadNbaBoard, nbaTeam, teamWeek, weekGames, type NbaGame } from './fantasyNbaBoard.ts'
 import { lookupNbaEspnId, nbaEspnIds } from './nbaEspnIds.ts'
 import { type NbaPlayer, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
 import { loadNbaMarketLines, nbaMarketLineFor } from './fantasyNbaMarketLines.ts'
@@ -84,6 +85,8 @@ export type LineupCard = {
   games_week?: number | null
   games_left?: number | null
   games_played?: number | null
+  /** NBA: his team's games next fantasy week (an upcoming matchup projects these). */
+  games_next?: number | null
   /** NBA: Sleeper `fantasy_positions` (PG / SG / ...), for multi-position lineup slots. */
   elig?: string[] | null
   /** NBA: his team's game on today's US Eastern date ('pre' / 'in' / 'post'), null when it has none. */
@@ -667,6 +670,14 @@ export async function buildSportLineupCards(
   await attachNbaHeadshots(cards, list, espnIds, admin)
   if (!board) return { season: '', week: 0, cards }
   const eligBy = new Map(nbaPlayers.map((p) => [p.sleeper_id, p.fantasy_positions]))
+  // Next week's schedule (Monday after this week's end, seven days), shared with waivers.
+  const nextStart = new Date(Date.parse(`${board.end}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
+  const nextEnd = new Date(Date.parse(`${nextStart}T00:00:00Z`) + 6 * 86_400_000).toISOString().slice(0, 10)
+  const nextGames: NbaGame[] = await sharedCached(
+    `fantasy:nba-week-games:${board.season}:${board.week + 1}`,
+    { ttlMs: 60 * 60 * 1000, staleMaxMs: 6 * 60 * 60 * 1000, admin, shouldStore: (v) => v.length > 0 },
+    () => weekGames(nextStart, nextEnd),
+  ).catch(() => [] as NbaGame[])
   const today = etDate(new Date().toISOString())
   for (const raw of list) {
     const card = cards[String(raw.sleeper_id)]
@@ -677,6 +688,7 @@ export async function buildSportLineupCards(
     card.games_week = wk.games_week
     card.games_left = wk.games_left
     card.games_played = wk.games_played
+    card.games_next = nextGames.filter((g) => g.home === nbaTeam(raw.team) || g.away === nbaTeam(raw.team)).length
     const t = nbaTeam(raw.team)
     card.today = board.games.find((g) => (g.home === t || g.away === t) && etDate(g.date) === today)?.state || null
     // Kalshi's ladder for his next (not yet tipped) game; the app blends it into the per-game projection.

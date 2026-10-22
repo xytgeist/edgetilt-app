@@ -212,6 +212,21 @@ footer {
 }
 footer a { color: #e4e4e7; }
 .owner { margin: 0.35rem 0 0; }
+.shot { margin: 1.35rem 0 0; }
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: #09090b;
+}
+.shot figcaption {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
 @media (max-width: 560px) {
   .fields.two, .results { grid-template-columns: 1fr; }
 }

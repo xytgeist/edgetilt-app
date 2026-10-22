@@ -18,7 +18,6 @@ export {
   iapBilledStorePrice,
   iapCustomerDisplayPrice,
   iapIntroOfferNote,
-  iapIntroOfferTag,
   iapIntroStoreLabel,
   iapMarketingStorePrice,
   iapProductIdForFanTier,

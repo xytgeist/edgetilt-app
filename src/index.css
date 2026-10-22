@@ -12165,6 +12165,11 @@ html.light [data-fantasy-synopsis] [data-fantasy-attention-box] { border-color: 
 [data-fantasy-synopsis] [data-fantasy-attention-title] { color: #fbbf24; }
 html.light [data-fantasy-synopsis] [data-fantasy-attention-title] { color: #b45309; }
 /* One color per league (index into the league list), so several leagues on one player read apart. */
+/* Player news sport tag: NFL blue, NBA orange. */
+[data-fantasy-news] [data-fantasy-news-sport='nfl'] { color: #7dd3fc; background-color: rgba(56, 189, 248, 0.14); }
+[data-fantasy-news] [data-fantasy-news-sport='nba'] { color: #fdba74; background-color: rgba(251, 146, 60, 0.15); }
+html.light [data-fantasy-news] [data-fantasy-news-sport='nfl'] { color: #0369a1; background-color: #e0f2fe; }
+html.light [data-fantasy-news] [data-fantasy-news-sport='nba'] { color: #c2410c; background-color: #ffedd5; }
 [data-fantasy-news] [data-league-tone='0'] { color: #7dd3fc; }
 [data-fantasy-news] [data-league-tone='1'] { color: #fcd34d; }
 [data-fantasy-news] [data-league-tone='2'] { color: #6ee7b7; }

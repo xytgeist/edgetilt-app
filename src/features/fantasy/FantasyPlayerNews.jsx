@@ -31,6 +31,10 @@ function LeagueTags({ leagues, leagueOrder }) {
   )
 }
 
+/** NFL notes come back untagged; NBA notes carry `sport: 'nba'`. */
+const noteSport = (note) => String(note?.sport || 'nfl').toLowerCase()
+const SPORT_LABEL = { nfl: 'NFL', nba: 'NBA' }
+
 function NoteRow({ note, leagues, leagueOrder, bench }) {
   const [open, setOpen] = useState(false)
   const shot = useHeadshotSrc(note.headshot_url, 96)
@@ -69,6 +73,9 @@ function NoteRow({ note, leagues, leagueOrder, bench }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1.5">
             <span className="truncate text-[13px] font-bold text-white">{note.player}</span>
+            <span data-fantasy-news-sport={noteSport(note)} className="shrink-0 rounded px-1 text-[9px] font-bold">
+              {SPORT_LABEL[noteSport(note)] || noteSport(note).toUpperCase()}
+            </span>
             <span className="shrink-0 text-[11px] font-medium text-zinc-500">
               {[note.position, note.team].filter(Boolean).join(' · ')}
             </span>
@@ -115,10 +122,15 @@ export default function FantasyPlayerNews({ players, news, showLeagues, leagueOr
   const [all, setAll] = useState(false)
   // Lineup news (injury / availability / role / moves) by default; stat recaps one tap away under All.
   const [filter, setFilter] = useState('lineup')
+  const [sport, setSport] = useState('all')
   if (!news?.key) return null
   const { loading } = news
   const state = news
-  const notes = filter === 'lineup' ? news.notes.filter(lineupNews) : news.notes
+  // Sport chips only when the feed mixes sports; a picked sport that drops out falls back to all.
+  const sports = [...new Set((news.notes || []).map(noteSport))].sort()
+  const sportPick = sports.length > 1 && sports.includes(sport) ? sport : 'all'
+  const bySport = sportPick === 'all' ? news.notes : news.notes.filter((n) => noteSport(n) === sportPick)
+  const notes = filter === 'lineup' ? bySport.filter(lineupNews) : bySport
   const shown = all ? notes : notes.slice(0, NOTES_COLLAPSED)
 
   return (
@@ -143,12 +155,35 @@ export default function FantasyPlayerNews({ players, news, showLeagues, leagueOr
           ))}
         </div>
       </div>
-      <div className="-mt-0.5 px-3 pb-1 text-[10px] text-zinc-500">Insiders on X · Rotowire</div>
+      <div className="-mt-0.5 flex items-center justify-between gap-2 px-3 pb-1">
+        <span className="truncate text-[10px] text-zinc-500">Insiders on X · Rotowire</span>
+        {sports.length > 1 ? (
+          <div data-fantasy-news-sport-filter className="flex shrink-0 gap-1" role="radiogroup" aria-label="Sport">
+            {['all', ...sports].map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={sportPick === id}
+                onClick={() => setSport(id)}
+                className={`rounded-full border px-2 py-px text-[10px] font-semibold touch-manipulation ${
+                  sportPick === id ? 'border-zinc-100 bg-zinc-100 text-zinc-950' : 'border-zinc-800 text-zinc-400'
+                }`}
+              >
+                {id === 'all' ? 'All' : SPORT_LABEL[id] || id.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
       {loading ? (
         <div className="px-3 pb-3 text-[12px] text-zinc-500">Loading news…</div>
       ) : !notes.length ? (
         <div className="px-3 pb-3 text-[12px] text-zinc-500">
-          {state.error || (filter === 'lineup' ? 'No lineup news on your players right now.' : 'No news on your players in the last 10 days.')}
+          {state.error ||
+            (filter === 'lineup'
+              ? `No lineup news on your ${sportPick === 'all' ? '' : `${SPORT_LABEL[sportPick] || sportPick.toUpperCase()} `}players right now.`
+              : 'No news on your players in the last 10 days.')}
         </div>
       ) : (
         <>

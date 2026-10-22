@@ -1,5 +1,7 @@
 /** Per-user opt-in to use device GPS for nearby casino suggestions (Bankroll + Play Logbook). */
 
+import { requestEdgeiOSLocationPermission } from './edgeNative.js'
+
 export const GEO_LOCATION_CONSENT_KEY_PREFIX = 'edge_geo_location_consent:v1:'
 
 export function getGeoLocationConsentStorageKey(userId) {
@@ -44,17 +46,35 @@ export async function queryBrowserGeoPermissionState() {
   }
 }
 
+/** One ask at a time per user … currency default + nearby casinos both call this when a session opens. */
+const pendingAccess = new Map()
+
 /**
  * App-level one-time ask before calling `getCurrentPosition`.
  * Yes → saved per user (no repeat app prompt). No → not saved (ask again next time).
+ * iOS app: CoreLocation's own When In Use prompt is the consent (asked once, remembered by iOS), so no app prompt.
  *
  * @returns {Promise<boolean>}
  */
-export async function ensureGeoLocationAccess(userId) {
-  if (typeof window === 'undefined' || !navigator.geolocation) return false
-  if (!userId) return false
+export function ensureGeoLocationAccess(userId) {
+  if (typeof window === 'undefined' || !navigator.geolocation || !userId) return Promise.resolve(false)
+  const key = String(userId)
+  const pending = pendingAccess.get(key)
+  if (pending) return pending
+  const ask = askGeoLocationAccess(userId).finally(() => pendingAccess.delete(key))
+  pendingAccess.set(key, ask)
+  return ask
+}
 
+async function askGeoLocationAccess(userId) {
   if (hasGeoLocationConsent(userId)) return true
+
+  const native = await requestEdgeiOSLocationPermission()
+  if (native.via === 'bridge') {
+    if (native.status !== 'granted') return false
+    saveGeoLocationConsentGranted(userId)
+    return true
+  }
 
   const browserState = await queryBrowserGeoPermissionState()
   if (browserState === 'granted') {

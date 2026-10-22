@@ -1,7 +1,12 @@
 import { lazy } from 'react'
 
-/** Session flag: one hard reload per tab session when a lazy chunk 404s into index.html. */
+/** Session flag: time of the last stale-chunk hard reload (loop guard). */
 export const STALE_CHUNK_RELOAD_KEY = 'lvsp_stale_chunk_reload'
+/**
+ * Another stale reload is allowed once this long has passed. A one-per-session flag left a long-lived WKWebView
+ * stuck on tab error screens after a second deploy until the app was killed.
+ */
+const STALE_CHUNK_RELOAD_GAP_MS = 60_000
 
 /** @param {unknown} err */
 function rejectionMessage(err) {
@@ -55,14 +60,18 @@ export function isStaleChunkLoadError(err) {
 }
 
 /**
- * One hard reload for a stale deploy. Returns true if reload was triggered.
+ * One hard reload for a stale deploy (at most one per minute, so a broken chunk cannot loop). Returns true if
+ * reload was triggered.
  * @param {string} [reloadKey]
  */
 export function reloadOnceForStaleChunk(reloadKey = STALE_CHUNK_RELOAD_KEY) {
   try {
     if (typeof sessionStorage === 'undefined') return false
-    if (sessionStorage.getItem(reloadKey)) return false
-    sessionStorage.setItem(reloadKey, '1')
+    // Offline "Failed to fetch" is not a stale deploy; reloading would just blank the app.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return false
+    const last = Number(sessionStorage.getItem(reloadKey) || 0)
+    if (last > 1 && Date.now() - last < STALE_CHUNK_RELOAD_GAP_MS) return false
+    sessionStorage.setItem(reloadKey, String(Date.now()))
     window.location.reload()
     return true
   } catch {

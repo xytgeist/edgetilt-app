@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="robots" content="index, follow" />
+    <title>Kelly Criterion Calculator | EdgeTilt</title>
+    <meta
+      name="description"
+      content="Size a sports bet with the Kelly criterion. Enter bankroll, American odds, and your win percent. Free in the browser, no EdgeTilt account."
+    />
+    <link rel="canonical" href="https://edgetilt.com/calculators/kelly" />
+    <meta property="og:site_name" content="EdgeTilt" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://edgetilt.com/calculators/kelly" />
+    <meta property="og:title" content="Kelly Criterion Calculator | EdgeTilt" />
+    <meta property="og:description" content="Free Kelly criterion calculator for American odds. Half Kelly is the default. No login." />
+    <meta property="og:image" content="https://edgetilt.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kelly Criterion Calculator | EdgeTilt" />
+    <meta name="twitter:description" content="Bankroll, odds, and your win percent. Free Kelly calculator on EdgeTilt." />
+    <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/seo/base.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Kelly Criterion Calculator",
+        "url": "https://edgetilt.com/calculators/kelly",
+        "applicationCategory": "Calculator",
+        "operatingSystem": "Web",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "Size a stake with the Kelly criterion from bankroll, American odds, and your win percent.",
+        "publisher": { "@type": "Organization", "name": "Digiverse Ventures, LLC", "url": "https://digiverse.ventures/" },
+        "isPartOf": { "@type": "WebSite", "name": "EdgeTilt", "url": "https://edgetilt.com/" }
+      }
+    </script>
+  </head>
+  <body class="accent-cyan">
+    <main class="wrap">
+      <a class="brand" href="https://edgetilt.com/?auth=join">
+        <img src="/apple-touch-icon.png" alt="" width="36" height="36" />
+        <span>EDGETILT</span>
+      </a>
+      <p class="kicker">Free, no login</p>
+      <h1>Kelly criterion</h1>
+      <p class="lead">
+        Kelly sizes the stake from your edge. It uses the payout on your American odds and the win
+        percent you believe, then multiplies by full, half, or quarter Kelly. Half Kelly is the
+        default because full Kelly swings hard when the percent is off.
+      </p>
+      <p class="example">Example: a $1,000 bankroll, +150, a 45% win chance, and half Kelly stakes $41.67.</p>
+      <form data-calc action="#" onsubmit="return false">
+        <div class="fields two">
+          <label class="field">Bankroll ($)
+            <input name="bankroll" inputmode="decimal" value="1000" autocomplete="off" />
+          </label>
+          <label class="field">American odds
+            <input name="odds" inputmode="decimal" value="+150" autocomplete="off" />
+          </label>
+        </div>
+        <div class="fields" style="margin-top: 0.75rem">
+          <label class="field">Your win percent
+            <input name="win" inputmode="decimal" value="45" autocomplete="off" />
+          </label>
+        </div>
+        <fieldset class="frac">
+          <legend>Kelly fraction</legend>
+          <div class="seg" role="radiogroup" aria-label="Kelly fraction">
+            <label><input type="radio" name="fraction" value="1" /><span>Full</span></label>
+            <label><input type="radio" name="fraction" value="0.5" checked /><span>Half</span></label>
+            <label><input type="radio" name="fraction" value="0.25" /><span>Quarter</span></label>
+          </div>
+        </fieldset>
+      </form>
+      <div class="out" data-out aria-live="polite"></div>
+      <p class="fine">Runs in your browser. Nothing is sent to EdgeTilt. For your own math, not betting advice.</p>
+      <noscript><p class="hint">Turn on JavaScript to run the numbers. The example above uses the same formula.</p></noscript>
+      <footer>
+        <a href="/calculators/no-vig">No-vig</a>
+        ·
+        <a href="/calculators/odds-converter">Odds converter</a>
+        ·
+        <a href="/calculators/arbitrage">Arbitrage</a>
+        ·
+        <a href="/calculators/clv">CLV</a>
+        ·
+        <a href="/sports/bet-tracker">Bet tracker</a>
+        <p class="owner">EdgeTilt is a product of <a href="https://digiverse.ventures/">Digiverse Ventures, LLC</a>.</p>
+      </footer>
+    </main>
+    <script type="module" src="/src/seo/calculators/kelly.js"></script>
+  </body>
+</html>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="robots" content="index, follow" />
+    <title>Closing Line Value Calculator | EdgeTilt</title>
+    <meta
+      name="description"
+      content="Compare your spread, total, or price to the close. Positive CLV means you beat the number. Free EdgeTilt calculator, no login."
+    />
+    <link rel="canonical" href="https://edgetilt.com/calculators/clv" />
+    <meta property="og:site_name" content="EdgeTilt" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://edgetilt.com/calculators/clv" />
+    <meta property="og:title" content="Closing Line Value Calculator | EdgeTilt" />
+    <meta property="og:description" content="Spread, total, and price CLV versus the close. Positive means you beat the number." />
+    <meta property="og:image" content="https://edgetilt.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Closing Line Value Calculator | EdgeTilt" />
+    <meta name="twitter:description" content="Your number versus the close. Free CLV calculator on EdgeTilt." />
+    <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/seo/base.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Closing Line Value Calculator",
+        "url": "https://edgetilt.com/calculators/clv",
+        "applicationCategory": "Calculator",
+        "operatingSystem": "Web",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "Compare a spread, total, or price to the closing number.",
+        "publisher": { "@type": "Organization", "name": "Digiverse Ventures, LLC", "url": "https://digiverse.ventures/" },
+        "isPartOf": { "@type": "WebSite", "name": "EdgeTilt", "url": "https://edgetilt.com/" }
+      }
+    </script>
+  </head>
+  <body class="accent-cyan">
+    <main class="wrap">
+      <a class="brand" href="https://edgetilt.com/?auth=join">
+        <img src="/apple-touch-icon.png" alt="" width="36" height="36" />
+        <span>EDGETILT</span>
+      </a>
+      <p class="kicker">Free, no login</p>
+      <h1>Closing line value</h1>
+      <p class="lead">
+        Closing line value is your number versus the close, not versus the opener. On a spread,
+        CLV is your line minus the closing line on the same side. A dog +7 that closes +3 is +4 points.
+        On a total, an over uses your total minus the close, and an under uses the close minus your total.
+        On a price, CLV is the close's implied probability minus yours, in percentage points.
+        Positive means you beat the close. The bet tracker stores spread and total CLV in points.
+        This page also runs price CLV. Your saved bets and the live close stay in the tracker.
+      </p>
+      <p class="example">Example: +7 closing at +3 is +4.0 points. Under 45 closing at 48 is +3.0 points. +150 closing at +130 is about +3.48 probability points.</p>
+      <form data-calc action="#" onsubmit="return false">
+        <label class="field">Market
+          <select name="market">
+            <option value="spread" selected>Spread</option>
+            <option value="total">Total</option>
+            <option value="price">Price</option>
+          </select>
+        </label>
+        <div data-market-panel="spread">
+          <div class="fields two" style="margin-top: 0.75rem">
+            <label class="field">Your line
+              <input name="spreadLine" inputmode="decimal" value="7" autocomplete="off" />
+            </label>
+            <label class="field">Closing line, same side
+              <input name="spreadClose" inputmode="decimal" value="3" autocomplete="off" />
+            </label>
+          </div>
+        </div>
+        <div data-market-panel="total">
+          <div class="fields two" style="margin-top: 0.75rem">
+            <label class="field">Side
+              <select name="side">
+                <option value="over">Over</option>
+                <option value="under" selected>Under</option>
+              </select>
+            </label>
+            <label class="field">Your total
+              <input name="totalLine" inputmode="decimal" value="45" autocomplete="off" />
+            </label>
+          </div>
+          <div class="fields" style="margin-top: 0.75rem">
+            <label class="field">Closing total
+              <input name="totalClose" inputmode="decimal" value="48" autocomplete="off" />
+            </label>
+          </div>
+        </div>
+        <div data-market-panel="price">
+          <div class="fields two" style="margin-top: 0.75rem">
+            <label class="field">Price you bet
+              <input name="betOdds" inputmode="decimal" value="+150" autocomplete="off" />
+            </label>
+            <label class="field">Closing price
+              <input name="closeOdds" inputmode="decimal" value="+130" autocomplete="off" />
+            </label>
+          </div>
+        </div>
+      </form>
+      <div class="out" data-out aria-live="polite"></div>
+      <p class="fine">
+        Runs in your browser. Nothing is sent to EdgeTilt.
+        Saved CLV on your own bets lives in the <a href="/sports/bet-tracker">bet tracker</a>.
+      </p>
+      <noscript><p class="hint">Turn on JavaScript to run the numbers. The example above uses the same formula.</p></noscript>
+      <footer>
+        <a href="/calculators/kelly">Kelly</a>
+        ·
+        <a href="/calculators/no-vig">No-vig</a>
+        ·
+        <a href="/calculators/odds-converter">Odds converter</a>
+        ·
+        <a href="/calculators/arbitrage">Arbitrage</a>
+        ·
+        <a href="/sports/bet-tracker">Bet tracker</a>
+        <p class="owner">EdgeTilt is a product of <a href="https://digiverse.ventures/">Digiverse Ventures, LLC</a>.</p>
+      </footer>
+    </main>
+    <script type="module" src="/src/seo/calculators/clv.js"></script>
+  </body>
+</html>

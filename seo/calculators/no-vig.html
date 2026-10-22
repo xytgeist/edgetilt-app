@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="robots" content="index, follow" />
+    <title>No-Vig Fair Odds Calculator | EdgeTilt</title>
+    <meta
+      name="description"
+      content="Strip the hold off a two-way market. Enter both prices and see fair odds and true win percent. Free EdgeTilt calculator, no login."
+    />
+    <link rel="canonical" href="https://edgetilt.com/calculators/no-vig" />
+    <meta property="og:site_name" content="EdgeTilt" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://edgetilt.com/calculators/no-vig" />
+    <meta property="og:title" content="No-Vig Fair Odds Calculator | EdgeTilt" />
+    <meta property="og:description" content="Remove the juice from both sides of a market. Free fair-odds calculator on EdgeTilt." />
+    <meta property="og:image" content="https://edgetilt.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="No-Vig Fair Odds Calculator | EdgeTilt" />
+    <meta name="twitter:description" content="Fair odds and true win percent with the hold removed. No login." />
+    <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/seo/base.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "No-Vig Fair Odds Calculator",
+        "url": "https://edgetilt.com/calculators/no-vig",
+        "applicationCategory": "Calculator",
+        "operatingSystem": "Web",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "Remove the hold from a two-way market and show fair American odds.",
+        "publisher": { "@type": "Organization", "name": "Digiverse Ventures, LLC", "url": "https://digiverse.ventures/" },
+        "isPartOf": { "@type": "WebSite", "name": "EdgeTilt", "url": "https://edgetilt.com/" }
+      }
+    </script>
+  </head>
+  <body class="accent-cyan">
+    <main class="wrap">
+      <a class="brand" href="https://edgetilt.com/?auth=join">
+        <img src="/apple-touch-icon.png" alt="" width="36" height="36" />
+        <span>EDGETILT</span>
+      </a>
+      <p class="kicker">Free, no login</p>
+      <h1>No-vig fair odds</h1>
+      <p class="lead">
+        A two-way price includes the book's hold. Fair odds divide each side's implied probability
+        by the total, which removes that margin. The fair price is the number with no juice.
+      </p>
+      <p class="example">Example: -110 / -110 is about a 4.76% hold. Fair odds are -100 / -100, a 50% chance each side.</p>
+      <form data-calc action="#" onsubmit="return false">
+        <div class="fields two">
+          <label class="field">Side A
+            <input name="a" inputmode="decimal" value="-110" autocomplete="off" />
+          </label>
+          <label class="field">Side B
+            <input name="b" inputmode="decimal" value="-110" autocomplete="off" />
+          </label>
+        </div>
+      </form>
+      <div class="out" data-out aria-live="polite"></div>
+      <p class="fine">
+        Runs in your browser. Nothing is sent to EdgeTilt.
+        Compare two books on <a href="/calculators/arbitrage">arbitrage and hold</a>.
+      </p>
+      <noscript><p class="hint">Turn on JavaScript to run the numbers. The example above uses the same formula.</p></noscript>
+      <footer>
+        <a href="/calculators/kelly">Kelly</a>
+        ·
+        <a href="/calculators/odds-converter">Odds converter</a>
+        ·
+        <a href="/calculators/arbitrage">Arbitrage</a>
+        ·
+        <a href="/calculators/clv">CLV</a>
+        ·
+        <a href="/sports/bet-tracker">Bet tracker</a>
+        <p class="owner">EdgeTilt is a product of <a href="https://digiverse.ventures/">Digiverse Ventures, LLC</a>.</p>
+      </footer>
+    </main>
+    <script type="module" src="/src/seo/calculators/no-vig.js"></script>
+  </body>
+</html>

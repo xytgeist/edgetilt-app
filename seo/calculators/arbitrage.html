@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="robots" content="index, follow" />
+    <title>Arbitrage and Hold Calculator | EdgeTilt</title>
+    <meta
+      name="description"
+      content="See the hold on two prices and whether they arb. EdgeTilt splits a stake when the overlay is real. Free, no account."
+    />
+    <link rel="canonical" href="https://edgetilt.com/calculators/arbitrage" />
+    <meta property="og:site_name" content="EdgeTilt" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://edgetilt.com/calculators/arbitrage" />
+    <meta property="og:title" content="Arbitrage and Hold Calculator | EdgeTilt" />
+    <meta property="og:description" content="Hold, fair price, and a stake split when two odds actually arb. Free on EdgeTilt." />
+    <meta property="og:image" content="https://edgetilt.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Arbitrage and Hold Calculator | EdgeTilt" />
+    <meta name="twitter:description" content="Check the hold and split a stake only when the prices arb." />
+    <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/seo/base.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Arbitrage and Hold Calculator",
+        "url": "https://edgetilt.com/calculators/arbitrage",
+        "applicationCategory": "Calculator",
+        "operatingSystem": "Web",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "Measure hold on two prices and split a stake when they arbitrage.",
+        "publisher": { "@type": "Organization", "name": "Digiverse Ventures, LLC", "url": "https://digiverse.ventures/" },
+        "isPartOf": { "@type": "WebSite", "name": "EdgeTilt", "url": "https://edgetilt.com/" }
+      }
+    </script>
+  </head>
+  <body class="accent-cyan">
+    <main class="wrap">
+      <a class="brand" href="https://edgetilt.com/?auth=join">
+        <img src="/apple-touch-icon.png" alt="" width="36" height="36" />
+        <span>EDGETILT</span>
+      </a>
+      <p class="kicker">Free, no login</p>
+      <h1>Arbitrage and hold</h1>
+      <p class="lead">
+        Hold is how far the two implied probabilities sit above 100%. If they sit under 100%,
+        the prices arb and a split stake locks a profit either way. Most books you compare on
+        the same market will show a hold, not an arb.
+      </p>
+      <p class="example">Example: -110 / -110 holds about 4.76% and does not arb. +110 / +110 is an overlay of about 4.76% and locks about $5 on a $100 split.</p>
+      <form data-calc action="#" onsubmit="return false">
+        <div class="fields two">
+          <label class="field">Book A
+            <input name="a" inputmode="decimal" value="-110" autocomplete="off" />
+          </label>
+          <label class="field">Book B
+            <input name="b" inputmode="decimal" value="-110" autocomplete="off" />
+          </label>
+        </div>
+        <div class="fields" style="margin-top: 0.75rem">
+          <label class="field">Total to split ($)
+            <input name="bank" inputmode="decimal" value="100" autocomplete="off" />
+          </label>
+        </div>
+      </form>
+      <div class="out" data-out aria-live="polite"></div>
+      <p class="fine">
+        Runs in your browser. Nothing is sent to EdgeTilt.
+        Fair odds for one market live on the <a href="/calculators/no-vig">no-vig calculator</a>.
+      </p>
+      <noscript><p class="hint">Turn on JavaScript to run the numbers. The example above uses the same formula.</p></noscript>
+      <footer>
+        <a href="/calculators/kelly">Kelly</a>
+        ·
+        <a href="/calculators/no-vig">No-vig</a>
+        ·
+        <a href="/calculators/odds-converter">Odds converter</a>
+        ·
+        <a href="/calculators/clv">CLV</a>
+        ·
+        <a href="/sports/bet-tracker">Bet tracker</a>
+        <p class="owner">EdgeTilt is a product of <a href="https://digiverse.ventures/">Digiverse Ventures, LLC</a>.</p>
+      </footer>
+    </main>
+    <script type="module" src="/src/seo/calculators/arbitrage.js"></script>
+  </body>
+</html>

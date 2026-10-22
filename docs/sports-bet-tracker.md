@@ -86,6 +86,8 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 
 **v1 does not** ask for sportsbook passwords or scrape books. That stays true even after “sync feel” ships.
 
+**Public pages (no tracker data):** `https://edgetilt.com/sports/bet-tracker` is a join CTA only. Free calculators at `/calculators/kelly`, `/calculators/no-vig`, `/calculators/odds-converter`, `/calculators/arbitrage`, and `/calculators/clv` import `sportsBetCalcMath.js` and run in the browser. Line CLV on `/calculators/clv` matches `sports_bets_refresh_clv` once both numbers are on the same side. Price CLV is probability points and is not the `clv_pts` column. Neither page calls the RPC or reads `lounge_market_files`.
+
 ---
 
 ## Data

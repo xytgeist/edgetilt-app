@@ -15,7 +15,7 @@ const SELECT = `
   id, user_id, event_id, sport_key, sport_label, home_team, away_team, commence_time,
   book, market, side, selection_label, line, odds, stake_units, stake_dollars, unit_size_dollars,
   to_win_dollars, to_collect_dollars,
-  status, result_at, profit_units, close_line, close_odds, clv_pts, clv_graded_at,
+  status, result_at, profit_units, close_line, close_odds, clv_pts, clv_prob, clv_graded_at,
   notes, tags, source, confirmed, player_name, prop_stat, created_at, updated_at
 `.replace(/\s+/g, ' ').trim()
 

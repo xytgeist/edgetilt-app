@@ -23,6 +23,7 @@ import {
   formatAmericanOdds,
   formatLine,
   softenBetSummaryOddsSeparator,
+  sportsBetClvOutcome,
   summarizeBets,
 } from './sportsBetMath.js'
 import {
@@ -1130,6 +1131,7 @@ export default function SportsBetTracker({
                 ? '—'
                 : `${summary.clvBeatPct.toFixed(0)}%`
             }
+            hint={summary.clvN ? `${summary.clvN} graded bet${summary.clvN === 1 ? '' : 's'}` : ''}
             tone="cyan"
           />
         </div>
@@ -1261,6 +1263,7 @@ export default function SportsBetTracker({
                     ? 'text-rose-300'
                     : 'text-zinc-300'
             const isDeleting = deletingId === bet.id
+            const clv = sportsBetClvOutcome(bet)
             return (
               <li
                 key={bet.id}
@@ -1339,18 +1342,17 @@ export default function SportsBetTracker({
                         ? '—'
                         : `${profit >= 0 ? '+' : ''}${Number(profit).toFixed(2)}u`}
                     </div>
-                    {bet.clv_pts != null ? (
+                    {clv ? (
                       <div
                         className={`text-[11px] font-semibold tabular-nums ${
-                          Number(bet.clv_pts) > 0
+                          clv.result === 'beat'
                             ? 'text-cyan-300'
-                            : Number(bet.clv_pts) < 0
+                            : clv.result === 'miss'
                               ? 'text-zinc-500'
                               : 'text-zinc-400'
                         }`}
                       >
-                        CLV {Number(bet.clv_pts) > 0 ? '+' : ''}
-                        {Number(bet.clv_pts).toFixed(1)}
+                        CLV {clv.label}
                       </div>
                     ) : null}
                   </div>

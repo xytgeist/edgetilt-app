@@ -69,6 +69,29 @@ export function formatLine(line, market) {
   return `${sign}${n}`
 }
 
+
+/** Price CLV under this many implied-probability points is a wash (rounding / vig noise). */
+const CLV_PROB_TIE = 0.25
+
+/**
+ * One bet's CLV vs the locked close. Points decide spreads / totals; price breaks a same-number tie and grades
+ * moneylines (`clv_prob`, implied-prob points). Null when the bet has no graded close.
+ * @returns {{ result: 'beat' | 'miss' | 'tie', label: string } | null}
+ */
+export function sportsBetClvOutcome(bet) {
+  const pts = bet?.clv_pts == null || bet.clv_pts === '' ? null : Number(bet.clv_pts)
+  const prob = bet?.clv_prob == null || bet.clv_prob === '' ? null : Number(bet.clv_prob)
+  if (pts != null && Number.isFinite(pts) && pts !== 0) {
+    return { result: pts > 0 ? 'beat' : 'miss', label: `${pts > 0 ? '+' : ''}${pts.toFixed(1)}` }
+  }
+  if (prob != null && Number.isFinite(prob)) {
+    if (Math.abs(prob) < CLV_PROB_TIE) return { result: 'tie', label: 'even' }
+    return { result: prob > 0 ? 'beat' : 'miss', label: `${prob > 0 ? '+' : ''}${prob.toFixed(1)}%` }
+  }
+  if (pts === 0) return { result: 'tie', label: 'even' }
+  return null
+}
+
 export function summarizeBets(bets) {
   const list = Array.isArray(bets) ? bets : []
   let won = 0
@@ -79,8 +102,6 @@ export function summarizeBets(bets) {
   let profitUnits = 0
   let settledStake = 0
   let clvBeats = 0
-  let clvMisses = 0
-  let clvSum = 0
   let clvN = 0
 
   for (const b of list) {
@@ -100,20 +121,17 @@ export function summarizeBets(bets) {
       if (Number.isFinite(p)) profitUnits += p
     }
 
-    if (b.clv_pts != null && Number.isFinite(Number(b.clv_pts))) {
-      const c = Number(b.clv_pts)
-      clvSum += c
+    const clv = sportsBetClvOutcome(b)
+    if (clv) {
       clvN += 1
-      if (c > 0) clvBeats += 1
-      else if (c < 0) clvMisses += 1
+      if (clv.result === 'beat') clvBeats += 1
     }
   }
 
   const decided = won + lost
   const roiPct = settledStake > 0 ? (profitUnits / settledStake) * 100 : null
-  const clvBeatPct = clvBeats + clvMisses > 0
-    ? (clvBeats / (clvBeats + clvMisses)) * 100
-    : null
+  // Ties (closed at your number and price) count as graded, not beats.
+  const clvBeatPct = clvN > 0 ? (clvBeats / clvN) * 100 : null
 
   let profitDollars = 0
   let hasDollarPnl = false
@@ -138,7 +156,6 @@ export function summarizeBets(bets) {
       ? `${won}-${lost}${push ? `-${push}` : ''}`
       : '—',
     clvBeatPct,
-    clvAvg: clvN ? clvSum / clvN : null,
     clvN,
   }
 }

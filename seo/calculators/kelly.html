@@ -10,42 +10,54 @@
     <title>Kelly Criterion Calculator | EdgeTilt</title>
     <meta
       name="description"
-      content="Size a sports bet with the Kelly criterion. Enter your bankroll, American odds, and win percent. Free in your browser, no EdgeTilt account."
+      content="American-odds Kelly stake from your bankroll, price, and win percent. Full, half, and quarter Kelly. A negative edge shows no stake. Runs in the browser."
     />
     <link rel="canonical" href="https://edgetilt.com/calculators/kelly" />
     <meta property="og:site_name" content="EdgeTilt" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://edgetilt.com/calculators/kelly" />
     <meta property="og:title" content="Kelly Criterion Calculator | EdgeTilt" />
-    <meta property="og:description" content="Free Kelly criterion calculator for American odds. Half Kelly is the default. No login." />
+    <meta property="og:description" content="American-odds Kelly stake from your bankroll, price, and win percent. Full, half, and quarter Kelly. A negative edge shows no stake. Runs in the browser." />
     <meta property="og:image" content="https://edgetilt.com/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Kelly Criterion Calculator | EdgeTilt" />
-    <meta name="twitter:description" content="Bankroll, odds, and your win percent. A free Kelly calculator on EdgeTilt." />
+    <meta name="twitter:description" content="American-odds Kelly stake from your bankroll, price, and win percent. Full, half, and quarter Kelly. A negative edge shows no stake. Runs in the browser." />
     <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/seo/base.css" />
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Kelly Criterion Calculator",
-        "url": "https://edgetilt.com/calculators/kelly",
-        "applicationCategory": "Calculator",
-        "operatingSystem": "Web",
-        "isAccessibleForFree": true,
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-        "description": "Size a stake with the Kelly criterion from bankroll, American odds, and your win percent.",
-        "datePublished": "2026-10-22",
-        "dateModified": "2026-10-22",
-        "publisher": { "@type": "Organization", "name": "Digiverse Ventures, LLC", "url": "https://digiverse.ventures/" },
-        "isPartOf": { "@type": "WebSite", "name": "EdgeTilt", "url": "https://edgetilt.com/" }
-      }
-    </script>
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Kelly Criterion Calculator",
+  "url": "https://edgetilt.com/calculators/kelly",
+  "applicationCategory": "Calculator",
+  "operatingSystem": "Web",
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "American-odds Kelly stake from your bankroll, price, and win percent. Full, half, and quarter Kelly. A negative edge shows no stake. Runs in the browser.",
+  "datePublished": "2026-10-22",
+  "dateModified": "2026-10-22",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Digiverse Ventures, LLC",
+    "url": "https://digiverse.ventures/"
+  },
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "EdgeTilt",
+    "url": "https://edgetilt.com/"
+  }
+}
+</script>
       <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -53,50 +65,42 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "Why is the implied percent different from the percent I typed?",
+      "name": "What do I type?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "The implied percent is the break-even rate baked into the price. +150 implies 40.0% because 100 / (150 + 100) = 40. Kelly uses the win percent you typed. You only get a positive stake when your percent actually beats the price on the formula, not when the two just look close."
+        "text": "Bankroll in dollars, American odds, your win percent, and full, half, or quarter Kelly."
       }
     },
     {
       "@type": "Question",
-      "name": "What does \"sit this one out\" mean?",
+      "name": "Why is the implied percent not the win percent?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Your win percent is too low for that American price, so the full Kelly fraction isn't positive. The page shows no stake. Bumping the fraction from quarter to full won't create an edge that isn't there."
+        "text": "The book's price implies a break-even percent. That number includes the hold. Kelly uses the win percent you believe, which you type yourself."
       }
     },
     {
       "@type": "Question",
-      "name": "Should I use full Kelly?",
+      "name": "What if the edge is negative?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Full Kelly is the fraction the formula gives you, and it assumes your win percent is exact. If your percent is noisy, full Kelly overbets. That's why Half is the default here. Quarter is the smaller step. The page will still work out full Kelly if you pick Full."
+        "text": "The page shows no stake. Kelly says sit this one out."
       }
     },
     {
       "@type": "Question",
-      "name": "Can I type decimal or fractional odds?",
+      "name": "Does half Kelly change the formula?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Not on this form. It's American odds only, like +150 or -110. Convert 2.50 or 3/2 on the odds converter, then paste the American result here."
+        "text": "No. It multiplies the full fraction by 0.5, then by the bankroll. Quarter Kelly uses 0.25."
       }
     },
     {
       "@type": "Question",
-      "name": "Does this place a bet or save it to my tracker?",
+      "name": "Does this use my bet tracker?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. The math runs in your browser and nothing gets sent to EdgeTilt. Sports Bet Tracker is a separate account tool, and it doesn't read this form."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Why did half of 8.33% become 4.17%, not 4.16%?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "The 8.33% on the page is 0.08333... rounded to two decimals. Half of the exact fraction is 0.041666..., which rounds to 4.17%. The stake uses the exact fraction too, so $1,000 times that half is $41.67, not $41.60."
+        "text": "No. It runs on the numbers in the form. No account."
       }
     }
   ],
@@ -114,11 +118,8 @@
       <p class="kicker">Free, no login</p>
       <h1>Kelly criterion</h1>
       <section class="prose">
-<p>The Kelly criterion tells you how much to stake. If your win percent is right, full Kelly is the slice of bankroll with the highest expected growth at that American price. It doesn't pick a side for you. You bring the price, your percent, and whether you want the full fraction, half, or a quarter.</p>
-<p>The math runs in your browser. It doesn't place a bet, read a sportsbook, or store anything you type. Half is selected by default, because full Kelly swings hard when your percent is even a little off.</p>
-<h2>How to use it</h2>
-<ol><li>Bankroll ($): the money you've set aside for betting. The form starts at 1000.</li><li>American odds: type +150 or -110, and keep the plus sign on a plus price.</li><li>Your win percent: your own number, from just above 0 to just under 100. Not the percent baked into the odds.</li><li>Kelly fraction: Full, Half, or Quarter.</li><li>Read Stake, Bankroll percent, Full Kelly, and Fraction used (100%, 50%, or 25%).</li></ol>
-<p>Type a bad price and you'll see: Enter American odds such as +150 or -110. Leave out the bankroll or the percent and it asks for a bankroll and a win percent between 0 and 100. If your percent is too low for the price, you get no stake, and the hint says: No edge at that win percent. Kelly says sit this one out.</p>
+<p>Kelly turns a bankroll, an American price, and your win percent into a stake. The stake is a percent of that bankroll. Half Kelly and quarter Kelly are the same math with a smaller fraction.</p>
+<p>The form takes American odds only, such as +150 or -110. It uses the win percent you type, not the percent implied by the price.</p>
 </section>
 <form data-calc action="#" onsubmit="return false">
         <div class="fields two">
@@ -145,38 +146,35 @@
       </form>
       <div class="out" data-out aria-live="polite"></div>
       <section class="prose">
-<h2>The formula in plain terms</h2>
-<p>b is your profit per $1 staked, not the return with your stake added back. On a plus price, b = price / 100, so +150 means b = 1.50. On a minus price, b = 100 / the absolute price, so -110 means b = 0.90909.</p>
-<p>p is your win percent as a decimal, and q is 1 minus p. Full Kelly = (b times p, minus q) / b. If that comes out zero or negative, the stake is zero. Half multiplies a positive fraction by 0.5, and Quarter multiplies it by 0.25. Stake = bankroll times that reduced fraction.</p>
-<p>The hint also shows the book's implied percent, but Kelly doesn't treat that as your edge. Plus price: 100 / (price + 100). Minus price: absolute price / (absolute price + 100). +150 implies 40.0%, and -110 implies 52.4%.</p>
-<h2>Worked example 1. Defaults already in the form</h2>
-<p>Bankroll 1000, odds +150, win percent 45, Half.</p>
-<p>Full Kelly = (1.50 times 0.45, minus 0.55) / 1.50 = 0.125 / 1.50 = 8.33%. Half of the exact fraction is 4.17%. Stake = $41.67.</p>
-<p>You'll see Stake $41.67, Bankroll percent 4.17%, Full Kelly 8.33%, Fraction used 50%. The hint says the book implies 40.0%, and that Kelly is using your 45%, not that number.</p>
-<h2>Worked example 2</h2>
-<p>Set bankroll to 5000, odds to -110, win percent to 55, and fraction to Quarter.</p>
-<p>b times 0.55 is 0.50. Take away 0.45 and you're left with 0.05. Full Kelly = 0.05 / 0.90909 = 5.50%. A quarter of that shows as Bankroll percent 1.38%. Stake = $68.75.</p>
-<p>You'll see Stake $68.75, Bankroll percent 1.38%, Full Kelly 5.50%, Fraction used 25%. The book implies 52.4%.</p>
-<p>Now drop win percent to 30 on that same -110, at any fraction. The fraction goes negative, so the page shows no stake and tells you to sit this one out.</p>
-<h2>When it helps, and where it stops</h2>
-<p>Use it once you already trust your win percent and want a ceiling on the stake. It can't fix a bad percent. It also only sees one bet at a time, so it doesn't know about your other tickets or what a book will actually take. It's American odds only. Run a decimal or fractional price through the odds converter first, then paste in the American price. Nothing in the form gets sent to EdgeTilt. The result is your math, not a recommendation to bet.</p>
+<h2>The formula</h2>
+<p>b is the net profit on 1 unit. At +150, b is 1.50. At -110, b is 100/110, about 0.909.</p>
+<p>Full Kelly is (b times p, minus q) / b. p is your win percent as a decimal. q is 1 - p.</p>
+<p>The page multiplies full Kelly by the fraction you pick, then by the bankroll. If full Kelly is zero or below, it shows no stake.</p>
+<h2>Example 1</h2>
+<p>Bankroll $1,000, odds +150, win percent 45, half Kelly.</p>
+<p>The price implies 40.0%. Full Kelly is 8.33%. Fraction used is 50%. Bankroll percent is 4.17%. Stake is $41.67.</p>
+<h2>Example 2</h2>
+<p>Bankroll $5,000, odds -110, win percent 55, quarter Kelly.</p>
+<p>The price implies 52.4%. Full Kelly is 5.50%. Fraction used is 25%. Bankroll percent is 1.38%. Stake is $68.75.</p>
+<h2>No bet</h2>
+<p>-110 at a 30% win chance, any fraction. Full Kelly is negative. The stake rows stay hidden. The line is: "No edge at that win percent. Kelly says sit this one out."</p>
+<h2>Limits</h2>
+<p>Full Kelly can be a large share of the bankroll. Half and quarter Kelly bet less of it. This page does not place the bet, and it does not know your real bankroll.</p>
 </section>
 <p class="fine">Runs in your browser. Nothing is sent to EdgeTilt. For your own math, not betting advice.</p>
       <noscript><p class="hint">Turn on JavaScript to run the numbers. The example above uses the same formula.</p></noscript>
       <section class="faq">
 <h2>FAQ</h2>
-<h3>Why is the implied percent different from the percent I typed?</h3>
-<p>The implied percent is the break-even rate baked into the price. +150 implies 40.0% because 100 / (150 + 100) = 40. Kelly uses the win percent you typed. You only get a positive stake when your percent actually beats the price on the formula, not when the two just look close.</p>
-<h3>What does "sit this one out" mean?</h3>
-<p>Your win percent is too low for that American price, so the full Kelly fraction isn't positive. The page shows no stake. Bumping the fraction from quarter to full won't create an edge that isn't there.</p>
-<h3>Should I use full Kelly?</h3>
-<p>Full Kelly is the fraction the formula gives you, and it assumes your win percent is exact. If your percent is noisy, full Kelly overbets. That's why Half is the default here. Quarter is the smaller step. The page will still work out full Kelly if you pick Full.</p>
-<h3>Can I type decimal or fractional odds?</h3>
-<p>Not on this form. It's American odds only, like +150 or -110. Convert 2.50 or 3/2 on the odds converter, then paste the American result here.</p>
-<h3>Does this place a bet or save it to my tracker?</h3>
-<p>No. The math runs in your browser and nothing gets sent to EdgeTilt. Sports Bet Tracker is a separate account tool, and it doesn't read this form.</p>
-<h3>Why did half of 8.33% become 4.17%, not 4.16%?</h3>
-<p>The 8.33% on the page is 0.08333... rounded to two decimals. Half of the exact fraction is 0.041666..., which rounds to 4.17%. The stake uses the exact fraction too, so $1,000 times that half is $41.67, not $41.60.</p>
+<h3>What do I type?</h3>
+<p>Bankroll in dollars, American odds, your win percent, and full, half, or quarter Kelly.</p>
+<h3>Why is the implied percent not the win percent?</h3>
+<p>The book's price implies a break-even percent. That number includes the hold. Kelly uses the win percent you believe, which you type yourself.</p>
+<h3>What if the edge is negative?</h3>
+<p>The page shows no stake. Kelly says sit this one out.</p>
+<h3>Does half Kelly change the formula?</h3>
+<p>No. It multiplies the full fraction by 0.5, then by the bankroll. Quarter Kelly uses 0.25.</p>
+<h3>Does this use my bet tracker?</h3>
+<p>No. It runs on the numbers in the form. No account.</p>
 </section>
 <footer>
         <a href="/calculators/no-vig">No-vig</a>

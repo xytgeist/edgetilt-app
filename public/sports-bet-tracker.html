@@ -10,7 +10,7 @@
     <title>Sports Bet Tracker | EdgeTilt</title>
     <meta
       name="description"
-      content="Log your bets, units, and closing line value in your EdgeTilt account. This page is just the intro, so it won't show your bets."
+      content="Log spreads, totals, moneylines, props, and parlays. The account shows units, ROI, record, and closing line value. No sportsbook password."
     />
     <link rel="canonical" href="https://edgetilt.com/sports/bet-tracker" />
     <meta property="og:site_name" content="EdgeTilt" />
@@ -19,7 +19,7 @@
     <meta property="og:title" content="Sports Bet Tracker | EdgeTilt" />
     <meta
       property="og:description"
-      content="Your EdgeTilt bet log keeps the number you took, your stake, and closing line value. It lives in your account, not on this page."
+      content="Log spreads, totals, moneylines, props, and parlays. The account shows units, ROI, record, and closing line value. No sportsbook password."
     />
     <meta property="og:image" content="https://edgetilt.com/og-image.png" />
     <meta property="og:image:width" content="1200" />
@@ -28,7 +28,7 @@
     <meta name="twitter:title" content="Sports Bet Tracker | EdgeTilt" />
     <meta
       name="twitter:description"
-      content="A private bet log in your EdgeTilt account. We never ask for your sportsbook password. Your bets don't show here."
+      content="Log spreads, totals, moneylines, props, and parlays. The account shows units, ROI, record, and closing line value. No sportsbook password."
     />
     <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -36,22 +36,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/seo/base.css" />
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebPage",
-        "name": "Sports Bet Tracker | EdgeTilt",
-        "url": "https://edgetilt.com/sports/bet-tracker",
-        "description": "Public intro to the EdgeTilt Sports Bet Tracker. The log opens in your account.",
-        "isPartOf": { "@type": "WebSite", "name": "EdgeTilt", "url": "https://edgetilt.com/" },
-        "datePublished": "2026-10-22",
-        "dateModified": "2026-10-22",
-        "publisher": {
-          "@type": "Organization",
-          "name": "Digiverse Ventures, LLC",
-          "url": "https://digiverse.ventures/"
-        }
-      }
-    </script>
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Sports Bet Tracker | EdgeTilt",
+  "url": "https://edgetilt.com/sports/bet-tracker",
+  "description": "Log spreads, totals, moneylines, props, and parlays. The account shows units, ROI, record, and closing line value. No sportsbook password.",
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "EdgeTilt",
+    "url": "https://edgetilt.com/"
+  },
+  "datePublished": "2026-10-22",
+  "dateModified": "2026-10-22",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Digiverse Ventures, LLC",
+    "url": "https://digiverse.ventures/"
+  }
+}
+</script>
       <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -59,50 +63,42 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "Is the bet log on this page?",
+      "name": "Does EdgeTilt sync my sportsbook?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. This page is just the intro. Your log, your units, and closing line value on the bets you entered open after you create an account and sign in."
+        "text": "No. You log the bet, paste a slip, add a photo, or import a CSV. You confirm before it is saved. EdgeTilt does not take a sportsbook login."
       }
     },
     {
       "@type": "Question",
-      "name": "Do I give EdgeTilt my sportsbook password?",
+      "name": "What does the summary show?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. EdgeTilt never asks for sportsbook passwords and never signs in to a book as you. You enter the bet yourself, or you confirm a slip you photographed or pasted."
+        "text": "Bankroll, unit size, profit in units, ROI, record, and the share of closes you beat. It is one total for the log. It is not a breakdown by sport or book. Sport and book are on each bet."
       }
     },
     {
       "@type": "Question",
-      "name": "Are the calculators the same thing as the tracker?",
+      "name": "What is CLV beat?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. Kelly, no-vig, the odds converter, arbitrage, and CLV run in your browser on numbers you type. They don't load your bets. The tracker stays in your account."
+        "text": "Of the bets that have a closing number, the percent where your number was better. Tied closes are not in that percent."
       }
     },
     {
       "@type": "Question",
-      "name": "What does closing line value mean here?",
+      "name": "What settles on its own?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "It's your number versus the close, on the same side. Take a dog at +7 that closes at +3 and you're four points to the good. The public CLV calculator lets you type both numbers yourself. Saved CLV on bets you logged stays in the tracker."
+        "text": "An open spread, moneyline, or total, after the game ends, when EdgeTilt matches that game to the final score. Parlay legs roll up. Props stay manual. You can change a grade."
       }
     },
     {
       "@type": "Question",
-      "name": "Can anyone see my bets from this page?",
+      "name": "Do I need an account for the calculators?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. There's no bet log on this page. The bets you save belong to your account."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Can I use the tracker without joining?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "No. The tracker is an account tool. The calculators linked from this page are the ones you can use without logging in."
+        "text": "No. Kelly, no-vig, the odds converter, arbitrage, and CLV are separate pages. The tracker opens after you join."
       }
     }
   ],
@@ -125,30 +121,46 @@
         <a class="btn btn-ghost" href="/calculators/kelly">Free calculators</a>
       </div>
 <section class="prose">
-<p>EdgeTilt Sports Bet Tracker is a private log for people who already bet and want the number they took written down. Winning or losing is only half the record. The other half is whether your number beat the close. If your slips are sitting in a camera roll or a notes app right now, this is where they go instead.</p>
-<p>It's not a sportsbook. It doesn't take wagers, move lines, or pay out tickets. It's not a password vault either. EdgeTilt never asks for your DraftKings, FanDuel, Circa, or any other sportsbook username or password, and it never signs in to a book as you.</p>
-<p>The log is an account tool, and this page is only the intro. You won't see a bet, a unit total, or a closing number here from anyone's account, yours included.</p>
-<h2>What you get in your account</h2>
-<p>Once you join, Sports Bet Tracker opens inside EdgeTilt. You can log spreads, totals, moneylines, props, and parlays. Every bet keeps the stake, the price, and the line you actually got. Units and profit stay with the bets you settle. If a bet has a closing number stored, closing line value shows up next to the result. Positive means you beat the close.</p>
-<p>You can type a bet in, start one from an odds board in EdgeTilt, or capture a slip from a photo or pasted text. Either way, you confirm every field before it saves, so nothing hits your log on a guess. Some open spread, moneyline, and total bets can settle on their own once the game is final. Player props are yours to grade. And you can always set the result yourself.</p>
-<h2>How it works</h2>
-<ol><li>Create an account and open Sports Bet Tracker.</li><li>Enter the price, the line you got, and your stake in units or dollars.</li><li>If you captured a slip, check it before you save. Fix anything that doesn't match the ticket.</li><li>As bets settle, your account keeps profit and units for that log.</li><li>Closing line value compares your number to the close on the same side. Not the opener.</li></ol>
-<p>Five calculators run on their own pages, in your browser, on the numbers you type: <a href="/calculators/kelly">Kelly</a>, <a href="/calculators/no-vig">no-vig</a>, the <a href="/calculators/odds-converter">odds converter</a>, <a href="/calculators/arbitrage">arbitrage</a>, and <a href="/calculators/clv">CLV</a>. They don't read the tracker, and you don't need an account to use them. The tracker only opens after you join.</p>
+<p>The tracker is a private log of bets you enter. At the top: bankroll, unit size, profit in units, ROI, record, and the share of closes you beat.</p>
+<p>ROI is profit in units divided by settled stake in units. The record is wins, losses, and pushes. CLV beat is the share of bets with a closing number where your number was better. A push against the close is left out of that share. These chips cover the whole log. All, Open, and Settled only filter the list under them.</p>
+<p>You set the bankroll and the unit size. There is no tracker price on this page. The log opens after you create an account.</p>
+<h2>How a bet gets in</h2>
+<p>You put the bet in. Nothing from a sportsbook arrives on its own.</p>
+<ul>
+<li>Type it: event, date, sport, book, market, American odds, and stake. Markets are spread, moneyline, total, player prop, parlay, and other.</li>
+<li>Long-press a price on a game in EdgeTilt. The form opens with that book and number filled in. You check it, then save.</li>
+<li>Open the book from a price. That drops an unconfirmed 1 unit bet on the log. Confirm it, edit it, or delete it.</li>
+<li>Paste slip text, or add a photo of the slip (up to eight). You review the fields, then save.</li>
+<li>Import a CSV. You still confirm before it is saved.</li>
+</ul>
+<h2>Closing line and grades</h2>
+<p>When EdgeTilt has the closing number for that game, the log shows how many points your spread or total beat it by. That figure stays in your account. It is not on this page.</p>
+<p>After a game ends, EdgeTilt can mark an open spread, moneyline, or total won or lost from the final score, when it matches that game. Parlay legs roll up to the parlay. Player props stay manual. You can change a grade. Boxing is not graded for you. UFC and MMA grade the moneyline only.</p>
+<h2>What this is not</h2>
+<p>EdgeTilt does not ask for a DraftKings, FanDuel, Circa, or any other sportsbook username or password, and it does not sign in to a book as you. There is no synced record, no public profile of your bets, and no tailing.</p>
+<p>This page does not show bets, stakes, or balances.</p>
+<h2>Calculators</h2>
+<p>Five calculators run on their own pages, in the browser, on the numbers you type. They do not read the tracker. No account.</p>
+<ul>
+<li><a href="/calculators/kelly">Kelly</a></li>
+<li><a href="/calculators/no-vig">No-vig</a></li>
+<li><a href="/calculators/odds-converter">Odds converter</a></li>
+<li><a href="/calculators/arbitrage">Arbitrage</a></li>
+<li><a href="/calculators/clv">CLV</a></li>
+</ul>
 </section>
 <section class="faq">
 <h2>FAQ</h2>
-<h3>Is the bet log on this page?</h3>
-<p>No. This page is just the intro. Your log, your units, and closing line value on the bets you entered open after you create an account and sign in.</p>
-<h3>Do I give EdgeTilt my sportsbook password?</h3>
-<p>No. EdgeTilt never asks for sportsbook passwords and never signs in to a book as you. You enter the bet yourself, or you confirm a slip you photographed or pasted.</p>
-<h3>Are the calculators the same thing as the tracker?</h3>
-<p>No. Kelly, no-vig, the odds converter, arbitrage, and CLV run in your browser on numbers you type. They don't load your bets. The tracker stays in your account.</p>
-<h3>What does closing line value mean here?</h3>
-<p>It's your number versus the close, on the same side. Take a dog at +7 that closes at +3 and you're four points to the good. The public CLV calculator lets you type both numbers yourself. Saved CLV on bets you logged stays in the tracker.</p>
-<h3>Can anyone see my bets from this page?</h3>
-<p>No. There's no bet log on this page. The bets you save belong to your account.</p>
-<h3>Can I use the tracker without joining?</h3>
-<p>No. The tracker is an account tool. The calculators linked from this page are the ones you can use without logging in.</p>
+<h3>Does EdgeTilt sync my sportsbook?</h3>
+<p>No. You log the bet, paste a slip, add a photo, or import a CSV. You confirm before it is saved. EdgeTilt does not take a sportsbook login.</p>
+<h3>What does the summary show?</h3>
+<p>Bankroll, unit size, profit in units, ROI, record, and the share of closes you beat. It is one total for the log. It is not a breakdown by sport or book. Sport and book are on each bet.</p>
+<h3>What is CLV beat?</h3>
+<p>Of the bets that have a closing number, the percent where your number was better. Tied closes are not in that percent.</p>
+<h3>What settles on its own?</h3>
+<p>An open spread, moneyline, or total, after the game ends, when EdgeTilt matches that game to the final score. Parlay legs roll up. Props stay manual. You can change a grade.</p>
+<h3>Do I need an account for the calculators?</h3>
+<p>No. Kelly, no-vig, the odds converter, arbitrage, and CLV are separate pages. The tracker opens after you join.</p>
 </section>
 <section>
         <h2>Free betting math, no login</h2>
@@ -157,27 +169,27 @@
           <a class="card" href="/calculators/kelly">
             <div class="tone">Kelly criterion</div>
             <h2>Stake from your edge</h2>
-            <p>Bankroll, American odds, and your win percent. Full, half, or quarter Kelly.</p>
+            <p>Stake from your bankroll, American price, and win percent.</p>
           </a>
           <a class="card" href="/calculators/no-vig">
             <div class="tone">No-vig</div>
             <h2>Fair odds</h2>
-            <p>Strip the hold off a two-way price and see the true chance.</p>
+            <p>Fair odds for a two-way American line.</p>
           </a>
           <a class="card" href="/calculators/odds-converter">
             <div class="tone">Odds converter</div>
             <h2>American, decimal, fractional</h2>
-            <p>Plus the implied win percent baked into the price.</p>
+            <p>American, decimal, fraction, and implied percent.</p>
           </a>
           <a class="card" href="/calculators/arbitrage">
             <div class="tone">Arbitrage and hold</div>
             <h2>Hold, or a real arb</h2>
-            <p>See the margin, and split a stake when the prices actually overlay.</p>
+            <p>Split a stake when two prices lock a profit.</p>
           </a>
           <a class="card" href="/calculators/clv">
             <div class="tone">CLV</div>
             <h2>Your number vs the close</h2>
-            <p>Spread, total, or price. Positive means you beat the close.</p>
+            <p>Your number against the close. You type both.</p>
           </a>
         </div>
       </section>

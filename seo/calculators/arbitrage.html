@@ -7,45 +7,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#09090b" />
     <meta name="robots" content="index, follow" />
-    <title>Arbitrage and Hold Calculator | EdgeTilt</title>
+    <title>Arbitrage Calculator | EdgeTilt</title>
     <meta
       name="description"
-      content="See the hold on two prices and whether they arb. If they do, EdgeTilt splits the stake you pick. Free in your browser, no account."
+      content="See if two American prices arb, and how to split a stake. Hold, fair odds, and locked profit when they do. No bets placed."
     />
     <link rel="canonical" href="https://edgetilt.com/calculators/arbitrage" />
     <meta property="og:site_name" content="EdgeTilt" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://edgetilt.com/calculators/arbitrage" />
-    <meta property="og:title" content="Arbitrage and Hold Calculator | EdgeTilt" />
-    <meta property="og:description" content="Hold, fair price, and a stake split when two American prices actually arb. Free on EdgeTilt." />
+    <meta property="og:title" content="Arbitrage Calculator | EdgeTilt" />
+    <meta property="og:description" content="See if two American prices arb, and how to split a stake. Hold, fair odds, and locked profit when they do. No bets placed." />
     <meta property="og:image" content="https://edgetilt.com/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Arbitrage and Hold Calculator | EdgeTilt" />
-    <meta name="twitter:description" content="Check the hold, and split a stake only when the prices arb. No login." />
+    <meta name="twitter:title" content="Arbitrage Calculator | EdgeTilt" />
+    <meta name="twitter:description" content="See if two American prices arb, and how to split a stake. Hold, fair odds, and locked profit when they do. No bets placed." />
     <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/seo/base.css" />
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Arbitrage and Hold Calculator",
-        "url": "https://edgetilt.com/calculators/arbitrage",
-        "applicationCategory": "Calculator",
-        "operatingSystem": "Web",
-        "isAccessibleForFree": true,
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-        "description": "Measure hold on two prices and split a stake when they arbitrage.",
-        "datePublished": "2026-10-22",
-        "dateModified": "2026-10-22",
-        "publisher": { "@type": "Organization", "name": "Digiverse Ventures, LLC", "url": "https://digiverse.ventures/" },
-        "isPartOf": { "@type": "WebSite", "name": "EdgeTilt", "url": "https://edgetilt.com/" }
-      }
-    </script>
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Arbitrage Calculator",
+  "url": "https://edgetilt.com/calculators/arbitrage",
+  "applicationCategory": "Calculator",
+  "operatingSystem": "Web",
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "See if two American prices arb, and how to split a stake. Hold, fair odds, and locked profit when they do. No bets placed.",
+  "datePublished": "2026-10-22",
+  "dateModified": "2026-10-22",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Digiverse Ventures, LLC",
+    "url": "https://digiverse.ventures/"
+  },
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "EdgeTilt",
+    "url": "https://edgetilt.com/"
+  }
+}
+</script>
       <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -53,50 +65,42 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "Why do -110 and -110 say no arb?",
+      "name": "When is it an arb?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Each side implies 52.38%. Together that's 104.76%, and the hold is 4.76%. An arb needs combined implied under 100%. The fair pair is -100 / -100, and the page doesn't show a stake split."
+        "text": "When the combined implied probability is under 100%. At -110/-110 it is 104.76%, so there is no arb and no stake split on the page."
       }
     },
     {
       "@type": "Question",
-      "name": "Why is return 3.44% when hold says -3.33%?",
+      "name": "Why don't hold and return match?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "They measure different things. On -105 / +120, combined implied is 96.67%, so hold is 96.67 minus 100 = -3.33%. Return is your locked profit divided by your stake: $8.60 / $250 = 3.44%. A negative hold means the prices overlap. Return is how much of your split stake that overlap pays."
+        "text": "Hold is how far the two implied probabilities sit from 100%. Return is locked profit divided by the total. On -105 and +120 those are -3.33% and 3.44%."
       }
     },
     {
       "@type": "Question",
-      "name": "Why is the larger stake on the minus price?",
+      "name": "Will EdgeTilt place the bets?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "The split evens out the payout, not the stake. -105 pays less profit per dollar than +120, so more dollars have to go on -105. In the $250 example, that's $132.45 on -105 and $117.55 on +120."
+        "text": "No. It only splits the stake you typed."
       }
     },
     {
       "@type": "Question",
-      "name": "Does EdgeTilt place the two bets?",
+      "name": "What if one book voids a side?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. The page only does the math. You still have to get both bets filled at those prices. Nothing gets sent to a sportsbook or saved to your account."
+        "text": "Then the other side is a naked bet. The locked profit assumed both bets stood. Books can also limit the account or cut the stake."
       }
     },
     {
       "@type": "Question",
-      "name": "What if both prices are from the same book?",
+      "name": "Does this read my tracker?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Then you're measuring that book's hold, same as the no-vig page, and it'll almost never arb. A real arb is usually the best price on one side at one book against the best price on the other side somewhere else."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Can the total to split be any amount?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Yes. Stakes and locked profit scale with the total, but the return percent doesn't. $250 at -105 / +120 locks +$8.60, which is 3.44%. Double the total and the dollar profit doubles. The 3.44% stays put."
+        "text": "No. Two prices and a total, in the browser. No account."
       }
     }
   ],
@@ -114,10 +118,8 @@
       <p class="kicker">Free, no login</p>
       <h1>Arbitrage and hold</h1>
       <section class="prose">
-<p>Hold is how far two implied probabilities sit from 100%. Most pairs at a single book sit above 100%, and that gap is the book's margin. Arbitrage is when the two prices add up to less than 100%. Then a split stake, one ticket on each price, locks in a profit either way. This arbitrage calculator doesn't place either bet.</p>
-<h2>How to use it</h2>
-<ol><li>Book A and Book B take American odds. Both start at -110.</li><li>Total to split ($) starts at 100. That's your combined stake, not your profit.</li><li>Hold, Combined implied, Fair A, and Fair B always show. If the prices arb, the page adds Locked profit, Return, Stake A, and Stake B, and the hint says: These prices arb. The split locks the same profit either way.</li></ol>
-<p>A blank or bad price gets you: Enter two American prices and a stake to split. If there's no arb, the hint quotes the combined implied percent and says an arb needs that number under 100%. No stake split shows.</p>
+<p>Type two American prices and a total to split. If the prices arb, the page splits that total so both sides return the same profit. If they do not, it shows the hold and the fair prices, and it does not show stakes.</p>
+<p>EdgeTilt does not place either bet.</p>
 </section>
 <form data-calc action="#" onsubmit="return false">
         <div class="fields two">
@@ -136,25 +138,19 @@
       </form>
       <div class="out" data-out aria-live="polite"></div>
       <section class="prose">
-<h2>The formula in plain terms</h2>
-<p>Decimal odds are your return per $1, stake included. -110 is 1.90909. -105 is 1.95238. +120 is 2.20.</p>
-<p>inv = 1/decimalA + 1/decimalB. That's the same as adding the two implied probabilities. Combined implied is inv as a percent. Hold = (inv minus 1) times 100.</p>
-<p>If inv is 1 or more, there's no arb. Fair A and Fair B are the no-vig American prices.</p>
-<p>If inv is under 1, hold shows negative. Stake A = total times (1/decimalA) / inv. Stake B = total times (1/decimalB) / inv. That sizes both outcomes to the same return. Locked profit = that return minus the total. Return = locked profit / total.</p>
-<p>Hold and return aren't the same number with the sign flipped. Hold is (inv minus 1). Return is (1/inv minus 1). At inv = 0.9667, hold is -3.33% and return is 3.44%.</p>
-<h2>Worked example 1. Defaults</h2>
-<p>Book A -110, Book B -110, total 100.</p>
-<p>Each side implies 52.38%. Combined implied = 104.76%. Hold = 4.76%. Fair prices are -100 and -100. inv is above 1, so there's no arb.</p>
-<p>You'll see those four rows and the hint: No arb. Combined implied is 104.76%. An arb needs that under 100%. No stakes show. Forcing a $50 and $50 split would lose about $4.55, which is why the split stays hidden.</p>
-<h2>Worked example 2</h2>
-<p>Set Book A to -105, Book B to +120, and the total to 250.</p>
-<p>inv = 1/1.95238 + 1/2.20 = 0.9667. Combined implied = 96.67%. Hold = -3.33%. Fair prices round to -113 and +113.</p>
-<p>Stake A = $132.45 on -105. Stake B = $117.55 on +120. Together that's $250. More money goes on -105 because that side pays less per dollar.</p>
-<p>Either side returns about $258.60. Locked profit is +$8.60. Return is 3.44%, which is $8.60 / $250, not the absolute value of the -3.33% hold.</p>
-<p>You'll see Hold -3.33%, Combined implied 96.67%, Fair A -113, Fair B +113, Locked profit +$8.60, Return 3.44%, Stake A $132.45, Stake B $117.55, plus the arb hint.</p>
-<h2>When it helps, and where it stops</h2>
-<p>Use it to read the margin, and to size both sides only when combined implied is under 100%. A positive hold means those two prices don't lock a profit.</p>
-<p>The numbers assume both bets fill at the prices you typed, with no commission and no line move while you're clicking. Sportsbooks may limit accounts or void bets. The split is for the two opposite sides of one two-way result. It doesn't cover a draw, a parlay, or two different games. Nothing you type gets sent to EdgeTilt, and the form doesn't read your bet tracker.</p>
+<h2>The formula</h2>
+<p>Each American price becomes a decimal. Add 1 / decimal A and 1 / decimal B. That sum is the combined implied probability. Under 100%, the prices arb. Each stake is the total times that side's share of the sum. Locked profit is the smaller payout minus the total.</p>
+<p>Hold on this page is (combined implied - 1) times 100. Return is locked profit divided by the total. They are not the same percent with the sign flipped.</p>
+<h2>Not an arb</h2>
+<p>-110 and -110, total $100.</p>
+<p>Hold 4.76%. Combined implied 104.76%. Fair A -100. Fair B -100. The page does not show stakes. The line is: "No arb. Combined implied is 104.76%. An arb needs that under 100%."</p>
+<h2>An arb</h2>
+<p>-105 and +120, total $250.</p>
+<p>Hold -3.33%. Combined implied 96.67%. Fair A -113. Fair B +113. Locked profit +$8.60. Return 3.44%. Stake A $132.45. Stake B $117.55.</p>
+<p>The line is: "These prices arb. The split locks the same profit either way."</p>
+<p>Hold is -3.33% and return is 3.44%. Both figures are right. They measure different things.</p>
+<h2>Limits</h2>
+<p>The numbers assume both bets fill at the prices you typed, with no commission and no line move while you are clicking. Sportsbooks may limit accounts or void bets. The split is the two opposite sides of one two-way result. Different settlement rules, or a middle, are a different bet. This page does not send either wager.</p>
 </section>
 <p class="fine">
         Runs in your browser. Nothing is sent to EdgeTilt.
@@ -163,18 +159,16 @@
       <noscript><p class="hint">Turn on JavaScript to run the numbers. The example above uses the same formula.</p></noscript>
       <section class="faq">
 <h2>FAQ</h2>
-<h3>Why do -110 and -110 say no arb?</h3>
-<p>Each side implies 52.38%. Together that's 104.76%, and the hold is 4.76%. An arb needs combined implied under 100%. The fair pair is -100 / -100, and the page doesn't show a stake split.</p>
-<h3>Why is return 3.44% when hold says -3.33%?</h3>
-<p>They measure different things. On -105 / +120, combined implied is 96.67%, so hold is 96.67 minus 100 = -3.33%. Return is your locked profit divided by your stake: $8.60 / $250 = 3.44%. A negative hold means the prices overlap. Return is how much of your split stake that overlap pays.</p>
-<h3>Why is the larger stake on the minus price?</h3>
-<p>The split evens out the payout, not the stake. -105 pays less profit per dollar than +120, so more dollars have to go on -105. In the $250 example, that's $132.45 on -105 and $117.55 on +120.</p>
-<h3>Does EdgeTilt place the two bets?</h3>
-<p>No. The page only does the math. You still have to get both bets filled at those prices. Nothing gets sent to a sportsbook or saved to your account.</p>
-<h3>What if both prices are from the same book?</h3>
-<p>Then you're measuring that book's hold, same as the no-vig page, and it'll almost never arb. A real arb is usually the best price on one side at one book against the best price on the other side somewhere else.</p>
-<h3>Can the total to split be any amount?</h3>
-<p>Yes. Stakes and locked profit scale with the total, but the return percent doesn't. $250 at -105 / +120 locks +$8.60, which is 3.44%. Double the total and the dollar profit doubles. The 3.44% stays put.</p>
+<h3>When is it an arb?</h3>
+<p>When the combined implied probability is under 100%. At -110/-110 it is 104.76%, so there is no arb and no stake split on the page.</p>
+<h3>Why don't hold and return match?</h3>
+<p>Hold is how far the two implied probabilities sit from 100%. Return is locked profit divided by the total. On -105 and +120 those are -3.33% and 3.44%.</p>
+<h3>Will EdgeTilt place the bets?</h3>
+<p>No. It only splits the stake you typed.</p>
+<h3>What if one book voids a side?</h3>
+<p>Then the other side is a naked bet. The locked profit assumed both bets stood. Books can also limit the account or cut the stake.</p>
+<h3>Does this read my tracker?</h3>
+<p>No. Two prices and a total, in the browser. No account.</p>
 </section>
 <footer>
         <a href="/calculators/kelly">Kelly</a>

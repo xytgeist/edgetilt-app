@@ -18,6 +18,8 @@ import {
   type GameRow,
 } from './fantasyLineupCards.ts'
 import { sharedCached } from './edgeSharedCache.ts'
+import { loadNbaBoard, teamWeek, weekGames, type NbaBoard } from './fantasyNbaBoard.ts'
+import { nbaHeadshots, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
 
 const WEEKS_AHEAD = 4
 const CACHE_MS = 20 * 60 * 1000
@@ -230,7 +232,8 @@ export async function buildFantasyWaivers(
     .maybeSingle()
   if (lgErr) throw new Error(lgErr.message)
   if (!league) throw new Error('League not found.')
-  if (String(league.sport || 'nfl').toLowerCase() !== 'nfl') {
+  const sport = String(league.sport || 'nfl').toLowerCase()
+  if (sport !== 'nfl' && sport !== 'nba') {
     return { supported: false, players: [], roster: [] }
   }
 
@@ -257,6 +260,7 @@ export async function buildFantasyWaivers(
     rostered.add(id)
     if (String(r.team_id) === mineId) mineIds.add(id)
   }
+  if (sport === 'nba') return buildNbaWaivers(admin, rostered, mineIds, withSniper)
 
   const [board, playersRes] = await Promise.all([
     loadProjBoard(),
@@ -546,3 +550,109 @@ async function buildFill(
   }
   return out
 }
+
+// ---------- NBA: streaming value = per-game projection x games this week (and next) ----------
+
+const NBA_SHORTLIST = 70
+const NBA_STARTERS_PER_TEAM = 5
+
+function scaleLine(line: Record<string, number> | null | undefined, games: number): Record<string, number> | null {
+  if (!line || games <= 0) return null
+  const out: Record<string, number> = {}
+  for (const [k, v] of Object.entries(line)) out[k] = Math.round(v * games * 1000) / 1000
+  return out
+}
+
+function nbaHurt(status: string | null | undefined): boolean {
+  return /^(out|o|ir|inj|sus)/i.test(String(status || '').trim())
+}
+
+/**
+ * Same pool shape as NFL (`weeks` of stat lines the app scores in league rules), so `rankWaivers` / `rankBoom`
+ * run unchanged: week 1 = per-game projection x games left this week, week 2 = x next week's games.
+ * Sniper boom = available players next up behind an injured starter, or with 3+ games left this week.
+ */
+async function buildNbaWaivers(
+  admin: SupabaseClient,
+  rostered: Set<string>,
+  mineIds: Set<string>,
+  withSniper: boolean,
+): Promise<Record<string, unknown>> {
+  const board: NbaBoard | null = await loadNbaBoard()
+  if (!board) return { supported: true, players: [], roster: [] }
+  const dayMs = 86_400_000
+  const nextStart = new Date(Date.parse(`${board.end}T00:00:00Z`) + dayMs).toISOString().slice(0, 10)
+  const nextEnd = new Date(Date.parse(`${nextStart}T00:00:00Z`) + 6 * dayMs).toISOString().slice(0, 10)
+  const [all, nextGames] = await Promise.all([
+    sleeperNbaPlayers(admin),
+    sharedCached(
+      `fantasy:nba-week-games:${board.season}:${board.week + 1}`,
+      { ttlMs: 60 * 60 * 1000, staleMaxMs: 6 * 60 * 60 * 1000, admin, shouldStore: (v) => v.length > 0 },
+      () => weekGames(nextStart, nextEnd),
+    ).catch(() => []),
+  ])
+  const gamesNext = (team: string) => nextGames.filter((g) => g.home === team || g.away === team).length
+  const perGamePts = (id: string) => Number(board.projLine[id]?.pts) || 0
+
+  const entries = all.map((p) => {
+    const wk = teamWeek(board, p.team)
+    const per = board.projLine[p.sleeper_id] || null
+    const left = wk.games_left + (wk.live ? 1 : 0)
+    return {
+      p,
+      left,
+      out: {
+        sleeper_id: p.sleeper_id,
+        name: p.name,
+        position: p.position,
+        fantasy_positions: p.fantasy_positions,
+        team: p.team,
+        injury_status: p.injury_status,
+        headshot_url: null as string | null,
+        games_left: left,
+        weeks: [
+          { week: board.week, bye: left === 0, opp: null, home: null, ppr: null, line: scaleLine(per, left) },
+          { week: board.week + 1, bye: gamesNext(p.team) === 0, opp: null, home: null, ppr: null, line: scaleLine(per, gamesNext(p.team)) },
+        ] as WeekOut[],
+        next_up: [] as string[],
+      },
+    }
+  })
+
+  // Next man up: a top-5 projected player on his team is out, and they share a position.
+  const byTeam = new Map<string, typeof entries>()
+  for (const e of entries) byTeam.set(e.p.team, [...(byTeam.get(e.p.team) || []), e])
+  for (const list of byTeam.values()) {
+    const starters = [...list].sort((a, b) => perGamePts(b.p.sleeper_id) - perGamePts(a.p.sleeper_id)).slice(0, NBA_STARTERS_PER_TEAM)
+    const hurtStarters = starters.filter((e) => nbaHurt(e.p.injury_status))
+    for (const e of list) {
+      if (rostered.has(e.p.sleeper_id) || starters.includes(e) || nbaHurt(e.p.injury_status)) continue
+      const pos = new Set(e.p.fantasy_positions.length ? e.p.fantasy_positions : [e.p.position])
+      const ahead = hurtStarters.filter((h) => (h.p.fantasy_positions.length ? h.p.fantasy_positions : [h.p.position]).some((x) => pos.has(x)))
+      if (ahead.length) e.out.next_up = ahead.map((h) => h.p.name)
+    }
+  }
+
+  const roster = entries.filter((e) => mineIds.has(e.p.sleeper_id)).map((e) => e.out)
+  const available = entries
+    .filter((e) => !rostered.has(e.p.sleeper_id) && perGamePts(e.p.sleeper_id) > 0)
+    .sort((a, b) => perGamePts(b.p.sleeper_id) * b.left - perGamePts(a.p.sleeper_id) * a.left)
+  const players = available.slice(0, NBA_SHORTLIST).map((e) => e.out)
+  const boom = withSniper
+    ? available.filter((e) => e.out.next_up.length || e.left >= 3).slice(0, 30).map((e) => e.out)
+    : []
+
+  const shots = await nbaHeadshots(admin, [...roster, ...players, ...boom])
+  for (const e of [...roster, ...players, ...boom]) e.headshot_url = shots.get(e.sleeper_id)?.headshot_url || null
+
+  return {
+    supported: true,
+    season: board.season,
+    week: board.week,
+    weeks: [board.week, board.week + 1],
+    players,
+    roster,
+    ...(withSniper ? { sniper: { boom, handcuffs: [] } } : {}),
+  }
+}
+

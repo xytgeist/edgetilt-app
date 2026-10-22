@@ -72,7 +72,8 @@ function perGameLines(raw: unknown): Record<string, Record<string, number>> {
   return out
 }
 
-async function weekGames(start: string, end: string): Promise<NbaGame[]> {
+/** Every NBA game in a date window (US Eastern game dates, inclusive). */
+export async function weekGames(start: string, end: string): Promise<NbaGame[]> {
   const dates: string[] = []
   for (let t = dayMs(start); t <= dayMs(end); t += DAY_MS) dates.push(ymd(t).replace(/-/g, ''))
   const days = await Promise.all(

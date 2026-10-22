@@ -23,7 +23,7 @@ import {
   slotPositions,
   weekValue,
 } from './fantasyStartSit.js'
-import { rankWaivers, rowId } from './fantasyWaivers.js'
+import { rankWaivers, rowId, waiverLineupSlots } from './fantasyWaivers.js'
 import {
   loadLeagueValues,
   loadLineupCards,
@@ -1695,6 +1695,7 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
 }
 
 const WAIVER_POS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+const NBA_WAIVER_POS = ['All', 'PG', 'SG', 'SF', 'PF', 'C']
 
 function WaiverAvatar({ url, pos, team }) {
   const shot = useHeadshotSrc(pos === 'DEF' ? null : url, 160)
@@ -1917,10 +1918,11 @@ function SniperView({ supabaseClient, detail, sport }) {
         ) : (
           <p className="text-[12px] text-zinc-500">No available player stands out for this week yet.</p>
         )}
-        {!anyProps ? (
+        {!anyProps && sport !== 'nba' ? (
           <p className="mt-1 text-[10px] text-zinc-500">Kalshi player markets for wk {week} are not open yet; picks use the depth chart and matchups until they are.</p>
         ) : null}
       </div>
+      {sport === 'nba' ? null : (
       <div>
         <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Handcuffs</div>
         {cuffs.mine.length || cuffs.block.length ? (
@@ -1937,6 +1939,7 @@ function SniperView({ supabaseClient, detail, sport }) {
           <p className="text-[12px] text-zinc-500">No free handcuffs behind rostered RB1s.</p>
         )}
       </div>
+      )}
     </div>
   )
 }
@@ -2035,7 +2038,7 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
   const rosterRows = useMemo(() => (mine ? detail?.rostersByTeam?.[mine.id] || [] : []), [detail, mine])
   const picks = useMemo(() => {
     if (!state.data?.players?.length || !rosterRows.length) return []
-    const { slots } = leagueLineupSlots(detail?.league, rosterRows)
+    const slots = waiverLineupSlots(detail?.league, rosterRows, sport)
     if (!slots.length) return []
     return rankWaivers({ pool: state.data, rosterRows, scoring: detail?.league?.scoring, slots, sport })
   }, [state.data, rosterRows, detail, sport])
@@ -2043,7 +2046,8 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
   const host = providerLabel(detail?.league?.provider)
   const weeks = state.data?.weeks || []
   const span = weeks.length ? `wk ${weeks[0]}${weeks.length > 1 ? `-${weeks[weeks.length - 1]}` : ''}` : ''
-  const shown = picks.filter((p) => pos === 'All' || p.cand.pos === pos).slice(0, 10)
+  // NBA chips match any eligible position (a PG/SG shows under both).
+  const shown = picks.filter((p) => pos === 'All' || p.cand.pos === pos || (p.cand.elig || []).includes(pos)).slice(0, 10)
 
   return (
     <div data-fantasy-waivers className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
@@ -2071,7 +2075,7 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
       <>
       <div className="mt-1 text-[10px] text-zinc-500">Available in your league{span ? ` · ${span} avg` : ''}</div>
       <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {WAIVER_POS.map((p) => (
+        {(sport === 'nba' ? NBA_WAIVER_POS : WAIVER_POS).map((p) => (
           <button
             key={p}
             type="button"
@@ -3288,7 +3292,8 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
   }, [supabaseClient, leagueId, rosterStamp, nfl])
 
   useEffect(() => {
-    if (!open || !supabaseClient || !leagueId || !nfl || extra.id === leagueId) return undefined
+    // Waivers + sniper teasers run for NBA too (same pool shape); the league outlook above stays NFL.
+    if (!open || !supabaseClient || !leagueId || !(nfl || sport === 'nba') || extra.id === leagueId) return undefined
     let alive = true
     Promise.all([loadWaivers(supabaseClient, leagueId).catch(() => null), loadSniper(supabaseClient, leagueId).catch(() => null)]).then(
       ([waivers, sniper]) => {
@@ -3298,7 +3303,7 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
     return () => {
       alive = false
     }
-  }, [open, supabaseClient, leagueId, nfl, extra.id])
+  }, [open, supabaseClient, leagueId, nfl, sport, extra.id])
 
   const cached = synopsisValues.get(leagueId)
   const values =
@@ -3306,7 +3311,7 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
   const teams = useMemo(() => detail?.teams || [], [detail])
   const mine = teams.find((t) => t.is_mine) || null
   const myRows = useMemo(() => (mine ? detail?.rostersByTeam?.[mine.id] || [] : []), [detail, mine])
-  const slots = useMemo(() => leagueLineupSlots(detail?.league, myRows).slots, [detail, myRows])
+  const slots = useMemo(() => waiverLineupSlots(detail?.league, myRows, sport), [detail, myRows, sport])
   const scoring = detail?.league?.scoring
 
   const outlook = useMemo(() => {

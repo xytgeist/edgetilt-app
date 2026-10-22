@@ -59,6 +59,11 @@ export function rankBoom({ sniper, scoring, sport = 'nfl', perPos = 2 }) {
       reasons.push(`${ladder.strike}+ ${YARD_WORD[ladder.stat]} at ${Math.round(ladder.price * 100)}¢`)
       score += ladder.strike / 25
     }
+    // NBA streaming: games this week is most of a pickup's value.
+    if (sport === 'nba' && Number(entry.games_left) >= 3) {
+      reasons.push(`${entry.games_left} games left this week`)
+      score += Number(entry.games_left) * 0.8
+    }
     if (entry.matchup_grade === 'A') {
       reasons.push(`soft matchup (#${entry.matchup_rank} vs ${entry.position}s)`)
       score += 1.5

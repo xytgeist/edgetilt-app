@@ -1,5 +1,5 @@
 import { scoreLine } from './fantasyBoxScore.js'
-import { fantasyPosition } from './fantasyStartSit.js'
+import { fantasyPosition, leagueLineupSlots } from './fantasyStartSit.js'
 import { seasonProfile } from './fantasyValue.js'
 
 const SLOT_ELIGIBLE = {
@@ -13,10 +13,38 @@ const SLOT_ELIGIBLE = {
   WRRB_FLEX: ['WR', 'RB'],
   REC_FLEX: ['WR', 'TE'],
   SUPER_FLEX: ['QB', 'RB', 'WR', 'TE'],
+  // NBA (Sleeper slot codes); players carry multi-position eligibility (`elig`).
+  PG: ['PG'],
+  SG: ['SG'],
+  SF: ['SF'],
+  PF: ['PF'],
+  C: ['C'],
+  G: ['PG', 'SG'],
+  F: ['SF', 'PF'],
+  UTIL: ['PG', 'SG', 'SF', 'PF', 'C'],
 }
 
-function canFill(slot, pos) {
-  return (SLOT_ELIGIBLE[slot] || []).includes(pos)
+function canFill(slot, pos, elig = null) {
+  const list = SLOT_ELIGIBLE[slot] || []
+  return (elig?.length ? elig : [pos]).some((p) => list.includes(p))
+}
+
+/**
+ * Lineup slots for waiver math. NBA reads Sleeper's `roster_positions` here so Start / Sit (`leagueLineupSlots`)
+ * stays NFL-shaped (NBA lineups lock daily, not weekly).
+ */
+export function waiverLineupSlots(league, rosterRows, sport = 'nfl') {
+  if (sport !== 'nba') return leagueLineupSlots(league, rosterRows).slots
+  const settings = league?.settings && typeof league.settings === 'object' ? league.settings : {}
+  const raw = Array.isArray(settings.roster_positions) ? settings.roster_positions : Array.isArray(settings.lineup_slots) ? settings.lineup_slots : []
+  return raw.map((s) => String(s || '').trim().toUpperCase()).filter((s) => SLOT_ELIGIBLE[s] && !['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].includes(s))
+}
+
+/** NBA eligibility from Sleeper `fantasy_positions` (NFL players stay single-position). */
+function eligOf(entry, sport) {
+  if (sport !== 'nba') return null
+  const list = Array.isArray(entry?.fantasy_positions) ? entry.fantasy_positions.map((p) => String(p).toUpperCase()) : []
+  return list.length ? list : null
 }
 
 function injuryKind(status) {
@@ -73,7 +101,7 @@ export function bestSeats(pool, slots) {
   let total = 0
   for (const { slot } of order) {
     const best = pool
-      .filter((p) => !used.has(p.id) && canFill(slot, p.pos))
+      .filter((p) => !used.has(p.id) && canFill(slot, p.pos, p.elig))
       .sort((a, b) => b.value - a.value)[0]
     if (!best) continue
     used.add(best.id)
@@ -138,6 +166,7 @@ export function rankWaivers({ pool, rosterRows, scoring, slots, sport = 'nfl' })
       return {
         id,
         pos,
+        elig: eligOf(entry, sport),
         value,
         rosWeekly: prof ? prof.weekly : null,
         rosTotal: prof ? prof.ppg * prof.games : null,
@@ -162,6 +191,7 @@ export function rankWaivers({ pool, rosterRows, scoring, slots, sport = 'nfl' })
     const cand = {
       id: String(entry.sleeper_id),
       pos: candPos,
+      elig: eligOf(entry, sport),
       value: h.avg,
       rosWeekly: prof ? prof.weekly : null,
       rosTotal: prof ? prof.ppg * prof.games : null,
@@ -232,7 +262,7 @@ export function rankWaivers({ pool, rosterRows, scoring, slots, sport = 'nfl' })
     let byeSeat = null
     let byeWeek = null
     for (const seat of base.seats) {
-      if (!canFill(seat.slot, cand.pos)) continue
+      if (!canFill(seat.slot, cand.pos, cand.elig)) continue
       const off = seat.p.h.weeks.find((w) => w.bye && !cand.h.weeks.find((c) => c.week === w.week)?.bye)
       if (off) {
         byeSeat = seat.p

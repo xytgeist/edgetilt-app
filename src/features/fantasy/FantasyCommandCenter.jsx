@@ -27,6 +27,7 @@ import {
 } from './fantasyStartSit.js'
 import { rankWaivers, rowId, waiverLineupSlots } from './fantasyWaivers.js'
 import { streamPlan } from './fantasyStreaming.js'
+import { schedulePlan } from './fantasyNbaSchedule.js'
 import {
   loadLeagueValues,
   loadLineupCards,
@@ -1788,6 +1789,130 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
           ? `${moves.length ? ' ' : ''}${plan.locked} ${plan.today ? 'already tipped today' : 'already playing'}, locked.`
           : ''}
         {plan.inferred ? ' Slots read from your current lineup; Sync to load league slots.' : ''}
+      </p>
+    </div>
+  )
+}
+
+/** NBA games-left planner: my roster by night (opponent, back-to-backs), nightly starts, starts left vs opponent. */
+function NbaSchedulePanel({ page, cards, league }) {
+  const upcoming = nbaMatchupUpcoming(league)
+  const [pick, setPick] = useState(null)
+  const wk = pick ?? (upcoming ? 1 : 0)
+  const plan = useMemo(() => {
+    const slots = waiverLineupSlots(league, page?.roster || [], 'nba')
+    if (!slots.length || !page?.roster?.length) return null
+    return schedulePlan({ mine: page.roster, opp: page.oppRoster, cards, slots, wk })
+  }, [league, page, cards, wk])
+  if (!plan || !plan.dates.length) return null
+  const oppName = shortTeamName(page?.right) || 'Opponent'
+  const lockIn = nbaLockIn(league?.provider, 'nba')
+
+  return (
+    <div data-fantasy-nba-schedule className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[13px] font-bold text-zinc-100">Schedule</div>
+        <div className="flex rounded-full border border-zinc-800 p-0.5">
+          {[
+            [0, 'This week'],
+            [1, 'Next week'],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setPick(id)}
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${wk === id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-1 text-[11px] text-zinc-300">
+        <span className="font-bold tabular-nums text-zinc-100">{plan.mineLeft}</span> starts left
+        {plan.oppLeft != null ? (
+          <>
+            {' '}
+            vs <span className="font-bold tabular-nums text-zinc-100">{plan.oppLeft}</span> for {oppName}
+            {plan.mineLeft !== plan.oppLeft ? (
+              <span className={`ml-1 font-semibold ${plan.mineLeft > plan.oppLeft ? 'fantasy-sit-in' : 'fantasy-sit-out'}`}>
+                ({plan.mineLeft > plan.oppLeft ? '+' : ''}
+                {plan.mineLeft - plan.oppLeft})
+              </span>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+      <div className="mt-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <table className="w-full border-separate border-spacing-0 text-[10px]">
+          <thead>
+            <tr>
+              <th className="pr-1" />
+              {plan.dates.map((d) => (
+                <th key={d} className={`px-0.5 pb-1 text-center font-bold uppercase ${d === plan.today ? 'text-sky-400' : 'text-zinc-500'}`}>
+                  {nightLabel(d).slice(0, 2)}
+                </th>
+              ))}
+              <th className="pb-1 pl-1 text-right font-semibold text-zinc-500">Left</th>
+            </tr>
+          </thead>
+          <tbody>
+            {plan.rows.map((p) => (
+              <tr key={p.id} className={p.row.slot === 'bench' ? 'opacity-80' : ''}>
+                <td className="max-w-[6rem] truncate py-0.5 pr-1 font-semibold text-zinc-200">
+                  {shortName(p.row.player_name, p.row.position)}
+                  {p.out ? <span className="ml-1 font-bold text-rose-300">OUT</span> : null}
+                </td>
+                {plan.dates.map((d) => {
+                  const g = p.games.get(d)
+                  const past = d < plan.today || g?.state === 'post'
+                  return (
+                    <td key={d} className="px-0.5 py-0.5 text-center">
+                      {g ? (
+                        <span
+                          data-fantasy-sched-b2b={g.b2b && !past ? '' : undefined}
+                          className={`inline-block rounded px-0.5 text-[9px] font-semibold tabular-nums ${
+                            past || p.out ? 'text-zinc-600' : g.state === 'in' ? 'fantasy-sit-gain' : 'bg-zinc-800 text-zinc-200'
+                          }`}
+                        >
+                          {g.home ? '' : '@'}
+                          {g.opp}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-700">·</span>
+                      )}
+                    </td>
+                  )
+                })}
+                <td className="py-0.5 pl-1 text-right font-bold tabular-nums text-zinc-200">{p.left}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td className="pt-1 pr-1 font-semibold text-zinc-500">Starting</td>
+              {plan.dates.map((d) => {
+                const n = plan.starts[d]
+                return (
+                  <td key={d} className="px-0.5 pt-1 text-center tabular-nums">
+                    {n == null ? (
+                      <span className="text-zinc-700">-</span>
+                    ) : (
+                      <span className={`font-bold ${n < plan.slots ? 'fantasy-sit-out' : 'text-zinc-400'}`}>
+                        {n}/{plan.slots}
+                      </span>
+                    )}
+                  </td>
+                )
+              })}
+              <td />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p className="mt-2 text-[10px] text-zinc-500">
+        Starts = lineup slots you can fill with healthy players who play that night. Underlined: second night of a back-to-back (rest risk).
+        {lockIn ? ' Lock-In counts one game a player, so extra games are extra shots at a big night.' : ''}
       </p>
     </div>
   )
@@ -4173,6 +4298,9 @@ export default function FantasyCommandCenter({
           ) : null}
           {tool === 'start' && detail ? (
             <StartSitPanel supabaseClient={supabaseClient} detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} />
+          ) : null}
+          {tool === 'start' && detail && current && (selected?.sport || detail?.league?.sport) === 'nba' ? (
+            <NbaSchedulePanel page={current} cards={cards} league={detail?.league} />
           ) : null}
           {tool === 'waiver' && detail ? (
             <WaiversPanel supabaseClient={supabaseClient} detail={detail} sport={selected?.sport || detail?.league?.sport} />

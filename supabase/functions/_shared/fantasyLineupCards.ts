@@ -93,6 +93,8 @@ export type LineupCard = {
   today?: 'pre' | 'in' | 'post' | null
   /** NBA: our R2 copy of the ESPN photo (else ESPN's); NFL rows read nfl_players. */
   headshot_url?: string | null
+  /** NBA: his team's games this week (wk 0) and next (wk 1) by US Eastern date, for the schedule planner. */
+  schedule?: Array<{ date: string; opp: string; home: boolean; state: 'pre' | 'in' | 'post'; wk: 0 | 1 }> | null
 }
 
 export type GameRow = {
@@ -706,6 +708,11 @@ export async function buildSportLineupCards(
     card.game_date = card.kickoff ? card.kickoff.slice(0, 10) : null
     card.opponent = wk.opponent
     card.home = wk.home
+    const sched = (games: NbaGame[], w: 0 | 1) =>
+      games
+        .filter((g) => g.home === t || g.away === t)
+        .map((g) => ({ date: etDate(g.date), opp: g.home === t ? g.away : g.home, home: g.home === t, state: g.state, wk: w }))
+    card.schedule = t ? [...sched(board.games, 0), ...sched(nextGames, 1)] : null
   }
   return { season: board.season, week: board.week, cards }
 }

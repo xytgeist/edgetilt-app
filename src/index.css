@@ -12063,6 +12063,21 @@ html.light [data-fantasy-home] .fantasy-sit-in {
 html.light [data-fantasy-home] .fantasy-sit-out {
   color: #be123c;
 }
+/* NBA schedule planner: second night of a back-to-back, light chips. */
+[data-fantasy-nba-schedule] [data-fantasy-sched-b2b] {
+  text-decoration: underline;
+  text-decoration-color: #fbbf24;
+  text-underline-offset: 2px;
+}
+html.light [data-fantasy-nba-schedule] [data-fantasy-sched-b2b] {
+  text-decoration-color: #d97706;
+}
+html.light [data-fantasy-nba-schedule] .bg-zinc-800 {
+  background-color: #f4f4f5;
+}
+html.light [data-fantasy-nba-schedule] .text-zinc-700 {
+  color: #d4d4d8;
+}
 /* Start/Sit open lineup slot */
 [data-fantasy-home] [data-fantasy-open-slot] {
   border-color: rgb(245 158 11 / 0.45);

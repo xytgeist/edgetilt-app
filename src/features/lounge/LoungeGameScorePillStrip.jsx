@@ -8,7 +8,6 @@ import {
   loungeFeedCarouselMeasureLayout,
 } from './loungeFeedImageAttachment.js'
 import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.js'
-import { useLoungeSlowTicker } from './useLoungeSlowTicker.js'
 
 /**
  * Feed / detail sports cards. Pin-only (via context `gamesForPost`). Multi = minichart carousel.
@@ -33,15 +32,8 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
 
   const multi = games.length > 1
   const carouselFullBleed = multi && loungeFeedCarouselFullBleed(variant)
-  // Each game once: a duplicated loop read as every pill posted twice (Ryan 2026-10-22), so the ticker bounces.
-  const tickerGames = games
 
   useLoungeFeedCarouselAxisLock(carouselScrollRef, multi)
-  useLoungeSlowTicker(carouselScrollRef, {
-    enabled: multi,
-    speedPxPerSec: 24,
-    bounce: true,
-  })
 
   useLayoutEffect(() => {
     if (!multi) return undefined
@@ -108,7 +100,7 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
         {...(multi ? { 'data-lounge-feed-carousel-track': true } : null)}
         className={multi ? 'flex flex-nowrap items-stretch gap-2' : 'w-full'}
       >
-        {tickerGames.map((game, idx) => (
+        {games.map((game, idx) => (
           <div
             key={`${String(game.id)}-${hubPaintEpoch}-${idx}`}
             className={multi ? 'relative shrink-0' : 'relative w-full max-w-full'}

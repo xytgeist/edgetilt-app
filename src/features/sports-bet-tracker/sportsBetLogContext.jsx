@@ -6,7 +6,6 @@ import { DEFAULT_STAKE_UNITS, readUnitSizeDollars, stakeDollarsFromUnits } from 
 import { resolveSportsBetSport } from './sportsBetSports.js'
 import { createPortal } from 'react-dom'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
-import { isOddsHoldLearned } from './oddsHoldHint.js'
 
 const SportsBetLogGameContext = createContext(null)
 const TAP_DEDUPE_MS = 20_000
@@ -15,7 +14,7 @@ const TAP_TOAST_MS = 4500
 const TAP_TOAST_VISIBLE_DELAY_MS = 900
 const TAP_TOAST_RETURN_DELAY_MS = 350
 
-/** Tap-through auto-log confirmation. Until the viewer has held a line once, it also teaches the hold. */
+/** Tap-through auto-log confirmation. */
 function TapLoggedToast({ toast, onDismiss }) {
   if (!toast || typeof document === 'undefined') return null
   return createPortal(
@@ -28,9 +27,6 @@ function TapLoggedToast({ toast, onDismiss }) {
       style={{ zIndex: Z_APP_ALERT, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
     >
       <span className="block truncate text-[13px] font-semibold text-zinc-100">Logged {toast.units}u on {toast.label}</span>
-      {toast.hint ? (
-        <span className="mt-0.5 block text-[11px] text-zinc-400">Next time, long press any bet to set your own stake.</span>
-      ) : null}
     </button>,
     document.body,
   )
@@ -126,7 +122,7 @@ export function SportsBetLogGameProvider({ game, supabaseClient, onBeforeLog, ch
     (row) => {
       clearTapToastTimers()
       const show = () => {
-        setTapToast({ ...row, key: Date.now(), hint: !isOddsHoldLearned() })
+        setTapToast({ ...row, key: Date.now() })
         tapToastTimersRef.current.hide = window.setTimeout(() => setTapToast(null), TAP_TOAST_MS)
       }
       // Show once the page is back in front (an external book app hides it; an in-app sheet does not).

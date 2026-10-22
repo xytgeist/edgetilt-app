@@ -1,10 +1,10 @@
-/** Hold-to-log discoverability: one-time tip on game hub lines, tap-through toast hint, learned flag. */
+/** Hold-to-log discoverability: one-time tip on game hub lines + learned flag. */
 
 const LEARNED_KEY = 'edge.oddsHold.learned.v1'
 const TIP_SHOWS_KEY = 'edge.oddsHold.tipShows.v1'
 const LEARNED_EVENT = 'edge:odds-hold-learned'
-/** Tip stops after this many showings even if the hold never happens. */
-const TIP_MAX_SHOWS = 3
+/** Shown once per device, held or not. */
+const TIP_MAX_SHOWS = 1
 
 function read(key) {
   try {

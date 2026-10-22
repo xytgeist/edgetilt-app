@@ -12289,9 +12289,6 @@ html.light [data-sports-bet-tap-toast] {
 html.light [data-sports-bet-tap-toast] .text-zinc-100 {
   color: #18181b !important;
 }
-html.light [data-sports-bet-tap-toast] .text-zinc-400 {
-  color: #71717a !important;
-}
 @keyframes sports-bet-just-added {
   0%,
   55% {

@@ -3523,11 +3523,7 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool, 
   const toolOpen = (tool) => () => onOpenTool?.(tool)
 
   return (
-    <div
-      data-fantasy-synopsis
-      data-fantasy-synopsis-alert={alerts.length ? '' : undefined}
-      className="mt-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-3 py-2"
-    >
+    <div data-fantasy-synopsis className="mt-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-3 py-2">
       <button
         type="button"
         aria-expanded={open}
@@ -3535,31 +3531,53 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool, 
         className="flex w-full items-center justify-between gap-2 text-left touch-manipulation [-webkit-tap-highlight-color:transparent]"
       >
         <span className="min-w-0">
-          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-            {alerts.length ? (
-              <span data-fantasy-attention className="inline-flex shrink-0 items-center gap-0.5" aria-label={`${alerts.length} to fix`}>
-                <AlertTriangle size={11} strokeWidth={2.5} aria-hidden />
-                {alerts.length}
-              </span>
-            ) : null}
-            <span className="min-w-0 truncate">
-              League outlook{lg?.last_sync_at ? <span className="font-semibold normal-case tracking-normal"> · {syncedAgo(lg.last_sync_at)}</span> : null}
-            </span>
+          <span className="block truncate text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+            League outlook{lg?.last_sync_at ? <span className="font-semibold normal-case tracking-normal"> · {syncedAgo(lg.last_sync_at)}</span> : null}
           </span>
           <span className="block truncate text-[11px] font-semibold text-zinc-200">{summary.join(' · ') || 'No issues this week'}</span>
+          {/* Collapsed: what needs doing, in one amber line (the full list opens in Details). */}
+          {alerts.length && !open ? (
+            <span data-fantasy-attention-line className="mt-0.5 block truncate text-[11px] font-semibold">
+              {alerts[0]}
+              {alerts.length > 1 ? ` · +${alerts.length - 1} more` : ''}
+            </span>
+          ) : null}
         </span>
-        <span className="shrink-0 text-[10px] font-semibold text-sky-400">{open ? 'Hide' : 'Details'}</span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          {alerts.length ? (
+            <span
+              data-fantasy-attention-pill
+              className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+              aria-label={`${alerts.length} to fix`}
+            >
+              <AlertTriangle size={10} strokeWidth={2.5} aria-hidden />
+              {alerts.length} to fix
+            </span>
+          ) : null}
+          <span className="text-[10px] font-semibold text-sky-400">{open ? 'Hide' : 'Details'}</span>
+        </span>
       </button>
       {open ? (
         <div className="mt-2 space-y-2">
           {alerts.length ? (
-            <SynopsisSection title="Needs attention" onOpen={toolOpen('start')}>
-              {alerts.map((line) => (
-                <div key={line} data-fantasy-attention-line className="font-semibold">
-                  {line}
-                </div>
-              ))}
-            </SynopsisSection>
+            <div data-fantasy-attention-box className="rounded-xl border px-2.5 py-2">
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide" data-fantasy-attention-title>
+                  <AlertTriangle size={10} strokeWidth={2.5} aria-hidden />
+                  Needs attention
+                </span>
+                <button type="button" onClick={toolOpen('start')} className="text-[10px] font-semibold text-sky-400">
+                  Roster
+                </button>
+              </div>
+              <div className="space-y-0.5 text-[11px] leading-snug">
+                {alerts.map((line) => (
+                  <div key={line} data-fantasy-attention-line className="font-semibold">
+                    {line}
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : null}
           <SynopsisSection title="Outlook">
             {outlook ? (

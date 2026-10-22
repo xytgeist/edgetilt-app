@@ -213,3 +213,38 @@ export function formatSignedUsd(n) {
   if (x < 0) return `-${abs}`
   return abs
 }
+
+/**
+ * Line CLV in points. Same sign as sports_bets_refresh_clv / computePickClvPts
+ * once both numbers are already on the same side.
+ * Positive means you beat the close.
+ * Spread: your line minus the close (+7 that closes +3 is +4).
+ * Total over: your total minus the close. Total under: the close minus your total.
+ * Public page passes same-side numbers. It does not read lounge_market_files.
+ */
+export function clvLinePoints(market, side, line, closeLine) {
+  const your = Number(line)
+  const close = Number(closeLine)
+  if (!Number.isFinite(your) || !Number.isFinite(close)) return null
+  const m = String(market || '').trim().toLowerCase()
+  const s = String(side || '').trim().toLowerCase()
+  if (m === 'spread' || m === 'spreads') return your - close
+  if (m === 'total' || m === 'totals') {
+    if (s === 'over') return your - close
+    if (s === 'under') return close - your
+    return null
+  }
+  return null
+}
+
+/**
+ * Price CLV in probability points: implied(close) minus implied(bet).
+ * Positive means the close is shorter than the number you got.
+ * The bet tracker stores spread/total points, not this figure.
+ */
+export function clvPricePoints(betOdds, closeOdds) {
+  const bet = impliedFromAmerican(betOdds)
+  const close = impliedFromAmerican(closeOdds)
+  if (bet == null || close == null) return null
+  return (close - bet) * 100
+}

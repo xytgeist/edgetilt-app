@@ -2,7 +2,9 @@
 
 Product plan for EdgeTilt Fantasy … **tools for edge hunters**, not a league viewer and not a FantasyPros expert-content clone.
 
-**Connect implementation (shipped / in flight):** **`docs/fantasy-connect.md`**.  
+**Connect implementation (shipped / in flight):** **`docs/fantasy-connect.md`**.
+
+**Public page:** `https://edgetilt.com/fantasy` is a crawlable intro with a join CTA. It does not load leagues. The hub tile stays Coming soon, and Fantasy stays out of the hamburger. The app route remains `?tab=fantasy`. Yahoo's browser return stays `/fantasy-yahoo-return.html`.  
 **Positioning:** Connect is the door. The suite is decision tools + live command center + DFS toolkit + cross-edge hedges, fed by synced leagues/lineups. **Notifications are a first-class retention fabric** across all layers … not an afterthought.
 
 ## Test tally (pending checks)

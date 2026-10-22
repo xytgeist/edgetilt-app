@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="robots" content="index, follow" />
+    <title>Odds Converter | EdgeTilt</title>
+    <meta
+      name="description"
+      content="Free odds converter for American, decimal, and fractional odds, with implied probability. One box, no account."
+    />
+    <link rel="canonical" href="https://edgetilt.com/calculators/odds-converter" />
+    <meta property="og:site_name" content="EdgeTilt" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://edgetilt.com/calculators/odds-converter" />
+    <meta property="og:title" content="Odds Converter | EdgeTilt" />
+    <meta property="og:description" content="Free odds converter for American, decimal, and fractional odds, with implied probability. One box, no account." />
+    <meta property="og:image" content="https://edgetilt.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Odds Converter | EdgeTilt" />
+    <meta name="twitter:description" content="Free odds converter for American, decimal, and fractional odds, with implied probability. One box, no account." />
+    <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/seo/base.css" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Odds Converter",
+  "url": "https://edgetilt.com/calculators/odds-converter",
+  "applicationCategory": "Calculator",
+  "operatingSystem": "Web",
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "Free odds converter for American, decimal, and fractional odds, with implied probability. One box, no account.",
+  "datePublished": "2026-10-22",
+  "dateModified": "2026-10-22",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Digiverse Ventures, LLC",
+    "url": "https://digiverse.ventures/"
+  },
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "EdgeTilt",
+    "url": "https://edgetilt.com/"
+  }
+}
+</script>
+      <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Which formats can I type?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "American (+150, -110), decimal (2.50), or a fraction (3/2, 7/2). One box."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why is -110 shown as 1.91?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Decimal rounds to the cent, and 1.91 converts back to -110."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is the implied percent a prediction?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. It's the break-even percent at that price, hold included."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Where do I remove the vig?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "On the no-vig page, with both sides of the bet."
+      }
+    }
+  ],
+  "datePublished": "2026-10-22",
+  "dateModified": "2026-10-22"
+}
+</script>
+  </head>
+  <body class="accent-cyan">
+    <main class="wrap">
+      <a class="brand" href="https://edgetilt.com/?auth=join">
+        <img src="/apple-touch-icon.png" alt="" width="36" height="36" />
+        <span>EDGETILT</span>
+      </a>
+      <p class="kicker">Free, no login</p>
+      <h1>Odds converter</h1>
+      <section class="prose">
+<p>Type one price, like +150, -110, 2.50, or 3/2. You get back American, decimal, fractional, and the implied percent.</p>
+<p>Decimal is rounded to the cent. There's no stake or payout field.</p>
+</section>
+<form data-calc action="#" onsubmit="return false">
+        <label class="field">Any format
+          <input name="odds" value="+150" autocomplete="off" />
+        </label>
+      </form>
+      <div class="out" data-out aria-live="polite"></div>
+      <figure class="shot">
+        <img
+          src="/seo/shots/odds-converter.webp"
+          alt="Odds converter filled with +150, showing decimal 2.50, fraction 3/2, and a 40 percent implied chance."
+          width="960"
+          height="286"
+          loading="lazy"
+        />
+        <figcaption>Filled example: +150.</figcaption>
+      </figure>
+      <section class="prose">
+<h2>What the rows mean</h2>
+<p>American is the US price. Decimal is your total return per 1 unit staked, stake included. Fractional is profit over stake. Implied is the break-even win percent at that price, with the book's hold still in it. For fair odds, enter both sides on the <a href="/calculators/no-vig">no-vig calculator</a>.</p>
+<h2>Same price, three inputs</h2>
+<p>+150, 2.50, and 3/2.</p>
+<p>American +150. Decimal 2.50. Fractional 3/2. Implied 40.00%.</p>
+<h2>-110</h2>
+<p>American -110. Decimal 1.91. Fractional 10/11. Implied 52.38%.</p>
+<p>Type 1.91 and American comes back as -110. The unrounded decimal is about 1.909, but the page shows 1.91.</p>
+<h2>7/2</h2>
+<p>American +350. Decimal 4.50. Fractional 7/2. Implied 22.22%.</p>
+</section>
+<p class="fine">Runs in your browser. Nothing is sent to EdgeTilt. For your own math, not betting advice.</p>
+      <noscript><p class="hint">Turn on JavaScript to run the numbers. The example above uses the same formula.</p></noscript>
+      <section class="faq">
+<h2>FAQ</h2>
+<h3>Which formats can I type?</h3>
+<p>American (+150, -110), decimal (2.50), or a fraction (3/2, 7/2). One box.</p>
+<h3>Why is -110 shown as 1.91?</h3>
+<p>Decimal rounds to the cent, and 1.91 converts back to -110.</p>
+<h3>Is the implied percent a prediction?</h3>
+<p>No. It's the break-even percent at that price, hold included.</p>
+<h3>Where do I remove the vig?</h3>
+<p>On the no-vig page, with both sides of the bet.</p>
+</section>
+<footer>
+        <a href="/calculators/kelly">Kelly</a>
+        ·
+        <a href="/calculators/no-vig">No-vig</a>
+        ·
+        <a href="/calculators/arbitrage">Arbitrage</a>
+        ·
+        <a href="/calculators/clv">CLV</a>
+        ·
+        <a href="/sports/bet-tracker">Bet tracker</a>
+        <p class="owner">EdgeTilt is a product of <a href="https://digiverse.ventures/">Digiverse Ventures, LLC</a>.</p>
+      </footer>
+    </main>
+    <script type="module" src="/src/seo/calculators/odds-converter.js"></script>
+  </body>
+</html>

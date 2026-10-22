@@ -40,7 +40,30 @@ App deep links from hub CTAs (brand, Open app, primary Open-in-EdgeTilt buttons)
 
 Hub pages cross-link the cluster (slots ↔ guides ↔ each tool ↔ poker).
 
-**Skipped for SEO landings:** Slots Pro Lounge (private subscriber chat).
+**Skipped for SEO landings:** Slots Pro Lounge (private subscriber chat). Local Intel stays off the sitemap and has no public URL.
+
+---
+
+## Sports, fantasy, W-2G, and free betting calculators
+
+The SPA is an auth wall. `?tab=` is not a crawlable document. These URLs are static HTML (landings) or Vite multi-page HTML (calculators), rewritten in **`vercel.json`** before the catch-all. Dev and `vite preview` use the same paths via **`scripts/vite-seo-public-routes.mjs`**.
+
+| URL | Role |
+| --- | --- |
+| `https://edgetilt.com/sports/bet-tracker` | Bet Tracker intro + join CTA. No bets, no market file. |
+| `https://edgetilt.com/fantasy` | Fantasy intro + join CTA. No leagues or lineups. Yahoo return stays `/fantasy-yahoo-return.html`. |
+| `https://edgetilt.com/slots/w2g` | W-2G Scanner intro + join CTA. No slips. |
+| `https://edgetilt.com/calculators/kelly` | Kelly criterion. Uses `kellyStake`. |
+| `https://edgetilt.com/calculators/no-vig` | No-vig / fair odds. Uses `noVigTwoWay`. |
+| `https://edgetilt.com/calculators/odds-converter` | American, decimal, fractional. Uses `parseAnyOdds`. |
+| `https://edgetilt.com/calculators/arbitrage` | Hold and arb stake split. Uses `noVigTwoWay` + `arbTwoWay`. |
+| `https://edgetilt.com/calculators/clv` | Spread/total points (`clvLinePoints`, same sign as the tracker) and price CLV (`clvPricePoints`). Typed numbers only. |
+
+Each page has a title, meta description, canonical `https://edgetilt.com/...`, and a short explainer. Calculators need no account. The tracker, Fantasy, and the scanner still open through `?tab=` plus `auth=join`.
+
+**Not in the sitemap:** `/guides/<slug>`, `?tab=guides&guide=`, guide markdown, Local Intel.
+
+Check: **`npm run seo:public-check`**.
 
 ---
 

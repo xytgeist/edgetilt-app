@@ -1490,11 +1490,6 @@ function LivePanel({ supabaseClient, page, detail, sport, active }) {
   )
 }
 
-function shortLeagueName(lg) {
-  const name = String(lg?.name || '').trim()
-  return name.length > 16 ? `${name.slice(0, 15)}…` : name
-}
-
 /** Every NFL player on your teams (all slots) → the leagues they are on and whether you start them anywhere. */
 /** Sleeper NBA rows have no photo of their own; the lineup cards carry one (ESPN via our R2). */
 function withCardHeadshots(details, cards, sport) {
@@ -1533,7 +1528,7 @@ function myPlayers(leagues, details, sport = 'nfl') {
       const id = String(row?.sleeper_id || '').trim()
       if (!/^\d+$/.test(id)) continue
       const entry = out.get(id) || { leagues: [], starting: false, name: row.player_name || '', team: row.nfl_team || '', position: row.position || '' }
-      const name = shortLeagueName(lg)
+      const name = String(lg?.name || '').trim()
       if (!entry.leagues.includes(name)) entry.leagues.push(name)
       if (row.slot === 'starter') entry.starting = true
       out.set(id, entry)
@@ -3978,7 +3973,7 @@ export default function FantasyCommandCenter({
             players={newsPlayers}
             news={news}
             showLeagues={(leagues || []).filter((lg) => ['nfl', 'nba'].includes(String(lg.sport || 'nfl').toLowerCase())).length > 1}
-            leagueOrder={groups.flatMap((g) => g.leagues.map(shortLeagueName))}
+            leagueOrder={groups.flatMap((g) => g.leagues.map((lg) => String(lg?.name || '').trim()))}
           />
         </>
       ) : (

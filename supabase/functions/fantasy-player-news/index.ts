@@ -113,6 +113,26 @@ function insiderNote(row: Obj, player: Obj): Obj {
   }
 }
 
+/** Last name, lowercased, suffix and accents dropped ("Amon-Ra St. Brown" -> "brown", "Jaren Jackson Jr." -> "jackson"). */
+function lastNameKey(name: string): string {
+  const parts = String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z\s'-]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w && !/^(jr|sr|ii|iii|iv|v)$/.test(w))
+  return parts[parts.length - 1] || ''
+}
+
+/** An insider post tags every player it names; it belongs under a player only when its headline is about him. */
+function headlineNames(headline: unknown, name: string): boolean {
+  const last = lastNameKey(name)
+  if (!last) return false
+  const head = String(headline || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  return new RegExp(`\\b${last.replace(/[-']/g, '.')}\\b`).test(head)
+}
+
 /** Rotowire usually re-reports an insider's post minutes later; keep the insider item and drop the echo. */
 function dropEchoes(notes: Obj[]): Obj[] {
   const insiderAt = new Map<string, number[]>()
@@ -174,7 +194,7 @@ async function nbaNotes(raw: unknown, admin: SupabaseClient): Promise<Obj[]> {
   )
   const byId = new Map(players.map((p) => [str(p.sleeper_id), p]))
   for (const row of insider || []) {
-    const id = ((row.sleeper_ids as string[]) || []).map(String).find((x) => byId.has(x))
+    const id = ((row.sleeper_ids as string[]) || []).map(String).find((x) => byId.has(x) && headlineNames(row.headline, str(byId.get(x)!.name)))
     const p = id ? byId.get(id)! : null
     if (!p) continue
     const espnId = espnBy.get(str(p.sleeper_id)) || ''
@@ -262,7 +282,9 @@ Deno.serve(async (req) => {
   )
   const wanted = new Set(ids)
   for (const row of insider || []) {
-    const id = (row.sleeper_ids as string[] || []).find((x) => wanted.has(String(x)))
+    const id = (row.sleeper_ids as string[] || []).find(
+      (x) => wanted.has(String(x)) && headlineNames(row.headline, str(meta.get(String(x))?.full_name)),
+    )
     const p = id ? meta.get(String(id)) : null
     if (!p) continue
     notes.push(insiderNote(row as Obj, playerFields(p)))

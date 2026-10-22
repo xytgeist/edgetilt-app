@@ -163,7 +163,7 @@ function LoungeMatchupGameHubModal({
       setPresentedId(key)
     }
   }, [])
-  const showNewsTab = Boolean(game) && isFootballGame
+  const showNewsTab = Boolean(game) && (isFootballGame || isNbaGame)
   // Players needs a roster Edge: football (NFL / CFB) and NBA. NHL / MLB stay hidden until theirs exist.
   const showPlayersTab = Boolean(game) && (isFootballGame || isNbaGame)
   const showPlaysTab = Boolean(game) && game.status !== 'pre'
@@ -648,8 +648,9 @@ function LoungeMatchupGameHubModal({
     hubGameIdRef.current = game.id
     if (!justOpened && !switched) return
     const football = String(game.sport_key || '').includes('americanfootball')
+    const withNews = football || String(game.sport_key || '') === 'basketball_nba'
     if (game.status === 'in') setTab('plays')
-    else setTab(football ? 'news' : 'posts')
+    else setTab(withNews ? 'news' : 'posts')
     setPostsSort('top')
     setDraft('')
     setChatErr('')
@@ -834,10 +835,10 @@ function LoungeMatchupGameHubModal({
       return (
         <div className="space-y-3 py-3">
           <OddsTable game={game} books={detail.odds} legalState={legalBooks.legalState} />
-          {fantasyLoading && !(fantasy.props || []).length ? (
+          {(isNbaGame ? nbaRosterLoading : fantasyLoading) && !((isNbaGame ? nbaRoster.props : fantasy.props) || []).length ? (
             <div className="py-4 text-center text-sm text-zinc-500">Loading Kalshi markets…</div>
           ) : (
-            <KalshiGamePropsBoard props={fantasy.props} game={game} live={live} />
+            <KalshiGamePropsBoard props={isNbaGame ? nbaRoster.props : fantasy.props} game={game} live={live} />
           )}
           <BoxScoreCard game={game} />
           <PlayerStats game={game} stats={detail.stats} />

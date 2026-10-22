@@ -844,7 +844,7 @@ function FantasyScoringBar({ scoring, status, leagues, league, onSelectLeague })
 }
 
 /** Opens the Fantasy tab; closing Fantasy comes back to this game (and its slate, when opened from one). */
-function GoToFantasyButton({ game }) {
+export function GoToFantasyButton({ game }) {
   const sports = useLoungeSportsFeed()
   const onOpen = () => {
     if (typeof window === 'undefined') return

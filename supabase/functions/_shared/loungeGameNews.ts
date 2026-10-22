@@ -4,7 +4,7 @@
  */
 import { decodeHtmlEntities } from './decodeHtmlEntities.ts'
 import { parseFeedXml } from './loungeBotRssFetch.ts'
-import { type EspnFootballEventRef, type LoungeSportsGame, resolveEspnFootballEvent } from './loungeSportsScoreboard.ts'
+import { type EspnFootballEventRef, type LoungeSportsGame, resolveEspnFootballEvent, resolveEspnNbaEvent } from './loungeSportsScoreboard.ts'
 
 type Side = 'away' | 'home'
 
@@ -42,7 +42,7 @@ export type GameNewsStory = {
 }
 
 export type GameNewsPayload = {
-  league: 'nfl' | 'college-football'
+  league: 'nfl' | 'college-football' | 'nba'
   espn_event_id: string
   article: GameNewsStory | null
   injuries: { away: GameNewsInjury[]; home: GameNewsInjury[] } | null
@@ -131,6 +131,11 @@ function storyFromEspn(item: Obj): GameNewsStory | null {
   }
 }
 
+/** ESPN site path segment for the event's league (`football/nfl`, `basketball/nba`). */
+function espnSport(league: string): string {
+  return league === 'nba' ? `basketball/nba` : `football/${league}`
+}
+
 // ---------- summary (injuries + preview/recap + league headlines) ----------
 
 const summaryCache = new Map<string, CacheEntry<Promise<Obj | null>>>()
@@ -138,7 +143,7 @@ const summaryCache = new Map<string, CacheEntry<Promise<Obj | null>>>()
 function loadSummary(ref: EspnFootballEventRef) {
   return memo(summaryCache, `${ref.league}:${ref.event_id}`, 5 * 60 * 1000, () =>
     getJson<Obj>(
-      `https://site.api.espn.com/apis/site/v2/sports/football/${ref.league}/summary?event=${encodeURIComponent(ref.event_id)}`,
+      `https://site.api.espn.com/apis/site/v2/sports/${espnSport(ref.league)}/summary?event=${encodeURIComponent(ref.event_id)}`,
     ))
 }
 
@@ -195,7 +200,7 @@ const teamNewsCache = new Map<string, CacheEntry<Promise<Obj[]>>>()
 function loadTeamNews(league: string, teamId: string) {
   return memo(teamNewsCache, `${league}:${teamId}`, 15 * 60 * 1000, async () => {
     const body = await getJson<Obj>(
-      `https://site.api.espn.com/apis/site/v2/sports/football/${league}/news?team=${encodeURIComponent(teamId)}&limit=30`,
+      `https://site.api.espn.com/apis/site/v2/sports/${espnSport(league)}/news?team=${encodeURIComponent(teamId)}&limit=30`,
     )
     return arr(body?.articles)
   })
@@ -254,31 +259,49 @@ function loadNflDepthPlayers(teamId: string, side: Side) {
 
 const playerNewsCache = new Map<string, CacheEntry<Promise<Obj[]>>>()
 
-function loadPlayerNews(espnId: string) {
-  return memo(playerNewsCache, espnId, 15 * 60 * 1000, async () => {
+/** `ffl` = ESPN fantasy football, `fba` = fantasy basketball (same Rotowire feed shape). */
+function loadPlayerNews(espnId: string, fantasyGame: 'ffl' | 'fba' = 'ffl') {
+  return memo(playerNewsCache, `${fantasyGame}:${espnId}`, 15 * 60 * 1000, async () => {
     const body = await getJson<Obj>(
-      `https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?playerId=${encodeURIComponent(espnId)}&limit=8`,
+      `https://site.api.espn.com/apis/fantasy/v2/games/${fantasyGame}/news/players?playerId=${encodeURIComponent(espnId)}&limit=8`,
       6_000,
     )
     return arr(body?.feed)
   })
 }
 
+const nbaRosterCache = new Map<string, CacheEntry<Promise<NotePlayer[]>>>()
+
+/** NBA has no depth chart feed … the team roster (ESPN lists the rotation first) stands in. */
+function loadNbaRosterPlayers(teamId: string, side: Side) {
+  return memo(nbaRosterCache, `${teamId}:${side}`, 6 * 60 * 60 * 1000, async () => {
+    const body = await getJson<Obj>(
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${encodeURIComponent(teamId)}/roster`,
+    )
+    return arr(body?.athletes)
+      .slice(0, 15)
+      .map((a) => ({ id: str(a.id), name: str(a.displayName), position: str(obj(a.position).abbreviation), side }))
+      .filter((p) => p.id)
+  })
+}
+
 async function nflPlayerNotes(ref: EspnFootballEventRef, injuries: GameNewsPayload['injuries']): Promise<GameNewsPlayerNote[]> {
-  const [awayDepth, homeDepth] = await Promise.all([
-    loadNflDepthPlayers(ref.away_team_id, 'away'),
-    loadNflDepthPlayers(ref.home_team_id, 'home'),
-  ])
+  const nba = ref.league === 'nba'
+  const [awayDepth, homeDepth] = await Promise.all(
+    nba
+      ? [loadNbaRosterPlayers(ref.away_team_id, 'away'), loadNbaRosterPlayers(ref.home_team_id, 'home')]
+      : [loadNflDepthPlayers(ref.away_team_id, 'away'), loadNflDepthPlayers(ref.home_team_id, 'home')],
+  )
   const players = new Map<string, NotePlayer>()
   for (const p of [...awayDepth, ...homeDepth]) players.set(p.id, p)
   for (const side of ['away', 'home'] as const) {
     for (const inj of injuries?.[side] || []) {
-      if (!SKILL_POS.has(inj.position.toUpperCase()) || players.has(inj.id)) continue
+      if ((!nba && !SKILL_POS.has(inj.position.toUpperCase())) || players.has(inj.id)) continue
       players.set(inj.id, { id: inj.id, name: inj.name, position: inj.position, side })
     }
   }
   const list = [...players.values()].slice(0, 32)
-  const feeds = await Promise.all(list.map((p) => loadPlayerNews(p.id).catch(() => [] as Obj[])))
+  const feeds = await Promise.all(list.map((p) => loadPlayerNews(p.id, nba ? 'fba' : 'ffl').catch(() => [] as Obj[])))
   const notes: GameNewsPlayerNote[] = []
   list.forEach((p, i) => {
     let taken = 0
@@ -299,7 +322,7 @@ async function nflPlayerNotes(ref: EspnFootballEventRef, injuries: GameNewsPaylo
         story: stripHtml(item.story),
         published,
         source: 'Rotowire via ESPN',
-        url: `https://www.espn.com/nfl/player/_/id/${p.id}`,
+        url: `https://www.espn.com/${nba ? 'nba' : 'nfl'}/player/_/id/${p.id}`,
       })
     }
   })
@@ -409,9 +432,10 @@ const payloadCache = new Map<string, CacheEntry<Promise<GameNewsPayload | null>>
 export function buildGameNews(game: LoungeSportsGame): Promise<GameNewsPayload | null> {
   const key = `${game.sport_key}:${game.id}:${game.status}`
   return memo(payloadCache, key, 5 * 60 * 1000, async () => {
-    const ref = await resolveEspnFootballEvent(game)
+    const ref = (await resolveEspnFootballEvent(game)) || (await resolveEspnNbaEvent(game))
     if (!ref || !ref.event_id) return null
-    const nfl = ref.league === 'nfl'
+    // NFL and NBA share the ESPN summary injuries + Rotowire-via-ESPN notes; CFB uses the Rotowire RSS.
+    const nfl = ref.league === 'nfl' || ref.league === 'nba'
     const [summary, awayNews, homeNews] = await Promise.all([
       loadSummary(ref),
       loadTeamNews(ref.league, ref.away_team_id).catch(() => [] as Obj[]),
@@ -422,7 +446,7 @@ export function buildGameNews(game: LoungeSportsGame): Promise<GameNewsPayload |
     const articleRaw = obj(summaryObj.article)
     const article = str(articleRaw.headline) ? storyFromEspn(articleRaw) : null
     if (article && !article.url) {
-      article.url = `https://www.espn.com/${nfl ? 'nfl' : 'college-football'}/game/_/gameId/${ref.event_id}`
+      article.url = `https://www.espn.com/${ref.league}/game/_/gameId/${ref.event_id}`
     }
     const leagueNews = arr(obj(summaryObj.news).articles)
     let stories = matchupStories([...awayNews, ...homeNews, ...leagueNews], ref)

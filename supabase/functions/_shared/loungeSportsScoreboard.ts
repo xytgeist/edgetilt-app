@@ -2840,7 +2840,7 @@ function espnSideMatchesGame(
 }
 
 export type EspnFootballEventRef = {
-  league: EspnFootballLeague
+  league: EspnFootballLeague | 'nba'
   event_id: string
   home_team_id: string
   away_team_id: string
@@ -2853,10 +2853,24 @@ const ESPN_EVENT_REF_TTL_MS = 6 * 60 * 60 * 1000
 const ESPN_EVENT_REF_MISS_TTL_MS = 5 * 60 * 1000
 
 /** Hub game (Rundown id) → ESPN event + team ids, via the kickoff-day scoreboard. Cached per game. */
-export async function resolveEspnFootballEvent(game: LoungeSportsGame): Promise<EspnFootballEventRef | null> {
+export function resolveEspnFootballEvent(game: LoungeSportsGame): Promise<EspnFootballEventRef | null> {
   const sk = String(game?.sport_key || '')
   const league: EspnFootballLeague | null = isCfbSportKey(sk) ? 'college-football' : isNflSportKey(sk) ? 'nfl' : null
-  if (!league) return null
+  if (!league) return Promise.resolve(null)
+  return resolveEspnEventRef(game, league, espnFootballScoreboardPath(league))
+}
+
+/** Same lookup on ESPN's NBA scoreboard (game hub News tab). */
+export function resolveEspnNbaEvent(game: LoungeSportsGame): Promise<EspnFootballEventRef | null> {
+  if (String(game?.sport_key || '') !== 'basketball_nba') return Promise.resolve(null)
+  return resolveEspnEventRef(game, 'nba', 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard')
+}
+
+async function resolveEspnEventRef(
+  game: LoungeSportsGame,
+  league: EspnFootballLeague | 'nba',
+  scoreboardPath: string,
+): Promise<EspnFootballEventRef | null> {
   const cacheKey = `${league}:${game.id}:${nflAbbrevKey(game.away?.abbrev)}@${nflAbbrevKey(game.home?.abbrev)}`
   const hit = espnEventRefCache.get(cacheKey)
   if (hit && Date.now() - hit.at < (hit.ref ? ESPN_EVENT_REF_TTL_MS : ESPN_EVENT_REF_MISS_TTL_MS)) return hit.ref
@@ -2874,7 +2888,7 @@ export async function resolveEspnFootballEvent(game: LoungeSportsGame): Promise<
   let ref: EspnFootballEventRef | null = null
   for (const date of dates) {
     try {
-      const res = await espnFetch(`${espnFootballScoreboardPath(league)}?dates=${date}${groups}`, {
+      const res = await espnFetch(`${scoreboardPath}?dates=${date}${groups}`, {
         headers,
         signal: AbortSignal.timeout(8_000),
       })

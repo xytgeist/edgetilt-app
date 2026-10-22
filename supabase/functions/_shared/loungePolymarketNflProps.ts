@@ -17,6 +17,9 @@ const POLY_POPULAR_GAME = new Set([
   'football_team_full_game_total',
   'football_team_points_full_game_total',
   'football_team_full_game_team_total',
+  'basketball_team_full_game_winner',
+  'basketball_team_full_game_total',
+  'basketball_team_full_game_team_total',
 ])
 
 const POLY_POPULAR_PERIOD = new Set([
@@ -26,6 +29,9 @@ const POLY_POPULAR_PERIOD = new Set([
   'football_team_second_half_winner',
   'football_team_second_half_total',
   'football_game_second_half_total',
+  'basketball_team_first_half_winner',
+  'basketball_team_first_half_total',
+  'basketball_game_first_half_total',
 ])
 
 function isPopularPolyNonPlayer(sportsType: string): boolean {
@@ -360,8 +366,8 @@ export async function loadPolymarketProps(
     const mapped = mapPolyMarket(league, eventSlug, m)
     if (!mapped || seen.has(mapped.ticker)) continue
     if (league === 'cfb') mapped.team_hint = polyTeamHint(m, codeToAbbrev)
-    // Player props stay; game/period only when on the popular allowlist (NBA board is player props only).
-    if (mapped.kind !== 'player' && (league === 'nba' || !isPopularPolyNonPlayer(st))) continue
+    // Player props stay; game/period only when on the popular allowlist.
+    if (mapped.kind !== 'player' && !isPopularPolyNonPlayer(st)) continue
     seen.add(mapped.ticker)
     out.push(mapped)
   }

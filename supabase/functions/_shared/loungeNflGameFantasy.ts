@@ -69,6 +69,21 @@ const KALSHI_NBA_PLAYER_SERIES = [
   'KXNBA3D',
 ] as const
 
+/** NBA game + period boards for the Stats tab (popular markets only, like NFL). */
+const KALSHI_NBA_GAME_SERIES = ['KXNBAGAME', 'KXNBASPREAD', 'KXNBATOTAL', 'KXNBATEAMTOTAL'] as const
+const KALSHI_NBA_PERIOD_SERIES = [
+  'KXNBA1H',
+  'KXNBA1HSPREAD',
+  'KXNBA1HTOTAL',
+  'KXNBA2H',
+  'KXNBA2HSPREAD',
+  'KXNBA2HTOTAL',
+  'KXNBA1Q',
+  'KXNBA1QSPREAD',
+  'KXNBA1QTOTAL',
+] as const
+const KALSHI_NBA_PERIOD_SERIES_SET = new Set<string>(KALSHI_NBA_PERIOD_SERIES)
+
 const KALSHI_PLAYER_SERIES_SET = new Set<string>([...KALSHI_PLAYER_SERIES, ...KALSHI_NBA_PLAYER_SERIES])
 const KALSHI_PERIOD_SERIES_SET = new Set<string>(KALSHI_PERIOD_SERIES)
 
@@ -459,7 +474,7 @@ function lineLabelFromTitle(title: string, playerName: string): string {
 
 function propKindForSeries(series: string): NflGameFantasyPropKind {
   if (KALSHI_PLAYER_SERIES_SET.has(series)) return 'player'
-  if (KALSHI_PERIOD_SERIES_SET.has(series) || KALSHI_CFB_PERIOD_SERIES_SET.has(series)) return 'period'
+  if (KALSHI_PERIOD_SERIES_SET.has(series) || KALSHI_CFB_PERIOD_SERIES_SET.has(series) || KALSHI_NBA_PERIOD_SERIES_SET.has(series)) return 'period'
   return 'game'
 }
 
@@ -1200,11 +1215,12 @@ async function resolveKalshiNbaGameSuffix(away: string, home: string): Promise<s
   return null
 }
 
-/** NBA player props for one game (`away` / `home` in Sleeper codes). */
+/** NBA player props + game / period markets for one game (`away` / `home` in Sleeper codes). */
 export async function loadKalshiNbaPlayerProps(away: string, home: string): Promise<NflGameFantasyProp[]> {
   const suffix = await resolveKalshiNbaGameSuffix(away, home)
   if (!suffix) return []
-  const batches = await mapPool([...KALSHI_NBA_PLAYER_SERIES], KALSHI_FETCH_CONCURRENCY, (series) =>
+  const series = [...KALSHI_NBA_PLAYER_SERIES, ...KALSHI_NBA_GAME_SERIES, ...KALSHI_NBA_PERIOD_SERIES]
+  const batches = await mapPool(series, KALSHI_FETCH_CONCURRENCY, (series) =>
     fetchKalshiSeriesForSuffix(series, suffix).catch(() => [] as NflGameFantasyProp[]),
   )
   return capAndSortKalshiProps(batches.flat())

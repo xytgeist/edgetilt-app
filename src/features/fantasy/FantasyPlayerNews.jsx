@@ -50,7 +50,7 @@ function NoteRow({ note, tags, bench }) {
             ) : null}
             <span className="ml-auto shrink-0 text-[11px] text-zinc-500">{newsTimeAgo(note.published)}</span>
           </div>
-          {tags ? <div className="truncate text-[10px] font-semibold text-zinc-500">{tags}</div> : null}
+          {tags ? <div data-fantasy-news-leagues className="truncate text-[10px] font-semibold">{tags}</div> : null}
           <div className={`mt-0.5 text-[13px] leading-snug ${insider ? 'font-semibold text-zinc-100' : 'text-zinc-300'} ${open ? '' : 'line-clamp-2'}`}>
             {note.headline}
           </div>

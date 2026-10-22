@@ -12145,6 +12145,13 @@ html.light [data-fantasy-home] [data-fantasy-panel-news-label] {
 html.light [data-fantasy-home] [data-fantasy-panel-news] {
   border-color: #e4e4e7 !important;
 }
+/* Fantasy main page: player news league names */
+[data-fantasy-news] [data-fantasy-news-leagues] {
+  color: #7dd3fc;
+}
+html.light [data-fantasy-news] [data-fantasy-news-leagues] {
+  color: #0369a1;
+}
 /* Fantasy main page: player news Breaking pill */
 [data-fantasy-news] [data-fantasy-news-breaking] {
   background-color: rgb(244 63 94 / 0.18);

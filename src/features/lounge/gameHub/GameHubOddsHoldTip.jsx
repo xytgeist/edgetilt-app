@@ -12,6 +12,8 @@ const RETRY_MS = 800
 const RETRIES = 6
 const SHOW_MS = 8000
 const EDGE_PX = 12
+/** About half the bubble's two-line width so a clamped bubble never runs off screen. */
+const HALF_W_PX = 110
 
 function findTarget() {
   const vh = window.innerHeight || 0
@@ -25,16 +27,16 @@ function findTarget() {
 function placeFor(el) {
   const r = el.getBoundingClientRect()
   const vw = window.innerWidth || 0
-  const below = r.bottom + 70 < (window.innerHeight || 0)
+  const below = r.bottom + 90 < (window.innerHeight || 0)
   return {
-    x: Math.min(Math.max(r.left + r.width / 2, EDGE_PX + 90), vw - EDGE_PX - 90),
+    x: Math.min(Math.max(r.left + r.width / 2, EDGE_PX + HALF_W_PX), vw - EDGE_PX - HALF_W_PX),
     arrowX: r.left + r.width / 2,
     y: below ? r.bottom + 8 : r.top - 8,
     below,
   }
 }
 
-/** One-time bubble on the first holdable line: "Long press any bet to log it". Gone on any touch, a hold, or 8s. */
+/** One-time bubble on the first holdable line: "Long press any bet to log it in your Bet Tracker". Gone on any touch, a hold, or 8s. */
 export default function GameHubOddsHoldTip() {
   const [target, setTarget] = useState(null)
   const [place, setPlace] = useState(null)
@@ -100,8 +102,10 @@ export default function GameHubOddsHoldTip() {
           marginLeft: -5,
         }}
       />
-      <span className="relative block whitespace-nowrap rounded-full border border-cyan-400/50 bg-zinc-900 px-3 py-1.5 text-[12px] font-semibold text-zinc-100 shadow-[0_6px_24px_rgba(0,0,0,0.45)]">
-        Long press any bet to log it
+      <span className="relative block whitespace-nowrap rounded-2xl border border-cyan-400/50 bg-zinc-900 px-3 py-1.5 text-center text-[12px] font-semibold leading-snug text-zinc-100 shadow-[0_6px_24px_rgba(0,0,0,0.45)]">
+        Long press any bet
+        <br />
+        to log it in your Bet Tracker
       </span>
     </div>,
     document.body,

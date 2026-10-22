@@ -14,6 +14,7 @@ import { loadMarketLines, marketLineFor } from './fantasyMarketProjections.ts'
 import { loadNbaBoard, nbaTeam, teamWeek } from './fantasyNbaBoard.ts'
 import { lookupNbaEspnId, nbaEspnIds } from './nbaEspnIds.ts'
 import { type NbaPlayer, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
+import { loadNbaMarketLines, nbaMarketLineFor } from './fantasyNbaMarketLines.ts'
 
 const ET_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
 
@@ -656,10 +657,11 @@ export async function buildSportLineupCards(
     return { season: '', week: 0, cards }
   }
 
-  const [board, espnIds, nbaPlayers] = await Promise.all([
+  const [board, espnIds, nbaPlayers, market] = await Promise.all([
     loadNbaBoard(),
     nbaEspnIds(admin).catch(() => new Map<string, string>()),
     admin ? sleeperNbaPlayers(admin).catch(() => [] as NbaPlayer[]) : Promise.resolve([] as NbaPlayer[]),
+    loadNbaMarketLines(admin),
     mergeLiveLines(cards, list, sport, {}),
   ])
   await attachNbaHeadshots(cards, list, espnIds, admin)
@@ -677,6 +679,8 @@ export async function buildSportLineupCards(
     card.games_played = wk.games_played
     const t = nbaTeam(raw.team)
     card.today = board.games.find((g) => (g.home === t || g.away === t) && etDate(g.date) === today)?.state || null
+    // Kalshi's ladder for his next (not yet tipped) game; the app blends it into the per-game projection.
+    card.market_line = wk.next && wk.next.state === 'pre' ? nbaMarketLineFor(market, String(raw.name || ''), raw.team, etDate(wk.next.date)) : null
     if (wk.live) {
       card.game_status = 'in_progress'
       card.kickoff = wk.live.date

@@ -1,7 +1,7 @@
 /**
  * This week's projection in a league's scoring.
  * Baseline: Sleeper's projected stat line scored with the league's rules (Sleeper's PPR total when the rules
- * cannot apply). Blend: each stat a sportsbook prop covers (`card.market_line`) replaces Sleeper's number for
+ * cannot apply). Blend: each stat a market covers (`card.market_line`: NFL sportsbook props, NBA Kalshi ladders) replaces Sleeper's number for
  * that stat, the rest stay Sleeper's, and the mix is scored the same way. A blend more than GUARD_PTS and
  * GUARD_SHARE away from the baseline falls back to the baseline (a thin or missing market, e.g. a TE with a
  * yards line and no TD line, should not swing a projection on its own).
@@ -24,7 +24,7 @@ export function baselineProjection(card, scoring, sport = 'nfl', pos = null) {
 export function projectionOf(card, scoring, sport = 'nfl', pos = null) {
   const position = pos || card?.pos || null
   const base = baselineProjection(card, scoring, sport, position)
-  if (sport !== 'nfl' || !card?.market_line) return base
+  if ((sport !== 'nfl' && sport !== 'nba') || !card?.market_line) return base
   const blended = scoreLine({ ...(card.proj_line || {}), ...card.market_line }, scoring, sport, position)
   if (!Number.isFinite(blended)) return base
   if (!Number.isFinite(base)) return blended

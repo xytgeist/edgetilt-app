@@ -10,7 +10,9 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { resolvePublicAppOrigin } from './publicAppOrigin.ts'
 import { fetchNflState, type SyncResult } from './fantasySleeperSync.ts'
 import { yahooNbaCategories, yahooNbaScoringFromSettings, yahooScoringFromSettings } from './fantasyScoringRules.ts'
-import { nbaTeam } from './fantasyNbaBoard.ts'
+import { loadNbaBoard, nbaTeam } from './fantasyNbaBoard.ts'
+// The app's categories math (plain ESM): category-value weights the points engines score with.
+import { categoryWeights } from '../../../src/features/fantasy/fantasyCategories.js'
 import { type NbaPlayer, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
 
 const YAHOO_AUTH = 'https://api.login.yahoo.com/oauth2'
@@ -803,10 +805,15 @@ export async function syncYahooConnection(
             const settingsPayload = await yahooGet(access, `/league/${encodeURIComponent(leagueKey)}/settings`)
             scoring = sport === 'nba' ? yahooNbaScoringFromSettings(settingsPayload) : yahooScoringFromSettings(settingsPayload)
             if (sport === 'nba') {
-              // Points leagues score `scoring`; categories leagues (`head` / `roto`) win stat by stat.
-              nbaExtra = {
-                categories: str(lg.scoring_type) === 'headpoint' ? [] : yahooNbaCategories(settingsPayload),
-                daily_lineups: str(lg.weekly_deadline) === 'intraday' || !str(lg.weekly_deadline),
+              // Points leagues score `scoring`; categories leagues (`head` / `roto`) win stat by stat and score
+              // "category value" (z-score weights from this week's per-game projections) in the points engines.
+              const categories = str(lg.scoring_type) === 'headpoint' ? [] : yahooNbaCategories(settingsPayload)
+              nbaExtra = { categories, daily_lineups: str(lg.weekly_deadline) === 'intraday' || !str(lg.weekly_deadline) }
+              if (categories.length) {
+                const board = await loadNbaBoard().catch(() => null)
+                const cw = categoryWeights(categories, Object.values(board?.projLine || {}))
+                scoring = cw.weights
+                nbaExtra = { ...nbaExtra, category_value: true, category_pct: cw.pct }
               }
             }
             waiver = yahooWaiver(settingsPayload)

@@ -4,6 +4,7 @@ import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
 import { nbaWeekOf } from './fantasyNbaWeek.js'
 import { lockInCall, nbaLockIn } from './fantasyLockIn.js'
+import { CategoryBoard, CategoryScoreLine, leagueCategories, useCategoryMatchup } from './FantasyCategoryBoard.jsx'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { useLiveGames, useLivePlays } from './useFantasyLive.js'
@@ -3008,6 +3009,15 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
   )
 }
 
+const FLIP_RESULT = { WIN: 'LOSS', LOSS: 'WIN', TIE: 'TIE' }
+
+/** Host category results seen from the other side. */
+function flipCategories(c) {
+  if (!c) return c
+  const results = Object.fromEntries(Object.entries(c.results || {}).map(([k, v]) => [k, FLIP_RESULT[v] || v]))
+  return { left: c.right || {}, right: c.left || {}, results, wins: c.losses || 0, losses: c.wins || 0, ties: c.ties || 0 }
+}
+
 function matchupPages(detail) {
   const teams = detail?.teams || []
   const byId = Object.fromEntries(teams.map((t) => [t.id, t]))
@@ -3025,11 +3035,13 @@ function matchupPages(detail) {
     let rightId = mu.opp_team_id || null
     let leftScore = mu.mine_score
     let rightScore = mu.opp_score
+    let categories = mu.categories || null
     if (preferLeftId && preferLeftId === rightId) {
       leftId = rightId
       rightId = mu.mine_team_id
       leftScore = mu.opp_score
       rightScore = mu.mine_score
+      categories = flipCategories(categories)
     }
     usedTeams.add(leftId)
     if (rightId) usedTeams.add(rightId)
@@ -3040,6 +3052,7 @@ function matchupPages(detail) {
       right: rightId ? byId[rightId] || null : null,
       leftScore,
       rightScore,
+      categories,
       yours: Boolean(mine && (leftId === mine.id || rightId === mine.id)),
       roster: byTeam[leftId] || [],
       oppRoster: rightId ? byTeam[rightId] || [] : [],
@@ -3134,8 +3147,8 @@ function ScoreLine({ outlook, hostScore, align, lead, projUp, projFinal: finish 
   )
 }
 
-function WinBar({ left, right, remaining, sport }) {
-  const p = winChance(left, right, remaining, sport)
+function WinBar({ left, right, remaining, sport, chance = null }) {
+  const p = chance ?? winChance(left, right, remaining, sport)
   if (p == null) return null
   const leftPct = Math.round(p * 100)
   const rightPct = 100 - leftPct
@@ -3167,12 +3180,13 @@ function projectedFinish(outlook, hostScore) {
   return shown + remaining
 }
 
-function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
+function MatchupCard({ page, teams, week, provider, cards, scoring, sport, categories = null }) {
   const lockIn = nbaLockIn(provider, sport)
   const leftOut = sideOutlook(page.roster, cards, scoring, sport, lockIn)
   const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport, lockIn)
   const leftAccent = useTeamAccent(page.left?.avatar_url, page.left?.id || page.left?.team_name)
   const rightRaw = useTeamAccent(page.right?.avatar_url, page.right?.id || page.right?.team_name)
+  const cat = useCategoryMatchup(page, cards, categories)
   const rightAccent = distinctTeamAccent(rightRaw, leftAccent)
   const ls = scoreValue(leftOut, page.leftScore)
   const rs = scoreValue(rightOut, page.rightScore)
@@ -3200,14 +3214,23 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
           page.right ? 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'grid-cols-1'
         }`}
       >
-        <ScoreLine
-          outlook={leftOut}
-          hostScore={page.leftScore}
-          align="left"
-          lead={lead === 'left' ? 'lead' : lead === 'right' ? 'trail' : null}
-          projUp={lo != null && ro != null ? lo >= ro : true}
-          projFinal={lo}
-        />
+        {cat ? (
+          <CategoryScoreLine
+            won={cat.record.wins}
+            expected={cat.expected}
+            align="left"
+            lead={cat.record.wins > cat.record.losses ? 'lead' : cat.record.wins < cat.record.losses ? 'trail' : null}
+          />
+        ) : (
+          <ScoreLine
+            outlook={leftOut}
+            hostScore={page.leftScore}
+            align="left"
+            lead={lead === 'left' ? 'lead' : lead === 'right' ? 'trail' : null}
+            projUp={lo != null && ro != null ? lo >= ro : true}
+            projFinal={lo}
+          />
+        )}
         {page.right ? (
           <div className="flex flex-col items-center justify-center px-1">
             <SiteBadge provider={provider} />
@@ -3216,7 +3239,14 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
             </div>
           </div>
         ) : null}
-        {page.right ? (
+        {page.right && cat ? (
+          <CategoryScoreLine
+            won={cat.record.losses}
+            expected={Math.max(0, cat.total - cat.expected)}
+            align="right"
+            lead={cat.record.losses > cat.record.wins ? 'lead' : cat.record.losses < cat.record.wins ? 'trail' : null}
+          />
+        ) : page.right ? (
           <ScoreLine
             outlook={rightOut}
             hostScore={page.rightScore}
@@ -3231,7 +3261,7 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
       </div>
       {page.right ? (
         <div className="relative">
-          <WinBar left={lo} right={ro} remaining={leftOut.remaining + rightOut.remaining} sport={sport} />
+          <WinBar left={lo} right={ro} remaining={leftOut.remaining + rightOut.remaining} sport={sport} chance={cat ? cat.win : null} />
         </div>
       ) : null}
     </div>
@@ -3643,6 +3673,7 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
               cards={cards}
               scoring={entry.leagueDetail.league?.scoring}
               sport={group.sport}
+              categories={leagueCategories(entry.leagueDetail.league)}
             />
           </button>
         )}
@@ -3896,9 +3927,14 @@ export default function FantasyCommandCenter({
                   cards={cards}
                   scoring={detail?.league?.scoring}
                   sport={selected?.sport || detail?.league?.sport}
+                  categories={leagueCategories(detail?.league)}
                 />
               )}
             />
+          ) : null}
+
+          {current && leagueCategories(detail?.league) ? (
+            <CategoryBoard page={current} cards={cards} categories={leagueCategories(detail?.league)} />
           ) : null}
 
           <div className="flex gap-2 overflow-x-auto pb-1">

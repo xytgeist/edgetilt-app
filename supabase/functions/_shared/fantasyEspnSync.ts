@@ -8,6 +8,9 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { type NbaPlayer, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
+import { loadNbaBoard } from './fantasyNbaBoard.ts'
+// The app's categories math (plain ESM): category-value weights the points engines score with.
+import { categoryWeights } from '../../../src/features/fantasy/fantasyCategories.js'
 
 const READS_BASE = 'https://lm-api-reads.fantasy.espn.com/apis/v3/games'
 const READS = `${READS_BASE}/ffl`
@@ -716,6 +719,14 @@ async function syncEspnNba(
       if (categoriesLeague) categories.push({ stat_id: id, key, label: key.toUpperCase().replace('_PCT', '%'), higher_better: item.isReverseItem !== true })
       else if (num(item.points) != null) scoring[key] = Number(item.points)
     }
+    // Categories leagues score "category value" (z-score weights from this week's per-game projections).
+    let categoryPct: Record<string, number> = {}
+    if (categoriesLeague && categories.length) {
+      const board = await loadNbaBoard().catch(() => null)
+      const cw = categoryWeights(categories, Object.values(board?.projLine || {}))
+      Object.assign(scoring, cw.weights)
+      categoryPct = cw.pct
+    }
     const roster = asRecord(settings.rosterSettings) || {}
     const lineupSlots: string[] = []
     for (const [id, raw] of Object.entries(asRecord(roster.lineupSlotCounts) || {})) {
@@ -741,6 +752,7 @@ async function syncEspnNba(
             espn_season: espnSeason,
             scoring_type: scoringType,
             categories,
+            ...(categoriesLeague ? { category_value: true, category_pct: categoryPct } : {}),
             daily_lineups: String(roster.lineupLocktimeType || '') !== 'WEEKLY',
             lineup_slots: lineupSlots,
             current_week: week,

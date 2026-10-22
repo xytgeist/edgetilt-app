@@ -366,7 +366,7 @@ export async function loadLeagueDetail(supabase, leagueId) {
   if (week != null) {
     const { data: rows, error: mErr } = await supabase
       .from('fantasy_matchups')
-      .select('id, week, mine_team_id, opp_team_id, mine_score, opp_score')
+      .select('id, week, mine_team_id, opp_team_id, mine_score, opp_score, categories')
       .eq('league_id', id)
       .eq('week', week)
     if (mErr) throw new Error(mErr.message)

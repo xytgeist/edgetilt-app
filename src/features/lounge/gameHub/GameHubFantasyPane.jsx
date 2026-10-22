@@ -1,4 +1,7 @@
 import { useHeadshotSrc } from '../../../utils/playerHeadshot.js'
+import { ChevronRight, Shirt } from 'lucide-react'
+import { useLoungeSportsFeed } from '../LoungeSportsFeedContext.jsx'
+import { markFantasyOpenedFromGame } from '../../fantasy/fantasyReturnNav.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { LoungeSportsTeamLogo, useLoungeSportsPillWashAndLogos } from '../loungeSportsPillPaint.jsx'
 import { leaguePointsForBox } from '../../fantasy/fantasyBoxScore.js'
@@ -840,6 +843,37 @@ function FantasyScoringBar({ scoring, status, leagues, league, onSelectLeague })
   )
 }
 
+/** Opens the Fantasy tab; closing Fantasy comes back to this game (and its slate, when opened from one). */
+function GoToFantasyButton({ game }) {
+  const sports = useLoungeSportsFeed()
+  const onOpen = () => {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    url.searchParams.set('tab', 'fantasy')
+    url.searchParams.delete('game')
+    markFantasyOpenedFromGame(game, sports?.slateFilter)
+    window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    // Hub + slate are body portals over the still-mounted feed, so they would cover Fantasy.
+    sports?.closeSlate?.()
+  }
+  return (
+    <button
+      type="button"
+      data-game-hub-go-fantasy
+      onClick={onOpen}
+      className="flex w-full items-center gap-2.5 rounded-2xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-left touch-manipulation active:bg-zinc-800/80 [-webkit-tap-highlight-color:transparent]"
+    >
+      <Shirt className="h-4 w-4 shrink-0 text-sky-400" strokeWidth={2.25} aria-hidden />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-semibold text-zinc-100">Go to Fantasy</span>
+        <span className="block text-[11px] text-zinc-500">Lineups, waivers, trades</span>
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={2.25} aria-hidden />
+    </button>
+  )
+}
+
 /**
  * Sleeper game PPR + season on each row.
  * Rest of board Game col: PROJ → LIVE (paced) → GAME (vs original).
@@ -940,14 +974,16 @@ export default function GameHubFantasyPane({
 
   if (!matchups.length && !rest.length) {
     return (
-      <div data-lounge-game-fantasy className="py-10 text-center text-sm text-zinc-500">
-        No Sleeper fantasy board for this game yet.
+      <div data-lounge-game-fantasy className="space-y-4 py-3">
+        <GoToFantasyButton game={game} />
+        <div className="py-7 text-center text-sm text-zinc-500">No Sleeper fantasy board for this game yet.</div>
       </div>
     )
   }
 
   return (
     <div data-lounge-game-fantasy className="space-y-4 py-3">
+      <GoToFantasyButton game={game} />
       <FantasyScoringBar
         scoring={scoring}
         status={status}

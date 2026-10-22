@@ -4665,6 +4665,22 @@ html.light [data-lounge-game-players] [data-roster-season-stats] .text-zinc-500 
 html.light [data-lounge-game-fantasy] [data-fantasy-h2h] {
   color: inherit;
 }
+html.light [data-lounge-game-fantasy] [data-game-hub-go-fantasy] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-lounge-game-fantasy] [data-game-hub-go-fantasy]:active {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-lounge-game-fantasy] [data-game-hub-go-fantasy] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-lounge-game-fantasy] [data-game-hub-go-fantasy] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-lounge-game-fantasy] [data-game-hub-go-fantasy] .text-sky-400 {
+  color: #0284c7 !important;
+}
 html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] [role='radiogroup'] {
   background-color: #f4f4f5 !important;
   --tw-ring-color: #e4e4e7;

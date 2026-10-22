@@ -166,7 +166,7 @@ import {
   requestLoungeSportsHubOpen,
   clearLoungeSportsGamePending,
 } from '../lounge/loungeSportsHubNav.js'
-import { takeFantasyHubReturn } from '../fantasy/fantasyReturnNav.js'
+import { takeFantasyGameReturn, takeFantasyHubReturn } from '../fantasy/fantasyReturnNav.js'
 import { isSportsBetTrackerSearch, isUsefulSportsBetPrefill, sportsBetLogOpenEventName, sportsBetPrefillFromSearchParams, closeSportsBetTracker } from '../sports-bet-tracker/sportsBetNav.js'
 import { BadgeCheck, Bot, ChartSpline, Cherry, ClipboardList, Flag, Handshake, MessagesSquare, Shirt, Spade, Sparkles, Trophy } from 'lucide-react'
 import { football, footballHelmet } from '@lucide/lab'
@@ -531,14 +531,14 @@ export default function AppShell({
   const tabRef = useRef(tab)
   tabRef.current = tab
   /** Where Fantasy was opened from, so closing it lands there instead of always on the Lounge. */
-  const fantasyReturnRef = useRef({ tab: 'home', hubFilter: null })
+  const fantasyReturnRef = useRef({ tab: 'home', hubFilter: null, game: null })
   const prevTabForFantasyRef = useRef(tab)
   useEffect(() => {
     const prev = prevTabForFantasyRef.current
     prevTabForFantasyRef.current = tab
     // Coming back from a bet logged off a lineup pill keeps the original origin.
     if (tab === 'fantasy' && prev !== 'fantasy' && prev !== 'sports-bets') {
-      fantasyReturnRef.current = { tab: prev || 'home', hubFilter: takeFantasyHubReturn() }
+      fantasyReturnRef.current = { tab: prev || 'home', hubFilter: takeFantasyHubReturn(), game: takeFantasyGameReturn() }
     }
   }, [tab])
   // The cold-boot splash belongs to a launch that lands on the Lounge. A session that starts anywhere else (a
@@ -548,11 +548,12 @@ export default function AppShell({
     if (tab !== 'home') markLoungeColdBootSplashCycleDone()
   }, [tab])
   const returnFromFantasy = useCallback(() => {
-    const { tab: back, hubFilter } = fantasyReturnRef.current
-    fantasyReturnRef.current = { tab: 'home', hubFilter: null }
-    if (hubFilter) {
+    const { tab: back, hubFilter, game } = fantasyReturnRef.current
+    fantasyReturnRef.current = { tab: 'home', hubFilter: null, game: null }
+    if (hubFilter || game) {
       setTab('home')
-      requestLoungeSportsHubOpen(hubFilter)
+      if (hubFilter) requestLoungeSportsHubOpen(hubFilter)
+      if (game) requestLoungeSportsGameOpen(game.id, { direct: true, match: game.match })
       return
     }
     setTab(back && back !== 'fantasy' ? back : 'home')

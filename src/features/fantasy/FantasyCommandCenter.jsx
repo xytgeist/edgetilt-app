@@ -169,13 +169,26 @@ function shortName(name, position) {
 
 function slotPill(row, index) {
   const raw = String(row?.slot_label || '')
-  // Sleeper numbers repeat slots ("00:UTIL", "08:UTIL2"); the row shows the slot name.
-  const named = (raw.includes(':') ? raw.split(':').slice(1).join(':') : raw).replace(/(\D)\d+$/, '$1')
+  // The slot name is the last part: Sleeper "00:UTIL" / "08:UTIL2", ESPN "starter:3078576:PG"; Yahoo is the name.
+  const named = (raw.includes(':') ? raw.split(':').pop() : raw).replace(/(\D)\d+$/, '$1')
   if (named && !/^\d+$/.test(named)) return named
   return fantasyPos(row?.position) || `${index + 1}`
 }
 
-function pairBySlot(left, right) {
+/** NBA lineup order (hosts list rosters in their own order; pairing by slot keeps PG across from PG). */
+const NBA_SLOT_RANK = ['PG', 'SG', 'G', 'SG/SF', 'G/F', 'SF', 'PF', 'F', 'PF/C', 'F/C', 'C', 'UTIL']
+
+function bySlotRank(rows) {
+  const rank = (row, i) => {
+    const at = NBA_SLOT_RANK.indexOf(slotPill(row, i).toUpperCase())
+    return at < 0 ? NBA_SLOT_RANK.length : at
+  }
+  return rows.map((row, i) => ({ row, r: rank(row, i), i })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.row)
+}
+
+function pairBySlot(leftRows, rightRows) {
+  const left = bySlotRank(leftRows)
+  const right = bySlotRank(rightRows)
   const n = Math.max(left.length, right.length)
   const pairs = []
   for (let i = 0; i < n; i += 1) {
@@ -996,8 +1009,10 @@ function liveProjection(card, actual, sport, proj) {
  * Small line under a started game = the pregame projection, or the live-paced number during it (green / red vs
  * the pregame projection).
  */
-function PointsCell({ card, row, loading, scoring, sport, align, lockIn = false, upcoming = false }) {
-  if (sport === 'nba') return <NbaPointsCell card={card} row={row} loading={loading} scoring={scoring} align={align} lockIn={lockIn} upcoming={upcoming} />
+function PointsCell({ card, row, loading, scoring, sport, align, lockIn = false, upcoming = false, valueLabel = 'PROJ' }) {
+  if (sport === 'nba') {
+    return <NbaPointsCell card={card} row={row} loading={loading} scoring={scoring} align={align} lockIn={lockIn} upcoming={upcoming} valueLabel={valueLabel} />
+  }
   const status = sideStatus(card)
   const proj = projectedOf(card, scoring, sport)
   const hasProj = Number.isFinite(proj)
@@ -1037,18 +1052,20 @@ function PointsCell({ card, row, loading, scoring, sport, align, lockIn = false,
  * NBA: big number = week-to-date points (green while a game is on); before his first game it is the week's
  * projection (muted, "PROJ"). Small line = projected week total, green / red vs the start-of-week projection.
  */
-function NbaPointsCell({ card, row, loading, scoring, align, lockIn = false, upcoming = false }) {
+function NbaPointsCell({ card, row, loading, scoring, align, lockIn = false, upcoming = false, valueLabel = 'PROJ' }) {
   const w = card ? nbaWeekOf(row, card, scoring, undefined, { lockIn, upcoming }) : null
   const hasProj = Number.isFinite(w?.pregame)
-  const pregame = !!w && w.played === 0 && !w.host
+  // ESPN sends no per-player week points: show his projected week, not a "0.0 scored" that never moves.
+  const noHost = row?.week_points == null && !w?.live
+  const pregame = !!w && ((w.played === 0 && !w.host) || noHost)
   let main = !card && loading ? '…' : '-'
   let mainCls = 'text-[13px] text-zinc-100'
   let sub = ''
   let subCls = 'text-zinc-500'
   if (pregame && hasProj) {
-    main = pts(w.pregame) || '0.0'
+    main = pts(noHost ? w.total : w.pregame) || '0.0'
     mainCls = 'text-[12px] text-zinc-300'
-    sub = 'PROJ'
+    sub = valueLabel
     subCls = 'text-[8px] tracking-wide text-zinc-500'
   } else if (w && !pregame) {
     main = pts(w.scored) || '0.0'
@@ -1067,7 +1084,7 @@ function NbaPointsCell({ card, row, loading, scoring, align, lockIn = false, upc
   )
 }
 
-function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn = false, upcoming = false }) {
+function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn = false, upcoming = false, valueLabel = 'PROJ' }) {
   const [openKeys, setOpenKeys] = useState(() => new Set())
   const toggle = (key) =>
     setOpenKeys((prev) => {
@@ -1172,7 +1189,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
               {/* Pinned to the card's vertical middle; it clears the name line above and the props row below. */}
               <div className="absolute inset-x-0 top-1/2 z-[1] flex -translate-y-1/2 justify-center">
                 <div className="flex items-center gap-1">
-                  <PointsCell card={leftCard} row={pair.left} loading={cardsLoading} scoring={scoring} sport={sport} align="left" lockIn={lockIn} upcoming={upcoming} />
+                  <PointsCell card={leftCard} row={pair.left} loading={cardsLoading} scoring={scoring} sport={sport} align="left" lockIn={lockIn} upcoming={upcoming} valueLabel={valueLabel} />
                   {bench ? (
                     <span data-fantasy-bench-pill className="rounded-md px-1.5 py-0.5 text-[10px] font-bold">
                       BN
@@ -1192,7 +1209,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
                       {pair.label}
                     </span>
                   )}
-                  <PointsCell card={rightCard} row={pair.right} loading={cardsLoading} scoring={scoring} sport={sport} align="right" lockIn={lockIn} upcoming={upcoming} />
+                  <PointsCell card={rightCard} row={pair.right} loading={cardsLoading} scoring={scoring} sport={sport} align="right" lockIn={lockIn} upcoming={upcoming} valueLabel={valueLabel} />
                 </div>
               </div>
               <div className="relative z-[1] mt-[17px] grid min-h-[14px] grid-cols-2 gap-1.5 px-1">
@@ -2996,7 +3013,7 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
   }
   return (
     <ul className="space-y-1.5">
-      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} />
+      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} valueLabel={league?.settings?.category_value ? 'VAL' : 'PROJ'} />
       {bench.length ? (
         <li data-fantasy-bench-divider className="flex items-center gap-2 px-1 pb-0.5 pt-3" aria-label="Bench">
           <span className="h-px flex-1" />
@@ -3004,7 +3021,7 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
           <span className="h-px flex-1" />
         </li>
       ) : null}
-      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} />
+      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} valueLabel={league?.settings?.category_value ? 'VAL' : 'PROJ'} />
     </ul>
   )
 }

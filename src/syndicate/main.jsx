@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { SyndicateApp } from './SyndicateApp.jsx'
+import { SyndicateComingSoon } from './SyndicateComingSoon.jsx'
 import { isSyndicateOpsRoute } from './syndicateOpsRoute.js'
 import { SyndicateOpsLoginGate } from './SyndicateOpsLoginGate.jsx'
 import { SyndicateOpsShell } from './SyndicateOpsShell.jsx'
@@ -20,7 +21,14 @@ function Root() {
       </SyndicateOpsLoginGate>
     )
   }
-  return <SyndicateApp />
+  return (
+    <>
+      <div inert aria-hidden="true">
+        <SyndicateApp />
+      </div>
+      <SyndicateComingSoon />
+    </>
+  )
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

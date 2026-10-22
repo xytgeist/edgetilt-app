@@ -12,7 +12,19 @@ const SLOT_ELIGIBLE = {
   WRRB_FLEX: ['WR', 'RB'],
   REC_FLEX: ['WR', 'TE'],
   SUPER_FLEX: ['QB', 'RB', 'WR', 'TE'],
+  // NBA (Sleeper slot codes); players carry multi-position eligibility (card `elig`).
+  PG: ['PG'],
+  SG: ['SG'],
+  SF: ['SF'],
+  PF: ['PF'],
+  C: ['C'],
+  G: ['PG', 'SG'],
+  F: ['SF', 'PF'],
+  UTIL: ['PG', 'SG', 'SF', 'PF', 'C'],
 }
+
+/** Slots `leagueLineupSlots` returns (football); NBA leagues read theirs through `waiverLineupSlots`. */
+const NFL_SLOTS = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'FLEX', 'WRRB_FLEX', 'REC_FLEX', 'SUPER_FLEX'])
 
 const SLOT_ALIAS = {
   'D/ST': 'DEF',
@@ -57,7 +69,7 @@ export function leagueLineupSlots(league, roster) {
     : Array.isArray(settings.roster_positions)
       ? settings.roster_positions
       : []
-  const slots = raw.map(normSlot).filter((s) => SLOT_ELIGIBLE[s])
+  const slots = raw.map(normSlot).filter((s) => NFL_SLOTS.has(s))
   if (slots.length) return { slots, inferred: false }
 
   const counts = {}
@@ -115,8 +127,25 @@ export function weekValue(row, card, scoring, sport = 'nfl') {
   return { value: proj, proj, why: '' }
 }
 
-function canFill(slot, pos) {
-  return (SLOT_ELIGIBLE[slot] || []).includes(pos)
+/** NBA locks each player at his own tip: playing or finished today means his seat is set. */
+export function nbaLocked(card) {
+  return card?.today === 'in' || card?.today === 'post'
+}
+
+/** NBA Start / Sit is for today: his per-game projection if his team plays today, else nothing to gain. */
+export function nbaTodayValue(row, card, scoring) {
+  const base = projectionOf(card, scoring, 'nba', fantasyPosition(row?.position))
+  const proj = Number.isFinite(base) ? base : 0
+  if (!card?.today) return { value: 0, proj, why: 'no game' }
+  const s = String(row?.injury_status || '').trim().toLowerCase()
+  const injury = /^(gtd|dtd|day)/.test(s) ? 'questionable' : injuryKey(s)
+  if (injury) return { value: proj * INJURY_FACTOR[injury], proj, why: INJURY_WORD[injury] }
+  return { value: proj, proj, why: '' }
+}
+
+function canFill(slot, pos, elig = null) {
+  const list = SLOT_ELIGIBLE[slot] || []
+  return (elig?.length ? elig : [pos]).some((p) => list.includes(p))
 }
 
 /** Positions that can play a lineup slot (FLEX → RB / WR / TE). */
@@ -130,12 +159,22 @@ export function slotPositions(slot) {
  * Returns the moves (start this one, bench that one) and the projected gain.
  */
 export function optimizeLineup({ roster, cards, scoring, slots, sport = 'nfl' }) {
+  // NBA plans today's games (daily locks); NFL plans the week.
+  const nba = sport === 'nba'
   const pool = (roster || [])
     .filter((row) => row?.sleeper_id && (row.slot === 'starter' || row.slot === 'bench'))
     .map((row) => {
       const card = cards?.[row.sleeper_id] || null
       const pos = fantasyPosition(row.position)
-      return { row, card, pos, locked: gameLocked(card), starter: row.slot === 'starter', ...weekValue(row, card, scoring, sport) }
+      return {
+        row,
+        card,
+        pos,
+        elig: nba && card?.elig?.length ? card.elig.map((p) => String(p).toUpperCase()) : null,
+        locked: nba ? nbaLocked(card) : gameLocked(card),
+        starter: row.slot === 'starter',
+        ...(nba ? nbaTodayValue(row, card, scoring) : weekValue(row, card, scoring, sport)),
+      }
     })
 
   const open = slots.map((slot, i) => ({ slot, i, player: null }))
@@ -145,7 +184,7 @@ export function optimizeLineup({ roster, cards, scoring, slots, sport = 'nfl' })
   // Locked starters keep a seat: give each the tightest open slot it fits.
   for (const p of pool.filter((x) => x.locked && x.starter)) {
     const seat = open
-      .filter((s) => !s.player && canFill(s.slot, p.pos))
+      .filter((s) => !s.player && canFill(s.slot, p.pos, p.elig))
       .sort((a, b) => restrict(a.slot) - restrict(b.slot))[0]
     if (seat) {
       seat.player = p
@@ -153,12 +192,12 @@ export function optimizeLineup({ roster, cards, scoring, slots, sport = 'nfl' })
     }
   }
 
-  // A player with no NFL team, on bye, or out cannot score, so he does not count as filling a seat.
-  const playable = (p) => p.why !== 'bye' && p.why !== 'out' && (p.pos === 'DEF' || Boolean(p.row.nfl_team))
+  // A player with no NFL team, on bye, out, or (NBA) no game today cannot score, so he does not count as filling a seat.
+  const playable = (p) => p.why !== 'bye' && p.why !== 'out' && p.why !== 'no game' && (p.pos === 'DEF' || Boolean(p.row.nfl_team))
   const order = open.filter((s) => !s.player).sort((a, b) => restrict(a.slot) - restrict(b.slot) || a.i - b.i)
   for (const seat of order) {
     const best = pool
-      .filter((p) => !used.has(p.row.sleeper_id) && !(p.locked && !p.starter) && playable(p) && canFill(seat.slot, p.pos))
+      .filter((p) => !used.has(p.row.sleeper_id) && !(p.locked && !p.starter) && playable(p) && canFill(seat.slot, p.pos, p.elig))
       .sort((a, b) => b.value - a.value || Number(b.starter) - Number(a.starter))[0]
     if (best) {
       seat.player = best
@@ -175,7 +214,7 @@ export function optimizeLineup({ roster, cards, scoring, slots, sport = 'nfl' })
   const left = [...outs]
   for (const inP of ins) {
     let at = left.findIndex((o) => o.pos === inP.pos)
-    if (at < 0) at = left.findIndex((o) => slots.some((slot) => canFill(slot, o.pos) && canFill(slot, inP.pos)))
+    if (at < 0) at = left.findIndex((o) => slots.some((slot) => canFill(slot, o.pos, o.elig) && canFill(slot, inP.pos, inP.elig)))
     if (at < 0) at = left.length ? 0 : -1
     const outP = at >= 0 ? left.splice(at, 1)[0] : null
     const gain = inP.value - (outP ? outP.value : 0)
@@ -199,7 +238,8 @@ export function optimizeLineup({ roster, cards, scoring, slots, sport = 'nfl' })
     gain: Math.max(0, best - now),
     projected: best,
     locked: pool.filter((p) => p.locked && p.starter).length,
-    empty,
+    // An NBA seat with nobody playing today is a normal off day, not a hole to fill.
+    empty: nba ? [] : empty,
   }
 }
 

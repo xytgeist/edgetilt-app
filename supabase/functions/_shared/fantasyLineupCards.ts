@@ -11,8 +11,17 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { loadFantasyLiveMap, lookupLive, lookupLiveDefense } from './fantasyLiveLines.ts'
 import { kalshiMarketUrls } from './loungeNflGameFantasy.ts'
 import { loadMarketLines, marketLineFor } from './fantasyMarketProjections.ts'
-import { loadNbaBoard, teamWeek } from './fantasyNbaBoard.ts'
+import { loadNbaBoard, nbaTeam, teamWeek } from './fantasyNbaBoard.ts'
 import { lookupNbaEspnId, nbaEspnIds } from './nbaEspnIds.ts'
+import { type NbaPlayer, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
+
+const ET_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/** YYYY-MM-DD on the US Eastern calendar (NBA game dates). */
+function etDate(iso: string): string {
+  const t = Date.parse(iso)
+  return Number.isFinite(t) ? ET_DATE.format(t) : ''
+}
 
 const KALSHI_BASE = 'https://external-api.kalshi.com/trade-api/v2'
 const PROP_SERIES = ['KXNFLPASSYDS', 'KXNFLRSHYDS', 'KXNFLRECYDS', 'KXNFLREC', 'KXNFLTD'] as const
@@ -74,6 +83,10 @@ export type LineupCard = {
   games_week?: number | null
   games_left?: number | null
   games_played?: number | null
+  /** NBA: Sleeper `fantasy_positions` (PG / SG / ...), for multi-position lineup slots. */
+  elig?: string[] | null
+  /** NBA: his team's game on today's US Eastern date ('pre' / 'in' / 'post'), null when it has none. */
+  today?: 'pre' | 'in' | 'post' | null
   /** NBA: our R2 copy of the ESPN photo (else ESPN's); NFL rows read nfl_players. */
   headshot_url?: string | null
 }
@@ -643,21 +656,27 @@ export async function buildSportLineupCards(
     return { season: '', week: 0, cards }
   }
 
-  const [board, espnIds] = await Promise.all([
+  const [board, espnIds, nbaPlayers] = await Promise.all([
     loadNbaBoard(),
     nbaEspnIds(admin).catch(() => new Map<string, string>()),
+    admin ? sleeperNbaPlayers(admin).catch(() => [] as NbaPlayer[]) : Promise.resolve([] as NbaPlayer[]),
     mergeLiveLines(cards, list, sport, {}),
   ])
   await attachNbaHeadshots(cards, list, espnIds, admin)
   if (!board) return { season: '', week: 0, cards }
+  const eligBy = new Map(nbaPlayers.map((p) => [p.sleeper_id, p.fantasy_positions]))
+  const today = etDate(new Date().toISOString())
   for (const raw of list) {
     const card = cards[String(raw.sleeper_id)]
     const wk = teamWeek(board, raw.team)
     card.pos = String(raw.position || '').toUpperCase() || null
+    card.elig = eligBy.get(card.sleeper_id)?.length ? eligBy.get(card.sleeper_id)! : null
     card.proj_line = board.projLine[card.sleeper_id] || null
     card.games_week = wk.games_week
     card.games_left = wk.games_left
     card.games_played = wk.games_played
+    const t = nbaTeam(raw.team)
+    card.today = board.games.find((g) => (g.home === t || g.away === t) && etDate(g.date) === today)?.state || null
     if (wk.live) {
       card.game_status = 'in_progress'
       card.kickoff = wk.live.date

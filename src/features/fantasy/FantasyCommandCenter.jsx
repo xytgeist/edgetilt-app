@@ -1417,13 +1417,18 @@ function LivePlayRow({ item, tagFor }) {
   )
 }
 
-/** Live: games with these lineups' starters (tap opens the game hub) and the plays that scored for them. */
+/**
+ * Live: games with these lineups' starters (tap opens the game hub) and the plays that scored for them.
+ * NBA shows the game chips only (a scoring-play feed would be every possession).
+ */
 function LivePanel({ supabaseClient, page, detail, sport, active }) {
-  const nfl = String(sport || 'nfl').toLowerCase() === 'nfl'
-  const games = useLiveGames({ supabaseClient, active: active && nfl, leftRows: page?.roster, rightRows: page?.oppRoster })
+  const s = String(sport || 'nfl').toLowerCase()
+  const nfl = s === 'nfl'
+  const on = nfl || s === 'nba'
+  const games = useLiveGames({ supabaseClient, active: active && on, leftRows: page?.roster, rightRows: page?.oppRoster, sport: s })
   const rates = useMemo(() => leagueRates(detail?.league?.scoring, 'nfl'), [detail?.league?.scoring])
   const plays = useLivePlays({ supabaseClient, active: active && nfl, games, rates })
-  if (!nfl || !games.length) return null
+  if (!on || !games.length) return null
   const leftName = shortTeamName(page?.left) || 'Left'
   const rightName = shortTeamName(page?.right) || 'Right'
   const anyLive = games.some((g) => g.game.status === 'in')
@@ -1446,7 +1451,7 @@ function LivePanel({ supabaseClient, page, detail, sport, active }) {
             ))}
           </ul>
         </div>
-      ) : anyLive ? (
+      ) : anyLive && nfl ? (
         <p className="px-0.5 text-[11px] text-zinc-500">No scoring plays for these starters yet.</p>
       ) : null}
     </div>
@@ -1458,20 +1463,22 @@ function shortLeagueName(lg) {
   return name.length > 16 ? `${name.slice(0, 15)}…` : name
 }
 
-/** Main-page alerts: one Roster banner per NFL league with an open slot or a swap worth making. */
-function HomeAlerts({ leagues, details, cards, cardsLoading, onOpenLeague }) {
-  const nfl = (leagues || []).filter((lg) => String(lg.sport || 'nfl').toLowerCase() === 'nfl' && details?.[lg.id])
-  if (!nfl.length) return null
+const leagueSport = (lg) => String(lg?.sport || 'nfl').toLowerCase()
+
+/** Main-page alerts: one Roster banner per NFL / NBA league with an open slot or a swap worth making (NBA: today). */
+function HomeAlerts({ leagues, details, cardsFor, cardsLoading, onOpenLeague }) {
+  const list = (leagues || []).filter((lg) => ['nfl', 'nba'].includes(leagueSport(lg)) && details?.[lg.id])
+  if (!list.length) return null
   return (
     <section className="space-y-2">
-      {nfl.map((lg) => (
+      {list.map((lg) => (
         <LiveAlerts
           key={lg.id}
           detail={details[lg.id]}
-          cards={cards}
+          cards={cardsFor(leagueSport(lg))}
           cardsLoading={cardsLoading}
-          sport="nfl"
-          prefix={nfl.length > 1 ? shortLeagueName(lg) : ''}
+          sport={leagueSport(lg)}
+          prefix={list.length > 1 ? shortLeagueName(lg) : ''}
           onOpen={() => onOpenLeague(lg.id, 'start')}
         />
       ))}
@@ -1531,6 +1538,11 @@ function useStartSitPlan(detail, cards, sport) {
     const mine = (detail?.teams || []).find((t) => t.is_mine)
     const roster = mine ? detail?.rostersByTeam?.[mine.id] || [] : []
     if (!roster.length) return null
+    if (sport === 'nba') {
+      const slots = waiverLineupSlots(detail?.league, roster, 'nba')
+      if (!slots.length || !cards) return null
+      return { inferred: false, today: true, ...optimizeLineup({ roster, cards, scoring: detail?.league?.scoring, slots, sport }) }
+    }
     const { slots: own, inferred } = leagueLineupSlots(detail?.league, roster)
     // Guessed from your starters, an empty K / DEF slot vanishes; if another team starts one, the league has it.
     const slots = [...own]
@@ -1574,6 +1586,8 @@ function starterStatusAlerts(detail, cards, plan) {
     if (key !== 'out' && key !== 'doubtful') continue
     const card = cards?.[row.sleeper_id]
     if (card?.bye || gameLocked(card)) continue
+    // NBA plans today: an injured starter matters when his team tips today and he has not played.
+    if (plan?.today && card?.today !== 'pre') continue
     const move = (plan?.moves || []).find((m) => m.bench?.row?.sleeper_id === row.sleeper_id) || null
     const name = briefName(row.player_name, row.position)
     out.push({
@@ -1641,7 +1655,7 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
     <div data-fantasy-start-sit className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="text-[13px] font-bold text-zinc-100">
-          {moves.length ? 'Suggested moves' : 'Open lineup slot'}
+          {plan.today ? "Today's lineup" : moves.length ? 'Suggested moves' : 'Open lineup slot'}
         </div>
         <span
           className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
@@ -1687,7 +1701,9 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
       {empty.length ? <OpenSlotAlert empty={empty} fills={fills} host={host} /> : null}
       <p className="mt-2 text-[10px] text-zinc-500">
         {moves.length ? `Make the swap on ${host}.` : ''}
-        {plan.locked ? `${moves.length ? ' ' : ''}${plan.locked} already playing, locked.` : ''}
+        {plan.locked
+          ? `${moves.length ? ' ' : ''}${plan.locked} ${plan.today ? 'already tipped today' : 'already playing'}, locked.`
+          : ''}
         {plan.inferred ? ' Slots read from your current lineup; Sync to load league slots.' : ''}
       </p>
     </div>
@@ -3727,7 +3743,7 @@ export default function FantasyCommandCenter({
           <HomeAlerts
             leagues={leagues}
             details={details}
-            cards={cardsFor('nfl')}
+            cardsFor={cardsFor}
             cardsLoading={cardsLoading}
             onOpenLeague={openLeagueTool}
           />

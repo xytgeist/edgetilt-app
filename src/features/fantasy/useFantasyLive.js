@@ -1,5 +1,5 @@
 /**
- * Fantasy Live: which NFL games hold either side's starters, and the plays in those games that scored for them.
+ * Fantasy Live: which NFL / NBA games hold either side's starters, and the plays in those games that scored for them.
  * Board ids come from the Lounge scoreboard (not ESPN), matched to roster teams by abbreviation. Polls only
  * while the Live tab is on screen and the page is visible.
  */
@@ -16,16 +16,17 @@ import { playFantasyPoints } from '../lounge/gameHub/gameHubPlayFantasy.js'
 import { fantasyPosition } from './fantasyStartSit.js'
 
 const POLL_MS = 30000
-const NFL = 'americanfootball_nfl'
+const SPORT_KEY = { nfl: 'americanfootball_nfl', nba: 'basketball_nba' }
 
 const PRE_WINDOW_MS = 36 * 3600 * 1000
 const POST_WINDOW_MS = 18 * 3600 * 1000
 
-/** NFL games that are live, kick off within a day and a half, or finished in the last 18 hours. */
-function nflGames(list) {
+/** Games that are live, start within a day and a half, or finished in the last 18 hours. */
+function slateGames(list, sport = 'nfl') {
+  const key = SPORT_KEY[sport] || SPORT_KEY.nfl
   const now = Date.now()
   return (Array.isArray(list) ? list : []).filter((g) => {
-    if (!String(g?.sport_key || '').includes(NFL) || !g?.home?.abbrev || !g?.away?.abbrev) return false
+    if (!String(g?.sport_key || '').includes(key) || !g?.home?.abbrev || !g?.away?.abbrev) return false
     if (g.status === 'in') return true
     const t = Date.parse(g.commence_time || '')
     if (!Number.isFinite(t)) return false
@@ -52,9 +53,9 @@ function usePageVisible() {
 }
 
 /** Games this week (live, starting soon, just final) with each side's starters in them. */
-export function useLiveGames({ supabaseClient, active, leftRows, rightRows }) {
+export function useLiveGames({ supabaseClient, active, leftRows, rightRows, sport = 'nfl' }) {
   const visible = usePageVisible()
-  const [board, setBoard] = useState(() => nflGames(readLoungeSportsScoreboardCache()))
+  const [board, setBoard] = useState(() => slateGames(readLoungeSportsScoreboardCache(), sport))
   useEffect(() => {
     if (!supabaseClient || !active || !visible) return undefined
     let alive = true
@@ -62,7 +63,7 @@ export function useLiveGames({ supabaseClient, active, leftRows, rightRows }) {
     // and the hub / detail lookup only resolves full-slate ids.
     const load = () =>
       loungeSportsScoreboard(supabaseClient).then((data) => {
-        if (alive && Array.isArray(data?.games)) setBoard(nflGames(data.games))
+        if (alive && Array.isArray(data?.games)) setBoard(slateGames(data.games, sport))
       })
     void load()
     const t = window.setInterval(load, POLL_MS)
@@ -70,7 +71,7 @@ export function useLiveGames({ supabaseClient, active, leftRows, rightRows }) {
       alive = false
       window.clearInterval(t)
     }
-  }, [supabaseClient, active, visible])
+  }, [supabaseClient, active, visible, sport])
 
   return useMemo(() => {
     const left = starters(leftRows)

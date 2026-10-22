@@ -4650,6 +4650,8 @@ function BoardTeamColumn({
   bigDim,
   ml,
   mlPick,
+  bigBest = null,
+  mlBest = null,
   sideKey,
 }) {
   return (
@@ -4685,11 +4687,29 @@ function BoardTeamColumn({
           side={sideKey}
           className={`text-[42px] font-bold ${bigDim ? 'text-white/45' : 'text-white'}`}
         />
+        {bigBest ? (
+          <ScoreboardLine
+            pick={bigBest.pick}
+            text={bigBest.text}
+            label="Spread"
+            side={sideKey}
+            className="mt-0.5 text-[11px] font-semibold text-emerald-300/90"
+          />
+        ) : null}
         {ml ? (
           <div className="mt-1 flex items-baseline gap-1 text-[13px] font-semibold text-white/70">
             <span className="text-[10px] font-bold tracking-[0.12em] text-white/60">ML</span>
             <ScoreboardLine pick={mlPick} text={ml} label="Moneyline" side={sideKey} />
           </div>
+        ) : null}
+        {mlBest ? (
+          <ScoreboardLine
+            pick={mlBest.pick}
+            text={mlBest.text}
+            label="Moneyline"
+            side={sideKey}
+            className="mt-0.5 text-[11px] font-semibold text-emerald-300/90"
+          />
         ) : null}
       </div>
     </div>
@@ -5208,6 +5228,27 @@ export default function GameHubHero({
   const awayLabel = hubTeamLabel(game.away, game.status, game.sport_key)
   const homeLabel = hubTeamLabel(game.home, game.status, game.sport_key)
   const preLabels = game.status === 'pre'
+  // Pregame big numbers are the market line (the same line post pills and the slate show). The best legal book
+  // sits under it as a small "best +4.5 · FanDuel" link when it beats the market; equal lines keep the big number
+  // as the book link.
+  const pregameBoard = (side, best) => {
+    const market = side?.spread != null ? signedPoint(side.spread) : ''
+    const bestText = best?.spread ? signedPoint(best.spread.point) : ''
+    const big = market || bestText
+    const sameSpread = Boolean(bestText) && bestText === big
+    const marketMl = side?.ml != null ? formatLoungeSportsMoneyline(side.ml) : ''
+    const bestMl = best?.ml ? american(best.ml.price) : ''
+    const mlText = marketMl || bestMl
+    const sameMl = Boolean(bestMl) && bestMl === mlText
+    return {
+      bigText: big,
+      bigPick: sameSpread ? best.spread : null,
+      bigBest: bestText && !sameSpread ? { pick: best.spread, text: `best ${bestText} · ${best.spread.book || 'book'}` } : null,
+      ml: mlText,
+      mlPick: sameMl ? best.ml : null,
+      mlBest: bestMl && !sameMl ? { pick: best.ml, text: `best ${bestMl} · ${best.ml.book || 'book'}` } : null,
+    }
+  }
   // No-field board used to prefer the shopped spread as the 42px number whenever lines were live,
   // so MLB/NHL/NBA/MLS never painted the score. Match pills + the football field board: score big,
   // spread small above. Also treat a Final/FT label as played if status is still stuck on pre.
@@ -5215,6 +5256,8 @@ export default function GameHubHero({
     game.status === 'in'
     || isFinal
     || /^(final|ft)\b/i.test(String(game.status_label || ''))
+  const awayPre = !paintScore && shopLines ? pregameBoard(game.away, scoreBest?.away) : null
+  const homePre = !paintScore && shopLines ? pregameBoard(game.home, scoreBest?.home) : null
 
   // Opening-kickoff whistle fires from the field's kick animation … arm audio unlock while the hub is up.
   useEffect(() => {
@@ -5436,12 +5479,14 @@ export default function GameHubHero({
               bigText={
                 paintScore
                   ? (game.away?.score == null ? '-' : String(game.away.score))
-                  : (awaySpreadText || scoreText(game.away, game.status))
+                  : (awayPre?.bigText || awaySpreadText || scoreText(game.away, game.status))
               }
-              bigPick={paintScore ? null : (awaySpreadText ? scoreBest?.away?.spread : null)}
+              bigPick={paintScore ? null : awayPre ? awayPre.bigPick : (awaySpreadText ? scoreBest?.away?.spread : null)}
+              bigBest={awayPre?.bigBest || null}
               bigDim={awayScoreDim}
-              ml={awayMl}
-              mlPick={awayMlPick}
+              ml={awayPre ? awayPre.ml : awayMl}
+              mlPick={awayPre ? awayPre.mlPick : awayMlPick}
+              mlBest={awayPre?.mlBest || null}
             />
 
             <div className="flex max-w-[34%] shrink-0 flex-col items-center justify-center gap-1 px-1 pb-8 text-center">
@@ -5476,12 +5521,14 @@ export default function GameHubHero({
               bigText={
                 paintScore
                   ? (game.home?.score == null ? '-' : String(game.home.score))
-                  : (homeSpreadText || scoreText(game.home, game.status))
+                  : (homePre?.bigText || homeSpreadText || scoreText(game.home, game.status))
               }
-              bigPick={paintScore ? null : (homeSpreadText ? scoreBest?.home?.spread : null)}
+              bigPick={paintScore ? null : homePre ? homePre.bigPick : (homeSpreadText ? scoreBest?.home?.spread : null)}
+              bigBest={homePre?.bigBest || null}
               bigDim={homeScoreDim}
-              ml={homeMl}
-              mlPick={homeMlPick}
+              ml={homePre ? homePre.ml : homeMl}
+              mlPick={homePre ? homePre.mlPick : homeMlPick}
+              mlBest={homePre?.mlBest || null}
             />
           </div>
         </div>

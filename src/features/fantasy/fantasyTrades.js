@@ -188,14 +188,14 @@ function seatOf(seats, id) {
   return seats.find((s) => s.p.id === id)?.slot || null
 }
 
-function describeFor(players, seats) {
+function describeFor(players, seats, sport = 'nfl') {
   return players
     .map((p) => {
       const slot = seatOf(seats, p.id)
       const perGame = `~${p.keep.toFixed(1)} pts/gm`
       if (p.h.injury === 'long' || p.h.injury === 'out') return `${p.name} is a ${p.pos} stash worth ${perGame} once healthy`
       if (slot) return `${p.name} starts at ${slotLabel(slot)} for you (${perGame})`
-      return `${p.name} adds ${p.pos} depth (${perGame}) for byes and injuries`
+      return `${p.name} adds ${p.pos} depth (${perGame}) for ${sport === 'nba' ? 'off nights' : 'byes'} and injuries`
     })
     .join('; ')
 }
@@ -206,13 +206,13 @@ function lastName(name) {
 }
 
 /** `describeFor` in text-message words: same facts (starts / depth / stash), no point tags. */
-function describeForCasual(players, seats) {
+function describeForCasual(players, seats, sport = 'nfl') {
   const bits = players.map((p) => {
     const who = lastName(p.name)
     const slot = seatOf(seats, p.id)
     if (p.h.injury === 'long' || p.h.injury === 'out') return `${who} is a nice stash once he's healthy`
     if (slot) return `${who} would start at ${slotLabel(slot).replace(/^FLEX$/, 'flex')} for you`
-    return `${who} gives you ${p.pos} depth for byes`
+    return `${who} gives you ${p.pos} depth for ${sport === 'nba' ? 'off nights' : 'byes'}`
   })
   return bits.length > 1 ? `${bits.slice(0, -1).join(', ')}, and ${bits[bits.length - 1]}` : bits[0] || ''
 }
@@ -294,8 +294,8 @@ export function findTrades({ values, detail, scoring, slots, sport = 'nfl', stan
           fairness: fairnessFromValue(theirGain, gate.ratio),
           value: valueSummary(gate, ctx),
           forYou: `${get.name} starts at ${slotLabel(seatOf(mySeats.seats, get.id) || get.pos)} (+${myGain.toFixed(1)}/wk)`,
-          forThem: describeFor(give, theirSeats.seats),
-          forThemCasual: describeForCasual(give, theirSeats.seats),
+          forThem: describeFor(give, theirSeats.seats, ctx.sport),
+          forThemCasual: describeForCasual(give, theirSeats.seats, ctx.sport),
           myFill: fillLine(fillIns(myBefore, mySeats, [get])),
           theirFill: fillLine(fillIns(theirBefore, theirSeats, give)),
           theirPickups: pickupNames(fillIns(theirBefore, theirSeats, give)),
@@ -610,8 +610,8 @@ export function reviewOffer({ values, detail, scoring, slots, sport = 'nfl', tea
       myGain: c.myGain,
       theirGain: c.theirGain,
       fairness: fairnessFor(c.theirGain, -c.valueEdge),
-      forThem: describeFor(c.give, c.theirAfter.seats),
-      forThemCasual: describeForCasual(c.give, c.theirAfter.seats),
+      forThem: describeFor(c.give, c.theirAfter.seats, ctx.sport),
+      forThemCasual: describeForCasual(c.give, c.theirAfter.seats, ctx.sport),
       theirPickups: pickupNames(c.theirMoves.inn.filter((p) => !c.give.some((g) => g.id === p.id))),
       score: c.myGain + 0.6 * Math.min(c.theirGain, 3) - 0.2 * Math.max(0, c.give.length + c.get.length - 2),
     })

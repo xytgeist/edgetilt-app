@@ -1,12 +1,14 @@
 /**
  * Weekly fantasy digest (pg_cron Wednesday 00:00 + 01:00 UTC; sends only in the Tuesday 5 PM Pacific hour).
- * For each user with NFL leagues: one push + one email with every league's outlook … playoff / title odds (season
- * simulation), injuries, top waiver add, sniper pick, trade idea. The math is the app's own modules (same numbers as
- * the home synopsis). Deduped per user + season + NFL week in `fantasy_weekly_digests`.
+ * NBA (`sport: 'nba'`, pg_cron Monday 16:00 + 17:00 UTC; sends only in the Monday 9 AM Pacific hour, the start of a
+ * Sleeper NBA week) runs the same build over NBA leagues.
+ * For each user with leagues in that sport: one push + one email with every league's outlook … playoff / title odds
+ * (season simulation), injuries, top waiver add, sniper pick, trade idea. The math is the app's own modules (same
+ * numbers as the home synopsis). Deduped per user + season + week + sport in `fantasy_weekly_digests`.
  * Connections not synced since Monday Night Football (Tuesday 08:00 UTC) sync first, so records and rosters include
  * last week; a failed refresh (expired ESPN / CBS login) keeps the last data and the email says so.
  * The cron run fans out one background call per user (each its own Edge time budget).
- * Body (service role / admin): { force?: true (skip the time gate), dryRun?: true (no sends, no dedupe row),
+ * Body (service role / admin): { sport?: 'nfl' | 'nba', force?: true (skip the time gate), dryRun?: true (no sends, no dedupe row),
  *   onlyUser?: uuid, noEmail?: true, noRefresh?: true, background?: true (reply 202, work after),
  *   preview?: true (with dryRun: return the email HTML) }
  */
@@ -24,11 +26,13 @@ import { escapeHtml, transactionalEmailParagraph, wrapTransactionalEmailHtml } f
 // The app's fantasy math (plain ESM, no browser APIs).
 import { playoffFormat, simulateLeague } from '../../../src/features/fantasy/fantasyLeagueOutlook.js'
 import { findFlips, findTrades, teamStrength, valueContext } from '../../../src/features/fantasy/fantasyTrades.js'
-import { rankWaivers, rowId } from '../../../src/features/fantasy/fantasyWaivers.js'
+import { rankWaivers, rowId, waiverLineupSlots } from '../../../src/features/fantasy/fantasyWaivers.js'
 import { rankBoom } from '../../../src/features/fantasy/fantasySniper.js'
-import { injuryKey, leagueLineupSlots } from '../../../src/features/fantasy/fantasyStartSit.js'
+import { injuryKey } from '../../../src/features/fantasy/fantasyStartSit.js'
+import { sleeperNbaPlayers } from '../_shared/sleeperNbaPlayers.ts'
 
 type Obj = Record<string, any>
+type Sport = 'nfl' | 'nba'
 const str = (v: unknown) => String(v ?? '').trim()
 const FRESH_STATUS_LABEL: Record<string, string | null> = { active: null, questionable: 'Questionable', doubtful: 'Doubtful', out: 'Out', ir: 'IR' }
 const APP_URL = str(Deno.env.get('SUPABASE_URL')).includes('kcosfvmreeiosdjdzycb') ? 'https://lvslotpro.com' : 'https://edgetilt.com'
@@ -60,22 +64,26 @@ function shortName(name: string, position?: string | null) {
 
 const PROVIDER_LABEL: Record<string, string> = { sleeper: 'Sleeper', yahoo: 'Yahoo', espn: 'ESPN', cbs: 'CBS' }
 
-/** Most recent Tuesday 08:00 UTC (after Monday Night Football) at or before now. */
-function afterMondayNight(now = new Date()) {
-  const t = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 8))
-  const back = (t.getUTCDay() - 2 + 7) % 7
+/**
+ * Most recent end of the scoring week at or before now: NFL Tuesday 08:00 UTC (after Monday Night Football),
+ * NBA Monday 10:00 UTC (after Sunday's late games).
+ */
+function afterWeekEnd(sport: Sport, now = new Date()) {
+  const [dow, hour] = sport === 'nba' ? [1, 10] : [2, 8]
+  const t = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour))
+  const back = (t.getUTCDay() - dow + 7) % 7
   t.setUTCDate(t.getUTCDate() - back)
   if (t.getTime() > now.getTime()) t.setUTCDate(t.getUTCDate() - 7)
   return t
 }
 
 /** Sync this user's connections that predate the last game night; returns per-connection freshness. */
-async function refreshConnections(admin: SupabaseClient, userId: string, skip: boolean) {
+async function refreshConnections(admin: SupabaseClient, userId: string, skip: boolean, sport: Sport) {
   const { data: conns } = await admin
     .from('fantasy_connections')
     .select('id, provider, external_user_id, status, last_sync_at')
     .eq('user_id', userId)
-  const cutoff = afterMondayNight().getTime()
+  const cutoff = afterWeekEnd(sport).getTime()
   const out = new Map<string, { provider: string; syncedAt: string | null; error: string | null }>()
   for (const c of conns || []) {
     let syncedAt = c.last_sync_at ? String(c.last_sync_at) : null
@@ -107,7 +115,7 @@ function agoText(iso: string | null) {
 }
 
 /** League detail like the app's `loadLeagueDetail` (teams, latest roster week per team, injuries, this week's games). */
-async function leagueDetail(admin: SupabaseClient, league: Obj) {
+async function leagueDetail(admin: SupabaseClient, league: Obj, sport: Sport) {
   const { data: teams } = await admin
     .from('fantasy_teams')
     .select('id, owner_name, team_name, is_mine, wins, losses, ties, points_for, points_against')
@@ -123,7 +131,18 @@ async function leagueDetail(admin: SupabaseClient, league: Obj) {
   const current = (rows || []).filter((r) => (Number(r.week) || 0) === latest.get(r.team_id))
   const ids = [...new Set(current.map((r) => r.sleeper_id).filter(Boolean))]
   const injury: Record<string, string | null> = {}
-  for (let i = 0; i < ids.length; i += 200) {
+  // Sleeper NBA ids collide with NFL ones, so NBA reads the NBA player map and the NBA status watcher.
+  if (sport === 'nba') {
+    const [players, { data: fresh }] = await Promise.all([
+      sleeperNbaPlayers(admin).catch(() => []),
+      admin.from('nba_player_status').select('sleeper_id, status').in('sleeper_id', ids.slice(0, 500)),
+    ])
+    const want = new Set(ids)
+    // Sleeper's GTD / DTD reads as questionable (the NBA watcher maps them the same way).
+    for (const p of players) if (want.has(p.sleeper_id)) injury[p.sleeper_id] = /^(gtd|dtd)/i.test(str(p.injury_status)) ? 'Questionable' : p.injury_status || null
+    for (const s of fresh || []) if (s.sleeper_id) injury[s.sleeper_id] = FRESH_STATUS_LABEL[s.status] ?? null
+  }
+  for (let i = 0; sport === 'nfl' && i < ids.length; i += 200) {
     const chunk = ids.slice(i, i + 200)
     const [{ data: players }, { data: fresh }] = await Promise.all([
       admin.from('nfl_players').select('sleeper_id, injury_status').in('sleeper_id', chunk),
@@ -145,14 +164,15 @@ async function leagueSection(
   userId: string,
   league: Obj,
   week: number,
+  sport: Sport,
   fresh?: { provider: string; syncedAt: string | null; error: string | null },
 ) {
-  const detail = await leagueDetail(admin, league)
+  const detail = await leagueDetail(admin, league, sport)
   if (!detail) return null
   const mine = detail.teams.find((t) => t.is_mine)
   if (!mine) return null
   const myRows = detail.rostersByTeam[mine.id] || []
-  const slots = leagueLineupSlots(league, myRows).slots
+  const slots = waiverLineupSlots(league, myRows, sport)
   if (!slots.length) return null
   const data = (await buildFantasyWaivers(admin, userId, league.id, { mode: 'sniper' }).catch(() => null)) as Obj | null
   const scoring = league.scoring
@@ -161,7 +181,7 @@ async function leagueSection(
   let strength = 0
   let strengthRank = 0
   if (data?.league_players) {
-    const ctx = valueContext(data, scoring, 'nfl', { market: false, waivers: false })
+    const ctx = valueContext(data, scoring, sport, { market: false, waivers: false })
     const byTeam: Record<string, number> = {}
     for (const t of detail.teams) byTeam[t.id] = teamStrength(detail.rostersByTeam[t.id] || [], ctx, slots)
     const sim = simulateLeague({
@@ -184,23 +204,24 @@ async function leagueSection(
     .sort((a, b) => Number(b.starter) - Number(a.starter))
 
   const add = data?.players?.length
-    ? rankWaivers({ pool: data, rosterRows: myRows, scoring, slots, sport: 'nfl' }).find((p: Obj) => p.starter) || null
+    ? rankWaivers({ pool: data, rosterRows: myRows, scoring, slots, sport }).find((p: Obj) => p.starter) || null
     : null
   // Boom pick is a different player from the waiver add, so the email never pitches the same name twice.
   const addId = add ? str(add.cand.id) : ''
   const boom = data?.sniper
-    ? rankBoom({ sniper: data.sniper, scoring, sport: 'nfl' }).find((b: Obj) => str(b.entry?.sleeper_id) !== addId) || null
+    ? rankBoom({ sniper: data.sniper, scoring, sport }).find((b: Obj) => str(b.entry?.sleeper_id) !== addId) || null
     : null
-  const trades = data?.league_players ? findTrades({ values: data, detail, scoring, slots, sport: 'nfl', stance: 0.5 }) : null
+  const trades = data?.league_players ? findTrades({ values: data, detail, scoring, slots, sport, stance: 0.5 }) : null
   const trade = trades?.best || null
   const flips = data?.league_players && data?.players?.length
-    ? findFlips({ values: data, pool: data, detail, scoring, slots, sport: 'nfl' })
+    ? findFlips({ values: data, pool: data, detail, scoring, slots, sport })
     : []
   const flip = flips[0] || null
   const weekly = (p: Obj | null) => (p ? Number(p.rosWeekly ?? p.value) || 0 : 0)
   const names = (list: Obj[]) => list.map((p) => displayName(p.name, p.pos)).join(' + ')
 
   return {
+    sport,
     leagueId: league.id,
     name: str(league.name) || 'League',
     provider: PROVIDER_LABEL[str(league.provider)] || str(league.provider),
@@ -272,8 +293,10 @@ async function leagueSection(
 
 type Section = NonNullable<Awaited<ReturnType<typeof leagueSection>>>
 
-function pushCopy(sections: Section[], week: number) {
-  const title = `Week ${week} fantasy outlook`
+const SPORT_TAG: Record<Sport, string> = { nfl: '', nba: 'NBA ' }
+
+function pushCopy(sections: Section[], week: number, sport: Sport) {
+  const title = `${SPORT_TAG[sport]}Week ${week} fantasy outlook`
   const bits = sections.map((s) => {
     const lead = `${s.name}: ${ordinal(s.place)}${s.odds ? `, playoffs ${pct(s.odds.playoff)}` : ''}`
     const hurt = s.hurt.filter((h) => h.starter).length
@@ -328,9 +351,13 @@ function callouts(s: Section): Callout[] {
     if (starters.length) {
       parts.push(
         `${joinNames(starters.slice(0, 3).map((h) => `${h.name} (${statusWord(h.status)})`))} ${starters.length > 1 ? 'are' : 'is'} in your starting lineup.` +
-          (anyOut
-            ? ' Anyone ruled out scores zero, so get a healthy player in that spot before kickoff. Start/Sit in the app already has the swap lined up.'
-            : ' Watch the reports before kickoff. If anyone gets ruled out, Start/Sit in the app will tell you who to slide in.'),
+          (s.sport === 'nba'
+            ? anyOut
+              ? ' Anyone ruled out scores zero on the nights he sits, so check Roster in the app before tip-off each day; it lines up the swap for that night.'
+              : ' Watch the reports before tip-off. If anyone gets ruled out, Roster in the app will tell you who to slide in that night.'
+            : anyOut
+              ? ' Anyone ruled out scores zero, so get a healthy player in that spot before kickoff. Start/Sit in the app already has the swap lined up.'
+              : ' Watch the reports before kickoff. If anyone gets ruled out, Start/Sit in the app will tell you who to slide in.'),
       )
     }
     if (bench.length) {
@@ -374,6 +401,7 @@ function callouts(s: Section): Callout[] {
     const game = b.opponent ? ` ${b.home ? 'vs' : '@'} ${b.opponent}` : ''
     const bits: string[] = []
     if (sig.nextUp?.length) bits.push(`He's next man up with ${joinNames(sig.nextUp)} hurt, so the volume should be there.`)
+    if (sig.games) bits.push(`His team plays ${sig.games} games this week, so the minutes add up.`)
     if (sig.ladder) bits.push(`The betting market gives him about a ${Math.round(sig.ladder.price * 100)}% chance at ${sig.ladder.strike}+ ${STAT_WORD[sig.ladder.stat] || sig.ladder.word}.`)
     if (sig.td) bits.push(`It also has him around ${Math.round(sig.td.price * 100)}% to find the end zone.`)
     if (sig.matchup) bits.push(`And the matchup is a soft one: that defense ranks #${sig.matchup.rank} easiest for ${b.pos}s.`)
@@ -472,14 +500,18 @@ function leagueCardHtml(s: Section) {
   )
 }
 
-function emailHtml(sections: Section[], week: number, firstName: string) {
+function emailSubject(week: number, sport: Sport) {
+  return `Your ${SPORT_TAG[sport]}week ${week} fantasy check-in`
+}
+
+function emailHtml(sections: Section[], week: number, firstName: string, sport: Sport = 'nfl') {
   const hello = firstName ? `Hey ${firstName},` : 'Hey there,'
   const intro =
-    `Here's your week ${week} check-in. ${sections.length > 1 ? `We looked at all ${sections.length} of your leagues` : 'We looked at your league'}: ` +
+    `Here's your ${SPORT_TAG[sport]}week ${week} check-in. ${sections.length > 1 ? `We looked at all ${sections.length} of your leagues` : 'We looked at your league'}: ` +
     `where you stand, who's banged up, and a few moves worth making before the waiver run.`
   const outro = `Good luck this week. Everything here is live in the app with the full breakdown, so tap in before you make a move.`
   const html = wrapTransactionalEmailHtml({
-    title: `Your week ${week} fantasy check-in`,
+    title: emailSubject(week, sport),
     headline: hello,
     appUrl: APP_URL,
     bodyHtml:
@@ -522,6 +554,7 @@ async function sendEmail(to: string, subject: string, html: string, text: string
 }
 
 type Opts = {
+  sport?: Sport
   force?: boolean
   dryRun?: boolean
   onlyUser?: string
@@ -532,8 +565,8 @@ type Opts = {
   preview?: boolean
 }
 
-/** One user's digest: refresh stale hosts, build every NFL league's section, push + email once per week. */
-async function processUser(admin: SupabaseClient, userId: string, season: number, week: number, opts: Opts) {
+/** One user's digest: refresh stale hosts, build every league's section in this sport, push + email once per week. */
+async function processUser(admin: SupabaseClient, userId: string, season: number, week: number, sport: Sport, opts: Opts) {
   const { data: prefs } = await admin
     .from('notification_preferences')
     .select('push_fantasy_digest, email_fantasy_digest')
@@ -549,39 +582,40 @@ async function processUser(admin: SupabaseClient, userId: string, season: number
       .eq('user_id', userId)
       .eq('season', season)
       .eq('week', week)
+      .eq('sport', sport)
       .maybeSingle()
     if (done) return { userId, skipped: 'already sent' }
   }
 
-  const fresh = await refreshConnections(admin, userId, Boolean(opts.noRefresh))
+  const fresh = await refreshConnections(admin, userId, Boolean(opts.noRefresh), sport)
   const { data: leagues } = await admin
     .from('fantasy_leagues')
     .select('id, user_id, connection_id, name, provider, sport, season, scoring, settings')
     .eq('user_id', userId)
-    .eq('sport', 'nfl')
+    .eq('sport', sport)
     .eq('season', season)
   const sections: Section[] = []
   for (const lg of leagues || []) {
-    const s = await leagueSection(admin, userId, lg, week, fresh.get(lg.connection_id)).catch((e) => {
+    const s = await leagueSection(admin, userId, lg, week, sport, fresh.get(lg.connection_id)).catch((e) => {
       console.error('digest league', lg.id, e)
       return null
     })
     if (s) sections.push(s)
   }
   if (!sections.length) return { userId, skipped: 'no leagues' }
-  const { title, body: text } = pushCopy(sections, week)
+  const { title, body: text } = pushCopy(sections, week, sport)
   const refreshed = [...fresh.values()].map((f) => ({ provider: f.provider, syncedAt: f.syncedAt, error: f.error }))
   if (opts.dryRun) {
     if (!opts.preview) return { userId, title, body: text, refreshed, sections }
     const { data: profile } = await admin.from('profiles').select('display_name').eq('user_id', userId).maybeSingle()
-    const { html } = emailHtml(sections, week, str(profile?.display_name).split(/\s+/)[0] || '')
+    const { html } = emailHtml(sections, week, str(profile?.display_name).split(/\s+/)[0] || '', sport)
     return { userId, title, body: text, refreshed, sections, html }
   }
 
   const { data: inserted } = await admin
     .from('fantasy_weekly_digests')
-    .upsert({ user_id: userId, season, week, league_ids: sections.map((s) => s.leagueId), title, body: text }, {
-      onConflict: 'user_id,season,week',
+    .upsert({ user_id: userId, season, week, sport, league_ids: sections.map((s) => s.leagueId), title, body: text }, {
+      onConflict: 'user_id,season,week,sport',
       ignoreDuplicates: true,
     })
     .select('id')
@@ -606,13 +640,21 @@ async function processUser(admin: SupabaseClient, userId: string, season: number
     if (to && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
       const { data: profile } = await admin.from('profiles').select('display_name').eq('user_id', userId).maybeSingle()
       const firstName = str(profile?.display_name).split(/\s+/)[0] || ''
-      const { html, text: plain } = emailHtml(sections, week, firstName)
-      sent.email = await sendEmail(to, `Your week ${week} fantasy check-in`, html, plain).catch((e) => ({ error: String(e) }))
+      const { html, text: plain } = emailHtml(sections, week, firstName, sport)
+      sent.email = await sendEmail(to, emailSubject(week, sport), html, plain).catch((e) => ({ error: String(e) }))
       emailed = Boolean((sent.email as Obj)?.id)
     }
   }
   await admin.from('fantasy_weekly_digests').update({ sent }).eq('id', inserted[0].id)
   return { userId, title, pushed, emailed, refreshed }
+}
+
+/** Sleeper NBA state (season + matchup week), the NBA twin of `fetchNflState`. */
+async function fetchNbaState(): Promise<{ season: string; week: number }> {
+  const res = await fetch('https://api.sleeper.app/v1/state/nba', { headers: { Accept: 'application/json' } })
+  if (!res.ok) throw new Error(`Sleeper NBA state ${res.status}`)
+  const j = (await res.json()) as Obj
+  return { season: str(j?.season), week: Number(j?.week) || 1 }
 }
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined
@@ -627,30 +669,32 @@ Deno.serve(async (req) => {
     return adminOpsJson(401, { error: 'Unauthorized' })
   }
   const body = (await req.json().catch(() => ({}))) as Opts
+  const sport: Sport = body.sport === 'nba' ? 'nba' : 'nfl'
   const pt = pacificNow()
-  if (!body.force && !(pt.weekday === 'Tue' && pt.hour === 17)) return adminOpsJson(200, { ok: true, ran: false, pacific: pt })
+  const sendHour = sport === 'nba' ? pt.weekday === 'Mon' && pt.hour === 9 : pt.weekday === 'Tue' && pt.hour === 17
+  if (!body.force && !sendHour) return adminOpsJson(200, { ok: true, ran: false, sport, pacific: pt })
 
   try {
-    const state = await fetchNflState()
+    const state = sport === 'nba' ? await fetchNbaState() : await fetchNflState()
     const season = Number(state.season)
     const week = Math.max(1, Number(state.week) || 1)
 
     if (body.onlyUser) {
-      const work = processUser(admin, body.onlyUser, season, week, body)
+      const work = processUser(admin, body.onlyUser, season, week, sport, body)
       if (body.background && typeof EdgeRuntime !== 'undefined') {
         EdgeRuntime.waitUntil(work.catch((e) => console.error('digest user', body.onlyUser, e)))
         return adminOpsJson(202, { ok: true, queued: body.onlyUser })
       }
-      return adminOpsJson(200, { ok: true, ran: true, season, week, result: await work })
+      return adminOpsJson(200, { ok: true, ran: true, sport, season, week, result: await work })
     }
 
-    const { data: rows, error } = await admin.from('fantasy_leagues').select('user_id').eq('sport', 'nfl').eq('season', season)
+    const { data: rows, error } = await admin.from('fantasy_leagues').select('user_id').eq('sport', sport).eq('season', season)
     if (error) throw new Error(error.message)
     const users = [...new Set((rows || []).map((r) => str(r.user_id)).filter(Boolean))]
     if (body.dryRun) {
       const plan = []
-      for (const u of users) plan.push(await processUser(admin, u, season, week, body))
-      return adminOpsJson(200, { ok: true, ran: true, season, week, users: users.length, plan })
+      for (const u of users) plan.push(await processUser(admin, u, season, week, sport, body))
+      return adminOpsJson(200, { ok: true, ran: true, sport, season, week, users: users.length, plan })
     }
 
     // One background call per user so a slow host sync or a big league cannot eat another user's time.
@@ -663,13 +707,13 @@ Deno.serve(async (req) => {
           const res = await fetch(self, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: auth, apikey: auth.replace(/^Bearer\s+/i, '') },
-            body: JSON.stringify({ onlyUser: u, force: true, background: true, noEmail: body.noEmail }),
+            body: JSON.stringify({ onlyUser: u, sport, force: true, background: true, noEmail: body.noEmail }),
           }).catch(() => null)
           if (res?.ok) queued.push(u)
         }),
       )
     }
-    return adminOpsJson(200, { ok: true, ran: true, season, week, users: users.length, queued: queued.length })
+    return adminOpsJson(200, { ok: true, ran: true, sport, season, week, users: users.length, queued: queued.length })
   } catch (err) {
     return adminOpsJson(500, { error: err instanceof Error ? err.message : 'Digest failed.' })
   }

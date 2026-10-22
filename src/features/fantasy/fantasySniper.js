@@ -90,6 +90,7 @@ export function rankBoom({ sniper, scoring, sport = 'nfl', perPos = 2 }) {
         td: td && td.price >= 0.3 ? { price: td.price } : null,
         ladder: ladder ? { strike: ladder.strike, stat: ladder.stat, word: YARD_WORD[ladder.stat], price: ladder.price } : null,
         matchup: entry.matchup_grade === 'A' ? { rank: entry.matchup_rank } : null,
+        games: sport === 'nba' && Number(entry.games_left) >= 3 ? Number(entry.games_left) : null,
       },
     })
   }

@@ -445,14 +445,14 @@ Notifications (F) deep-link into the relevant tab; prefs live under Settings (an
 
 ## League outlook (home synopsis)
 
-Shipped 1.4.1345 (NFL): one expandable card per league under the home matchup card. Summary: playoff / title odds (season simulation on rest-of-season lineup strength, `fantasyLeagueOutlook.js`), standing, injuries, empty slots, lineup gain. Details: Start/Sit moves, waiver adds, sniper picks, trade ideas, each linking into its tab. Weekly digest shipped 1.4.1346: Tuesday ~5 PM Pacific push + email per user with every NFL league's outlook (Edge `fantasy-weekly-digest`, same modules as the app; opt out in Settings, Notifications). Planned: real remaining schedules from each host in place of random pairings; NBA after phase 2 (waivers / trades).
+Shipped 1.4.1345 (NFL): one expandable card per league under the home matchup card. Summary: playoff / title odds (season simulation on rest-of-season lineup strength, `fantasyLeagueOutlook.js`), standing, injuries, empty slots, lineup gain. Details: Start/Sit moves, waiver adds, sniper picks, trade ideas, each linking into its tab. Weekly digest shipped 1.4.1346: Tuesday ~5 PM Pacific push + email per user with every NFL league's outlook (Edge `fantasy-weekly-digest`, same modules as the app; opt out in Settings, Notifications). NBA outlook + Monday digest shipped 1.4.1365 / 1.4.1367. Planned: real remaining schedules from each host in place of random pairings.
 
 ## Open decisions (Ryan)
 
 Record answers here when locked:
 
 1. Aggressive↔Fair default for Trade Analyzer? **Locked 2026-10-18: slightly aggressive, still realistic.**
-2. First second-sport after NFL? **Locked 2026-10-21: NBA, Sleeper first, points leagues first (categories later).** Phase 1 shipped 1.4.1337: matchups, per-game projection x games left, win %, slots, injuries, news (`fantasyNbaBoard.ts`, `fantasyNbaWeek.js`). Phase 2: roster daily lineup, streaming waivers by games left, trades on our rest-of-season value (FantasyCalc has no NBA). Phase 3: Yahoo / ESPN NBA, category leagues, NBA props blend.
+2. First second-sport after NFL? **Locked 2026-10-21: NBA, Sleeper first, points leagues first (categories later).** Phase 1 shipped 1.4.1337: matchups, per-game projection x games left, win %, slots, injuries, news (`fantasyNbaBoard.ts`, `fantasyNbaWeek.js`). Phase 2 shipped 1.4.1363-1.4.1367 on the NFL engines: Waivers + Sniper (games left), Roster plans today's games (daily locks; cards carry `elig` + `today`), Live tab game chips, home / Live lineup alerts, Trades + offer review + League outlook on our rest-of-season value (Sleeper per-game projection, season totals, team games left from ESPN standings; FantasyCalc has no NBA), game hub Fantasy position battles + Watch pins (`nba:` pin ids), injury pushes, and a Monday 9 AM Pacific NBA weekly digest (`fantasy_weekly_digests.sport`). Not yet: NBA insiders on X (X read budget), streaming pickups for open daily slots. Phase 3: Yahoo / ESPN NBA, category leagues, NBA props blend.
 3. DFS v1 sites? (plan: DK + FD via CSV)
 4. Emotional hedge: show estimated cost in units by default?
 5. Freemium: which tools free vs Slots Edge / future Fantasy add-on? (TBD … see `docs/entitlements-matrix.md`)

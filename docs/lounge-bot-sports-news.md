@@ -23,6 +23,16 @@ Publish threshold: `lounge_bot_accounts.publish_score_threshold` (55). Caps: `ma
 
 Insider `kind` (new column, LLM-tagged): `status`, `transaction`, `in_game`, `role`, `other`. Added to the prompt without touching `statuses`; regression set 172/172 on test after the change.
 
+## Roundups (combine near-misses)
+
+Ryan 2026-10-22: post more information without posting more often.
+
+- A **single** post needs news under 2h old that clears the threshold.
+- Everything else scoring **35+** (or fresh news that missed a slot) waits up to **6h** in a pool.
+- When the pool has **3 items**, or **2 that have waited 3h**, one roundup posts (counts as one post toward caps). Up to 6 headlines, one line per player (that player's other notes are claimed too, so they never post later).
+- Header: `{AWAY} at {HOME} notes` when 2+ items share a game (game pill if within 24h and the pill budget lasts); `{Weekday} practice notes` when every line is a practice note; else `NFL news roundup`.
+- Each item keeps its `dedupe_key` row under lane `bundle` (migration `20261022020000`).
+
 ## Extra lanes
 
 - **Key absences roundup:** one post per kickoff window, 55-85 min before kick, listing ranked players ESPN has Out / IR (`nfl_player_status`), up to 6 names.

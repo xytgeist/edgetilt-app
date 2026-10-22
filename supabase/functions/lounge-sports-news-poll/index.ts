@@ -1,6 +1,6 @@
 /**
  * Lounge NFL news bot (`jordan-pike`, pipeline sports_news). pg_cron every 5 min; admin / service role may send
- * { dryRun: true, lookbackHours?: number } to see what it would post, or { force: true } to run while stopped.
+ * { dryRun: true, lookbackHours?: number, poolHours?: number } to see what it would post, or { force: true } to run while stopped.
  *
  * Pool: the same insider batch the Fantasy news tab shows (status = show), scored and capped at the bot's
  * per-hour / per-day limits (quiet 12-8am ET). Lanes label each post for pills and follow-ups:
@@ -10,6 +10,8 @@
  *   transaction trades / signings / releases
  *   inactives   one "key absences" roundup per kickoff window, 55-85 min before kick (ESPN designations)
  *   line_move   follow-up when the spread moves 1+ pts within 3h of a status / qb post
+ *   bundle      near-miss items (score 35+, or fresh news that missed a slot) roll into one roundup post: a game's
+ *               notes when 2+ share a game, else a mixed roundup; posts at 3 items or once 2 have waited 3h
  * Game pill: always on inactives + line_move; on status / qb / in_game within 24h of kickoff while the day's pill
  * budget (~20% of the daily cap) lasts; never on transactions.
  */
@@ -29,12 +31,20 @@ const LINE_MIN_MOVE = 1
 const INACTIVES_FROM_MIN = 55
 const INACTIVES_TO_MIN = 85
 const QUIET_BEFORE_ET_HOUR = 8
+/** A single post needs fresh news; older or near-miss items wait in the roundup pool instead. */
+const SINGLE_FRESH_MS = 2 * 60 * 60 * 1000
+const POOL_MS = 6 * 60 * 60 * 1000
+const BUNDLE_FLOOR = 35
+const BUNDLE_MIN = 3
+const BUNDLE_WAIT_MS = 3 * 60 * 60 * 1000
+const BUNDLE_MAX = 6
+const BUNDLE_LANES = new Set(['status', 'qb', 'in_game', 'transaction'])
 const TEAM_ALIAS: Record<string, string> = { WSH: 'WAS', JAC: 'JAX', LA: 'LAR' }
 
 type Obj = Record<string, unknown>
 type Player = { sleeper_id: string; full_name: string; position: string; team: string; search_rank: number }
 type Tier = 'A' | 'B'
-type Lane = 'status' | 'qb' | 'in_game' | 'transaction' | 'inactives' | 'line_move'
+type Lane = 'status' | 'qb' | 'in_game' | 'transaction' | 'inactives' | 'line_move' | 'bundle'
 type Candidate = {
   lane: Lane
   dedupeKey: string
@@ -47,7 +57,13 @@ type Candidate = {
   pillEventIds: string[]
   pillWanted: 'always' | 'near' | 'never'
   followRowId?: string
+  headline?: string
+  postedAt?: number
+  /** Same-player items folded into this one in a roundup (claimed so they never post later). */
+  alsoKeys?: string[]
 }
+
+type Bundle = { items: Candidate[]; caption: string; score: number; game: LoungeSportsGame | null; pillEventIds: string[] }
 
 const str = (v: unknown) => String(v ?? '').trim()
 const team = (v: unknown) => {
@@ -205,9 +221,52 @@ function insiderCandidates(rows: Obj[], pc: NonNullable<typeof playerCache>, gam
       game,
       pillEventIds: game && lane !== 'transaction' && near ? [game.id] : [],
       pillWanted: lane === 'transaction' ? 'never' : 'near',
+      headline: str(row.headline),
+      postedAt: Date.parse(str(row.posted_at)) || Date.now(),
     })
   }
   return out
+}
+
+function nearKick(game: LoungeSportsGame | null): boolean {
+  return Boolean(game && (game.status === 'in' || (hoursToKick(game) ?? 99) <= 24))
+}
+
+function bundleReady(items: Candidate[]): boolean {
+  if (items.length >= BUNDLE_MIN) return true
+  const oldest = Math.min(...items.map((c) => c.postedAt || Date.now()))
+  return items.length >= 2 && Date.now() - oldest >= BUNDLE_WAIT_MS
+}
+
+/** One post for several near-miss items: a game's notes when 2+ share a game, else a mixed roundup. */
+function buildBundle(rawPool: Candidate[]): Bundle | null {
+  const best = new Map<string, Candidate>()
+  for (const c of [...rawPool].sort((a, b) => b.score - a.score)) {
+    const who = c.sleeperId || c.dedupeKey
+    const kept = best.get(who)
+    if (kept) kept.alsoKeys = [...(kept.alsoKeys || []), c.dedupeKey]
+    else best.set(who, { ...c, alsoKeys: [] })
+  }
+  const pool = [...best.values()]
+  if (pool.length < 2) return null
+  const byGame = new Map<string, Candidate[]>()
+  for (const c of pool) if (c.game) byGame.set(c.game.id, [...(byGame.get(c.game.id) || []), c])
+  const top = (list: Candidate[]) => [...list].sort((a, b) => b.score - a.score).slice(0, BUNDLE_MAX)
+  const gameGroup = [...byGame.values()].filter((g) => g.length >= 2 && bundleReady(g)).sort((a, b) => b.length - a.length)[0]
+  const items = gameGroup ? top(gameGroup) : bundleReady(pool) ? top(pool) : null
+  if (!items) return null
+  const game = gameGroup ? items[0].game || null : null
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long' }).format(new Date())
+  const header = game
+    ? `${str(game.away?.abbrev)} at ${str(game.home?.abbrev)} notes`
+    : items.every((c) => /practice/i.test(c.headline || '')) ? `${weekday} practice notes` : 'NFL news roundup'
+  return {
+    items,
+    caption: `${header}\n\n${items.map((c) => c.headline).filter(Boolean).join('\n')}`,
+    score: Math.max(...items.map((c) => c.score)),
+    game,
+    pillEventIds: game && nearKick(game) ? [game.id] : [],
+  }
 }
 
 async function inactivesCandidates(admin: SupabaseClient, pc: NonNullable<typeof playerCache>, games: LoungeSportsGame[]): Promise<Candidate[]> {
@@ -336,7 +395,9 @@ Deno.serve(async (req) => {
       : bot.last_poll_at
         ? Math.max(LOOKBACK_OVERLAP_MS, Date.now() - Date.parse(String(bot.last_poll_at)) + LOOKBACK_OVERLAP_MS)
         : FIRST_RUN_LOOKBACK_MS
-    const since = new Date(Date.now() - lookbackMs).toISOString()
+    // Dry runs may widen the roundup pool to replay older news.
+    const poolMs = dryRun && Number(body.poolHours) > 0 ? Number(body.poolHours) * 3600_000 : POOL_MS
+    const since = new Date(Date.now() - Math.max(lookbackMs, poolMs)).toISOString()
 
     const [pc, board] = await Promise.all([players(admin), cachedLoungeSportsScoreboard(admin, 60_000)])
     const games = nflGames(board.games || [])
@@ -365,8 +426,9 @@ Deno.serve(async (req) => {
       ? await admin.from('lounge_sports_news_posts').select('dedupe_key').in('dedupe_key', keys)
       : { data: [] }
     const seenKeys = new Set((seen || []).map((r) => str(r.dedupe_key)))
+    const fresh = (c: Candidate) => !c.postedAt || Date.now() - c.postedAt <= SINGLE_FRESH_MS
     const ranked = [...byKey.values()]
-      .filter((c) => !seenKeys.has(c.dedupeKey) && c.score >= threshold)
+      .filter((c) => !seenKeys.has(c.dedupeKey) && c.score >= threshold && fresh(c))
       .sort((a, b) => b.score - a.score)
 
     const dayStart = etDayStartIso()
@@ -396,6 +458,15 @@ Deno.serve(async (req) => {
       return { c, pill, publish }
     })
 
+    const singleKeys = new Set(plan.filter((x) => x.publish).map((x) => x.c.dedupeKey))
+    const pool = [...byKey.values()].filter((c) =>
+      BUNDLE_LANES.has(c.lane) && c.postedAt && !seenKeys.has(c.dedupeKey) && !singleKeys.has(c.dedupeKey) &&
+      c.score >= BUNDLE_FLOOR && Date.now() - c.postedAt <= poolMs)
+    const bundle = buildBundle(pool)
+    const bundlePill = Boolean(bundle?.pillEventIds.length) && pills < pillBudget
+    const bundlePublish = Boolean(bundle) && budget > 0
+    if (bundlePublish) budget -= 1
+
     if (dryRun) {
       return adminOpsJson(200, {
         ok: true,
@@ -412,6 +483,10 @@ Deno.serve(async (req) => {
           .sort((a, b) => b.score - a.score)
           .slice(0, 15)
           .map((c) => ({ lane: c.lane, score: c.score, caption: c.caption.split('\n')[0] })),
+        pool: pool.length,
+        bundle: bundle
+          ? { publish: bundlePublish, pill: bundlePill, items: bundle.items.length, score: bundle.score, caption: bundle.caption }
+          : null,
       })
     }
 
@@ -456,6 +531,50 @@ Deno.serve(async (req) => {
         await admin.from('lounge_sports_news_posts').update({ post_id: result.postId }).eq('id', claim.id)
         if (c.followRowId) await admin.from('lounge_sports_news_posts').update({ line_followed_at: new Date().toISOString() }).eq('id', c.followRowId)
         published.push({ lane: c.lane, post_id: result.postId, pill })
+      }
+    }
+    if (bundle && bundlePublish) {
+      const { data: claimed } = await admin
+        .from('lounge_sports_news_posts')
+        .upsert(
+          bundle.items.flatMap((c, i) => [c.dedupeKey, ...(c.alsoKeys || [])].map((key, j) => ({
+            bot_user_id: bot.user_id,
+            lane: 'bundle',
+            dedupe_key: key,
+            tweet_id: j === 0 ? c.tweetId || null : null,
+            sleeper_id: c.sleeperId || null,
+            team: c.team || null,
+            event_id: c.game?.id || null,
+            score: c.score,
+            pill: i === 0 && j === 0 && bundlePill,
+            caption: i === 0 && j === 0 ? bundle.caption : '',
+          }))),
+          { onConflict: 'dedupe_key', ignoreDuplicates: true },
+        )
+        .select('id')
+      const ids = (claimed || []).map((r) => str(r.id))
+      if (ids.length >= 2) {
+        const result = await publishLoungeBotPost(admin, {
+          botUserId: bot.user_id,
+          caption: bundle.caption,
+          categoryPills: bot.category_pills_default?.length ? bot.category_pills_default : ['sports'],
+          sportsGameEventIds: bundlePill ? bundle.pillEventIds : [],
+        })
+        await admin.from('lounge_bot_publish_log').insert({
+          bot_user_id: bot.user_id,
+          post_id: result.postId,
+          caption: bundle.caption,
+          score: bundle.score,
+          status: result.postId ? 'published' : 'failed',
+          error_message: result.error,
+          post_kind: 'sports_news_bundle',
+        })
+        if (result.postId) {
+          await admin.from('lounge_sports_news_posts').update({ post_id: result.postId }).in('id', ids)
+          published.push({ lane: 'bundle', post_id: result.postId, pill: bundlePill, items: ids.length })
+        }
+      } else if (ids.length) {
+        await admin.from('lounge_sports_news_posts').delete().in('id', ids)
       }
     }
     if (lines.expired.length) {

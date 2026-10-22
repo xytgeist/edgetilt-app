@@ -426,6 +426,14 @@ const STAT_DISPLAY = {
   rec_lng: 'Long Rec',
   td: 'TD',
   fpts: 'FPTS',
+  nba_pts: 'Pts',
+  nba_reb: 'Reb',
+  nba_ast: 'Ast',
+  nba_3pm: '3PM',
+  nba_pra: 'Pts + Reb + Ast',
+  nba_stl: 'Stl',
+  nba_blk: 'Blk',
+  nba_stocks: 'Stl + Blk',
 }
 
 /** In-card order: passing → rushing → receiving → TDs → specials → other → fantasy last. */
@@ -443,6 +451,14 @@ const STAT_RANK = {
   rec: 31,
   rec_lng: 32,
   td: 40,
+  nba_pts: 10,
+  nba_reb: 11,
+  nba_ast: 12,
+  nba_pra: 13,
+  nba_3pm: 14,
+  nba_stl: 15,
+  nba_blk: 16,
+  nba_stocks: 17,
 }
 const RANK_FIRST_TD = 41
 const RANK_LEADER = 50
@@ -511,7 +527,8 @@ function describeLine(prop, playerName) {
   // Rebuild simple "N+ stat" / "O N stat" ladders from the stat so every book reads the same.
   const simple = /^\s*(?:o(?:ver)?\s*)?\d+(?:\.\d+)?\s*\+?\s*[a-z .()+&]+$/i.test(rest)
     && !/\b(?:1st|2nd|first|second|half|quarter|1h|2h|[1-4]q)\b/i.test(rest)
-  if (line && STAT_DISPLAY[line.stat] && simple) {
+  // NBA strike markets are always plain "N+ stat" ladders ("4+ 3PT" fails `simple` on the digit).
+  if (line && STAT_DISPLAY[line.stat] && (simple || String(line.stat).startsWith('nba_'))) {
     const n = String(line.strike)
     const label = line.inclusive ? `${n}+ ${STAT_DISPLAY[line.stat]}` : `Over ${n} ${STAT_DISPLAY[line.stat]}`
     return { label, rank: line.stat === 'fpts' ? RANK_FPTS : STAT_RANK[line.stat] ?? RANK_OTHER, stat: line.stat, strike: line.strike }
@@ -527,7 +544,8 @@ function pairPlayerLines(lines, playerName) {
   for (const p of lines || []) {
     const desc = describeLine(p, playerName)
     if (!desc) continue
-    const key = lineMatchKey(p, playerName)
+    // NBA books word the same line differently ("25+ points" / "25+ Pts"): pair on stat + strike.
+    const key = desc.stat && String(desc.stat).startsWith('nba_') ? `${desc.stat}:${desc.strike}` : lineMatchKey(p, playerName)
     if (!byKey.has(key)) {
       byKey.set(key, { key, ...desc, kalshi: null, polymarket: null })
     }

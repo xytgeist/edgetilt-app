@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { KalshiPlayerPropsBoard } from './GameHubKalshiProps.jsx'
 import { useHeadshotSrc } from '../../../utils/playerHeadshot.js'
 import { scoreLine } from '../../fantasy/fantasyBoxScore.js'
 import { boxForPlayer, indexPlayerBox } from './gameHubPropStats.js'
@@ -85,11 +86,15 @@ function useBoxIndex(playerBox, status) {
   return useMemo(() => (status === 'pre' ? null : indexPlayerBox(playerBox)), [playerBox, status])
 }
 
-/** NBA Players tab: both rosters; box PTS / REB / AST once tipped, season average (else projection) before. */
-export function GameHubNbaPlayersPane({ players, loading, error, game, live = null, playerBox = null }) {
+/**
+ * NBA Players tab: Roster (box PTS / REB / AST once tipped, season average else projection before) and Props
+ * (Kalshi + Polymarket player strike markets, same board as NFL).
+ */
+export function GameHubNbaPlayersPane({ players, props = [], loading, error, game, live = null, playerBox = null }) {
   const status = statusOf(game, live)
   const boxIndex = useBoxIndex(playerBox, status)
   const boxLoaded = Boolean(boxIndex?.any)
+  const [view, setView] = useState('roster')
   if (loading) return <div className="py-10 text-center text-sm text-zinc-500">Loading players…</div>
   if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
   const list = players || []
@@ -97,7 +102,25 @@ export function GameHubNbaPlayersPane({ players, loading, error, game, live = nu
 
   return (
     <div data-lounge-game-players className="space-y-4 py-3">
-      {['away', 'home'].map((side) => {
+      <div className="inline-flex gap-1 rounded-full bg-zinc-900 p-0.5">
+        {[
+          { id: 'roster', label: 'Roster' },
+          { id: 'props', label: 'Props' },
+        ].map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => setView(opt.id)}
+            className={`rounded-full px-3 py-1 text-[12px] font-semibold ${view === opt.id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'}`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      {view === 'props' ? (
+        <KalshiPlayerPropsBoard props={props} players={list} game={game} live={live} playerBox={playerBox} />
+      ) : null}
+      {view === 'props' ? null : ['away', 'home'].map((side) => {
         const team = game?.[side]
         const rows = list.filter((p) => p.side === side).slice(0, 13)
         if (!rows.length) return null

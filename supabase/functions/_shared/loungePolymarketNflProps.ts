@@ -239,9 +239,9 @@ function teamsMatch(ev: Record<string, unknown>, away: string, home: string): bo
   return abbrevs.has(away) && abbrevs.has(home)
 }
 
-async function resolvePolyEventSlug(away: string, home: string): Promise<string | null> {
+async function resolvePolyEventSlug(away: string, home: string, league: 'nfl' | 'nba' = 'nfl'): Promise<string | null> {
   const data = (await fetchJson(
-    `${POLY_BASE}/v2/leagues/nfl/events?limit=40&type=sport&section=general`,
+    `${POLY_BASE}/v2/leagues/${league}/events?limit=40&type=sport&section=general`,
   )) as { events?: Array<Record<string, unknown>> }
   const events = Array.isArray(data.events) ? data.events : []
   for (const ev of events) {
@@ -294,7 +294,7 @@ async function resolvePolyCfbEventSlug(
   return best ? { slug: best.slug, codeToAbbrev: best.codeToAbbrev } : null
 }
 
-export type PolyLeague = 'nfl' | 'cfb'
+export type PolyLeague = 'nfl' | 'cfb' | 'nba'
 
 /** Team-scoped markets tag every side with the same team (`PSU over 21.5`); winners carry both. */
 function polyTeamHint(m: Record<string, unknown>, codeToAbbrev: Record<string, string>): string | null {
@@ -340,7 +340,7 @@ export async function loadPolymarketProps(
     eventSlug = hit?.slug || null
     codeToAbbrev = hit?.codeToAbbrev || {}
   } else {
-    eventSlug = await resolvePolyEventSlug(a, h)
+    eventSlug = await resolvePolyEventSlug(a, h, league === 'nba' ? 'nba' : 'nfl')
   }
   if (!eventSlug) return []
 
@@ -360,8 +360,8 @@ export async function loadPolymarketProps(
     const mapped = mapPolyMarket(league, eventSlug, m)
     if (!mapped || seen.has(mapped.ticker)) continue
     if (league === 'cfb') mapped.team_hint = polyTeamHint(m, codeToAbbrev)
-    // Player props stay; game/period only when on the popular allowlist.
-    if (mapped.kind !== 'player' && !isPopularPolyNonPlayer(st)) continue
+    // Player props stay; game/period only when on the popular allowlist (NBA board is player props only).
+    if (mapped.kind !== 'player' && (league === 'nba' || !isPopularPolyNonPlayer(st))) continue
     seen.add(mapped.ticker)
     out.push(mapped)
   }

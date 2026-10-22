@@ -46,6 +46,27 @@ export const PROP_STATS = {
   td: { label: 'TD', box: (b) => sumOrNull(b.rush_td, b.rec_td, b.ret_td), season: (pl) => sumOrNull(pl?.season_rush_td, pl?.season_rec_td) },
   rec_lng: { label: 'long rec', box: (b) => num(b.rec_lng), season: (pl) => num(pl?.season_rec_lng), max: true },
   fpts: { label: 'fpts', box: (b) => boxFantasyPoints(b, 1), season: (pl) => num(pl?.season_ppr), proj: (pl) => num(pl?.projected_ppr), pace: true },
+  // NBA: box rows carry ESPN keys in `stats`; roster rows carry Sleeper `season_line` / `proj_line` (per game).
+  nba_pts: { label: 'pts', box: (b) => num(b?.stats?.points), season: (pl) => num(pl?.season_line?.pts), proj: (pl) => num(pl?.proj_line?.pts), pace: true },
+  nba_reb: { label: 'reb', box: (b) => num(b?.stats?.rebounds), season: (pl) => num(pl?.season_line?.reb), proj: (pl) => num(pl?.proj_line?.reb), pace: true },
+  nba_ast: { label: 'ast', box: (b) => num(b?.stats?.assists), season: (pl) => num(pl?.season_line?.ast), proj: (pl) => num(pl?.proj_line?.ast), pace: true },
+  nba_3pm: { label: '3PM', box: (b) => num(b?.stats?.threePointFieldGoalsMade), season: (pl) => num(pl?.season_line?.tpm), proj: (pl) => num(pl?.proj_line?.tpm), pace: true },
+  nba_stl: { label: 'stl', box: (b) => num(b?.stats?.steals), season: (pl) => num(pl?.season_line?.stl), proj: (pl) => num(pl?.proj_line?.stl), pace: true },
+  nba_blk: { label: 'blk', box: (b) => num(b?.stats?.blocks), season: (pl) => num(pl?.season_line?.blk), proj: (pl) => num(pl?.proj_line?.blk), pace: true },
+  nba_pra: {
+    label: 'PRA',
+    box: (b) => sumOrNull(b?.stats?.points, b?.stats?.rebounds, b?.stats?.assists),
+    season: (pl) => sumOrNull(pl?.season_line?.pts, pl?.season_line?.reb, pl?.season_line?.ast),
+    proj: (pl) => sumOrNull(pl?.proj_line?.pts, pl?.proj_line?.reb, pl?.proj_line?.ast),
+    pace: true,
+  },
+  nba_stocks: {
+    label: 'stl+blk',
+    box: (b) => sumOrNull(b?.stats?.steals, b?.stats?.blocks),
+    season: (pl) => sumOrNull(pl?.season_line?.stl, pl?.season_line?.blk),
+    proj: (pl) => sumOrNull(pl?.proj_line?.stl, pl?.proj_line?.blk),
+    pace: true,
+  },
 }
 
 const SERIES_STAT = {
@@ -69,6 +90,21 @@ const SERIES_STAT = {
   football_player_touchdowns: 'td',
   football_player_longest_reception: 'rec_lng',
   football_player_fantasy_points_ppr: 'fpts',
+  kxnbapts: 'nba_pts',
+  kxnbareb: 'nba_reb',
+  kxnbaast: 'nba_ast',
+  kxnba3pt: 'nba_3pm',
+  kxnbapra: 'nba_pra',
+  kxnbastl: 'nba_stl',
+  kxnbablk: 'nba_blk',
+  kxnbastock: 'nba_stocks',
+  basketball_player_points: 'nba_pts',
+  basketball_player_rebounds: 'nba_reb',
+  basketball_player_assists: 'nba_ast',
+  basketball_player_threes: 'nba_3pm',
+  basketball_player_points_rebounds_assists: 'nba_pra',
+  basketball_player_steals: 'nba_stl',
+  basketball_player_blocks: 'nba_blk',
 }
 
 function statFromText(text) {
@@ -125,10 +161,12 @@ export function gameFraction(game, live) {
   const period = Number(live?.period ?? game?.live?.period)
   if (!Number.isFinite(period) || period < 1) return 0
   if (period > 4) return 1
+  // NFL quarters are 15:00, NBA 12:00.
+  const q = /basketball/.test(String(game?.sport_key || '')) ? 720 : 900
   const left = clockSeconds(live?.clock ?? game?.live?.clock)
   const breakBoard = /HALFTIME|END_PERIOD|END_OF_PERIOD/.test(String(live?.status_name || '').toUpperCase())
-  const inPeriod = breakBoard || left == null ? 900 : 900 - left
-  return Math.max(0, Math.min(1, ((period - 1) * 900 + inPeriod) / 3600))
+  const inPeriod = breakBoard || left == null ? q : q - left
+  return Math.max(0, Math.min(1, ((period - 1) * q + inPeriod) / (4 * q)))
 }
 
 /** Box rows keyed by ESPN id and name so a roster player (or a prop's name) finds its live line. */

@@ -55,7 +55,21 @@ const KALSHI_SERIES = [
   ...KALSHI_PERIOD_SERIES,
 ] as const
 
-const KALSHI_PLAYER_SERIES_SET = new Set<string>(KALSHI_PLAYER_SERIES)
+/** NBA per-game player strike series (`Dylan Harper: 25+ points`), for the NBA game hub Players tab. */
+const KALSHI_NBA_PLAYER_SERIES = [
+  'KXNBAPTS',
+  'KXNBAREB',
+  'KXNBAAST',
+  'KXNBA3PT',
+  'KXNBAPRA',
+  'KXNBASTL',
+  'KXNBABLK',
+  'KXNBASTOCK',
+  'KXNBA2D',
+  'KXNBA3D',
+] as const
+
+const KALSHI_PLAYER_SERIES_SET = new Set<string>([...KALSHI_PLAYER_SERIES, ...KALSHI_NBA_PLAYER_SERIES])
 const KALSHI_PERIOD_SERIES_SET = new Set<string>(KALSHI_PERIOD_SERIES)
 
 /** CFB mirrors the NFL board scope (Kalshi has no college player-prop series). */
@@ -1165,6 +1179,34 @@ export async function loadKalshiCfbProps(
     const hint = m ? resolved.codeToAbbrev[m[1].toUpperCase()] : undefined
     if (hint) p.team_hint = hint
   }
+  return capAndSortKalshiProps(batches.flat())
+}
+
+/** `26OCT23HOUSAS` suffix from the open KXNBAGAME event (Kalshi NBA codes are Sleeper's: GSW, SAS, NOP, NYK). */
+async function resolveKalshiNbaGameSuffix(away: string, home: string): Promise<string | null> {
+  const a = String(away || '').toUpperCase()
+  const h = String(home || '').toUpperCase()
+  if (!a || !h) return null
+  const data = (await fetchJson(`${KALSHI_BASE}/events?series_ticker=KXNBAGAME&status=open&limit=200`)) as {
+    events?: Array<Record<string, unknown>>
+  }
+  const prefix = 'KXNBAGAME-'
+  for (const ev of Array.isArray(data.events) ? data.events : []) {
+    const et = String(ev.event_ticker || '').toUpperCase()
+    const m = et.match(/^KXNBAGAME-(\d{2}[A-Z]{3}\d{2})([A-Z]+)$/)
+    if (!m || (m[2] !== `${a}${h}` && m[2] !== `${h}${a}`)) continue
+    return et.slice(prefix.length)
+  }
+  return null
+}
+
+/** NBA player props for one game (`away` / `home` in Sleeper codes). */
+export async function loadKalshiNbaPlayerProps(away: string, home: string): Promise<NflGameFantasyProp[]> {
+  const suffix = await resolveKalshiNbaGameSuffix(away, home)
+  if (!suffix) return []
+  const batches = await mapPool([...KALSHI_NBA_PLAYER_SERIES], KALSHI_FETCH_CONCURRENCY, (series) =>
+    fetchKalshiSeriesForSuffix(series, suffix).catch(() => [] as NflGameFantasyProp[]),
+  )
   return capAndSortKalshiProps(batches.flat())
 }
 

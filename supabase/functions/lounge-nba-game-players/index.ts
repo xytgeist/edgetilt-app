@@ -2,7 +2,8 @@
  * Logged-in Lounge NBA game hub: Players + Fantasy rosters for one game.
  *
  * User JWT: { event_id, away_abbrev, home_abbrev }
- * Returns { ok, season, week, players: [...] } … every active Sleeper player on either team with the week's
+ * Returns { ok, season, week, players: [...], props: [...] } … `props` are Kalshi + Polymarket player strike markets
+ * (shared 60s per game). Players: every active Sleeper player on either team with the week's
  * per-game projection line (`proj_line`, Sleeper stat keys), season per-game averages (`season_line`), ESPN id
  * (live box match + headshot), and side. The client scores both with the viewer's NBA league rules.
  */
@@ -11,6 +12,8 @@ import { userIdFromJwt } from '../_shared/userJwt.ts'
 import { sharedCached } from '../_shared/edgeSharedCache.ts'
 import { loadNbaBoard, nbaTeam } from '../_shared/fantasyNbaBoard.ts'
 import { lookupNbaEspnId, nbaEspnIds } from '../_shared/nbaEspnIds.ts'
+import { loadKalshiNbaPlayerProps } from '../_shared/loungeNflGameFantasy.ts'
+import { loadPolymarketProps } from '../_shared/loungePolymarketNflProps.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -92,6 +95,21 @@ function seasonLines(admin: SupabaseClient, season: string): Promise<Record<stri
   ).catch(() => ({}))
 }
 
+/** Kalshi + Polymarket player props for one game, one shared fetch per minute however many viewers. */
+function gameProps(admin: SupabaseClient, away: string, home: string): Promise<unknown[]> {
+  return sharedCached(
+    `nba-game-props:${away}${home}`,
+    { ttlMs: 60_000, staleMaxMs: 10 * 60_000, leaseMs: 30_000, admin, shouldStore: (v) => v.length > 0 },
+    async () => {
+      const [kalshi, poly] = await Promise.all([
+        loadKalshiNbaPlayerProps(away, home).catch(() => []),
+        loadPolymarketProps(away, home, { league: 'nba' }).catch(() => []),
+      ])
+      return [...kalshi, ...poly]
+    },
+  ).catch(() => [])
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed' })
@@ -110,10 +128,11 @@ Deno.serve(async (req) => {
   if (!away || !home) return json(400, { error: 'away_abbrev and home_abbrev are required.' })
 
   try {
-    const [all, board, espnIds] = await Promise.all([
+    const [all, board, espnIds, props] = await Promise.all([
       sleeperNbaPlayers(admin),
       loadNbaBoard(),
       nbaEspnIds(admin).catch(() => new Map<string, string>()),
+      gameProps(admin, away, home),
     ])
     const season = board?.season || ''
     const averages = season ? await seasonLines(admin, season) : {}
@@ -153,7 +172,7 @@ Deno.serve(async (req) => {
         if (pb !== pa) return pb - pa
         return (a.search_rank ?? 99999) - (b.search_rank ?? 99999)
       })
-    return json(200, { ok: true, season, week: board?.week ?? null, players })
+    return json(200, { ok: true, season, week: board?.week ?? null, players, props })
   } catch (err) {
     return json(502, { error: err instanceof Error ? err.message : 'NBA roster request failed.' })
   }

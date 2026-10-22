@@ -455,34 +455,49 @@ function LoungeMatchupGameHubModal({
   }, [game?.id, showNflFantasy, supabaseClient, hubOpenNonce])
 
   // NBA Players / Fantasy roster lives apart from `fantasy` so the NFL hero rails and field roster never see it.
-  const [nbaRoster, setNbaRoster] = useState({ gameId: '', players: [], error: '' })
+  const [nbaRoster, setNbaRoster] = useState({ gameId: '', players: [], props: [], error: '' })
   useEffect(() => {
     if (!game || !supabaseClient || !isNbaGame) return undefined
     let cancelled = false
+    let loaded = false
     const gameId = String(game.id)
-    void loungeNbaGamePlayers(supabaseClient, {
-      eventId: game.id,
-      awayAbbrev: game.away?.abbrev,
-      homeAbbrev: game.home?.abbrev,
-    })
-      .then((data) => {
-        if (cancelled) return
-        if (data?.error) {
-          setNbaRoster({ gameId, players: [], error: String(data.error) })
-          return
-        }
-        const players = Array.isArray(data?.players) ? data.players : []
-        setNbaRoster({ gameId, players, error: '' })
-        void loadNbaLeagueRules(supabaseClient)
-        void loadGameRosterLeagues(supabaseClient, players.map((p) => p.sleeper_id), 'nba')
+    const load = () =>
+      loungeNbaGamePlayers(supabaseClient, {
+        eventId: game.id,
+        awayAbbrev: game.away?.abbrev,
+        homeAbbrev: game.home?.abbrev,
       })
-      .catch((err) => {
-        if (!cancelled) setNbaRoster({ gameId, players: [], error: err?.message || 'Player request failed.' })
-      })
+        .then((data) => {
+          if (cancelled) return
+          if (data?.error) {
+            // A failed refresh keeps the last good board.
+            if (!loaded) setNbaRoster({ gameId, players: [], props: [], error: String(data.error) })
+            return
+          }
+          const players = Array.isArray(data?.players) ? data.players : []
+          setNbaRoster({ gameId, players, props: Array.isArray(data?.props) ? data.props : [], error: '' })
+          if (!loaded) {
+            void loadNbaLeagueRules(supabaseClient)
+            void loadGameRosterLeagues(supabaseClient, players.map((p) => p.sleeper_id), 'nba')
+          }
+          loaded = true
+        })
+        .catch((err) => {
+          if (!cancelled && !loaded) setNbaRoster({ gameId, players: [], props: [], error: err?.message || 'Player request failed.' })
+        })
+    void load()
+    // Prop prices move; the Edge shares one Kalshi / Polymarket read per game per minute.
+    const id = game.status === 'post'
+      ? 0
+      : window.setInterval(() => {
+          if (typeof document !== 'undefined' && document.hidden) return
+          void load()
+        }, 60_000)
     return () => {
       cancelled = true
+      if (id) window.clearInterval(id)
     }
-  }, [game?.id, game?.away?.abbrev, game?.home?.abbrev, isNbaGame, supabaseClient, hubOpenNonce])
+  }, [game?.id, game?.status, game?.away?.abbrev, game?.home?.abbrev, isNbaGame, supabaseClient, hubOpenNonce])
   const nbaRosterLoading = isNbaGame && nbaRoster.gameId !== String(game?.id || '')
 
   // Auto Watch (mine) + Enemy pins from primary Sleeper league for players in this NFL game.
@@ -847,6 +862,7 @@ function LoungeMatchupGameHubModal({
       return (
         <GameHubNbaPlayersPane
           players={nbaRoster.players}
+          props={nbaRoster.props}
           loading={nbaRosterLoading}
           error={nbaRoster.error}
           game={game}

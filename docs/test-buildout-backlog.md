@@ -107,6 +107,8 @@ Related platform-ops list (abuse, money webhooks, mod queue, attribution, vendor
 
 **Canonical roadmap:** **`docs/fantasy-suite.md`** (Layers A–F + phases). Connect contract: **`docs/fantasy-connect.md`**.
 
+**Pending real-data checks:** **`docs/fantasy-suite.md` § Test tally** (running list; add when shipping without a check, tick when checked).
+
 - [ ] **Phase 0 … Connect soft-launch.** Yahoo API approval (`i4wW6xoc`); sport/kind fields; multi-league UX; Fantasy IA shell (Leagues / Live / Tools / DFS); notification prefs shell. Lift NFL Hub Coming soon when ready.
 - [ ] **Phase 1 … Live Fantasy HQ (NFL) + core pushes.** Week command center + hub deep links; injury/inactive + lineup-lock notifications (Layers C + F).
 - [ ] **Phase 2 … Start/Sit + Waiver + consideration digests.** Shared value/need engine (Layers B1–B2 + F).

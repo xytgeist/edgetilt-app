@@ -5,6 +5,46 @@ Product plan for EdgeTilt Fantasy … **tools for edge hunters**, not a league v
 **Connect implementation (shipped / in flight):** **`docs/fantasy-connect.md`**.  
 **Positioning:** Connect is the door. The suite is decision tools + live command center + DFS toolkit + cross-edge hedges, fed by synced leagues/lineups. **Notifications are a first-class retention fabric** across all layers … not an afterthought.
 
+## Test tally (pending checks)
+
+Running list of shipped work that still needs a real-data check. **Add a line whenever something ships without one; tick it (with date + result) when checked.** Agents: read this before building more fantasy features.
+
+**Monday 2026-10-26 (first scoring week for the ESPN / Yahoo NBA leagues)**
+- [ ] ESPN NBA live per-player week points sync during games (Dallas Pro H2H Categories).
+- [ ] Yahoo H2H-Pts 272329 week 2 matchup + live scores sync.
+- [ ] Category board on live data (Dallas Pro): host totals + projections, FG% / FT% estimates, win chance moves sensibly.
+- [ ] Yahoo High Score 273072: are Yahoo's per-player week points the best game (assumed) or the sum? Compare with box scores.
+- [ ] High Score weekly Start / Sit mid-week (banked best game vs bench games left).
+- [ ] NBA win % with the new variance (9 per point; Lock-In / High Score 5) looks sane mid-week and late week.
+- [ ] Stream on a live week (this-week nights, same-night adds, open nights match the Schedule card's Starting row).
+- [ ] Schedule card "This week" during play: past games dimmed, live chip, starts left counting down.
+- [ ] NBA weekly digest arrives Monday 9 AM PT with sensible content.
+
+**After each new league drafts + syncs**
+- [ ] Yahoo H2H-Cat 49714 (draft 2026-10-22 3pm): categories saved; then build Yahoo categories matchup totals.
+- [ ] Yahoo High Score 271599 (4 teams; settings HTTP 400 pre-draft): syncs as High Score after draft.
+- [ ] Yahoo Roto 272771: syncs (no matchups); Roto / season-points standings view not built yet.
+- [ ] ESPN NBA H2H Points: first real test of the ESPN points path.
+- [ ] ESPN NBA H2H Most Categories: needs one-win-per-week logic (not built).
+- [ ] ESPN NBA Roto + Season Points: standings view (not built).
+- [ ] ESPN NHL leagues (5 types): NHL not supported at all yet (own project).
+
+**After the High Score promote**
+- [ ] Re-sync Yahoo: 273072 saves `high_score`, `daily_lineups: false`, `max_weekly_adds: 4`; Stream tab hidden there; Roster shows a weekly plan; projections ~best game, not summed.
+- [ ] Stream footer shows "one of your 4 adds a week" on H2H-Pts 272329.
+
+**Earlier ships, not yet confirmed on device**
+- [ ] Sleeper 2K Lock-in calls (Lock / Wait) during a live week.
+- [ ] Player news: insider notes only under players their headline names (Barkley / D. Smith case); full league names; NFL headshot zoom in news + live plays.
+- [ ] League outlook alert (pill + collapsed line + Needs attention box) in dark mode (light checked 2026-10-22).
+- [ ] Stream shortlist by better week: next-week streamers show late in a week (check on a Sunday).
+- [ ] Jordan Pike keeps posting on prod; portal Run pipeline / Dry run buttons work for sports_news.
+
+**Checked**
+- [x] 2026-10-22 Stream on Dallas Pro (Edge Lord session): next-week plan, open nights, picks match real schedules, pick-one note.
+- [x] 2026-10-22 Schedule card on Dallas Pro: next week, 40 vs 37 starts, nightly starts, back-to-backs, fits a phone after the grid fix.
+- [x] 2026-10-22 Yahoo H2H-Pts win % 1% -> 10% after the variance fix; Roster rows show next week's games when upcoming.
+
 ## Synopsis (Ryan, 2026-10-16)
 
 Fantasy in Edge is a command center for leagues the person already plays. It is not a second ESPN, Yahoo, CBS, or Sleeper, and it is not an expert-rankings site.

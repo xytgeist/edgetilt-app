@@ -573,7 +573,7 @@ async function processUser(admin: SupabaseClient, userId: string, season: number
   const refreshed = [...fresh.values()].map((f) => ({ provider: f.provider, syncedAt: f.syncedAt, error: f.error }))
   if (opts.dryRun) {
     if (!opts.preview) return { userId, title, body: text, refreshed, sections }
-    const { data: profile } = await admin.from('profiles').select('display_name').eq('id', userId).maybeSingle()
+    const { data: profile } = await admin.from('profiles').select('display_name').eq('user_id', userId).maybeSingle()
     const { html } = emailHtml(sections, week, str(profile?.display_name).split(/\s+/)[0] || '')
     return { userId, title, body: text, refreshed, sections, html }
   }
@@ -604,7 +604,7 @@ async function processUser(admin: SupabaseClient, userId: string, season: number
     const { data: user } = await admin.auth.admin.getUserById(userId)
     const to = str(user?.user?.email)
     if (to && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
-      const { data: profile } = await admin.from('profiles').select('display_name').eq('id', userId).maybeSingle()
+      const { data: profile } = await admin.from('profiles').select('display_name').eq('user_id', userId).maybeSingle()
       const firstName = str(profile?.display_name).split(/\s+/)[0] || ''
       const { html, text: plain } = emailHtml(sections, week, firstName)
       sent.email = await sendEmail(to, `Your week ${week} fantasy check-in`, html, plain).catch((e) => ({ error: String(e) }))

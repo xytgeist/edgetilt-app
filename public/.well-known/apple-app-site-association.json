@@ -48,6 +48,17 @@
               "yahoo": "?*"
             },
             "comment": "Yahoo Fantasy OAuth return (?tab=fantasy&yahoo=linked|error)"
+          },
+          {
+            "/": "/lounge/g/*",
+            "comment": "Game hub share permalink (app 1.4.97+ handles /lounge/g/)"
+          },
+          {
+            "/": "/",
+            "?": {
+              "game": "?*"
+            },
+            "comment": "SPA game hub deep link (?game=event_id)"
           }
         ]
       }

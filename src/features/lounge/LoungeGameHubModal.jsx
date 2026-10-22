@@ -56,6 +56,7 @@ import { isPgaGame } from './loungeSportsSlateWindow.js'
 import LoungeGolfTournamentHub from './LoungeGolfTournamentHub.jsx'
 import { fetchHubFantasyPins } from '../fantasy/fantasyApi.js'
 import { applyFantasyPinsFromLeague } from './gameHub/gameHubFantasyPins.js'
+import { loungeSportsGamePinnedPosts, mergeGamePosts } from './loungeSportsGamePosts.js'
 
 const EMPTY_DETAIL = { odds: [], plays: [], stats: [], live: null, splits: null }
 /** After the hub's data lands, how long the live feed gets to start its own play anim before the open replay. */
@@ -534,7 +535,7 @@ function LoungeMatchupGameHubModal({
   // Keyed on game id (not the game object, which churns on every board poll).
   const postsGameId = game?.id || null
   useEffect(() => {
-    if (!postsGameId || !supabaseClient || searchQuery.length < 2) {
+    if (!postsGameId || !supabaseClient) {
       setPostsBySort(EMPTY_POSTS)
       setPostsErr('')
       setPostsLoading(false)
@@ -545,17 +546,22 @@ function LoungeMatchupGameHubModal({
     setPostsLoading(!cachedPosts)
     setPostsErr('')
     let cancelled = false
-    const fetchSort = (sort) =>
-      loungeSearch(supabaseClient, searchQuery, {
-        sort,
-        postsLimit: 16,
-        profilesLimit: 0,
-        commentsLimit: 0,
-      }).then(async (result) => {
-        const raw = Array.isArray(result.posts) ? result.posts : []
-        return hydratePosts ? hydratePosts(raw) : raw
-      })
-    void Promise.all([fetchSort(LOUNGE_SEARCH_SORT.ENGAGEMENT), fetchSort(LOUNGE_SEARCH_SORT.RECENT)])
+    // Team-name search plus posts pinned to this game (a pinned post may never name either team).
+    const searchSort = (sort) =>
+      searchQuery.length < 2
+        ? Promise.resolve([])
+        : loungeSearch(supabaseClient, searchQuery, {
+          sort,
+          postsLimit: 16,
+          profilesLimit: 0,
+          commentsLimit: 0,
+        }).then((result) => (Array.isArray(result.posts) ? result.posts : []))
+    const pinned = loungeSportsGamePinnedPosts(supabaseClient, postsGameId).catch(() => [])
+    const hydrate = (raw) => (hydratePosts ? hydratePosts(raw) : raw)
+    void Promise.all([searchSort(LOUNGE_SEARCH_SORT.ENGAGEMENT), searchSort(LOUNGE_SEARCH_SORT.RECENT), pinned])
+      .then(([topRaw, latestRaw, pinnedRaw]) =>
+        Promise.all([hydrate(mergeGamePosts(topRaw, pinnedRaw, 'top')), hydrate(mergeGamePosts(latestRaw, pinnedRaw, 'latest'))]),
+      )
       .then(([top, latest]) => {
         if (cancelled) return
         const next = { top, latest }

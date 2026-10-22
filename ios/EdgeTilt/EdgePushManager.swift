@@ -150,7 +150,8 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
         let name = item.name.lowercased()
         let value = (item.value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if value.isEmpty { continue }
-        if name == "post" || name == "u" || name == "profile" || name == "game" || name == "yahoo" {
+        // `tab` (e.g. `/?tab=fantasy` from the weekly digest email): AASA claims `?tab=` once this build is live.
+        if name == "post" || name == "u" || name == "profile" || name == "game" || name == "yahoo" || name == "tab" {
           return true
         }
       }

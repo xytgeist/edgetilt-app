@@ -18,7 +18,8 @@
 
 Any agent (Mac or Windows) handling an App Store release or seeing a new build go **Ready for Distribution** must work this list. Web-only follow-ups that would break the *previous* IPA if shipped early.
 
-- [ ] **Claim game share links in AASA (Windows).** Live **1.4.96** already has the Swift `/lounge/g/` allow + rewrite (landed 2026-09-27 in 1.4.95 train). Add `{ "/": "/lounge/g/*", "comment": "Game hub share link (live scoreboard OG)" }` next to `/lounge/p/*` in **`public/.well-known/apple-app-site-association.json`**, plus `{ "/": "/", "?": { "game": "?*" }, "comment": "SPA game deep link" }`. Commit, push `test`, promote. Safe now ... the live IPA will not open a game UL to a blank page.
+- [x] **Claim game share links in AASA.** Done 2026-10-21 (Mac): `/lounge/g/*` and `/?game=` added to **`public/.well-known/apple-app-site-association.json`** (the live IPA already allows + rewrites both).
+- [ ] **Claim `/?tab=` in AASA once the `tab` allowlist build is the live App Store version.** Swift `isAllowedUniversalLink` accepts `tab` starting with the next build after 1.4.98 (`20261020234852` does not have it). Then add `{ "/": "/", "?": { "tab": "?*" }, "comment": "SPA tab deep link (weekly digest email: /?tab=fantasy)" }`. Do **not** ship it earlier: an older IPA would open on a `?tab=` link and ignore it (app opens on whatever screen it had) instead of falling back to Safari.
 
 ---
 

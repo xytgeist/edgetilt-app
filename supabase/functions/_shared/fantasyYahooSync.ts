@@ -6,6 +6,7 @@
  * categories, today's lineup (Yahoo NBA lineups are daily) with each player's week points and eligible positions.
  * An NBA failure never fails the NFL sync.
  */
+import { addSchedulePair, reusableSchedule, saveLeagueSchedule, type ScheduleWeeks } from './fantasySchedule.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { resolvePublicAppOrigin } from './publicAppOrigin.ts'
 import { fetchNflState, type SyncResult } from './fantasySleeperSync.ts'
@@ -241,6 +242,24 @@ export function yahooEntities(root: unknown, kind: 'team' | 'player' | 'league')
     }
   }
   walk(root)
+  return out
+}
+
+/** Every `matchup` object (week, is_playoffs, teams inside) in a Yahoo payload, e.g. `/league/{key}/teams/matchups`. */
+function yahooMatchupObjects(root: unknown): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = []
+  const walk = (node: unknown, depth: number) => {
+    if (!node || typeof node !== 'object' || depth > 14) return
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item, depth + 1)
+      return
+    }
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      if (k === 'matchup' && v && typeof v === 'object' && !Array.isArray(v)) out.push(v as Record<string, unknown>)
+      else walk(v, depth + 1)
+    }
+  }
+  walk(root, 0)
   return out
 }
 
@@ -858,6 +877,14 @@ export async function syncYahooConnection(
             scoring = {}
           }
 
+          // Keep last sync's schedule while it is fresh (Yahoo's full-schedule read is ~4 MB).
+          const { data: priorRow } = await admin
+            .from('fantasy_leagues')
+            .select('settings')
+            .eq('connection_id', connectionId)
+            .eq('external_league_id', leagueKey)
+            .maybeSingle()
+          const priorSchedule = reusableSchedule((priorRow?.settings as Record<string, unknown> | null)?.schedule, week)
           const leagueSettings: Record<string, unknown> = {
             current_week: week,
             num_teams: num(lg.num_teams),
@@ -866,6 +893,7 @@ export async function syncYahooConnection(
             ...(waiver ? { waiver } : {}),
             ...(lineupSlots.length ? { lineup_slots: lineupSlots } : {}),
             ...playoffs,
+            ...(priorSchedule ? { schedule: priorSchedule } : {}),
           }
           const { data: leagueRow, error: lgErr } = await admin
             .from('fantasy_leagues')
@@ -1008,6 +1036,24 @@ export async function syncYahooConnection(
                 { onConflict: 'league_id,week,mine_team_id' },
               )
               if (muErr) throw new Error(muErr.message)
+            }
+          }
+
+          // Rest of the regular season for League outlook (every team's matchups in one read).
+          if (!priorSchedule) {
+            try {
+              const all = await yahooGet(access, `/league/${encodeURIComponent(leagueKey)}/teams/matchups`)
+              const weeks: ScheduleWeeks = {}
+              for (const mu of yahooMatchupObjects(all)) {
+                const w = Number(mu.week)
+                if (str(mu.is_playoffs) === '1' || str(mu.is_consolation) === '1') continue
+                const teamsIn = yahooEntities(mu, 'team')
+                if (!Number.isFinite(w) || teamsIn.length !== 2) continue
+                addSchedulePair(weeks, w, teamIdByKey.get(str(teamsIn[0].team_key)) || null, teamIdByKey.get(str(teamsIn[1].team_key)) || null, week + 1)
+              }
+              await saveLeagueSchedule(admin, leagueId, weeks)
+            } catch {
+              /* outlook falls back to random pairings */
             }
           }
 

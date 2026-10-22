@@ -190,6 +190,7 @@ async function leagueSection(
       week,
       pairs: [],
       format: playoffFormat(league, detail.teams.length),
+      schedule: (league.settings as { schedule?: { weeks?: Record<string, Array<[string, string]>> } } | null)?.schedule?.weeks || null,
     })
     odds = sim?.[mine.id] || null
     strength = byTeam[mine.id] || 0

@@ -3742,6 +3742,7 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool, 
       week: detail?.week,
       pairs: weekPairs(detail?.matchups),
       format,
+      schedule: detail?.league?.settings?.schedule?.weeks || null,
     })
     const order = [...teams].sort((a, b) => (b.wins || 0) - (a.wins || 0) || (Number(b.points_for) || 0) - (Number(a.points_for) || 0))
     const strengthRank = [...teams].sort((a, b) => (strength[b.id] || 0) - (strength[a.id] || 0)).findIndex((t) => t.id === mine.id) + 1

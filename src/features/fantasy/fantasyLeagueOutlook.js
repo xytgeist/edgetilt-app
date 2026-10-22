@@ -1,7 +1,8 @@
 /**
  * League outlook: playoff and title odds from a season simulation. Each team scores its rest-of-season lineup
  * strength (`teamStrength`, the same per-week value the trade tools use) with weekly noise; this week keeps its
- * real pairings, later regular-season weeks pair teams at random (hosts do not send the remaining schedule yet).
+ * real pairings, later regular-season weeks use the league's schedule (`settings.schedule.weeks`, saved by every
+ * host sync) and pair at random only for weeks it is missing.
  * Seeds go by wins, then points for; the bracket gives the top seeds byes when the field is not a power of two.
  */
 
@@ -68,10 +69,10 @@ function playBracket(seeded, score) {
 /**
  * @param {{ teams: Array<{ id: string, wins: number, losses: number, ties: number, pointsFor: number }>,
  *   strength: Record<string, number>, week: number, pairs: Array<[string, string]>, format: { start: number, teams: number },
- *   sims?: number, seed?: number }} input
+ *   schedule?: Record<string, Array<[string, string]>>, sims?: number, seed?: number }} input
  * @returns {Record<string, { playoff: number, title: number }> | null} null once the regular season is over
  */
-export function simulateLeague({ teams, strength, week, pairs, format, sims = 3000, seed = 7 }) {
+export function simulateLeague({ teams, strength, week, pairs, format, schedule = null, sims = 3000, seed = 7 }) {
   const ids = (teams || []).map((t) => String(t.id))
   if (ids.length < 2) return null
   const regularLeft = Math.max(0, format.start - Math.max(1, Number(week) || 1))
@@ -84,6 +85,13 @@ export function simulateLeague({ teams, strength, week, pairs, format, sims = 30
     (teams || []).map((t) => [String(t.id), { wins: (Number(t.wins) || 0) + (Number(t.ties) || 0) / 2, pf: Number(t.pointsFor) || 0 }]),
   )
   const thisWeek = (pairs || []).filter(([a, b]) => a && b && mean[a] != null && mean[b] != null)
+  const startWeek = Math.max(1, Number(week) || 1)
+  // A saved week counts only when every pairing is between teams we know (a stale schedule falls back to random).
+  const scheduled = (w) => {
+    const list = schedule && typeof schedule === 'object' ? schedule[String(startWeek + w)] : null
+    if (!Array.isArray(list) || !list.length) return null
+    return list.every(([a, b]) => mean[a] != null && mean[b] != null && a !== b) ? list : null
+  }
 
   const rng = mulberry32(seed + ids.length * 31 + regularLeft)
   const playoff = Object.fromEntries(ids.map((id) => [id, 0]))
@@ -94,7 +102,7 @@ export function simulateLeague({ teams, strength, week, pairs, format, sims = 30
     const wins = Object.fromEntries(ids.map((id) => [id, base[id].wins]))
     const pf = Object.fromEntries(ids.map((id) => [id, base[id].pf]))
     for (let w = 0; w < regularLeft; w += 1) {
-      const games = w === 0 && thisWeek.length ? thisWeek : pairUp(shuffle(ids, rng))
+      const games = w === 0 && thisWeek.length ? thisWeek : scheduled(w) || pairUp(shuffle(ids, rng))
       for (const [a, b] of games) {
         const sa = draw(a)
         const sb = draw(b)

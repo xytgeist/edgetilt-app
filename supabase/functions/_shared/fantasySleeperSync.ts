@@ -2,6 +2,7 @@
  * Sleeper Fantasy Connect … link username + sync leagues / teams / rosters / matchups.
  * Public Sleeper API (no OAuth). Maps players onto sleeper_id for nfl_players + hub pins.
  */
+import { addSchedulePair, saveLeagueSchedule, type ScheduleWeeks } from './fantasySchedule.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 
 const SLEEPER = 'https://api.sleeper.app/v1'
@@ -438,6 +439,26 @@ export async function syncSleeperConnection(
           { onConflict: 'league_id,week,mine_team_id' },
         )
         if (muErr) throw new Error(muErr.message)
+      }
+
+      // Rest of the regular season (Sleeper lists each future week's pairings), for League outlook's simulation.
+      const playoffStart = Number((lg.settings as Record<string, unknown> | undefined)?.playoff_week_start) || 0
+      if (playoffStart > week + 1) {
+        const later = Array.from({ length: playoffStart - week - 1 }, (_, i) => week + 1 + i)
+        const lists = await Promise.all(
+          later.map((w) => sleeperGet<SleeperMatchup[]>(`/league/${externalLeagueId}/matchups/${w}`).catch(() => [] as SleeperMatchup[])),
+        )
+        const weeks: ScheduleWeeks = {}
+        lists.forEach((list, i) => {
+          const byMatchup = new Map<string, string[]>()
+          for (const m of list || []) {
+            if (m?.matchup_id == null || m.roster_id == null) continue
+            const id = teamIdByRoster.get(m.roster_id)
+            if (id) byMatchup.set(String(m.matchup_id), [...(byMatchup.get(String(m.matchup_id)) || []), id])
+          }
+          for (const [a, b] of byMatchup.values()) addSchedulePair(weeks, later[i], a || null, b || null, week + 1)
+        })
+        await saveLeagueSchedule(admin, leagueId, weeks).catch(() => {})
       }
 
       // NBA must not steal the NFL primary used for game-hub pins.

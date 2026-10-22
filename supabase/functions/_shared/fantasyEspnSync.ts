@@ -6,6 +6,7 @@
  * (`fantasy_matchups.categories`). ESPN numbers the NBA season by its end year; it is saved by its start year
  * (Sleeper / Yahoo). An NBA failure never fails the NFL sync.
  */
+import { addSchedulePair, saveLeagueSchedule, type ScheduleWeeks } from './fantasySchedule.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { type NbaPlayer, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
 import { loadNbaBoard } from './fantasyNbaBoard.ts'
@@ -613,6 +614,7 @@ async function syncEspnConnection(
         )
         if (muErr) throw new Error(muErr.message)
       }
+      await saveLeagueSchedule(admin, leagueId, espnRemainingSchedule(schedule, teamIdByEspn, week)).catch(() => {})
     }
 
     if (!firstMineLeague) firstMineLeague = nba.firstMineLeague
@@ -881,8 +883,29 @@ async function syncEspnNba(
       )
       if (muErr) throw new Error(muErr.message)
     }
+    await saveLeagueSchedule(admin, leagueId, espnRemainingSchedule(lg.schedule, teamIdByEspn, week)).catch(() => {})
   }
   return { leagues: count, firstMineLeague }
+}
+
+/** Regular-season pairings after `week` from ESPN's full `schedule` (playoff bracket rows skipped). */
+function espnRemainingSchedule(schedule: unknown, teamIdByEspn: Map<string, string>, week: number): ScheduleWeeks {
+  const weeks: ScheduleWeeks = {}
+  for (const rowRaw of Array.isArray(schedule) ? schedule : []) {
+    const row = asRecord(rowRaw)
+    if (!row) continue
+    const tier = String(row.playoffTierType || 'NONE')
+    if (tier !== 'NONE') continue
+    const period = Number(row.matchupPeriodId)
+    addSchedulePair(
+      weeks,
+      period,
+      teamIdByEspn.get(String(asRecord(row.home)?.teamId ?? '')) || null,
+      teamIdByEspn.get(String(asRecord(row.away)?.teamId ?? '')) || null,
+      week + 1,
+    )
+  }
+  return weeks
 }
 
 export type PendingTradeItem = {

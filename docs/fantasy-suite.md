@@ -48,7 +48,10 @@ Running list of shipped work that still needs a real-data check. **Add a line wh
 
 - [ ] Matchup cards show league name + NBA format chip (dark + light); long ESPN names truncate cleanly.
 
+- [ ] League outlook uses real remaining schedules: after a sync each league has `settings.schedule.weeks` (Sleeper per-week fetch, ESPN `schedule`, Yahoo `/teams/matchups` reused 7 days); odds shift vs random where schedules are lopsided.
+
 **Checked**
+- [x] 2026-10-22 Real schedules: Yahoo `/teams/matchups` parses to 5 games / 10 teams for weeks 2-19 (H2H-Pts 272329 + High Score 273072); Sleeper NFL test league saved weeks 8-13; synthetic sim: equal teams 51% / 51% random vs 9% / 94% with a lopsided schedule; stale schedule falls back to random.
 - [x] 2026-10-22 Stream on Dallas Pro (Edge Lord session): next-week plan, open nights, picks match real schedules, pick-one note.
 - [x] 2026-10-22 Schedule card on Dallas Pro: next week, 40 vs 37 starts, nightly starts, back-to-backs, fits a phone after the grid fix.
 - [x] 2026-10-22 Yahoo H2H-Pts win % 1% -> 10% after the variance fix; Roster rows show next week's games when upcoming.

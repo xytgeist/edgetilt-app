@@ -3969,8 +3969,7 @@ html.light [data-lounge-sports-hub-slate] [data-edge-skeleton] .border-zinc-800 
   border-color: rgba(0, 0, 0, 0.06) !important;
 }
 [data-sports-hub-tracker='home'],
-[data-sports-hub-tracker='tools'],
-[data-sports-hub-fantasy='nfl-soon'] {
+[data-sports-hub-tracker='tools'] {
   border-color: rgb(39 39 42);
   background: rgb(24 24 27 / 0.88);
   color: #fafafa;
@@ -3980,8 +3979,7 @@ html.light [data-lounge-sports-hub-slate] [data-edge-skeleton] .border-zinc-800 
   background: rgb(39 39 42);
 }
 html.light [data-sports-hub-tracker='home'],
-html.light [data-sports-hub-tracker='tools'],
-html.light [data-sports-hub-fantasy='nfl-soon'] {
+html.light [data-sports-hub-tracker='tools'] {
   background: #f4f4f5;
   border-color: rgba(0, 0, 0, 0.06);
   color: #18181b;
@@ -3991,20 +3989,9 @@ html.light [data-sports-hub-tracker='home'] .text-cyan-400,
 html.light [data-sports-hub-tracker='tools'] .text-cyan-400 {
   color: #0891b2 !important;
 }
-html.light [data-sports-hub-fantasy='nfl-soon'] .text-sky-400 {
-  color: #0284c7 !important;
-}
 html.light [data-sports-hub-tracker='home']:active,
 html.light [data-sports-hub-tracker='tools']:active {
   background: #e4e4e7;
-}
-html.light [data-sports-hub-fantasy-soon-veil] {
-  background: rgb(250 250 250 / 0.55) !important;
-}
-html.light [data-sports-hub-fantasy-soon-pill] {
-  background: rgb(244 244 245 / 0.95) !important;
-  border-color: #a1a1aa !important;
-  color: #3f3f46 !important;
 }
 [data-lounge-sports-hub-leagues] [data-sports-hub-league] {
   border-color: rgb(39 39 42);

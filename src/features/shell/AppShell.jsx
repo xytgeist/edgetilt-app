@@ -2524,13 +2524,14 @@ export default function AppShell({
     }
   }, [browseMode, supabaseClient, tab])
 
-  /** Title bar ☰ menu - Slots / Poker / Sports hubs + Chat (Lounge via dock home; Monitor admin-only; Mod staff). */
+  /** Title bar ☰ menu - Slots / Poker / Sports hubs / Fantasy + Chat (Lounge via dock home; Monitor admin-only; Mod staff). */
   const navItems = [
     { id: 'slots', label: 'Slots', icon: NAV_ICONS.slots, subscriberGated: false },
     { id: 'poker', label: 'Poker', icon: NAV_ICONS.poker, subscriberGated: false },
     { id: 'sports-hub', label: 'Sports Hub', icon: NAV_ICONS['sports-hub'], subscriberGated: false },
     { id: 'nfl-hub', label: 'NFL Hub', icon: NAV_ICONS['nfl-hub'], subscriberGated: false },
     { id: 'cfb-hub', label: 'CFB Hub', icon: NAV_ICONS['cfb-hub'], subscriberGated: false },
+    { id: 'fantasy', label: 'Fantasy', icon: NAV_ICONS.fantasy, subscriberGated: false },
     { id: 'chat', label: 'Chat', icon: NAV_ICONS.chat, subscriberGated: false },
     ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: NAV_ICONS.monitor, subscriberGated: false }] : []),
     ...(isStaff ? [{ id: 'mod', label: 'Mod', icon: NAV_ICONS.mod, subscriberGated: false }] : []),

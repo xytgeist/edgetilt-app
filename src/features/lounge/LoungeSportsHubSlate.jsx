@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Calculator, ChevronLeft, ClipboardList, Shirt } from 'lucide-react'
+import { Calculator, ChevronLeft, ClipboardList } from 'lucide-react'
 import LoungeSportsHubSlateSkeleton from './LoungeSportsHubSlateSkeleton.jsx'
 import { headshotSources } from '../../utils/playerHeadshot.js'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
@@ -26,7 +26,6 @@ import { isPgaGame, loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
 import { probeLogoWashTreatment, resolveNflPillWashes } from './loungeSportsMatch.js'
 import { usePhoneLandscapeNotTablet } from '../../utils/edgeiOSComposerPortraitLock.js'
 import { openSportsBetTracker, openSportsBetTools } from '../sports-bet-tracker/sportsBetNav.js'
-import { markFantasyOpenedFromSportsHub } from '../fantasy/fantasyReturnNav.js'
 
 /** Never hold a league hub behind the loader longer than this (slow CDN / missing art). */
 const LEAGUE_HUB_ASSET_CAP_MS = 6000
@@ -113,65 +112,6 @@ function isMlsHubFilter(filter) {
 function isPgaHubFilter(filter) {
   const f = String(filter || '')
   return f === LOUNGE_SPORTS_HUB_FILTER_PGA || f.startsWith('golf_') || f === 'pga' || f === 'golf'
-}
-
-/** Hidden door. Public tile stays Coming soon. Four taps, each within this of the last, open Fantasy. */
-const FANTASY_UNLOCK_TAPS = 4
-const FANTASY_UNLOCK_GAP_MS = 600
-
-function NflHubFantasyComingSoon() {
-  const sports = useLoungeSportsFeed()
-  const tapCountRef = useRef(0)
-  const lastTapRef = useRef(0)
-
-  const onTap = () => {
-    const now = Date.now()
-    if (now - lastTapRef.current > FANTASY_UNLOCK_GAP_MS) tapCountRef.current = 0
-    lastTapRef.current = now
-    tapCountRef.current += 1
-    if (tapCountRef.current < FANTASY_UNLOCK_TAPS) return
-    tapCountRef.current = 0
-    if (typeof window === 'undefined') return
-    const url = new URL(window.location.href)
-    url.searchParams.set('tab', 'fantasy')
-    url.searchParams.delete('game')
-    markFantasyOpenedFromSportsHub(sports?.slateFilter)
-    window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
-    window.dispatchEvent(new PopStateEvent('popstate'))
-    // Hub is a body portal and the feed stays mounted, so the veil would cover Fantasy.
-    sports?.closeSlate?.()
-  }
-
-  return (
-    <div className="px-1 pb-3 pt-1">
-      <button
-        type="button"
-        data-sports-hub-fantasy="nfl-soon"
-        data-hub-tool-coming-soon
-        aria-label="Fantasy, coming soon"
-        onClick={onTap}
-        className="relative flex min-h-[3.25rem] w-full items-center gap-3 rounded-2xl border px-3.5 text-left opacity-90 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-      >
-        <Shirt className="h-5 w-5 shrink-0 text-sky-400" strokeWidth={2.25} aria-hidden />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-semibold tracking-tight">Fantasy</span>
-          <span className="block text-[11px] font-medium text-zinc-500">Sleeper · Yahoo · Hub pins</span>
-        </span>
-        <span
-          data-sports-hub-fantasy-soon-veil
-          className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center rounded-2xl bg-zinc-950/55 backdrop-blur-[1px]"
-          aria-hidden
-        >
-          <span
-            data-sports-hub-fantasy-soon-pill
-            className="rounded-full border border-zinc-500/50 bg-zinc-900/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-zinc-200"
-          >
-            Coming soon
-          </span>
-        </span>
-      </button>
-    </div>
-  )
 }
 
 function SportsHubLeagueButtons({ onOpenLeague, onOpenTracker, onOpenTools }) {
@@ -419,7 +359,6 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
             }}
           />
         )}
-        {nflHub ? <NflHubFantasyComingSoon /> : null}
         {!leagueReady || (!boardFetched && !games.length) ? (
           <div data-lounge-sports-hub-loading>
             <LoungeSportsHubSlateSkeleton grid={phoneLandscape && !embedded} />

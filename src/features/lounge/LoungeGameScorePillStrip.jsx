@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import LoungeGameScorePill from './LoungeGameScorePill.jsx'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
@@ -8,6 +8,7 @@ import {
   loungeFeedCarouselMeasureLayout,
 } from './loungeFeedImageAttachment.js'
 import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.js'
+import { useLoungeSlowTicker } from './useLoungeSlowTicker.js'
 
 /**
  * Feed / detail sports cards. Pin-only (via context `gamesForPost`). Multi = minichart carousel.
@@ -32,8 +33,17 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
 
   const multi = games.length > 1
   const carouselFullBleed = multi && loungeFeedCarouselFullBleed(variant)
+  const tickerGames = useMemo(
+    () => (multi ? [...games, ...games] : games),
+    [games, multi],
+  )
 
   useLoungeFeedCarouselAxisLock(carouselScrollRef, multi)
+  useLoungeSlowTicker(carouselScrollRef, {
+    enabled: multi,
+    speedPxPerSec: 24,
+    loop: multi,
+  })
 
   useLayoutEffect(() => {
     if (!multi) return undefined
@@ -75,6 +85,7 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
 
   if (!games.length) return null
 
+  const loopGapPx = Math.round((carouselViewport.firstSlideMaxWidthPx || 280) / 2)
   const slideWidthStyle =
     multi && carouselViewport.firstSlideMaxWidthPx
       ? {
@@ -98,17 +109,23 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
     >
       <div
         {...(multi ? { 'data-lounge-feed-carousel-track': true } : null)}
-        className={multi ? 'flex flex-nowrap items-stretch gap-2' : 'w-full'}
+        className={multi ? 'flex flex-nowrap items-stretch' : 'w-full'}
       >
-        {games.map((game, idx) => (
-          <div
-            key={`${String(game.id)}-${hubPaintEpoch}-${idx}`}
-            className={multi ? 'relative shrink-0' : 'relative w-full max-w-full'}
-            style={slideWidthStyle}
-            {...(carouselFullBleed ? { 'data-lounge-feed-carousel-slide': true } : null)}
-          >
-            <LoungeGameScorePill game={game} className="mt-0" />
-          </div>
+        {tickerGames.map((game, idx) => (
+          <Fragment key={`${String(game.id)}-${hubPaintEpoch}-${idx}`}>
+            <div
+              className={multi ? 'relative mr-2 shrink-0' : 'relative w-full max-w-full'}
+              style={slideWidthStyle}
+              {...(carouselFullBleed ? { 'data-lounge-feed-carousel-slide': true } : null)}
+            >
+              <LoungeGameScorePill game={game} className="mt-0" />
+            </div>
+            {/* Half a pill of air after each set, so the loop reads as starting over, not as duplicates.
+                Margins (not flex gap) keep both halves the same width, which the seamless wrap needs. */}
+            {multi && idx % games.length === games.length - 1 ? (
+              <div aria-hidden className="shrink-0" style={{ width: loopGapPx }} />
+            ) : null}
+          </Fragment>
         ))}
       </div>
     </div>

@@ -10,20 +10,20 @@
     <title>Closing Line Value Calculator | EdgeTilt</title>
     <meta
       name="description"
-      content="Compare your spread, total, or price to the close. Positive CLV means you beat the number. Free EdgeTilt calculator, no login."
+      content="Compare your spread, total, or price to the close. Positive CLV means you beat the number. Free on EdgeTilt, no login."
     />
     <link rel="canonical" href="https://edgetilt.com/calculators/clv" />
     <meta property="og:site_name" content="EdgeTilt" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://edgetilt.com/calculators/clv" />
     <meta property="og:title" content="Closing Line Value Calculator | EdgeTilt" />
-    <meta property="og:description" content="Spread, total, and price CLV versus the close. Positive means you beat the number." />
+    <meta property="og:description" content="Spread, total, and price CLV against the close. Positive means you beat the number. You type both figures." />
     <meta property="og:image" content="https://edgetilt.com/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Closing Line Value Calculator | EdgeTilt" />
-    <meta name="twitter:description" content="Your number versus the close. Free CLV calculator on EdgeTilt." />
+    <meta name="twitter:description" content="Your number against the close. A free CLV calculator on EdgeTilt. Nothing gets uploaded." />
     <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -39,11 +39,71 @@
         "operatingSystem": "Web",
         "isAccessibleForFree": true,
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-        "description": "Compare a spread, total, or price to the closing number.",
+        "description": "Compare a spread, total, or price you type to a closing number you type.",
+        "datePublished": "2026-10-22",
+        "dateModified": "2026-10-22",
         "publisher": { "@type": "Organization", "name": "Digiverse Ventures, LLC", "url": "https://digiverse.ventures/" },
         "isPartOf": { "@type": "WebSite", "name": "EdgeTilt", "url": "https://edgetilt.com/" }
       }
     </script>
+      <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Does a positive CLV mean the bet won?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. It means your number beat the close. The game can still go the other way. Closing line value grades the price you got. It doesn't settle the ticket."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What if I only wrote down the other team's spread?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Convert it to your side first. If you bet the dog at +7, both boxes should be plus numbers for that dog. Putting +7 against the favorite's closing -3 counts the sign twice. Your line 7 and closing line 3 is the +4.0 example already in the form."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why is price CLV +3.48 when the odds only moved from +150 to +130?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The move is 20 cents in American odds, but this row measures probability points. +150 implies 40.00% and +130 implies 43.48%. The difference is 3.48 points of probability. The page won't call that 20 points, and the bet tracker doesn't store that 3.48 as spread CLV."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does this look up the closing line for me?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. You type your number and the close. The page doesn't read a scoreboard, a market file, or your account."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What does 0.0 pts mean?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Your number and the close are the same. The verdict says: Same number as the close. That is not a beat. Set a spread to -3 and -3 and Line CLV is 0.0 pts."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is the total side important?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Under 45 closing at 48 is +3.0 pts. Over 45 closing at 48 is -3.0 pts. Pick the side you bet before you trust the sign."
+      }
+    }
+  ],
+  "datePublished": "2026-10-22",
+  "dateModified": "2026-10-22"
+}
+</script>
   </head>
   <body class="accent-cyan">
     <main class="wrap">
@@ -53,16 +113,14 @@
       </a>
       <p class="kicker">Free, no login</p>
       <h1>Closing line value</h1>
-      <p class="lead">
-        Closing line value is your number versus the close, not versus the opener. On a spread,
-        CLV is your line minus the closing line on the same side. A dog +7 that closes +3 is +4 points.
-        On a total, an over uses your total minus the close, and an under uses the close minus your total.
-        On a price, CLV is the close's implied probability minus yours, in percentage points.
-        Positive means you beat the close. The bet tracker stores spread and total CLV in points.
-        This page also runs price CLV. Your saved bets and the live close stay in the tracker.
-      </p>
-      <p class="example">Example: +7 closing at +3 is +4.0 points. Under 45 closing at 48 is +3.0 points. +150 closing at +130 is about +3.48 probability points.</p>
-      <form data-calc action="#" onsubmit="return false">
+      <section class="prose">
+<p>Closing line value is your number against the close, not against the opener. The close is the last number before the event starts. Beat the close and you got a better number than the market's final word, even if the ticket loses.</p>
+<p>This page works out the gap from two figures you type. It doesn't look up a game, a close, or your bet log. Positive means you beat the close. Spreads and totals come back in points, and prices come back in probability points. Those units don't mix.</p>
+<h2>How to use it</h2>
+<ol><li>Market starts on Spread. Enter Your line and Closing line, same side. Both numbers are for the side you bet. The form starts at 7 and 3.</li><li>Total: pick Over or Under. Under starts selected. Your total and Closing total start at 45 and 48.</li><li>Price: Price you bet and Closing price take American odds, starting at +150 and +130.</li><li>Read Line CLV or Price CLV, plus the sentence above the number.</li></ol>
+<p>If a figure's missing, you'll see "Enter your number and the close." or "Enter the price you bet and the closing price." The page won't make up the close for you.</p>
+</section>
+<form data-calc action="#" onsubmit="return false">
         <label class="field">Market
           <select name="market">
             <option value="spread" selected>Spread</option>
@@ -110,12 +168,44 @@
         </div>
       </form>
       <div class="out" data-out aria-live="polite"></div>
-      <p class="fine">
+      <section class="prose">
+<h2>The formula in plain terms</h2>
+<p>Spread, same side: your line minus the closing line. A dog at +7 that closes +3 is 7 minus 3 = +4. A favorite at -3 that closes -6.5 is -3 minus -6.5 = +3.5. Enter both numbers for the side you bet. Don't put your +7 against the other team's minus line. That sign flip isn't a close, and the math will be wrong.</p>
+<p>Over: your total minus the close. Over 47.5 closing at 46 is +1.5. Under: the close minus your total. Under 45 closing at 48 is +3.</p>
+<p>Price CLV = (implied close minus implied bet) times 100. Plus price implied = 100 / (price + 100). Minus price implied = absolute price / (absolute price + 100). If the close is shorter than your price, that's positive.</p>
+<p>Line CLV shows one decimal with pts after it. Price CLV shows two decimals. Above zero: You beat the close. Below zero: The close beat your number. Zero: Same number as the close. That is not a beat.</p>
+<p>On a price result, the page adds: Price CLV is probability points, not the spread points stored on a bet. The bet tracker stores spread and total points on the bets you logged. It doesn't put this price figure in that column.</p>
+<h2>Worked example 1. The spread already filled in</h2>
+<p>Your line 7, closing line 3. 7 minus 3 = 4. You'll see "You beat the close." and Line CLV +4.0 pts. That's closing line value, not the final margin, and it doesn't mean the bet won.</p>
+<h2>Worked example 2. Price, then the total</h2>
+<p>Switch to Price and leave +150 and +130. +150 implies 40.00%, and +130 implies 43.48%. The gap is +3.48 pts. You'll see "You beat the close. Price CLV is probability points, not the spread points stored on a bet." and Price CLV +3.48 pts.</p>
+<p>Switch to Total. Leave Under, 45, and 48. Close minus your total is 48 minus 45 = +3. You'll see "You beat the close." and Line CLV +3.0 pts.</p>
+<p>Flip Side to Over with the same 45 and 48. Your total minus the close is -3. You'll see "The close beat your number." and Line CLV -3.0 pts. Same totals, other side, opposite sign.</p>
+<h2>When it helps, and where it stops</h2>
+<p>Use it when you've got both numbers in front of you. Positive CLV means you beat the last number. It doesn't promise the ticket cashes.</p>
+<p>The page won't fetch the close for you. If you only have the other side of a spread, convert it to your side before you type it. Price points and line points don't add together. Nothing you type gets sent to EdgeTilt.</p>
+</section>
+<p class="fine">
         Runs in your browser. Nothing is sent to EdgeTilt.
         Saved CLV on your own bets lives in the <a href="/sports/bet-tracker">bet tracker</a>.
       </p>
       <noscript><p class="hint">Turn on JavaScript to run the numbers. The example above uses the same formula.</p></noscript>
-      <footer>
+      <section class="faq">
+<h2>FAQ</h2>
+<h3>Does a positive CLV mean the bet won?</h3>
+<p>No. It means your number beat the close. The game can still go the other way. Closing line value grades the price you got. It doesn't settle the ticket.</p>
+<h3>What if I only wrote down the other team's spread?</h3>
+<p>Convert it to your side first. If you bet the dog at +7, both boxes should be plus numbers for that dog. Putting +7 against the favorite's closing -3 counts the sign twice. Your line 7 and closing line 3 is the +4.0 example already in the form.</p>
+<h3>Why is price CLV +3.48 when the odds only moved from +150 to +130?</h3>
+<p>The move is 20 cents in American odds, but this row measures probability points. +150 implies 40.00% and +130 implies 43.48%. The difference is 3.48 points of probability. The page won't call that 20 points, and the bet tracker doesn't store that 3.48 as spread CLV.</p>
+<h3>Does this look up the closing line for me?</h3>
+<p>No. You type your number and the close. The page doesn't read a scoreboard, a market file, or your account.</p>
+<h3>What does 0.0 pts mean?</h3>
+<p>Your number and the close are the same. The verdict says: Same number as the close. That is not a beat. Set a spread to -3 and -3 and Line CLV is 0.0 pts.</p>
+<h3>Is the total side important?</h3>
+<p>Yes. Under 45 closing at 48 is +3.0 pts. Over 45 closing at 48 is -3.0 pts. Pick the side you bet before you trust the sign.</p>
+</section>
+<footer>
         <a href="/calculators/kelly">Kelly</a>
         ·
         <a href="/calculators/no-vig">No-vig</a>

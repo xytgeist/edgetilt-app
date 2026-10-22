@@ -10,20 +10,20 @@
     <title>Odds Converter | EdgeTilt</title>
     <meta
       name="description"
-      content="Convert American, decimal, and fractional odds and see the implied win percent. Free on EdgeTilt. Nothing is uploaded."
+      content="Convert American, decimal, and fractional odds and see the implied win percent. Free on EdgeTilt, and nothing gets uploaded."
     />
     <link rel="canonical" href="https://edgetilt.com/calculators/odds-converter" />
     <meta property="og:site_name" content="EdgeTilt" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://edgetilt.com/calculators/odds-converter" />
     <meta property="og:title" content="Odds Converter | EdgeTilt" />
-    <meta property="og:description" content="American, decimal, and fractional odds, plus implied win percent. Free, no login." />
+    <meta property="og:description" content="American, decimal, and fractional odds, plus the implied win percent. Free, no login." />
     <meta property="og:image" content="https://edgetilt.com/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Odds Converter | EdgeTilt" />
-    <meta name="twitter:description" content="Convert +150, 2.50, or 3/2. Free odds converter on EdgeTilt." />
+    <meta name="twitter:description" content="Convert +150, 2.50, or 3/2. A free odds converter on EdgeTilt." />
     <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -40,10 +40,70 @@
         "isAccessibleForFree": true,
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
         "description": "Convert American, decimal, and fractional odds and show the implied win percent.",
+        "datePublished": "2026-10-22",
+        "dateModified": "2026-10-22",
         "publisher": { "@type": "Organization", "name": "Digiverse Ventures, LLC", "url": "https://digiverse.ventures/" },
         "isPartOf": { "@type": "WebSite", "name": "EdgeTilt", "url": "https://edgetilt.com/" }
       }
     </script>
+      <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why does -110 show 1.91 instead of 1.909?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The exact decimal is 1 + 100/110 = 1.90909... The row rounds to the cent, so it shows 1.91. Type 1.91 and the American row gives you -110."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Are +150, 2.50, and 3/2 the same price?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Each one converts to American +150, decimal 2.50, fractional 3/2, and an implied 40.00%."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What does the implied percent mean?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "It's the break-even win rate inside that one price. +150 implies 40.00%, and -110 implies 52.38%. It's not a forecast, and it's not a no-vig probability. No-vig needs both sides of the market."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why did 7/2 become +350?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "7/2 means $7 profit on $2 staked. That's 3.5 to 1 profit, or 4.50 back per 1 unit with your stake. (4.50 minus 1) times 100 is +350. The implied rate is 100 / 450 = 22.22%."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I enter a moneyline with no plus or minus?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Type the sign. +150 and -110 tell the page which side of even money you mean. A decimal needs a point, like 2.50. A fraction needs a slash, like 3/2."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does this save my price to Sports Bet Tracker?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. The conversion stays in your browser. The tracker is a separate account tool, and it doesn't read this box."
+      }
+    }
+  ],
+  "datePublished": "2026-10-22",
+  "dateModified": "2026-10-22"
+}
+</script>
   </head>
   <body class="accent-cyan">
     <main class="wrap">
@@ -53,20 +113,63 @@
       </a>
       <p class="kicker">Free, no login</p>
       <h1>Odds converter</h1>
-      <p class="lead">
-        Type American (+150 or -110), decimal (2.50), or fractional (3/2). The converter returns
-        the other formats and the implied win percent baked into that price. Decimal is rounded to the cent.
-      </p>
-      <p class="example">Example: +150 is 2.50 decimal, 3/2 fractional, and a 40% implied chance.</p>
-      <form data-calc action="#" onsubmit="return false">
+      <section class="prose">
+<p>The same bet can be quoted three ways. American odds are the plus and minus prices you see in the US, like +150 or -110. Decimal odds are your total return per one unit staked, stake included, like 2.50. Fractional odds are profit as a fraction of your stake, like 3/2. The implied win percent is the break-even rate baked into that price if the book took no margin. It's not a prediction.</p>
+<p>This odds converter takes any one of those formats and gives you the other three. Decimal is rounded to the cent. The math runs in your browser. Nothing gets uploaded, and the box isn't tied to an account or a bet log.</p>
+<h2>How to use it</h2>
+<ol><li>Click the box labeled Any format.</li><li>Type one price. American needs a sign: +150 or -110. Decimal needs a point and has to be greater than 1, like 2.50 or 1.91. Fractional needs a slash, like 3/2 or 7/2.</li><li>Read the four rows: American, Decimal, Fractional, and Implied.</li></ol>
+<p>If what you typed doesn't fit one of those shapes, the hint says: Try +150, 2.50, or 3/2. When you mean a plus price, type the plus.</p>
+</section>
+<form data-calc action="#" onsubmit="return false">
         <label class="field">Any format
           <input name="odds" value="+150" autocomplete="off" />
         </label>
       </form>
       <div class="out" data-out aria-live="polite"></div>
-      <p class="fine">Runs in your browser. Nothing is sent to EdgeTilt. For your own math, not betting advice.</p>
+      <section class="prose">
+<h2>The formula in plain terms</h2>
+<p>The page converts everything to American first, then works out the other formats from that American number.</p>
+<p>Plus American, like +150: decimal = 1 + (price / 100) = 2.50. The fraction is price/100 reduced, so 150/100 = 3/2. Implied = 100 / (price + 100) = 40.00%.</p>
+<p>Minus American, like -110: decimal = 1 + (100 / 110) = 1.90909..., which the page shows as 1.91. The fraction is 100/110 reduced by 10, so 10/11. Implied = 110 / (110 + 100) = 52.38%.</p>
+<p>Fractional input, like 7/2: decimal with stake = 1 + (7 / 2) = 4.50. American = (4.50 minus 1) times 100 = +350. Implied = 100 / (350 + 100) = 22.22%.</p>
+<p>A decimal input between 1 and 20 with a decimal point in it converts back to American. At 2.00 or above, American = (decimal minus 1) times 100, rounded. Below 2.00, American = -100 / (decimal minus 1), rounded. That's why 1.91 turns into -110 and 2.50 turns into +150.</p>
+<h2>Worked example 1. The number already in the form</h2>
+<p>Any format is +150.</p>
+<p>Decimal = 1 + 150/100 = 2.50.</p>
+<p>Fractional = 150/100 reduced = 3/2.</p>
+<p>Implied = 100 / 250 = 40.00%.</p>
+<p>You'll see American +150, Decimal 2.50, Fractional 3/2, Implied 40.00%.</p>
+<p>Type 2.50 in the same box and the rows match. Type 3/2 and they match again. Those are three ways of writing one price.</p>
+<h2>Worked example 2. A minus price and a longshot fraction</h2>
+<p>Swap the box to -110.</p>
+<p>Decimal shows 1.91, which is 1.90909... rounded to the cent. Fractional is 10/11. Implied is 52.38%.</p>
+<p>You'll see American -110, Decimal 1.91, Fractional 10/11, Implied 52.38%.</p>
+<p>Now swap the box to 7/2.</p>
+<p>1 + 7/2 = 4.50 decimal. American rounds to +350. Implied = 100 / 450 = 22.222..., which shows as 22.22%.</p>
+<p>You'll see American +350, Decimal 4.50, Fractional 7/2, Implied 22.22%.</p>
+<p>Type 4.50 and you get the same four rows. Type +350 and you get them again.</p>
+<h2>When it helps, and where it stops</h2>
+<p>Use it when a number's in the wrong format for your next step. Kelly on this site wants American odds, so a decimal price you saw somewhere else should come through here before you size a stake. Check Implied before you type a win percent into Kelly. This implied percent isn't a no-vig probability. A single price has no second side, so -110 at 52.38% is a break-even rate, not a forecast. For a fair pair, use the no-vig calculator.</p>
+<p>-110 shows as decimal 1.91, and typing 1.91 gives you back -110. The row doesn't show the longer 1.90909. Parlays and commission aren't handled in this box. Nothing you type gets sent to EdgeTilt.</p>
+</section>
+<p class="fine">Runs in your browser. Nothing is sent to EdgeTilt. For your own math, not betting advice.</p>
       <noscript><p class="hint">Turn on JavaScript to run the numbers. The example above uses the same formula.</p></noscript>
-      <footer>
+      <section class="faq">
+<h2>FAQ</h2>
+<h3>Why does -110 show 1.91 instead of 1.909?</h3>
+<p>The exact decimal is 1 + 100/110 = 1.90909... The row rounds to the cent, so it shows 1.91. Type 1.91 and the American row gives you -110.</p>
+<h3>Are +150, 2.50, and 3/2 the same price?</h3>
+<p>Yes. Each one converts to American +150, decimal 2.50, fractional 3/2, and an implied 40.00%.</p>
+<h3>What does the implied percent mean?</h3>
+<p>It's the break-even win rate inside that one price. +150 implies 40.00%, and -110 implies 52.38%. It's not a forecast, and it's not a no-vig probability. No-vig needs both sides of the market.</p>
+<h3>Why did 7/2 become +350?</h3>
+<p>7/2 means $7 profit on $2 staked. That's 3.5 to 1 profit, or 4.50 back per 1 unit with your stake. (4.50 minus 1) times 100 is +350. The implied rate is 100 / 450 = 22.22%.</p>
+<h3>Can I enter a moneyline with no plus or minus?</h3>
+<p>Type the sign. +150 and -110 tell the page which side of even money you mean. A decimal needs a point, like 2.50. A fraction needs a slash, like 3/2.</p>
+<h3>Does this save my price to Sports Bet Tracker?</h3>
+<p>No. The conversion stays in your browser. The tracker is a separate account tool, and it doesn't read this box.</p>
+</section>
+<footer>
         <a href="/calculators/kelly">Kelly</a>
         ·
         <a href="/calculators/no-vig">No-vig</a>

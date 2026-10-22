@@ -2,6 +2,8 @@
 
 export const LOUNGE_SPORTS_HUB_OPEN_EVENT = 'lounge:sports-hub-open'
 export const LOUNGE_SPORTS_HUB_PENDING_KEY = 'loungeSportsHubPending:v1'
+/** Only bridges a provider that is still mounting. Older than this, a request is dropped, not replayed. */
+const LOUNGE_SPORTS_HUB_PENDING_TTL_MS = 60 * 1000
 
 /** All sports on the current slate. */
 export const LOUNGE_SPORTS_HUB_FILTER_ALL = 'all'
@@ -72,7 +74,7 @@ export function requestLoungeSportsHubOpen(filter = LOUNGE_SPORTS_HUB_FILTER_ALL
   const next = normalizeLoungeSportsHubFilter(filter)
   try {
     if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(LOUNGE_SPORTS_HUB_PENDING_KEY, next)
+      sessionStorage.setItem(LOUNGE_SPORTS_HUB_PENDING_KEY, JSON.stringify({ filter: next, at: Date.now() }))
     }
   } catch {
     /* ignore */
@@ -157,7 +159,7 @@ export function clearLoungeSportsGamePending() {
 }
 
 /**
- * Read + clear pending filter. Returns null when none.
+ * Read + clear pending filter. Returns null when none or expired (plain-string rows predate the TTL and are dropped).
  * @returns {string | null}
  */
 export function consumeLoungeSportsHubPending() {
@@ -166,7 +168,14 @@ export function consumeLoungeSportsHubPending() {
     const raw = sessionStorage.getItem(LOUNGE_SPORTS_HUB_PENDING_KEY)
     if (!raw) return null
     sessionStorage.removeItem(LOUNGE_SPORTS_HUB_PENDING_KEY)
-    return normalizeLoungeSportsHubFilter(raw)
+    let row = null
+    try {
+      row = JSON.parse(raw)
+    } catch {
+      return null
+    }
+    if (!row?.filter || !(Date.now() - Number(row.at) < LOUNGE_SPORTS_HUB_PENDING_TTL_MS)) return null
+    return normalizeLoungeSportsHubFilter(row.filter)
   } catch {
     return null
   }

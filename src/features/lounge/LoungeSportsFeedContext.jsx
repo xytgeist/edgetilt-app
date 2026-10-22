@@ -265,8 +265,10 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     }
   }, [supabaseClient])
 
+  // The slate is a body portal and can sit over another tab; it still needs a board to paint.
+  const boardActive = feedActive || Boolean(slateFilter)
   useEffect(() => {
-    if (!feedActive || !supabaseClient) return undefined
+    if (!boardActive || !supabaseClient) return undefined
     void loadBoard()
     const id = setInterval(() => {
       const keepForIsland = Boolean(watchedGameIdRef.current)
@@ -299,7 +301,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
         document.removeEventListener('visibilitychange', onVis)
       }
     }
-  }, [feedActive, loadBoard, supabaseClient])
+  }, [boardActive, loadBoard, supabaseClient])
 
   useEffect(() => {
     setHubGame((prev) => {
@@ -391,6 +393,8 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     }
     apply(consumeLoungeSportsHubPending())
     const onOpen = (event) => {
+      // Mounted provider handled it … drop the queued copy so a later mount (WKWebView reload) cannot replay it.
+      consumeLoungeSportsHubPending()
       apply(normalizeLoungeSportsHubFilter(event?.detail?.filter))
     }
     window.addEventListener(LOUNGE_SPORTS_HUB_OPEN_EVENT, onOpen)

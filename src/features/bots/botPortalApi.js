@@ -450,6 +450,20 @@ export async function invokeLoungeNewsPoll(supabaseClient, opts = {}) {
 }
 
 /**
+ * Jordan Pike (sports news) poll: `dryRun` returns the plan without posting.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ dryRun?: boolean }} [opts]
+ */
+export async function invokeLoungeSportsNewsPoll(supabaseClient, opts = {}) {
+  const { data, error } = await supabaseClient.functions.invoke('lounge-sports-news-poll', {
+    body: { dryRun: opts.dryRun === true },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'lounge-sports-news-poll failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  */
 export async function fetchSportsBettingCalendarToday(supabaseClient) {

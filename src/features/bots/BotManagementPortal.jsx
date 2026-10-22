@@ -40,6 +40,7 @@ import {
   invokeLoungeOddsPoll,
   invokeLoungeOddsPublishExamples,
   invokeLoungeXIngest,
+  invokeLoungeSportsNewsPoll,
   saveBotSettings,
   setBotReviewMode,
   toggleBotNewsSource,
@@ -745,6 +746,8 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
       })
     } else if (bot.pipeline === 'x') {
       result = await invokeLoungeXIngest(supabaseClient, { slug: bot.slug, dryRun })
+    } else if (bot.pipeline === 'sports_news') {
+      result = await invokeLoungeSportsNewsPoll(supabaseClient, { dryRun })
     } else {
       setBusy('')
       setToast(`${pipelineLabel} pipeline runner not wired yet.`)
@@ -805,6 +808,21 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
       }
     } else if (bot.pipeline === 'x') {
       setToast(dryRun ? `Dry run: ${d.ingested ?? 0} drafts` : `Ingested ${d.ingested ?? 0} to inbox`)
+    } else if (bot.pipeline === 'sports_news') {
+      const quiet = d.quiet ? ' · quiet hours (12-8 AM ET)' : ''
+      if (d.skipped) {
+        setToast(`Skipped: ${d.skipped}`)
+      } else if (dryRun) {
+        const posts = (d.plan || []).filter((x) => x.publish).length + (d.bundle?.publish ? 1 : 0)
+        const top = (d.plan || []).find((x) => x.publish)?.caption || d.bundle?.caption || ''
+        setToast(
+          `Dry run · ${posts} would post of ${d.considered ?? 0} considered${quiet}` +
+            (top ? ` · next: ${String(top).split('\n')[0].slice(0, 90)}` : d.below_threshold?.length ? ` · best below bar: ${d.below_threshold[0].score}` : ''),
+        )
+      } else {
+        const n = Array.isArray(d.published) ? d.published.length : Number(d.published) || 0
+        setToast(`Published ${n} of ${d.considered ?? 0} considered${quiet}`)
+      }
     } else {
       setToast(
         dryRun

@@ -15,7 +15,10 @@ import {
 export {
   EDGE_IAP_PRODUCT_IDS,
   allKnownIapProductIds,
+  iapBilledStorePrice,
   iapCustomerDisplayPrice,
+  iapIntroOfferNote,
+  iapIntroOfferTag,
   iapIntroStoreLabel,
   iapMarketingStorePrice,
   iapProductIdForFanTier,

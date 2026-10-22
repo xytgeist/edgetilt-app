@@ -146,6 +146,39 @@ export function iapMarketingStorePrice(product) {
   return introPrice(product) || String(product?.displayPrice || '').trim()
 }
 
+/**
+ * The amount the subscription bills (Apple 3.1.2(c): the most conspicuous price on the purchase screen).
+ * Any intro / Founding price goes under it, smaller (`iapIntroOfferNote`).
+ */
+export function iapBilledStorePrice(product) {
+  return String(product?.displayPrice || '').trim()
+}
+
+/** "Founding: $51.99 a month for your first 12 months", or '' when there is no intro offer. */
+export function iapIntroOfferNote(product) {
+  const intro = introPrice(product)
+  const list = String(product?.displayPrice || '').trim()
+  if (!intro || !list || intro === list) return ''
+  const mode = String(product.introPaymentMode || '')
+  const unit = String(product.introPeriodUnit || '')
+  const count = Number(product.introPeriodCount) || 0
+  if (mode === 'freeTrial') return count && unit ? `Free for your first ${count > 1 ? `${count} ${unit}s` : unit}` : 'Free trial'
+  if (unit === 'month' && count > 0) return `Founding: ${intro} a month for your first ${count > 1 ? `${count} months` : 'month'}`
+  if (unit === 'year') return `Founding: ${intro} for your first ${count > 1 ? `${count} years` : 'year'}`
+  return `Founding: ${intro} to start`
+}
+
+/** Founding price as a sale tag `{ price, span }` ("$51.99", "12 mo"), or null without an intro offer. */
+export function iapIntroOfferTag(product) {
+  const intro = introPrice(product)
+  const list = String(product?.displayPrice || '').trim()
+  if (!intro || !list || intro === list || String(product.introPaymentMode || '') === 'freeTrial') return null
+  const unit = String(product.introPeriodUnit || '')
+  const count = Number(product.introPeriodCount) || 0
+  const span = unit === 'month' && count ? `${count} mo` : unit === 'year' ? (count > 1 ? `${count} yr` : '1st yr') : 'to start'
+  return { price: intro, span }
+}
+
 /** Same as marketing. Apple's pay sheet is the eligibility source of truth. */
 export function iapCustomerDisplayPrice(product) {
   return iapMarketingStorePrice(product)

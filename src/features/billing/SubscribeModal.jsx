@@ -27,10 +27,11 @@ import {
   canShowIapWebComparePrice,
   fetchAppleStorefront,
   fetchEdgeStoreProducts,
+  iapBilledStorePrice,
+  iapIntroOfferNote,
+  iapIntroOfferTag,
   iapIntroStoreLabel,
-  iapMarketingStorePrice,
   iapProductIdForPlan,
-  iapThenPriceNote,
   indexStoreProductsById,
   restoreEdgeIapPurchases,
   startEdgeIapPurchase,
@@ -244,11 +245,27 @@ function ctaPriceLabel(price) {
   return String(price || '').replace(/\/(?:mo|yr)$/i, '')
 }
 
-function webFoundingThenNote(interval, listPrice) {
+/** Founding web price as a small sale tag on the regular price (the regular price is the big number). */
+function webFoundingTag(interval, foundingPrice, listPrice) {
+  const founding = ctaPriceLabel(foundingPrice)
   const list = ctaPriceLabel(listPrice)
-  if (!list) return ''
-  if (interval === 'annual') return `1 yr then ${list}`
-  return `${SLOTS_EDGE_FOUNDING_MONTHLY_DURATION_MONTHS} mo then ${list}`
+  if (!founding || !list || founding === list) return null
+  return { price: founding, span: interval === 'annual' ? '1st yr' : `${SLOTS_EDGE_FOUNDING_MONTHLY_DURATION_MONTHS} mo` }
+}
+
+/**
+ * Founding price as a small sale tag on the price box corner. Apple 3.1.2(c): the billed (regular) price stays the
+ * biggest, most conspicuous number; the intro price sits smaller and off to the side.
+ */
+function FoundingSaleTag({ tag }) {
+  return (
+    <span
+      data-subscribe-founding-tag
+      className="pointer-events-none absolute -top-2.5 right-1.5 z-[1] whitespace-nowrap rounded-full px-1.5 py-[2px] text-[9px] font-bold leading-none tracking-wide"
+    >
+      Founding {ctaPriceLabel(tag.price)} · {tag.span}
+    </span>
+  )
 }
 
 function PlanComparePrices({
@@ -258,12 +275,14 @@ function PlanComparePrices({
   webLabel = 'Web',
   storeNote = '',
   webNote = '',
+  storeTag = null,
+  webTag = null,
   selectedVia = 'web',
   onSelect,
   disabled = false,
 }) {
   return (
-    <div className="subscribe-plan-compare-prices mt-3 grid grid-cols-2 gap-2" role="tablist" aria-label="Checkout">
+    <div className="subscribe-plan-compare-prices mt-5 grid grid-cols-2 gap-2" role="tablist" aria-label="Checkout">
       <button
         type="button"
         role="tab"
@@ -274,12 +293,13 @@ function PlanComparePrices({
           onSelect?.('iap')
         }}
         className={[
-          'subscribe-plan-compare-store rounded-xl px-2.5 py-2 text-left touch-manipulation transition-[box-shadow,opacity] disabled:opacity-50',
+          'subscribe-plan-compare-store relative rounded-xl px-2.5 py-2 text-left touch-manipulation transition-[box-shadow,opacity] disabled:opacity-50',
           selectedVia === 'iap'
             ? 'subscribe-plan-compare--on ring-2 ring-white/45'
             : 'ring-1 ring-white/10 opacity-55',
         ].join(' ')}
       >
+        {storeTag ? <FoundingSaleTag tag={storeTag} /> : null}
         <div className="text-xl font-bold tracking-tight text-white">{ctaPriceLabel(storePrice)}</div>
         <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">{storeLabel}</p>
         {storeNote ? <p className="mt-0.5 text-[10px] leading-snug text-zinc-500">{storeNote}</p> : null}
@@ -294,12 +314,13 @@ function PlanComparePrices({
           onSelect?.('web')
         }}
         className={[
-          'subscribe-plan-compare-web rounded-xl px-2.5 py-2 text-left touch-manipulation transition-[box-shadow,opacity] disabled:opacity-50',
+          'subscribe-plan-compare-web relative rounded-xl px-2.5 py-2 text-left touch-manipulation transition-[box-shadow,opacity] disabled:opacity-50',
           selectedVia === 'web'
             ? 'subscribe-plan-compare--on ring-2 ring-cyan-400/70'
             : 'ring-1 ring-cyan-400/25 opacity-55',
         ].join(' ')}
       >
+        {webTag ? <FoundingSaleTag tag={webTag} /> : null}
         <div className="text-xl font-bold tracking-tight text-cyan-200">{ctaPriceLabel(webPrice)}</div>
         <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-300/80">{webLabel}</p>
         {webNote ? (
@@ -848,7 +869,7 @@ export default function SubscribeModal({
       ? starterWebPrice
       : fullWebPrice
   const selectedWebCtaPrice = ctaPriceLabel(selectedWebPrice)
-  const selectedIapCtaPrice = ctaPriceLabel(iapMarketingStorePrice(selectedStoreProduct))
+  const selectedIapCtaPrice = ctaPriceLabel(iapBilledStorePrice(selectedStoreProduct))
 
   const handleCheckout = async (via = 'auto') => {
     setError('')
@@ -1121,12 +1142,13 @@ export default function SubscribeModal({
                       </div>
                       {starterStoreProduct?.displayPrice && showWebComparePrice ? (
                         <PlanComparePrices
-                          storePrice={iapMarketingStorePrice(starterStoreProduct)}
-                          webPrice={starterWebPrice}
+                          storePrice={iapBilledStorePrice(starterStoreProduct)}
+                          webPrice={starterInterval === 'annual' ? starterAnnualList : starterList}
                           storeLabel={iapIntroStoreLabel(starterStoreProduct)}
-                          storeNote={iapThenPriceNote(starterStoreProduct)}
-                          webNote={webFoundingThenNote(
+                          storeTag={iapIntroOfferTag(starterStoreProduct)}
+                          webTag={webFoundingTag(
                             starterInterval,
+                            starterWebPrice,
                             starterInterval === 'annual' ? starterAnnualList : starterList,
                           )}
                           selectedVia={payVia}
@@ -1138,7 +1160,7 @@ export default function SubscribeModal({
                           <div className="mt-3 flex flex-wrap items-end gap-1.5">
                             {starterStoreProduct?.displayPrice ? (
                               <span className="text-xl font-bold tracking-tight text-white">
-                                {iapMarketingStorePrice(starterStoreProduct)}
+                                {iapBilledStorePrice(starterStoreProduct)}
                               </span>
                             ) : showWebComparePrice && starterInterval === 'annual' ? (
                               <>
@@ -1154,7 +1176,7 @@ export default function SubscribeModal({
                           </div>
                           <p className="mt-0.5 text-[11px] text-zinc-500">
                             {starterStoreProduct?.displayPrice
-                              ? [iapIntroStoreLabel(starterStoreProduct), iapThenPriceNote(starterStoreProduct)]
+                              ? [iapIntroStoreLabel(starterStoreProduct), iapIntroOfferNote(starterStoreProduct)]
                                   .filter(Boolean)
                                   .join(' · ')
                                   .replace(/^App Store$/, 'App Store price')
@@ -1277,12 +1299,13 @@ export default function SubscribeModal({
                       </div>
                       {fullStoreProduct?.displayPrice && showWebComparePrice ? (
                         <PlanComparePrices
-                          storePrice={iapMarketingStorePrice(fullStoreProduct)}
-                          webPrice={fullWebPrice}
+                          storePrice={iapBilledStorePrice(fullStoreProduct)}
+                          webPrice={fullInterval === 'annual' ? fullAnnualList : fullMonthlyList}
                           storeLabel={iapIntroStoreLabel(fullStoreProduct)}
-                          storeNote={iapThenPriceNote(fullStoreProduct)}
-                          webNote={webFoundingThenNote(
+                          storeTag={iapIntroOfferTag(fullStoreProduct)}
+                          webTag={webFoundingTag(
                             fullInterval,
+                            fullWebPrice,
                             fullInterval === 'annual' ? fullAnnualList : fullMonthlyList,
                           )}
                           selectedVia={payVia}
@@ -1294,7 +1317,7 @@ export default function SubscribeModal({
                           <div className="mt-3 flex flex-wrap items-end gap-1.5">
                             {fullStoreProduct?.displayPrice ? (
                               <span className="text-xl font-bold tracking-tight text-white">
-                                {iapMarketingStorePrice(fullStoreProduct)}
+                                {iapBilledStorePrice(fullStoreProduct)}
                               </span>
                             ) : showWebComparePrice && fullInterval === 'annual' ? (
                               <>
@@ -1310,7 +1333,7 @@ export default function SubscribeModal({
                           </div>
                           <p className="mt-0.5 text-[11px] text-zinc-500">
                             {fullStoreProduct?.displayPrice
-                              ? [iapIntroStoreLabel(fullStoreProduct), iapThenPriceNote(fullStoreProduct)]
+                              ? [iapIntroStoreLabel(fullStoreProduct), iapIntroOfferNote(fullStoreProduct)]
                                   .filter(Boolean)
                                   .join(' · ')
                                   .replace(/^App Store$/, 'App Store price')

@@ -6531,6 +6531,17 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
 [data-subscribe-modal] .subscribe-plan-founding-badge {
   z-index: 40;
 }
+/* Founding price sale tag on the price box corner (smaller than the billed price: Apple 3.1.2(c)). */
+[data-subscribe-modal] [data-subscribe-founding-tag] {
+  background: linear-gradient(180deg, #eab308 0%, #a16207 100%);
+  color: #fffbeb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(253, 224, 71, 0.45);
+}
+html.light [data-subscribe-modal] [data-subscribe-founding-tag] {
+  background: linear-gradient(180deg, #fde047 0%, #fbbf24 100%);
+  color: #713f12;
+  box-shadow: 0 2px 6px rgba(180, 83, 9, 0.2), 0 0 0 1px rgba(180, 83, 9, 0.4);
+}
 [data-subscribe-modal] .subscribe-plan-founding-badge-inner {
   background: linear-gradient(180deg, #ca8a04 0%, #18181b 100%);
 }

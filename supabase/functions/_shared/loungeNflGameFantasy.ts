@@ -648,7 +648,20 @@ async function loadPlayersFromDb(
     )
     .in('team', [away, home])
   if (error) throw new Error(error.message)
-  return Array.isArray(data) ? data : []
+  const rows = Array.isArray(data) ? data : []
+  // ESPN's game designation (kept fresh by fantasy-status-watch) wins over Sleeper's weekly tag, same as the
+  // fantasy screens: Sleeper can still say IR after a player is cleared to play.
+  const ids = rows.map((r) => String(r.sleeper_id || '')).filter(Boolean)
+  if (ids.length) {
+    const { data: fresh } = await admin.from('nfl_player_status').select('sleeper_id, status').in('sleeper_id', ids)
+    const label: Record<string, string | null> = { active: null, questionable: 'Questionable', doubtful: 'Doubtful', out: 'Out', ir: 'IR' }
+    const byId = new Map((fresh || []).map((s) => [String(s.sleeper_id), String(s.status || '')]))
+    for (const r of rows) {
+      const st = byId.get(String(r.sleeper_id || ''))
+      if (st && st in label) r.injury_status = label[st]
+    }
+  }
+  return rows
 }
 
 async function loadPlayersFromSleeper(away: string, home: string): Promise<Array<Record<string, unknown>>> {

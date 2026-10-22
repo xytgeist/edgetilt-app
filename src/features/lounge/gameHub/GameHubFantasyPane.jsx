@@ -530,6 +530,8 @@ function FantasyMatchupStack({ matchups, game, gameStatus }) {
   const [exitX, setExitX] = useState(null)
   const [isDragging, setIsDragging] = useState(false)
   const pointerX = useRef(null)
+  /** Last real finger x during the drag: iOS often ends a touch drag with `pointercancel` at clientX 0. */
+  const lastX = useRef(null)
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
 
   useEffect(() => {
@@ -561,6 +563,7 @@ function FantasyMatchupStack({ matchups, game, gameStatus }) {
     // Ignore vertical-ish starts so the hub can still scroll.
     setIsDragging(true)
     pointerX.current = e.clientX
+    lastX.current = e.clientX
     try {
       e.currentTarget.setPointerCapture?.(e.pointerId)
     } catch {
@@ -570,6 +573,7 @@ function FantasyMatchupStack({ matchups, game, gameStatus }) {
 
   const onPointerMove = (e) => {
     if (!isDragging || pointerX.current == null || exitX != null) return
+    lastX.current = e.clientX
     setDragX(e.clientX - pointerX.current)
   }
 
@@ -587,7 +591,10 @@ function FantasyMatchupStack({ matchups, game, gameStatus }) {
       setDragX(0)
       return
     }
-    const dx = e.clientX - start
+    // Direction from the drag itself (pointercancel's clientX can be 0, which read as a big left swipe).
+    const endX = e.type === 'pointercancel' || !Number.isFinite(e.clientX) || e.clientX === 0 ? lastX.current : e.clientX
+    lastX.current = null
+    const dx = (endX ?? start) - start
     if (Math.abs(dx) >= SWIPE_THRESHOLD_PX) {
       sendToBack(dx < 0 ? -1 : 1)
       return
@@ -972,7 +979,10 @@ export default function GameHubFantasyPane({
               const ownership = rosterLeagues[String(p.sleeper_id || '')] || null
               const leagueLabel = rosterLeaguePill(ownership)
               const pinRole = getFantasyPinRole(p.sleeper_id, pins)
-              const enemy = !ownership && (Boolean(opponents[String(p.sleeper_id || '')]) || pinRole === 'enemy')
+              const leagueOpponent = !ownership && Boolean(opponents[String(p.sleeper_id || '')])
+              const enemy = leagueOpponent || (!ownership && pinRole === 'enemy')
+              // Opponents carry the league they face you in (the selected league), not a generic "Enemy".
+              const enemyLabel = leagueOpponent && league?.name ? rosterLeaguePill({ leagues: [{ name: league.name }] }) : ''
               const pinned = Boolean(ownership || enemy || pinRole)
               return (
                 <li key={p.sleeper_id}>
@@ -988,7 +998,7 @@ export default function GameHubFantasyPane({
                       ownership
                         ? `${p.name} is on your ${rosterLeagueTitle(ownership)} roster`
                         : enemy
-                          ? `${p.name} is on the opposing roster`
+                          ? `${p.name} is on an opposing roster${leagueOpponent && league?.name ? ` in ${league.name}` : ''}`
                           : pinned
                             ? `Deselect ${p.name} from fantasy watch`
                             : `Select ${p.name} for fantasy watch`
@@ -1021,14 +1031,14 @@ export default function GameHubFantasyPane({
                           <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
                           {pinned ? (
                             <span
-                              title={leagueLabel ? rosterLeagueTitle(ownership) : undefined}
+                              title={leagueLabel ? rosterLeagueTitle(ownership) : enemyLabel ? `Opponent in ${league.name}` : undefined}
                               className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
                                 enemy
                                   ? 'bg-rose-500/25 text-rose-300'
                                   : 'bg-sky-500/25 text-sky-300'
                               }`}
                             >
-                              {leagueLabel || (enemy ? 'Enemy' : 'Watch')}
+                              {leagueLabel || (enemy ? enemyLabel || 'Enemy' : 'Watch')}
                             </span>
                           ) : null}
                           <InjuryPill status={p.injury_status} />

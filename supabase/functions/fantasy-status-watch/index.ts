@@ -1,6 +1,6 @@
 /**
  * Starter status pushes (pg_cron every 5 min; admin / service role may send { force, dryRun }).
- * Reads ESPN's league-wide NFL injury report once per run, keeps each player's fantasy game designation in
+ * Reads ESPN's league-wide NFL (or, with { sport: "nba" }, NBA) injury report once per run, keeps each player's fantasy game designation in
  * `nfl_player_status`, and when a player moves up to Out / Doubtful / IR before his game kicks off, pushes every
  * user who starts him (one push per user, player, status, and week … `fantasy_status_alerts`). The first run only
  * seeds the table so current injuries never fire as new.
@@ -9,7 +9,9 @@
  */
 import { type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
-import { ESPN_NFL, RANK, espnJson, pushStarterAlerts, type StatusTransition } from '../_shared/fantasyStatusPush.ts'
+import { ESPN_NBA, ESPN_NFL, RANK, espnJson, pushStarterAlerts, type StatusTransition } from '../_shared/fantasyStatusPush.ts'
+import { sleeperNbaPlayers } from '../_shared/sleeperNbaPlayers.ts'
+import { lookupNbaEspnId, nbaEspnIds } from '../_shared/nbaEspnIds.ts'
 
 
 type Obj = Record<string, unknown>
@@ -38,6 +40,14 @@ function etParts(d = new Date()) {
   return { wd: map.weekday, hour: Number(map.hour) % 24 }
 }
 
+/** NBA plays nightly: injury reports move through the afternoon into tip-off. */
+function nbaRunGapMs(d = new Date()): number {
+  const { hour } = etParts(d)
+  if (hour >= 11) return 4 * 60 * 1000
+  if (hour >= 7) return 29 * 60 * 1000
+  return 59 * 60 * 1000
+}
+
 function runGapMs(d = new Date()): number {
   const { wd, hour } = etParts(d)
   const hot =
@@ -58,6 +68,8 @@ export function designation(inj: Obj): string {
   if (/^(OUT|O|SUSP)/.test(s)) return 'out'
   if (/^(DOUBTFUL|D)$/.test(s) || s.startsWith('DOUBT')) return 'doubtful'
   if (/^(QUESTIONABLE|Q)$/.test(s) || s.startsWith('QUEST')) return 'questionable'
+  // NBA: game-time decision / day-to-day reads as questionable (never pushed).
+  if (/^(GTD|DTD)$/.test(s) || s.startsWith('DAY')) return 'questionable'
   if (/^IR/.test(s)) return 'ir'
   return 'active'
 }
@@ -104,14 +116,19 @@ Deno.serve(async (req) => {
     simulate?: { espn_id?: string; status?: string }
     /** Test hook: only this user may be pushed. */
     onlyUser?: string
+    /** `nba` reads ESPN's NBA report into `nba_player_status` (own cron, own state row). */
+    sport?: string
   }
   const now = new Date()
+  const nba = body.sport === 'nba'
+  const stateId = nba ? 'watch_nba' : 'watch'
+  const statusTable = nba ? 'nba_player_status' : 'nfl_player_status'
 
-  const cutoff = new Date(now.getTime() - (body.force ? 0 : runGapMs(now))).toISOString()
+  const cutoff = new Date(now.getTime() - (body.force ? 0 : nba ? nbaRunGapMs(now) : runGapMs(now))).toISOString()
   const { data: claimed, error: claimErr } = await admin
     .from('fantasy_status_watch_state')
     .update({ last_run_at: now.toISOString(), updated_at: now.toISOString() })
-    .eq('id', 'watch')
+    .eq('id', stateId)
     .or(`last_run_at.is.null,last_run_at.lt.${cutoff}`)
     .select('seeded')
   if (claimErr) return adminOpsJson(500, { error: claimErr.message })
@@ -119,7 +136,7 @@ Deno.serve(async (req) => {
   const seeded = Boolean(claimed[0]?.seeded)
 
   try {
-    const report = await espnJson(`${ESPN_NFL}/injuries`)
+    const report = await espnJson(`${nba ? ESPN_NBA : ESPN_NFL}/injuries`)
     if (!report) throw new Error('ESPN injuries unavailable')
     const seen = new Set<string>()
     const rows = parseInjuries(report).filter((r) => (seen.has(r.espn_id) ? false : (seen.add(r.espn_id), true)))
@@ -133,11 +150,22 @@ Deno.serve(async (req) => {
 
     const known: Obj[] = []
     const players: Obj[] = []
+    // NBA has no players table with ESPN ids: map Sleeper's NBA players through the ESPN roster ids.
+    const nbaPlayers: Obj[] = []
+    if (nba) {
+      const [all, espnIds] = await Promise.all([sleeperNbaPlayers(admin), nbaEspnIds(admin)])
+      for (const p of all) {
+        const espnId = lookupNbaEspnId(espnIds, p.name, p.team)
+        if (espnId) nbaPlayers.push({ sleeper_id: p.sleeper_id, espn_id: espnId, full_name: p.name, team: p.team })
+      }
+    }
     for (let i = 0; i < ids.length; i += 200) {
       const chunk = ids.slice(i, i + 200)
       const [k, p] = await Promise.all([
-        admin.from('nfl_player_status').select('espn_id, status, changed_at').in('espn_id', chunk),
-        admin.from('nfl_players').select('sleeper_id, espn_id, full_name, team').in('espn_id', chunk),
+        admin.from(statusTable).select('espn_id, status, changed_at').in('espn_id', chunk),
+        nba
+          ? Promise.resolve({ data: nbaPlayers.filter((x) => chunk.includes(String(x.espn_id))), error: null })
+          : admin.from('nfl_players').select('sleeper_id, espn_id, full_name, team').in('espn_id', chunk),
       ])
       if (k.error) throw new Error(k.error.message)
       known.push(...(k.data || []))
@@ -165,23 +193,23 @@ Deno.serve(async (req) => {
     })
     // Players no longer on the report are healthy again.
     const reported = new Set(ids)
-    const { data: stale } = await admin.from('nfl_player_status').select('espn_id').neq('status', 'active')
+    const { data: stale } = await admin.from(statusTable).select('espn_id').neq('status', 'active')
     const cleared = (stale || []).map((s) => str(s.espn_id)).filter((id) => !reported.has(id))
 
     if (!body.dryRun && !sim) {
       for (let i = 0; i < upserts.length; i += 500) {
-        const { error } = await admin.from('nfl_player_status').upsert(upserts.slice(i, i + 500), { onConflict: 'espn_id' })
+        const { error } = await admin.from(statusTable).upsert(upserts.slice(i, i + 500), { onConflict: 'espn_id' })
         if (error) throw new Error(error.message)
       }
       if (cleared.length) {
-        await admin.from('nfl_player_status').update({ status: 'active', changed_at: nowIso, updated_at: nowIso }).in('espn_id', cleared)
+        await admin.from(statusTable).update({ status: 'active', changed_at: nowIso, updated_at: nowIso }).in('espn_id', cleared)
       }
     }
 
-    const { alerts, pushed, plan } = await pushStarterAlerts(admin, transitions, { dryRun: body.dryRun, onlyUser: body.onlyUser })
+    const { alerts, pushed, plan } = await pushStarterAlerts(admin, transitions, { dryRun: body.dryRun, onlyUser: body.onlyUser, sport: nba ? 'nba' : 'nfl' })
 
     if (!body.dryRun) {
-      await admin.from('fantasy_status_watch_state').update({ seeded: true, last_error: null, updated_at: new Date().toISOString() }).eq('id', 'watch')
+      await admin.from('fantasy_status_watch_state').update({ seeded: true, last_error: null, updated_at: new Date().toISOString() }).eq('id', stateId)
     }
     return adminOpsJson(200, {
       ok: true,
@@ -196,7 +224,7 @@ Deno.serve(async (req) => {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    await admin.from('fantasy_status_watch_state').update({ last_error: message.slice(0, 500), updated_at: new Date().toISOString() }).eq('id', 'watch')
+    await admin.from('fantasy_status_watch_state').update({ last_error: message.slice(0, 500), updated_at: new Date().toISOString() }).eq('id', stateId)
     return adminOpsJson(502, { error: message })
   }
 })

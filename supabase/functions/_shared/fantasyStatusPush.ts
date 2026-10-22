@@ -10,8 +10,10 @@ import { type ApnsAlertPayload, sendApnsToUser } from './apnsPush.ts'
 import { sendFcmToUser } from './fcmPush.ts'
 import { espnFetch } from './loungeSportsScoreboard.ts'
 import { fantasyPos, fetchJson, ptsOf, statMap } from './fantasyLineupCards.ts'
+import { loadNbaBoard, nbaTeam, teamWeek } from './fantasyNbaBoard.ts'
 
 export const ESPN_NFL = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl'
+export const ESPN_NBA = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba'
 const HEADERS = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
 export const RANK: Record<string, number> = { active: 0, questionable: 1, doubtful: 2, out: 3, ir: 3 }
 export const ESPN_TO_SLEEPER: Record<string, string> = { WSH: 'WAS', JAC: 'JAX', LA: 'LAR' }
@@ -69,11 +71,34 @@ export async function weekGames(): Promise<{ week: number; season: string; games
   return { week, season, games }
 }
 
-/** Positions that may fill a host lineup slot label ("WR2", "FLEX", "W/R/T", "SUPER_FLEX" …). */
+type GameInfo = { state: string; kickoff: string; opp: string; home: boolean }
+
+/** NBA: each team's live or next game in the current fantasy week, plus per-game projections. */
+async function nbaWeekGames(): Promise<{ week: number; season: string; games: Map<string, GameInfo>; projLine: Record<string, Record<string, number>> }> {
+  const board = await loadNbaBoard()
+  const games = new Map<string, GameInfo>()
+  if (!board) return { week: 0, season: '', games, projLine: {} }
+  for (const g of board.games) {
+    for (const team of [g.home, g.away]) {
+      if (games.has(team)) continue
+      const wk = teamWeek(board, team)
+      const next = wk.next
+      if (!next) continue
+      games.set(team, { state: next.state, kickoff: next.date, opp: wk.opponent || '', home: Boolean(wk.home) })
+    }
+  }
+  return { week: board.week, season: board.season, games, projLine: board.projLine }
+}
+
+/** Positions that may fill a host lineup slot label ("WR2", "FLEX", "W/R/T", "SUPER_FLEX", NBA "G" / "UTIL" …). */
 function slotFits(slotLabel: string | null, starterPos: string): string[] {
   // Sleeper / ESPN labels end in the slot name (`starter:3:FLEX`); Yahoo's is the slot name itself.
   const last = String(slotLabel || '').split(':').pop() || ''
   const s = last.toUpperCase().replace(/\d+$/, '').replace(/\s+/g, '')
+  if (['PG', 'SG', 'SF', 'PF', 'C'].includes(s)) return [s]
+  if (s === 'G') return ['PG', 'SG']
+  if (s === 'F') return ['SF', 'PF']
+  if (s === 'UTIL') return ['PG', 'SG', 'SF', 'PF', 'C']
   if (['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].includes(s)) return [s]
   if (s === 'PK') return ['K']
   if (s === 'D/ST' || s === 'DST') return ['DEF']
@@ -152,14 +177,17 @@ function copyFor(status: string, name: string, injury: string | null, picks: Sug
 export async function pushStarterAlerts(
   admin: SupabaseClient,
   transitions: StatusTransition[],
-  opts: { dryRun?: boolean; onlyUser?: string } = {},
+  opts: { dryRun?: boolean; onlyUser?: string; sport?: 'nfl' | 'nba' } = {},
 ): Promise<{ alerts: number; pushed: number; plan: unknown[] }> {
+  const sport = opts.sport === 'nba' ? 'nba' : 'nfl'
+  const statusTable = sport === 'nba' ? 'nba_player_status' : 'nfl_player_status'
+  const teamKey = (team: string) => (sport === 'nba' ? nbaTeam(team) : ESPN_TO_SLEEPER[team] || team)
   let pushed = 0
   let alerts = 0
   const plan: unknown[] = []
   const withSleeper = transitions.filter((t) => t.sleeper_id)
   if (!withSleeper.length) return { alerts, pushed, plan }
-    const { week, season, games } = await weekGames()
+    const { week, season, games, projLine } = sport === 'nba' ? await nbaWeekGames() : { ...(await weekGames()), projLine: null }
     const pregame = withSleeper.filter((t) => {
       const g = t.team ? games.get(t.team) : null
       return g && g.state === 'pre'
@@ -177,7 +205,7 @@ export async function pushStarterAlerts(
     const { data: leagues } = leagueIds.length
       ? await admin.from('fantasy_leagues').select('id, name, sport').in('id', leagueIds)
       : { data: [] }
-    const leagueById = new Map((leagues || []).filter((l) => str(l.sport || 'nfl') === 'nfl').map((l) => [str(l.id), l]))
+    const leagueById = new Map((leagues || []).filter((l) => str(l.sport || 'nfl') === sport).map((l) => [str(l.id), l]))
     // Only each team's latest synced week counts as the current lineup.
     const { data: weeks } = teamIds.length
       ? await admin.from('fantasy_rosters').select('team_id, week').in('team_id', teamIds).order('week', { ascending: false }).limit(5000)
@@ -200,20 +228,25 @@ export async function pushStarterAlerts(
     const benchIds = [...new Set((benchRows || []).map((b) => str(b.sleeper_id)).filter(Boolean))]
     const benchHealth = new Map<string, string>()
     for (let i = 0; i < benchIds.length; i += 200) {
-      const { data } = await admin.from('nfl_player_status').select('sleeper_id, status').in('sleeper_id', benchIds.slice(i, i + 200))
+      const { data } = await admin.from(statusTable).select('sleeper_id, status').in('sleeper_id', benchIds.slice(i, i + 200))
       for (const r of data || []) benchHealth.set(str(r.sleeper_id), str(r.status))
     }
-    const proj = season ? await weekProjections(season, week) : new Map<string, Record<string, unknown>>()
+    const proj = sport === 'nfl' && season ? await weekProjections(season, week) : new Map<string, Record<string, unknown>>()
+    // NBA bench value: Sleeper per-game projection in default points (ranking only).
+    const nbaValue = (id: string) => {
+      const l = projLine?.[id]
+      return l ? (l.pts || 0) + 1.2 * (l.reb || 0) + 1.5 * (l.ast || 0) + 3 * ((l.stl || 0) + (l.blk || 0)) - (l.to || 0) : 0
+    }
     const bestBench = (teamId: string, slotLabel: string | null, starterPos: string): string | null => {
       const fits = slotFits(slotLabel, starterPos)
       const ranked = (benchByTeam.get(teamId) || [])
         .map((b) => {
           const pos = fantasyPos(str(b.position))
           const team = str(b.nfl_team).toUpperCase()
-          const game = games.get(ESPN_TO_SLEEPER[team] || team)
+          const game = games.get(teamKey(team))
           const health = benchHealth.get(str(b.sleeper_id)) || 'active'
           if (!fits.includes(pos) || !game || game.state !== 'pre' || RANK[health] >= 2) return null
-          const pts = ptsOf(proj.get(str(b.sleeper_id))) ?? 0
+          const pts = sport === 'nba' ? nbaValue(str(b.sleeper_id)) : ptsOf(proj.get(str(b.sleeper_id))) ?? 0
           return { name: str(b.player_name), value: pts * (health === 'questionable' ? 0.85 : 1) }
         })
         .filter((x): x is { name: string; value: number } => Boolean(x && x.value > 0))
@@ -248,8 +281,8 @@ export async function pushStarterAlerts(
         if (opts.dryRun) continue
         const { data: inserted } = await admin
           .from('fantasy_status_alerts')
-          .upsert({ user_id: userId, sleeper_id: t.sleeper_id, status: t.status, week, league_ids: lgIds, title, body: text }, {
-            onConflict: 'user_id,sleeper_id,status,week',
+          .upsert({ user_id: userId, sleeper_id: t.sleeper_id, status: t.status, week, sport, league_ids: lgIds, title, body: text }, {
+            onConflict: 'user_id,sleeper_id,status,week,sport',
             ignoreDuplicates: true,
           })
           .select('id')

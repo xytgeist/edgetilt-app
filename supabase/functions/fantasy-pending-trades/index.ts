@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
   const { data: league } = await admin
     .from('fantasy_leagues')
-    .select('id, provider, connection_id, external_league_id, season')
+    .select('id, provider, sport, connection_id, external_league_id, season, settings')
     .eq('id', leagueId)
     .eq('user_id', userId)
     .maybeSingle()
@@ -57,6 +57,8 @@ Deno.serve(async (req) => {
         connection_id: String(league.connection_id),
         external_league_id: String(league.external_league_id),
         season: Number(league.season),
+        sport: String(league.sport || 'nfl'),
+        espn_season: Number((league.settings as Record<string, unknown> | null)?.espn_season) || null,
       })
       return json(200, { ok: true, provider: 'espn', supported: true, offers })
     }

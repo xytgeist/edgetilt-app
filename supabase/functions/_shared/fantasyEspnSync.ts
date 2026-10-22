@@ -715,7 +715,8 @@ async function syncEspnNba(
     const status = asRecord(lg.status) || {}
     const scoringSettings = asRecord(settings.scoringSettings) || {}
     const scoringType = String(scoringSettings.scoringType || '')
-    const categoriesLeague = scoringType.includes('CATEGORY') || scoringType.includes('ROTO')
+    // H2H_CATEGORY, H2H_MOST_CATEGORIES (one win a week for more categories won), ROTO.
+    const categoriesLeague = /CATEGOR|ROTO/.test(scoringType)
     const items = Array.isArray(scoringSettings.scoringItems) ? scoringSettings.scoringItems.map(asRecord).filter(Boolean) as Record<string, unknown>[] : []
     const scoring: Record<string, number> = {}
     const categories: Array<{ stat_id: number; key: string; label: string; higher_better: boolean }> = []
@@ -911,7 +912,7 @@ export type PendingTrade = {
 export async function espnPendingTrades(
   admin: SupabaseClient,
   edgeUserId: string,
-  league: { id: string; connection_id: string; external_league_id: string; season: number },
+  league: { id: string; connection_id: string; external_league_id: string; season: number; sport?: string; espn_season?: number | null },
 ): Promise<PendingTrade[]> {
   const { data: token } = await admin
     .from('fantasy_provider_tokens')
@@ -921,12 +922,16 @@ export async function espnPendingTrades(
   const session = normalizeEspnSession(String(token?.access_token || ''), String(token?.refresh_token || ''))
   if (!session || token?.token_type !== 'espn_cookie') throw new Error('ESPN session missing. Connect ESPN again.')
 
-  const base = `/seasons/${league.season}/segments/0/leagues/${encodeURIComponent(league.external_league_id)}`
-  const head = asRecord(await espnGet(`${base}?view=mTransactions2&view=mTeam`, session)) || {}
+  // NBA reads games/fba under ESPN's own season (the year the season ends); we save the start year.
+  const nba = String(league.sport || '').toLowerCase() === 'nba'
+  const game = nba ? 'fba' : 'ffl'
+  const season = nba ? Number(league.espn_season) || league.season + 1 : league.season
+  const base = `/seasons/${season}/segments/0/leagues/${encodeURIComponent(league.external_league_id)}`
+  const head = asRecord(await espnGet(`${base}?view=mTransactions2&view=mTeam`, session, game)) || {}
   const period = Number(head.scoringPeriodId) || 1
   const txs: Record<string, unknown>[] = (Array.isArray(head.transactions) ? head.transactions : []).map(asRecord).filter(Boolean) as Record<string, unknown>[]
   if (period > 1) {
-    const prev = asRecord(await espnGet(`${base}?scoringPeriodId=${period - 1}&view=mTransactions2`, session).catch(() => null))
+    const prev = asRecord(await espnGet(`${base}?scoringPeriodId=${period - 1}&view=mTransactions2`, session, game).catch(() => null))
     for (const t of Array.isArray(prev?.transactions) ? prev.transactions : []) {
       const rec = asRecord(t)
       if (rec) txs.push(rec)

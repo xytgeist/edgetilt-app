@@ -572,15 +572,17 @@ function normCdf(x) {
 
 /**
  * Points of variance per projected point still to play. NFL: a pregame spread near 28 for two ~115-point
- * lineups (a typical weekly fantasy margin, not a book price). NBA: ~35 games a side make a week steadier
- * per point (two ~1,300-point lineups spread near 75). Tightens as the week plays out.
+ * lineups (a typical weekly fantasy margin, not a book price). NBA: per point, game-to-game swing (SD ~30% of a
+ * ~35-point game, ~3), missed games (rest / late scratches ~10% of games, ~3) and the weekly projection's own
+ * miss (~15% of a player's week, ~3), so two ~1,050-point lineups spread near 140 before the week starts.
+ * Lock-In counts one game a player (smaller totals, the best game of several): ~5. Tightens as the week plays out.
  */
-const WIN_VAR_PER_POINT = { nfl: 3.4, nba: 2.1 }
+const WIN_VAR_PER_POINT = { nfl: 3.4, nba: 9, nba_lockin: 5 }
 
 /** Weekly win chance from the two projected finishes and the projected points both sides still have to play. */
-function winChance(left, right, remaining, sport = 'nfl') {
+function winChance(left, right, remaining, sport = 'nfl', lockIn = false) {
   if (left == null || right == null) return null
-  const perPoint = WIN_VAR_PER_POINT[sport] || WIN_VAR_PER_POINT.nfl
+  const perPoint = WIN_VAR_PER_POINT[sport === 'nba' && lockIn ? 'nba_lockin' : sport] || WIN_VAR_PER_POINT.nfl
   const sigma = Math.sqrt(perPoint * Math.max(0, Number(remaining) || 0))
   if (sigma < 0.5) return left > right ? 1 : left < right ? 0 : 0.5
   return Math.min(0.99, Math.max(0.01, normCdf((left - right) / sigma)))
@@ -1185,7 +1187,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
                     row={pair.left}
                     align="left"
                     final={sideStatus(leftCard) === 'Final'}
-                    gamesLeft={sport === 'nba' && leftCard ? Number(leftCard.games_left) || 0 : null}
+                    gamesLeft={sport === 'nba' && leftCard ? Number(upcoming ? leftCard.games_next : leftCard.games_left) || 0 : null}
                   />
                 ) : (
                   <OpenSlotTag align="left" />
@@ -1195,7 +1197,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
                     row={pair.right}
                     align="right"
                     final={sideStatus(rightCard) === 'Final'}
-                    gamesLeft={sport === 'nba' && rightCard ? Number(rightCard.games_left) || 0 : null}
+                    gamesLeft={sport === 'nba' && rightCard ? Number(upcoming ? rightCard.games_next : rightCard.games_left) || 0 : null}
                   />
                 ) : (
                   <OpenSlotTag align="right" />
@@ -2253,6 +2255,8 @@ function StreamView({ state, detail, rosterRows, sport, host }) {
   }, [state.data, rosterRows, league, sport, upcoming])
   const picks = plan.picks.slice(0, 8)
   const openNights = plan.days.filter((d) => d.open > 0).length
+  // Every pick is one move from today's roster; when they all cut the same player they are alternatives.
+  const sameDrop = picks.length > 1 && picks.every((p) => p.drop.id === picks[0].drop.id) ? picks[0].drop : null
   const nights = (list) => list.map(nightLabel).join(', ')
 
   return (
@@ -2290,6 +2294,13 @@ function StreamView({ state, detail, rosterRows, sport, host }) {
           ) : !picks.length ? (
             <p className="mt-2 text-[12px] text-zinc-500">No available player fills your open nights better than your bench.</p>
           ) : (
+            <>
+            {sameDrop ? (
+              <p className="mt-2 text-[11px] text-zinc-400">
+                Pick one: each swaps out <span className="font-semibold text-zinc-200">{shortName(sameDrop.name, sameDrop.pos)}</span>. Sync after the
+                add to plan a second stream.
+              </p>
+            ) : null}
             <ul className="mt-2 space-y-1.5">
               {picks.map((pick) => (
                 <li key={pick.cand.id} className="flex items-center gap-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
@@ -2318,6 +2329,7 @@ function StreamView({ state, detail, rosterRows, sport, host }) {
                 </li>
               ))}
             </ul>
+            </>
           )}
         </>
       )}
@@ -3384,8 +3396,8 @@ function ScoreLine({ outlook, hostScore, align, lead, projUp, projFinal: finish 
   )
 }
 
-function WinBar({ left, right, remaining, sport, chance = null }) {
-  const p = chance ?? winChance(left, right, remaining, sport)
+function WinBar({ left, right, remaining, sport, chance = null, lockIn = false }) {
+  const p = chance ?? winChance(left, right, remaining, sport, lockIn)
   if (p == null) return null
   const leftPct = Math.round(p * 100)
   const rightPct = 100 - leftPct
@@ -3498,7 +3510,7 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport, categ
       </div>
       {page.right ? (
         <div className="relative">
-          <WinBar left={lo} right={ro} remaining={leftOut.remaining + rightOut.remaining} sport={sport} chance={cat ? cat.win : null} />
+          <WinBar left={lo} right={ro} remaining={leftOut.remaining + rightOut.remaining} sport={sport} chance={cat ? cat.win : null} lockIn={lockIn} />
         </div>
       ) : null}
     </div>

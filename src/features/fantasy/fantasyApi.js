@@ -153,6 +153,48 @@ export async function syncAllFantasy(supabase, connections = []) {
   return { ...out, warnings: errors }
 }
 
+/** A link synced longer ago than this re-syncs in the background (app open, return to the app, Fantasy open). */
+export const FANTASY_AUTO_SYNC_STALE_MS = 5 * 60_000
+
+// One background sync at a time for the whole app, keyed on the last attempt (a failing sync never moves
+// last_sync_at, so keying on that would retry forever).
+const autoSyncState = { at: 0, promise: null }
+
+/** The background sync running now (started by app open or the Fantasy screen), else null. */
+export function fantasyAutoSyncInFlight() {
+  return autoSyncState.promise
+}
+
+/**
+ * Re-sync stale links in the background. Returns the running sync's promise (joins one already in flight), or null
+ * when nothing is stale or the last attempt was under 5 minutes ago.
+ */
+export function autoSyncStaleFantasy(supabase, connections = []) {
+  if (autoSyncState.promise) return autoSyncState.promise
+  const now = Date.now()
+  if (!supabase || now - autoSyncState.at < FANTASY_AUTO_SYNC_STALE_MS) return null
+  const stale = (connections || []).filter((c) => {
+    if (c?.status === 'revoked') return false
+    const at = Date.parse(c?.last_sync_at || '')
+    return !Number.isFinite(at) || now - at > FANTASY_AUTO_SYNC_STALE_MS
+  })
+  if (!stale.length) return null
+  autoSyncState.at = now
+  autoSyncState.promise = syncAllFantasy(supabase, stale).finally(() => {
+    autoSyncState.promise = null
+  })
+  return autoSyncState.promise
+}
+
+/** App open / foreground: read the caller's links (cheap) and re-sync stale ones; no-op without links. */
+export async function autoSyncFantasyOnOpen(supabase) {
+  if (!supabase || autoSyncState.promise) return
+  if (Date.now() - autoSyncState.at < FANTASY_AUTO_SYNC_STALE_MS) return
+  const { data, error } = await supabase.from('fantasy_connections').select('id, provider, status, last_sync_at')
+  if (error || !data?.length) return
+  await autoSyncStaleFantasy(supabase, data)?.catch(() => {})
+}
+
 export async function fetchHubFantasyPins(supabase) {
   return syncSleeperFantasy(supabase, { hub_pins: true })
 }

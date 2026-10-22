@@ -167,6 +167,7 @@ import {
   clearLoungeSportsGamePending,
 } from '../lounge/loungeSportsHubNav.js'
 import { takeFantasyGameReturn, takeFantasyHubReturn } from '../fantasy/fantasyReturnNav.js'
+import { useFantasyBackgroundSync } from '../fantasy/useFantasyBackgroundSync.js'
 import { isSportsBetTrackerSearch, isUsefulSportsBetPrefill, sportsBetLogOpenEventName, sportsBetPrefillFromSearchParams, closeSportsBetTracker } from '../sports-bet-tracker/sportsBetNav.js'
 import { BadgeCheck, Bot, ChartSpline, Cherry, ClipboardList, Flag, Handshake, MessagesSquare, Shirt, Spade, Sparkles, Trophy } from 'lucide-react'
 import { football, footballHelmet } from '@lucide/lab'
@@ -725,6 +726,11 @@ export default function AppShell({
     supabaseClient,
     userId: chatCallViewerUserId,
     enabled: browseMode === 'member' && Boolean(chatCallViewerUserId),
+  })
+  // Linked fantasy leagues stay fresh in the background (app open + foreground), not only when Fantasy opens.
+  useFantasyBackgroundSync(supabaseClient, {
+    enabled: browseMode === 'member',
+    userId: chatCallViewerUserId,
   })
   const {
     slots: liveSlotsSession,

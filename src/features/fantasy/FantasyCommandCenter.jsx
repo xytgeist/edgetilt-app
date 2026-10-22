@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { AlertTriangle, RefreshCw, SlidersHorizontal } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
 import { nbaMatchupUpcoming, nbaWeekOf } from './fantasyNbaWeek.js'
@@ -3674,7 +3674,35 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool, 
   )
 }
 
-function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOpenTool }) {
+/** Sync + Manage as small icons on the first sport row (home), with when the leagues last synced. */
+function HomeSyncActions({ syncing, busy, onSync, onOpenManage, syncedIso }) {
+  const ago = syncedIso ? newsTimeAgo(syncedIso) : ''
+  return (
+    <span data-fantasy-home-actions className="flex shrink-0 items-center gap-1.5">
+      {ago ? <span className="text-[10px] font-semibold text-zinc-500">{ago === 'now' ? 'just now' : `${ago} ago`}</span> : null}
+      <button
+        type="button"
+        disabled={busy || syncing}
+        onClick={() => void onSync()}
+        aria-label={syncing ? 'Syncing' : 'Sync leagues'}
+        data-fantasy-sync-btn={syncing ? 'on' : undefined}
+        className="flex h-7 w-7 items-center justify-center rounded-full border border-zinc-800 text-zinc-300 touch-manipulation disabled:opacity-60"
+      >
+        <RefreshCw size={13} strokeWidth={2.25} className={syncing ? 'animate-spin' : ''} aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={onOpenManage}
+        aria-label="Manage leagues"
+        className="flex h-7 w-7 items-center justify-center rounded-full border border-zinc-800 text-zinc-300 touch-manipulation"
+      >
+        <SlidersHorizontal size={13} strokeWidth={2.25} aria-hidden />
+      </button>
+    </span>
+  )
+}
+
+function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOpenTool, actions = null }) {
   const [key, setKey] = useState(null)
   const found = entries.findIndex((e) => e.key === key)
   const index = found >= 0 ? found : 0
@@ -3689,13 +3717,16 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
   }, [entries, cards, group.sport])
   return (
     <section data-fantasy-sport-carousel={group.sport}>
-      <div className="flex items-baseline justify-between gap-2 px-0.5">
-        <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{group.label}</span>
-        {entries.length > 1 ? (
-          <span className="text-[10px] font-semibold tabular-nums text-zinc-500">
-            {index + 1} of {entries.length}
-          </span>
-        ) : null}
+      <div className={`flex items-center justify-between gap-2 px-0.5 ${actions ? 'pb-1' : ''}`}>
+        <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+          {group.label}
+          {entries.length > 1 ? (
+            <span className="ml-1.5 font-semibold normal-case tabular-nums text-zinc-600">
+              {index + 1} of {entries.length}
+            </span>
+          ) : null}
+        </span>
+        {actions}
       </div>
       <MatchupCarousel
         pages={entries}
@@ -3846,8 +3877,26 @@ export default function FantasyCommandCenter({
     if (!deepLink) clearFantasyDeepLink()
   }, [deepLink])
 
+  // Home with matchup cards: Sync / Manage ride the first sport row as icons, so the cards start at the top.
+  const homeGroups = leagueId
+    ? []
+    : groups
+        .map((group) => ({
+          group,
+          matchups: group.leagues.flatMap((lg) => {
+            const leagueDetail = details?.[lg.id]
+            if (!leagueDetail) return []
+            return matchupPages(leagueDetail)
+              .filter((item) => item.yours)
+              .map((item) => ({ key: `${lg.id}-${item.key}`, lg, item, leagueDetail }))
+          }),
+        }))
+        .filter((g) => g.matchups.length)
+  const lastSynced = (leagues || []).reduce((a, lg) => (lg?.last_sync_at && (!a || lg.last_sync_at > a) ? lg.last_sync_at : a), null)
+
   return (
     <div className="space-y-4">
+      {leagueId || !homeGroups.length ? (
       <div className="flex items-center justify-between gap-2">
         {leagueId ? (
           <button
@@ -3888,6 +3937,7 @@ export default function FantasyCommandCenter({
           </button>
         </div>
       </div>
+      ) : null}
 
       {!loadingDetail && !(leagues || []).length ? (
         <div className="rounded-2xl border border-zinc-800 p-4 text-[13px] text-zinc-400">
@@ -3900,20 +3950,17 @@ export default function FantasyCommandCenter({
           {loadingDetail && !(leagues || []).some((lg) => details?.[lg.id]) ? (
             <div className="py-6 text-center text-sm text-zinc-500">Loading matchups…</div>
           ) : null}
-          {groups.map((group) => {
-            const matchups = group.leagues.flatMap((lg) => {
-              const leagueDetail = details?.[lg.id]
-              if (!leagueDetail) return []
-              return matchupPages(leagueDetail)
-                .filter((item) => item.yours)
-                .map((item) => ({ key: `${lg.id}-${item.key}`, lg, item, leagueDetail }))
-            })
-            if (!matchups.length) return null
+          {homeGroups.map(({ group, matchups }, gi) => {
             return (
               <HomeSportCarousel
                 key={group.sport}
                 group={group}
                 entries={matchups}
+                actions={
+                  gi === 0 ? (
+                    <HomeSyncActions syncing={syncing} busy={busy} onSync={onSync} onOpenManage={onOpenManage} syncedIso={lastSynced} />
+                  ) : null
+                }
                 cards={cardsFor(group.sport)}
                 supabaseClient={supabaseClient}
                 onOpen={(id, key) => {

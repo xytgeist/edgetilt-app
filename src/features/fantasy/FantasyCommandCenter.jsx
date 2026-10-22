@@ -1584,13 +1584,15 @@ function startSitPlanOf(detail, cards, sport) {
     const slots = waiverLineupSlots(detail?.league, roster, 'nba')
     if (!slots.length || !cards) return null
     const scoring = detail?.league?.scoring
-    const lockIn = nbaLockIn(detail?.league?.provider, sport)
+    const lockIn = nbaLockIn(detail?.league?.provider, sport, detail?.league?.settings)
+    // High Score sets lineups once a week (benching a starter gives up his best game so far).
+    const weekly = lockIn === 'best'
     return {
       inferred: false,
-      today: true,
+      today: !weekly,
       lockIn,
-      lockCalls: lockIn ? lockInCalls(roster, cards, scoring) : [],
-      ...optimizeLineup({ roster, cards, scoring, slots, sport }),
+      lockCalls: lockIn === 'lock' ? lockInCalls(roster, cards, scoring) : [],
+      ...optimizeLineup({ roster, cards, scoring, slots, sport, nbaWeek: weekly ? { mode: lockIn, upcoming: nbaMatchupUpcoming(detail?.league) } : null }),
     }
   }
   const { slots: own, inferred } = leagueLineupSlots(detail?.league, roster)
@@ -1808,7 +1810,7 @@ function NbaSchedulePanel({ page, cards, league }) {
   }, [league, page, cards, wk])
   if (!plan || !plan.dates.length) return null
   const oppName = shortTeamName(page?.right) || 'Opponent'
-  const lockIn = nbaLockIn(league?.provider, 'nba')
+  const lockIn = nbaLockIn(league?.provider, 'nba', league?.settings)
 
   return (
     <div data-fantasy-nba-schedule className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
@@ -1922,7 +1924,11 @@ function NbaSchedulePanel({ page, cards, league }) {
       </div>
       <p className="mt-2 text-[10px] text-zinc-500">
         Starts = lineup slots you can fill with healthy players who play that night. L = games left. Underlined: second night of a back-to-back (rest risk).
-        {lockIn ? ' Lock-In counts one game a player, so extra games are extra shots at a big night.' : ''}
+        {lockIn === 'best'
+          ? " High Score counts each starter's best game, so extra games are extra shots at a big night."
+          : lockIn
+            ? ' Lock-In counts one game a player, so extra games are extra shots at a big night.'
+            : ''}
       </p>
     </div>
   )
@@ -2342,7 +2348,10 @@ function StreamView({ state, detail, rosterRows, sport, host }) {
         </>
       )}
       <p className="mt-2 text-[10px] text-zinc-500">
-        Each stream uses an add, so check your league&apos;s weekly add limit. Same-night adds work only if {host} starts them that day.
+        {Number(league?.settings?.max_weekly_adds) > 0
+          ? `Each stream uses one of your ${league.settings.max_weekly_adds} adds a week.`
+          : "Each stream uses an add, so check your league's weekly add limit."}{' '}
+        Same-night adds work only if {host} starts them that day.
       </p>
     </>
   )
@@ -2380,7 +2389,7 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
   const weeks = state.data?.weeks || []
   const span = weeks.length ? `wk ${weeks[0]}${weeks.length > 1 ? `-${weeks[weeks.length - 1]}` : ''}` : ''
   // Streaming needs daily lineups where every game counts (Lock-In counts one game a week).
-  const canStream = sport === 'nba' && Boolean(detail?.league?.settings?.daily_lineups) && !nbaLockIn(detail?.league?.provider, sport)
+  const canStream = sport === 'nba' && Boolean(detail?.league?.settings?.daily_lineups) && !nbaLockIn(detail?.league?.provider, sport, detail?.league?.settings)
   const tabs = [['adds', 'Adds'], ...(canStream ? [['stream', 'Stream']] : []), ['sniper', 'Sniper']]
   const tab = tabs.some(([id]) => id === view) ? view : 'adds'
   // NBA chips match any eligible position (a PG/SG shows under both).
@@ -3253,7 +3262,7 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
   }
   return (
     <ul className="space-y-1.5">
-      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} valueLabel={league?.settings?.category_value ? 'VAL' : 'PROJ'} />
+      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport, league?.settings)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} valueLabel={league?.settings?.category_value ? 'VAL' : 'PROJ'} />
       {bench.length ? (
         <li data-fantasy-bench-divider className="flex items-center gap-2 px-1 pb-0.5 pt-3" aria-label="Bench">
           <span className="h-px flex-1" />
@@ -3261,7 +3270,7 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
           <span className="h-px flex-1" />
         </li>
       ) : null}
-      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} valueLabel={league?.settings?.category_value ? 'VAL' : 'PROJ'} />
+      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport, league?.settings)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} valueLabel={league?.settings?.category_value ? 'VAL' : 'PROJ'} />
     </ul>
   )
 }
@@ -3437,8 +3446,8 @@ function projectedFinish(outlook, hostScore) {
   return shown + remaining
 }
 
-function MatchupCard({ page, teams, week, provider, cards, scoring, sport, categories = null, upcoming = false }) {
-  const lockIn = nbaLockIn(provider, sport)
+function MatchupCard({ page, teams, week, provider, settings = null, cards, scoring, sport, categories = null, upcoming = false }) {
+  const lockIn = nbaLockIn(provider, sport, settings)
   const leftOut = sideOutlook(page.roster, cards, scoring, sport, lockIn, upcoming)
   const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport, lockIn, upcoming)
   const leftAccent = useTeamAccent(page.left?.avatar_url, page.left?.id || page.left?.team_name)
@@ -4006,6 +4015,7 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
               teams={entry.leagueDetail.teams}
               week={entry.leagueDetail.week}
               provider={entry.lg.provider || entry.leagueDetail.league?.provider}
+              settings={entry.leagueDetail.league?.settings || entry.lg.settings}
               cards={cards}
               scoring={entry.leagueDetail.league?.scoring}
               sport={group.sport}
@@ -4266,6 +4276,7 @@ export default function FantasyCommandCenter({
                   teams={detail?.teams || []}
                   week={detail?.week}
                   provider={selected?.provider || detail?.league?.provider}
+                  settings={detail?.league?.settings || selected?.settings}
                   cards={cards}
                   scoring={detail?.league?.scoring}
                   sport={selected?.sport || detail?.league?.sport}

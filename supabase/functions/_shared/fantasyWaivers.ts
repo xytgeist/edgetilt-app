@@ -21,7 +21,7 @@ import { sharedCached } from './edgeSharedCache.ts'
 import { loadNbaBoard, nbaTeam, teamWeek, weekGames, type NbaBoard } from './fantasyNbaBoard.ts'
 import { nbaHeadshots, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
 // The app's Lock-In math (plain ESM): one game per player per week counts in Sleeper NBA.
-import { lockInFactor, nbaLockIn } from '../../../src/features/fantasy/fantasyLockIn.js'
+import { nbaLockIn, oneGameFactor } from '../../../src/features/fantasy/fantasyLockIn.js'
 
 const WEEKS_AHEAD = 4
 const CACHE_MS = 20 * 60 * 1000
@@ -262,7 +262,7 @@ export async function buildFantasyWaivers(
     rostered.add(id)
     if (String(r.team_id) === mineId) mineIds.add(id)
   }
-  if (sport === 'nba') return buildNbaWaivers(admin, rostered, mineIds, { withLeague, withSniper, lockIn: nbaLockIn(league.provider, sport) })
+  if (sport === 'nba') return buildNbaWaivers(admin, rostered, mineIds, { withLeague, withSniper, lockIn: nbaLockIn(league.provider, sport, league.settings) || false })
 
   const [board, playersRes] = await Promise.all([
     loadProjBoard(),
@@ -633,12 +633,13 @@ async function buildNbaWaivers(
   admin: SupabaseClient,
   rostered: Set<string>,
   mineIds: Set<string>,
-  opts: { withLeague: boolean; withSniper: boolean; lockIn?: boolean },
+  opts: { withLeague: boolean; withSniper: boolean; lockIn?: false | 'lock' | 'best' },
 ): Promise<Record<string, unknown>> {
   const { withLeague, withSniper } = opts
-  // Lock-In counts one game a week: more games are more chances at a big one, not more points.
-  const lockIn = Boolean(opts.lockIn)
-  const weekScale = (games: number) => (lockIn ? lockInFactor(games) : games)
+  // Lock-In / High Score count one game a week: more games are more chances at a big one, not more points.
+  const mode = opts.lockIn || false
+  const lockIn = Boolean(mode)
+  const weekScale = (games: number) => (mode ? oneGameFactor(games, mode) : games)
   const board: NbaBoard | null = await loadNbaBoard()
   if (!board) return { supported: true, players: [], roster: [] }
   const dayMs = 86_400_000
@@ -735,7 +736,7 @@ async function buildNbaWaivers(
   const lockInGames = (teamGames: number) => {
     if (!lockIn || !tradeBoard) return teamGames
     const weeks = tradeBoard.weeks_left || 1
-    return Math.round(weeks * lockInFactor(Math.max(1, Math.round(teamGames / weeks))) * 10) / 10
+    return Math.round(weeks * oneGameFactor(Math.max(1, Math.round(teamGames / weeks)), mode || 'lock') * 10) / 10
   }
   if (tradeBoard) {
     for (const e of valued) {

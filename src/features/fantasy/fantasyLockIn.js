@@ -8,9 +8,16 @@
 /** A single game's fantasy score spread as a share of its mean (NBA box scores swing about this much night to night). */
 export const LOCK_IN_SD_SHARE = 0.3
 
-/** Every Sleeper NBA league counts one game per player per week (Lock-In, or legacy Game Pick). */
-export function nbaLockIn(provider, sport = 'nba') {
-  return String(sport || '').toLowerCase() === 'nba' && String(provider || '').toLowerCase() === 'sleeper'
+/**
+ * NBA leagues where one game per player counts each week: 'lock' for every Sleeper league (Lock-In, or legacy
+ * Game Pick: the manager picks the game), 'best' for Yahoo High Score (each starter's best game counts on its own),
+ * false where every game counts. Truthy means one game a week everywhere; the math differs by mode.
+ */
+export function nbaLockIn(provider, sport = 'nba', settings = null) {
+  if (String(sport || '').toLowerCase() !== 'nba') return false
+  if (String(provider || '').toLowerCase() === 'sleeper') return 'lock'
+  if (settings && typeof settings === 'object' && settings.high_score) return 'best'
+  return false
 }
 
 function normPdf(x) {
@@ -43,6 +50,34 @@ export function lockInValue(mean, games, sdShare = LOCK_IN_SD_SHARE) {
 /** Week value per point of per-game projection (1 game = 1, 2 ≈ 1.12, 3 ≈ 1.19, 4 ≈ 1.24). */
 export function lockInFactor(games) {
   return lockInValue(1, games)
+}
+
+/**
+ * Yahoo High Score: E[max(floor, best of `games` games)] with each game normal(mean, sdShare x mean). `floor` is
+ * the best game already banked this week (0 when none).
+ */
+export function bestOfValue(mean, games, floor = 0, sdShare = LOCK_IN_SD_SHARE) {
+  const m = Number(mean)
+  const k = Math.floor(Number(games) || 0)
+  const f = Math.max(0, Number(floor) || 0)
+  if (!(m > 0) || k <= 0) return f
+  const sd = m * sdShare
+  // E[max] = f + integral from f of P(best game > x): one minus the chance all k games stay under x.
+  const top = m + 7 * sd
+  if (f >= top) return f
+  const steps = 400
+  const dx = (top - f) / steps
+  let area = 0
+  for (let i = 0; i < steps; i += 1) {
+    const x = f + (i + 0.5) * dx
+    area += (1 - normCdf((x - m) / sd) ** k) * dx
+  }
+  return f + area
+}
+
+/** Week value per point of per-game projection for a one-game mode ('best': 2 ≈ 1.17, 3 ≈ 1.25, 4 ≈ 1.31). */
+export function oneGameFactor(games, mode = 'lock') {
+  return mode === 'best' ? bestOfValue(1, games) : lockInValue(1, games)
 }
 
 /** A finished game's score vs the rest of the week: lock it when it beats what his games left are worth. */

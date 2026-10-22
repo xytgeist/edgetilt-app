@@ -535,6 +535,30 @@ function yahooLineupSlots(root: unknown): string[] {
   return out
 }
 
+/** First scalar value under `key` anywhere in a Yahoo payload (league fields sit beside the settings block). */
+function yahooLeagueField(root: unknown, key: string): unknown {
+  const seen = new Set<unknown>()
+  const visit = (node: unknown, depth: number): unknown => {
+    if (!node || typeof node !== 'object' || seen.has(node) || depth > 8) return undefined
+    seen.add(node)
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const hit = visit(item, depth + 1)
+        if (hit !== undefined) return hit
+      }
+      return undefined
+    }
+    const obj = node as Record<string, unknown>
+    if (key in obj && (obj[key] == null || typeof obj[key] !== 'object')) return obj[key]
+    for (const value of Object.values(obj)) {
+      const hit = visit(value, depth + 1)
+      if (hit !== undefined) return hit
+    }
+    return undefined
+  }
+  return visit(root, 0)
+}
+
 /** Playoff start week + team count, saved under Sleeper's key names so the app reads one shape. */
 function yahooPlayoffs(root: unknown): { playoff_week_start?: number; playoff_teams?: number } {
   const out: { playoff_week_start?: number; playoff_teams?: number } = {}
@@ -810,7 +834,16 @@ export async function syncYahooConnection(
               // Points leagues score `scoring`; categories leagues (`head` / `roto`) win stat by stat and score
               // "category value" (z-score weights from this week's per-game projections) in the points engines.
               const categories = str(lg.scoring_type) === 'headpoint' ? [] : yahooNbaCategories(settingsPayload)
-              nbaExtra = { categories, daily_lineups: str(lg.weekly_deadline) === 'intraday' || !str(lg.weekly_deadline) }
+              // High Score: each starter's best game of the week counts; lineups are weekly (roster_type 'week').
+              const highScore = ['true', '1'].includes(String(yahooLeagueField(settingsPayload, 'is_highscore') ?? '').toLowerCase())
+              const rosterType = String(yahooLeagueField(settingsPayload, 'roster_type') ?? '').toLowerCase()
+              const maxAdds = Number(yahooLeagueField(settingsPayload, 'max_weekly_adds'))
+              nbaExtra = {
+                categories,
+                daily_lineups: rosterType ? rosterType === 'date' : str(lg.weekly_deadline) === 'intraday' || !str(lg.weekly_deadline),
+                ...(highScore ? { high_score: true } : {}),
+                ...(Number.isFinite(maxAdds) && maxAdds > 0 ? { max_weekly_adds: maxAdds } : {}),
+              }
               if (categories.length) {
                 const board = await loadNbaBoard().catch(() => null)
                 const cw = categoryWeights(categories, Object.values(board?.projLine || {}))

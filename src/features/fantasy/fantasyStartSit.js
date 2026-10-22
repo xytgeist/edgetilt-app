@@ -1,3 +1,4 @@
+import { nbaWeekOf } from './fantasyNbaWeek.js'
 import { projectionOf } from './fantasyProjection.js'
 
 /** Which player positions can fill each lineup slot. */
@@ -18,9 +19,11 @@ const SLOT_ELIGIBLE = {
   SF: ['SF'],
   PF: ['PF'],
   C: ['C'],
-  G: ['PG', 'SG'],
+  G: ['PG', 'SG', 'G'],
   F: ['SF', 'PF'],
-  UTIL: ['PG', 'SG', 'SF', 'PF', 'C'],
+  UTIL: ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'FC'],
+  // Yahoo High Score: Frontcourt (players there are listed G / FC).
+  FC: ['SF', 'PF', 'C', 'FC'],
   // ESPN combo slots.
   'SG/SF': ['SG', 'SF'],
   'G/F': ['PG', 'SG', 'SF'],
@@ -159,12 +162,26 @@ export function slotPositions(slot) {
 }
 
 /**
+ * NBA weekly lineup (Yahoo High Score): a starter is worth the expected best of his banked game and games left
+ * (benching him gives the banked game up); a bench player only counts games from when he goes in.
+ */
+function nbaWeeklyValue(row, card, scoring, nbaWeek) {
+  const starter = row?.slot === 'starter'
+  const w = card ? nbaWeekOf(starter ? row : { ...row, week_points: 0 }, card, scoring, Date.now(), { lockIn: nbaWeek.mode, upcoming: nbaWeek.upcoming }) : null
+  const value = w && Number.isFinite(w.total) ? w.total : 0
+  const proj = w && Number.isFinite(w.perGame) ? w.perGame : 0
+  if (!w || (w.gamesLeft <= 0 && !w.live && !(starter && w.host > 0))) return { value: 0, proj, why: 'no game' }
+  return { value, proj, why: '' }
+}
+
+/**
  * Best legal lineup for this week. Players whose game already started stay where they are.
  * Most restrictive slots fill first, so FLEX takes the best leftover RB / WR / TE.
  * Returns the moves (start this one, bench that one) and the projected gain.
+ * `nbaWeek` ({ mode, upcoming }) plans an NBA week instead of today (lineups set once a week).
  */
-export function optimizeLineup({ roster, cards, scoring, slots, sport = 'nfl' }) {
-  // NBA plans today's games (daily locks); NFL plans the week.
+export function optimizeLineup({ roster, cards, scoring, slots, sport = 'nfl', nbaWeek = null }) {
+  // NBA plans today's games (daily locks) unless the league sets lineups weekly; NFL plans the week.
   const nba = sport === 'nba'
   const pool = (roster || [])
     .filter((row) => row?.sleeper_id && (row.slot === 'starter' || row.slot === 'bench'))
@@ -176,9 +193,13 @@ export function optimizeLineup({ roster, cards, scoring, slots, sport = 'nfl' })
         card,
         pos,
         elig: nba && card?.elig?.length ? card.elig.map((p) => String(p).toUpperCase()) : null,
-        locked: nba ? nbaLocked(card) : gameLocked(card),
+        locked: nba ? (nbaWeek ? card?.game_status === 'in_progress' : nbaLocked(card)) : gameLocked(card),
         starter: row.slot === 'starter',
-        ...(nba ? nbaTodayValue(row, card, scoring) : weekValue(row, card, scoring, sport)),
+        ...(nba
+          ? nbaWeek
+            ? nbaWeeklyValue(row, card, scoring, nbaWeek)
+            : nbaTodayValue(row, card, scoring)
+          : weekValue(row, card, scoring, sport)),
       }
     })
 

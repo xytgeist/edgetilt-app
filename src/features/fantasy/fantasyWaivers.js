@@ -19,9 +19,11 @@ const SLOT_ELIGIBLE = {
   SF: ['SF'],
   PF: ['PF'],
   C: ['C'],
-  G: ['PG', 'SG'],
+  G: ['PG', 'SG', 'G'],
   F: ['SF', 'PF'],
-  UTIL: ['PG', 'SG', 'SF', 'PF', 'C'],
+  UTIL: ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'FC'],
+  // Yahoo High Score: Frontcourt (players there are listed G / FC).
+  FC: ['SF', 'PF', 'C', 'FC'],
   // ESPN combo slots.
   'SG/SF': ['SG', 'SF'],
   'G/F': ['PG', 'SG', 'SF'],

@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import {
   loungeCfbGamePlayers,
   loungeGameNews,
+  loungeNbaGamePlayers,
   loungeNflGameFantasy,
   loungeSportsGameDetail,
   loungeSportsGameMatch,
@@ -31,6 +32,8 @@ import {
 } from './gameHub/gameHubWhistle.js'
 import GameHubPlayersPane from './gameHub/GameHubPlayersPane.jsx'
 import GameHubFantasyPane from './gameHub/GameHubFantasyPane.jsx'
+import { GameHubNbaFantasyPane, GameHubNbaPlayersPane } from './gameHub/GameHubNbaPanes.jsx'
+import { loadNbaLeagueRules } from './gameHub/gameHubNbaLeagues.js'
 import GameHubPaneSkeleton from './gameHub/GameHubPaneSkeleton.jsx'
 import { loadNflLeagueRules } from './gameHub/gameHubLeagueRules.js'
 import { loadGameRosterLeagues } from './gameHub/gameHubRosterLeagues.js'
@@ -140,8 +143,10 @@ function LoungeMatchupGameHubModal({
   const sportKey = String(game?.sport_key || '')
   const isFootballGame = sportKey.includes('americanfootball')
   const isCfbGame = sportKey.includes('ncaaf')
-  // Fantasy is NFL-only … do not show an empty Fantasy tab for CFB / NHL / NBA / MLB.
-  const showFantasyTab = Boolean(game) && sportKey.includes('americanfootball_nfl') && !isCfbGame
+  const isNbaGame = sportKey === 'basketball_nba'
+  // Fantasy is NFL + NBA … no empty Fantasy tab for CFB / NHL / MLB (no fantasy data behind them).
+  const showNflFantasy = Boolean(game) && sportKey.includes('americanfootball_nfl') && !isCfbGame
+  const showFantasyTab = showNflFantasy || (Boolean(game) && isNbaGame)
   const hubBitsRef = useRef({ id: '', detail: false, fantasy: false, roster: false })
   const presentedRef = useRef('')
   const [presentedId, setPresentedId] = useState('')
@@ -159,8 +164,8 @@ function LoungeMatchupGameHubModal({
     }
   }, [])
   const showNewsTab = Boolean(game) && isFootballGame
-  // Players needs football roster Edges … hide until NHL/NBA/MLB have their own.
-  const showPlayersTab = Boolean(game) && isFootballGame
+  // Players needs a roster Edge: football (NFL / CFB) and NBA. NHL / MLB stay hidden until theirs exist.
+  const showPlayersTab = Boolean(game) && (isFootballGame || isNbaGame)
   const showPlaysTab = Boolean(game) && game.status !== 'pre'
   const fieldPlayers = useMemo(
     () => mergeFieldRoster(fantasy.players, detail.rosters, game),
@@ -445,9 +450,40 @@ function LoungeMatchupGameHubModal({
   }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient, hubOpenNonce, markHubReady])
 
   useEffect(() => {
-    if (!game || !supabaseClient || !showFantasyTab) return
+    if (!game || !supabaseClient || !showNflFantasy) return
     loadNflLeagueRules(supabaseClient)
-  }, [game?.id, showFantasyTab, supabaseClient, hubOpenNonce])
+  }, [game?.id, showNflFantasy, supabaseClient, hubOpenNonce])
+
+  // NBA Players / Fantasy roster lives apart from `fantasy` so the NFL hero rails and field roster never see it.
+  const [nbaRoster, setNbaRoster] = useState({ gameId: '', players: [], error: '' })
+  useEffect(() => {
+    if (!game || !supabaseClient || !isNbaGame) return undefined
+    let cancelled = false
+    const gameId = String(game.id)
+    void loungeNbaGamePlayers(supabaseClient, {
+      eventId: game.id,
+      awayAbbrev: game.away?.abbrev,
+      homeAbbrev: game.home?.abbrev,
+    })
+      .then((data) => {
+        if (cancelled) return
+        if (data?.error) {
+          setNbaRoster({ gameId, players: [], error: String(data.error) })
+          return
+        }
+        const players = Array.isArray(data?.players) ? data.players : []
+        setNbaRoster({ gameId, players, error: '' })
+        void loadNbaLeagueRules(supabaseClient)
+        void loadGameRosterLeagues(supabaseClient, players.map((p) => p.sleeper_id), 'nba')
+      })
+      .catch((err) => {
+        if (!cancelled) setNbaRoster({ gameId, players: [], error: err?.message || 'Player request failed.' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [game?.id, game?.away?.abbrev, game?.home?.abbrev, isNbaGame, supabaseClient, hubOpenNonce])
+  const nbaRosterLoading = isNbaGame && nbaRoster.gameId !== String(game?.id || '')
 
   // Auto Watch (mine) + Enemy pins from primary Sleeper league for players in this NFL game.
   const fantasyPresentKey = useMemo(() => {
@@ -805,6 +841,30 @@ function LoungeMatchupGameHubModal({
             onSelectPlay={replayPlayOnField}
           />
         </div>
+      )
+    }
+    if (id === 'players' && isNbaGame) {
+      return (
+        <GameHubNbaPlayersPane
+          players={nbaRoster.players}
+          loading={nbaRosterLoading}
+          error={nbaRoster.error}
+          game={game}
+          live={live}
+          playerBox={detail.playerBox}
+        />
+      )
+    }
+    if (id === 'fantasy' && isNbaGame) {
+      return (
+        <GameHubNbaFantasyPane
+          players={nbaRoster.players}
+          loading={nbaRosterLoading}
+          error={nbaRoster.error}
+          game={game}
+          live={live}
+          playerBox={detail.playerBox}
+        />
       )
     }
     if (id === 'players') {

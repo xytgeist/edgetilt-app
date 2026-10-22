@@ -69,7 +69,8 @@ export function useLeagueOpponents(leagueId) {
  * Latest stored week on the user's NFL teams, then who they own among `sleeperIds`.
  * A miss leaves the map empty so the list keeps the manual Watch pins.
  */
-export function loadGameRosterLeagues(supabase, sleeperIds) {
+/** `sport` picks which leagues count (Sleeper NBA and NFL player ids can collide). */
+export function loadGameRosterLeagues(supabase, sleeperIds, sport = 'nfl') {
   const ids = [...new Set((sleeperIds || []).map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 200)
   if (!supabase || !ids.length) {
     ownedSnapshot = {}
@@ -90,9 +91,10 @@ export function loadGameRosterLeagues(supabase, sleeperIds) {
       emit()
       return
     }
+    const want = String(sport || 'nfl').toLowerCase()
     const nflTeams = (teams || []).filter((team) => {
-      const sport = String(team?.league?.sport || 'nfl').toLowerCase()
-      return sport === 'nfl' && team?.league?.id && team?.id
+      const leagueSport = String(team?.league?.sport || 'nfl').toLowerCase()
+      return leagueSport === want && team?.league?.id && team?.id
     })
     const teamById = new Map(nflTeams.map((team) => [String(team.id), team]))
     const teamIds = [...teamById.keys()]

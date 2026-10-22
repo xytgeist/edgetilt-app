@@ -5,7 +5,7 @@
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { withStoredHeadshots } from '../_shared/playerHeadshotStore.ts'
-import { boardGameById, cachedLoungeSportsScoreboard, fetchLoungeSportsGameDetail } from '../_shared/loungeSportsScoreboard.ts'
+import { boardGameById, cachedLoungeSportsScoreboard, fetchLoungeSportsGameDetail, fetchLoungeSportsGameOdds } from '../_shared/loungeSportsScoreboard.ts'
 import { loadPastedBettingSplitsForSlate } from '../_shared/loungeBotBettingSplits.ts'
 import { sharedCached } from '../_shared/edgeSharedCache.ts'
 import { userIdFromJwt } from '../_shared/userJwt.ts'
@@ -87,12 +87,14 @@ Deno.serve(async (req) => {
   let eventId = ''
   let scope = ''
   let omitRosters = false
+  let oddsFor: string[] = []
   let match: { sport_key: string; away: string; home: string; commence_time: string } | null = null
   try {
     const body = await req.json().catch(() => ({}))
     eventId = String(body?.event_id || '').trim()
     scope = String(body?.scope || '').trim()
     omitRosters = body?.omit_rosters === true
+    oddsFor = Array.isArray(body?.odds_for) ? body.odds_for.map((v: unknown) => String(v || '').trim()).filter(Boolean).slice(0, 24) : []
     const m = body?.match
     if (m && typeof m === 'object' && m.sport_key && m.away && m.home) {
       match = {
@@ -108,6 +110,16 @@ Deno.serve(async (req) => {
 
   try {
     const board = await cachedLoungeSportsScoreboard(admin, BOARD_TTL_MS)
+    // Feed / slate pills: book lines only, for the same best-line pick the hub header shows.
+    if (oddsFor.length) {
+      const out: Record<string, unknown> = {}
+      await Promise.all(oddsFor.map(async (id) => {
+        const game = boardGameById(board.games, id)
+        if (!game || (game.status !== 'pre' && game.status !== 'in')) return
+        out[id] = await fetchLoungeSportsGameOdds(game).catch(() => [])
+      }))
+      return json(200, { ok: true, odds: out })
+    }
     if (!eventId) {
       const games = scope === 'active' ? board.games.filter(isActiveBoardGame) : board.games
       return json(200, await withStoredHeadshots(admin, { ok: true, ...board, games, scope: scope === 'active' ? 'active' : 'full', fetched_at: new Date().toISOString() }))

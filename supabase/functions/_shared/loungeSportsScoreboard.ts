@@ -4377,6 +4377,32 @@ async function keepLastGoodEspn(gameId: string, pack: EspnLivePack): Promise<Esp
   return pack
 }
 
+/**
+ * Book lines for one game from the sport-wide shared caches the game hub uses (Odds API sport pack + Pinnacle +
+ * TheRundown shop day) … no per-game upstream call. Feed / slate pills shop these for the best legal line.
+ */
+export async function fetchLoungeSportsGameOdds(game: LoungeSportsGame): Promise<LoungeSportsOddsRow[]> {
+  if (isPgaSportKey(game.sport_key) || String(game.id || '').startsWith('espn-golf-')) return []
+  const live = game.status === 'in'
+  const shopDay = ptDateFromIso(String(game.commence_time || '')) || ptTodayDate()
+  const [oddsPack, pinPack, shopEvents] = await Promise.all([
+    cachedSportOdds(game.sport_key, live),
+    cachedPinnacleOdds(game.sport_key, live),
+    cachedRundownShop(String(game.sport_key || ''), [shopDay], live),
+  ])
+  const events = Array.isArray(oddsPack?.events) ? oddsPack.events as OddsEventRow[] : []
+  const matchedRaw = events.find((ev) =>
+    oddsNamesHit(String(ev.home_team || ''), game.home) && oddsNamesHit(String(ev.away_team || ''), game.away)
+  )
+  const matched = matchedRaw ? mergePinnacleBookmaker(matchedRaw, pinPack) : null
+  return mergeRundownShopOdds(
+    matched
+      ? compactOddsBooksFromEvent(matched, String(matched.home_team || game.home.name), String(matched.away_team || game.away.name))
+      : [],
+    shopRowsForGame(shopEvents, game),
+  )
+}
+
 export async function fetchLoungeSportsGameDetail(
   game: LoungeSportsGame,
   admin?: SupabaseClient,

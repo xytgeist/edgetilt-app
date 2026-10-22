@@ -488,6 +488,15 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     [gamesForPost],
   )
 
+  const requestGameOdds = useCallback(
+    async (ids) => {
+      if (!supabaseClient) return {}
+      const data = await loungeSportsScoreboard(supabaseClient, { odds_for: ids })
+      return data?.odds && typeof data.odds === 'object' ? data.odds : {}
+    },
+    [supabaseClient],
+  )
+
   const value = useMemo(
     () => ({
       games,
@@ -503,6 +512,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       openSlate,
       closeSlate,
       refresh: loadBoard,
+      requestGameOdds,
     }),
     [
       boardFetched,
@@ -516,6 +526,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       matchPost,
       openHub,
       openSlate,
+      requestGameOdds,
       slateFilter,
     ],
   )

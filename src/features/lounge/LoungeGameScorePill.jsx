@@ -8,6 +8,7 @@ import {
 } from './loungeSportsPillPaint.jsx'
 import { formatKickoff, stripTimeZoneSuffix } from './gameHub/gameHubFormatters.js'
 import { isPgaGame } from './loungeSportsSlateWindow.js'
+import { useLoungeGameBestLines, withBestLines } from './loungeGameBestLines.js'
 import LoungePgaTournamentPill from './LoungePgaTournamentPill.jsx'
 
 const PRE_SPREAD_MAX_PX = 28
@@ -155,6 +156,7 @@ export default function LoungeGameScorePill({
   const sports = useLoungeSportsFeed()
   const game = gameProp || sports?.matchPost?.(post)
   const paint = useLoungeSportsPillWashAndLogos(isPgaGame(game) ? null : game)
+  const bestLines = useLoungeGameBestLines(game)
   if (!game) return null
   if (isPgaGame(game)) {
     return (
@@ -171,6 +173,7 @@ export default function LoungeGameScorePill({
     )
   }
 
+  const shown = withBestLines(game, bestLines)
   const homeWon = game.status === 'post' && game.home?.score != null && game.away?.score != null && game.home.score > game.away.score
   const awayWon = game.status === 'post' && game.home?.score != null && game.away?.score != null && game.away.score > game.home.score
   const live = game.status === 'in'
@@ -181,10 +184,10 @@ export default function LoungeGameScorePill({
   const homeColor = paint.homeColor
   const canOpenHub = interactive && !pendingInclude
   const Tag = canOpenHub || pendingInclude ? 'button' : 'div'
-  const awaySpread = formatLoungeSportsSpread(game.away?.spread)
-  const homeSpread = formatLoungeSportsSpread(game.home?.spread)
-  const awayMl = formatLoungeSportsMoneyline(game.away?.ml)
-  const homeMl = formatLoungeSportsMoneyline(game.home?.ml)
+  const awaySpread = formatLoungeSportsSpread(shown.away?.spread)
+  const homeSpread = formatLoungeSportsSpread(shown.home?.spread)
+  const awayMl = formatLoungeSportsMoneyline(shown.away?.ml)
+  const homeMl = formatLoungeSportsMoneyline(shown.home?.ml)
   const statusDisplay =
     game.status === 'pre'
       ? formatKickoff(game.commence_time) || stripTimeZoneSuffix(game.status_label) || 'Upcoming'
@@ -244,7 +247,7 @@ export default function LoungeGameScorePill({
           <LoungeSportsTeamLogo side={game.away} treatment={paint.awayTreatment} rankCorner="left" />
           <span data-lounge-game-pill-score-gutter>
             <ScoreStack
-              side={game.away}
+              side={shown.away}
               status={game.status}
               dimmed={game.status === 'post' && !awayWon && !live}
               covered={awayCovered}
@@ -263,7 +266,7 @@ export default function LoungeGameScorePill({
           </span>
           <span data-lounge-game-pill-score-gutter>
             <ScoreStack
-              side={game.home}
+              side={shown.home}
               status={game.status}
               dimmed={game.status === 'post' && !homeWon && !live}
               covered={homeCovered}

@@ -1,6 +1,9 @@
 /**
- * Market-implied NBA per-game stat lines from Kalshi player strike ladders (`Dylan Harper: 20+ points`), the NBA
- * twin of `fantasyMarketProjections.ts` (NFL, sportsbooks). One open-markets read per series covers every open game.
+ * Market-implied NBA per-game stat lines from Kalshi and Polymarket player strike ladders (`Dylan Harper: 20+
+ * points`), the NBA twin of `fantasyMarketProjections.ts` (NFL, sportsbooks averaged). Kalshi: one open-markets read
+ * per series covers every open game. Polymarket US: the NBA events list, then each game in the next two ET days
+ * (bounded by POLY_BUDGET_MS, its own cache so a slow gateway never holds up the cards). Each source's ladder gives
+ * its own mean; where both price a stat the two are averaged, else the one that does stands.
  * Each covered stat becomes the market's expected value for the player's next game; the app fills the rest from
  * Sleeper's projection and falls back to the baseline when the blend lands too far from it (`fantasyProjection.js`).
  *
@@ -8,13 +11,24 @@
  * Points: a normal fit of strike against z across the ladder (one strike: SD 30% of the mean).
  * Rebounds / assists / threes / steals / blocks: the Poisson mean matching each strike, weighted toward strikes
  * priced near 50% with tight spreads. Double / triple double: the Yes price as the expected count.
- * Shared cache 10 min; empty during Kalshi maintenance or when nothing is posted.
+ * Shared cache 10 min; a source down for maintenance or with nothing posted simply drops out.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { sharedCached } from './edgeSharedCache.ts'
 import { nbaTeam } from './fantasyNbaBoard.ts'
 
 const KALSHI = 'https://external-api.kalshi.com/trade-api/v2'
+const POLY = 'https://gateway.polymarket.us'
+/** Whole Polymarket read (list + per-game events); past it, that cycle uses Kalshi alone. */
+const POLY_BUDGET_MS = 8_000
+const POLY_TYPE: Record<string, string> = {
+  basketball_player_points: 'pts',
+  basketball_player_rebounds: 'reb',
+  basketball_player_assists: 'ast',
+  basketball_player_threes: 'tpm',
+  basketball_player_steals: 'stl',
+  basketball_player_blocks: 'blk',
+}
 const SERIES: Record<string, string> = {
   KXNBAPTS: 'pts',
   KXNBAREB: 'reb',
@@ -155,9 +169,76 @@ async function seriesMarkets(series: string): Promise<Array<Record<string, unkno
   return out
 }
 
-/** `nameKey|TEAM` → { date, line } for each player's earliest open game. */
-async function fetchNbaMarketLines(): Promise<Record<string, { date: string; line: NbaMarketLine }>> {
-  const ladders = new Map<string, { date: string; stat: string; strikes: Strike[] }>()
+type Ladders = Map<string, { date: string; stat: string; strikes: Strike[] }>
+type MeanMap = Record<string, number>
+
+function addStrike(ladders: Ladders, name: string, team: string, stat: string, date: string, s: Strike) {
+  const key = `${nameKey(name)}|${team}|${stat}|${date}`
+  const entry = ladders.get(key) || { date, stat, strikes: [] }
+  entry.strikes.push(s)
+  ladders.set(key, entry)
+}
+
+/** `nameKey|TEAM|stat|date` → per-game mean, one source. */
+function ladderMeans(ladders: Ladders): MeanMap {
+  const out: MeanMap = {}
+  for (const [key, { stat, strikes }] of ladders) {
+    const mean = ladderMean(stat, strikes)
+    if (mean != null) out[key] = mean
+  }
+  return out
+}
+
+const ET_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
+const etDate = (iso: string) => (Number.isFinite(Date.parse(iso)) ? ET_DATE.format(Date.parse(iso)) : '')
+
+async function polyJson(url: string, signal: AbortSignal): Promise<Record<string, unknown>> {
+  const res = await fetch(url, { headers: { Accept: 'application/json' }, signal })
+  if (!res.ok) throw new Error(`Polymarket ${res.status}`)
+  return (await res.json()) as Record<string, unknown>
+}
+
+/** Polymarket US player ladders for games in the next two ET days (`15+ points` = more than 14.5). */
+async function polyMeans(): Promise<MeanMap> {
+  const ladders: Ladders = new Map()
+  const signal = AbortSignal.timeout(POLY_BUDGET_MS)
+  const list = await polyJson(`${POLY}/v2/leagues/nba/events?limit=40&type=sport&section=general`, signal)
+  const today = etDate(new Date().toISOString())
+  const tomorrow = etDate(new Date(Date.now() + 86_400_000).toISOString())
+  const events = ((list.events || []) as Array<Record<string, unknown>>).filter((e) => {
+    const d = etDate(String(e.startDate || e.startTime || ''))
+    return (d === today || d === tomorrow) && Date.parse(String(e.startDate || '')) > Date.now()
+  })
+  await Promise.all(
+    events.map(async (e) => {
+      const slug = String(e.slug || '')
+      if (!slug) return
+      const wrap = await polyJson(`${POLY}/v1/events/slug/${encodeURIComponent(slug)}`, signal).catch(() => null)
+      const ev = (wrap?.event || {}) as Record<string, unknown>
+      const teams = new Map(
+        ((ev.teams || []) as Array<Record<string, unknown>>).map((t) => [String(t.id), nbaTeam(String(t.displayAbbreviation || t.abbreviation || ''))]),
+      )
+      const date = etDate(String(ev.startDate || e.startDate || ''))
+      for (const m of (ev.markets || []) as Array<Record<string, unknown>>) {
+        const stat = POLY_TYPE[String(m.sportsMarketType || '')]
+        if (!stat || m.active === false || m.closed === true || m.hidden === true) continue
+        const meta = (m.metadata || {}) as Record<string, unknown>
+        const team = teams.get(String(meta.teamId ?? '')) || ''
+        const line = num(m.line)
+        const bid = num((m.bestBidQuote as { value?: unknown } | null)?.value ?? m.bestBidQuote)
+        const ask = num((m.bestAskQuote as { value?: unknown } | null)?.value ?? m.bestAskQuote)
+        const name = String(meta.playerName || '')
+        if (!name || !team || !date || line == null || bid == null || ask == null || ask <= 0) continue
+        addStrike(ladders, name, team, stat, date, { strike: line - 0.5, p: (bid + ask) / 2, spread: ask - bid })
+      }
+    }),
+  )
+  return ladderMeans(ladders)
+}
+
+/** Kalshi ladders for every open NBA game (`25+ points` = floor_strike 24.5). */
+async function kalshiMeans(): Promise<MeanMap> {
+  const ladders: Ladders = new Map()
   await Promise.all(
     Object.entries(SERIES).map(async ([series, stat]) => {
       for (const m of await seriesMarkets(series).catch(() => [])) {
@@ -170,32 +251,41 @@ async function fetchNbaMarketLines(): Promise<Record<string, { date: string; lin
         const bid = num(m.yes_bid_dollars)
         const ask = num(m.yes_ask_dollars)
         if (!name || !team || !date || strike == null || bid == null || ask == null || ask <= 0) continue
-        const key = `${nameKey(name)}|${team}|${stat}|${date}`
-        const entry = ladders.get(key) || { date, stat, strikes: [] }
-        entry.strikes.push({ strike, p: (bid + ask) / 2, spread: ask - bid })
-        ladders.set(key, entry)
+        addStrike(ladders, name, team, stat, date, { strike, p: (bid + ask) / 2, spread: ask - bid })
       }
     }),
   )
+  return ladderMeans(ladders)
+}
+
+/** Each source's means averaged where both price a stat; `nameKey|TEAM` → earliest open game's line. */
+export function combineMeans(sources: MeanMap[]): Record<string, { date: string; line: NbaMarketLine }> {
+  const merged = new Map<string, number[]>()
+  for (const src of sources) for (const [key, v] of Object.entries(src)) merged.set(key, [...(merged.get(key) || []), v])
   const out: Record<string, { date: string; line: NbaMarketLine }> = {}
-  for (const [key, { date, stat, strikes }] of ladders) {
-    const mean = ladderMean(stat, strikes)
-    if (mean == null) continue
-    const player = key.split('|').slice(0, 2).join('|')
+  for (const [key, vals] of merged) {
+    const [name, team, stat, date] = key.split('|')
+    const player = `${name}|${team}`
     const cur = out[player]
     if (cur && cur.date < date) continue
     if (!cur || cur.date > date) out[player] = { date, line: {} }
-    out[player].line[stat] = Math.round(mean * 100) / 100
+    out[player].line[stat] = Math.round((vals.reduce((a, v) => a + v, 0) / vals.length) * 100) / 100
   }
   return out
 }
 
-export function loadNbaMarketLines(admin?: SupabaseClient): Promise<Record<string, { date: string; line: NbaMarketLine }>> {
-  return sharedCached(
-    'fantasy:nba-market-lines:v1',
-    { ttlMs: 10 * 60_000, staleMaxMs: 60 * 60_000, leaseMs: 30_000, admin, shouldStore: (v) => Object.keys(v).length > 0 },
-    fetchNbaMarketLines,
-  ).catch(() => ({}))
+function cachedMeans(key: string, admin: SupabaseClient | undefined, build: () => Promise<MeanMap>): Promise<MeanMap> {
+  return sharedCached(key, { ttlMs: 10 * 60_000, staleMaxMs: 60 * 60_000, leaseMs: 30_000, admin, shouldStore: (v) => Object.keys(v).length > 0 }, build).catch(
+    () => ({}) as MeanMap,
+  )
+}
+
+export async function loadNbaMarketLines(admin?: SupabaseClient): Promise<Record<string, { date: string; line: NbaMarketLine }>> {
+  const [kalshi, poly] = await Promise.all([
+    cachedMeans('fantasy:nba-market-means:kalshi:v1', admin, kalshiMeans),
+    cachedMeans('fantasy:nba-market-means:poly:v1', admin, polyMeans),
+  ])
+  return combineMeans([kalshi, poly])
 }
 
 /** Market line for one player's next game (`date` = his next tip's ET date), or null. */

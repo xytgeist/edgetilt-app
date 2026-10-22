@@ -28,6 +28,8 @@ import {
   fetchAppleStorefront,
   fetchEdgeStoreProducts,
   iapBilledStorePrice,
+  formatFoundingSavings,
+  iapIntroOffer,
   iapIntroOfferNote,
   iapIntroStoreLabel,
   iapProductIdForPlan,
@@ -244,12 +246,29 @@ function ctaPriceLabel(price) {
   return String(price || '').replace(/\/(?:mo|yr)$/i, '')
 }
 
-/** Founding web price as a small line under the regular price (the regular price is the big number). */
-function webFoundingIntroNote(interval, foundingPrice, listPrice) {
+/** Founding web price for the small lines under the regular price (the regular price is the big number). */
+function webFoundingIntro(interval, foundingPrice, listPrice) {
   const founding = ctaPriceLabel(foundingPrice)
   const list = ctaPriceLabel(listPrice)
-  if (!founding || !list || founding === list) return ''
-  return `Founding ${founding} · first ${interval === 'annual' ? 'yr' : `${SLOTS_EDGE_FOUNDING_MONTHLY_DURATION_MONTHS} mo`}`
+  if (!founding || !list || founding === list) return null
+  const num = (s) => Number(String(s).replace(/[^0-9.]/g, ''))
+  const periods = interval === 'annual' ? 1 : SLOTS_EDGE_FOUNDING_MONTHLY_DURATION_MONTHS
+  const saved = formatFoundingSavings((num(list) - num(founding)) * periods)
+  return { price: founding, save: saved ? `Save ${saved} over the first 12 months` : '' }
+}
+
+/**
+ * Founding offer under the billed price: bold gold price, italic savings. Apple 3.1.2(c): both stay smaller than
+ * the billed price above them.
+ */
+function FoundingOfferLines({ offer, web = false }) {
+  if (!offer) return null
+  return (
+    <div className={`mt-1 text-[10px] leading-snug ${web ? 'subscribe-founding-lines--web' : ''}`} data-subscribe-founding>
+      <p className="subscribe-founding-price font-extrabold">Founding: {ctaPriceLabel(offer.price)}</p>
+      {offer.save ? <p className="subscribe-founding-save italic">{offer.save}</p> : null}
+    </div>
+  )
 }
 
 function PlanComparePrices({
@@ -259,6 +278,8 @@ function PlanComparePrices({
   webLabel = 'Web',
   storeNote = '',
   webNote = '',
+  storeOffer = null,
+  webOffer = null,
   selectedVia = 'web',
   onSelect,
   disabled = false,
@@ -283,6 +304,7 @@ function PlanComparePrices({
       >
         <div className="text-xl font-bold tracking-tight text-white">{ctaPriceLabel(storePrice)}</div>
         <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">{storeLabel}</p>
+        {storeOffer ? <FoundingOfferLines offer={storeOffer} /> : null}
         {storeNote ? <p className="mt-0.5 text-[10px] leading-snug text-zinc-500">{storeNote}</p> : null}
       </button>
       <button
@@ -303,6 +325,7 @@ function PlanComparePrices({
       >
         <div className="text-xl font-bold tracking-tight text-cyan-200">{ctaPriceLabel(webPrice)}</div>
         <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-300/80">{webLabel}</p>
+        {webOffer ? <FoundingOfferLines offer={webOffer} web /> : null}
         {webNote ? (
           <p className="subscribe-plan-compare-web-note mt-0.5 text-[10px] leading-snug text-cyan-300/70">{webNote}</p>
         ) : null}
@@ -1125,8 +1148,8 @@ export default function SubscribeModal({
                           storePrice={iapBilledStorePrice(starterStoreProduct)}
                           webPrice={starterInterval === 'annual' ? starterAnnualList : starterList}
                           storeLabel={iapIntroStoreLabel(starterStoreProduct)}
-                          storeNote={iapIntroOfferNote(starterStoreProduct)}
-                          webNote={webFoundingIntroNote(
+                          storeOffer={iapIntroOffer(starterStoreProduct)}
+                          webOffer={webFoundingIntro(
                             starterInterval,
                             starterWebPrice,
                             starterInterval === 'annual' ? starterAnnualList : starterList,
@@ -1282,8 +1305,8 @@ export default function SubscribeModal({
                           storePrice={iapBilledStorePrice(fullStoreProduct)}
                           webPrice={fullInterval === 'annual' ? fullAnnualList : fullMonthlyList}
                           storeLabel={iapIntroStoreLabel(fullStoreProduct)}
-                          storeNote={iapIntroOfferNote(fullStoreProduct)}
-                          webNote={webFoundingIntroNote(
+                          storeOffer={iapIntroOffer(fullStoreProduct)}
+                          webOffer={webFoundingIntro(
                             fullInterval,
                             fullWebPrice,
                             fullInterval === 'annual' ? fullAnnualList : fullMonthlyList,

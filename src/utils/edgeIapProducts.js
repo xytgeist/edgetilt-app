@@ -154,6 +154,30 @@ export function iapBilledStorePrice(product) {
   return String(product?.displayPrice || '').trim()
 }
 
+const priceNumber = (s) => Number(String(s || '').replace(/[^0-9.]/g, ''))
+
+/** "$204" style savings for Founding copy. */
+export function formatFoundingSavings(amount) {
+  const n = Math.round(Number(amount) || 0)
+  return n > 0 ? `$${n.toLocaleString('en-US')}` : ''
+}
+
+/**
+ * Founding intro offer for the small lines under the billed price: `{ price: '$51.99', save: 'Save $204 over the
+ * first 12 months' }`, or null without a paid intro offer.
+ */
+export function iapIntroOffer(product) {
+  const intro = introPrice(product)
+  const list = String(product?.displayPrice || '').trim()
+  if (!intro || !list || intro === list || String(product.introPaymentMode || '') === 'freeTrial') return null
+  const unit = String(product.introPeriodUnit || '')
+  const count = Number(product.introPeriodCount) || 0
+  const months = unit === 'month' ? count : unit === 'year' ? 12 * Math.max(1, count) : 0
+  const periods = unit === 'year' ? Math.max(1, count) : count
+  const saved = formatFoundingSavings((priceNumber(list) - priceNumber(intro)) * periods)
+  return { price: intro, save: saved && months ? `Save ${saved} over the first ${months} months` : '' }
+}
+
 /** "Founding $51.99 · first 12 mo", or '' when there is no intro offer (small line under the billed price). */
 export function iapIntroOfferNote(product) {
   const intro = introPrice(product)

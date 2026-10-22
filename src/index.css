@@ -6531,6 +6531,19 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
 [data-subscribe-modal] .subscribe-plan-founding-badge {
   z-index: 40;
 }
+/* Founding offer lines under the billed price (gold price, italic savings). */
+[data-subscribe-modal] .subscribe-founding-price {
+  color: #facc15;
+}
+[data-subscribe-modal] .subscribe-founding-save {
+  color: #fde68a;
+}
+html.light [data-subscribe-modal] .subscribe-founding-price {
+  color: #b45309;
+}
+html.light [data-subscribe-modal] .subscribe-founding-save {
+  color: #92400e;
+}
 [data-subscribe-modal] .subscribe-plan-founding-badge-inner {
   background: linear-gradient(180deg, #ca8a04 0%, #18181b 100%);
 }

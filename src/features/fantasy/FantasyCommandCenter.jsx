@@ -1424,7 +1424,15 @@ function LivePlayRow({ item, tagFor }) {
         ) : shot.failed || !item.headshotUrl ? (
           <span className="mt-0.5 h-7 w-7 shrink-0 rounded-full bg-zinc-800" aria-hidden />
         ) : (
-          <img src={shot.src} alt="" onError={shot.onError} className="mt-0.5 h-7 w-7 shrink-0 rounded-full bg-zinc-800 object-cover object-top" loading="lazy" />
+          <span className="relative mt-0.5 h-7 w-7 shrink-0 overflow-hidden rounded-full bg-zinc-800">
+            <img
+              src={shot.src}
+              alt=""
+              onError={shot.onError}
+              className="absolute inset-0 h-full w-full origin-[center_30%] scale-[1.75] object-cover"
+              loading="lazy"
+            />
+          </span>
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1.5">

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ExternalLink } from 'lucide-react'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
-import { newsTimeAgo } from './fantasyNewsStatus.js'
+import { lineupNews, newsTimeAgo } from './fantasyNewsStatus.js'
 
 const NOTES_COLLAPSED = 8
 
@@ -102,21 +102,43 @@ function NoteRow({ note, leagues, leagueOrder, bench }) {
  */
 export default function FantasyPlayerNews({ players, news, showLeagues, leagueOrder = [] }) {
   const [all, setAll] = useState(false)
+  // Lineup news (injury / availability / role / moves) by default; stat recaps one tap away under All.
+  const [filter, setFilter] = useState('lineup')
   if (!news?.key) return null
-  const { loading, notes } = news
+  const { loading } = news
   const state = news
+  const notes = filter === 'lineup' ? news.notes.filter(lineupNews) : news.notes
   const shown = all ? notes : notes.slice(0, NOTES_COLLAPSED)
 
   return (
     <section data-fantasy-news className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-      <div className="flex items-baseline justify-between px-3 pb-1.5 pt-2.5">
+      <div className="flex items-center justify-between gap-2 px-3 pb-1.5 pt-2.5">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Player news</div>
-        <div className="text-[10px] text-zinc-500">Insiders on X · Rotowire</div>
+        <div data-fantasy-news-filter className="flex rounded-full border border-zinc-800 p-0.5" role="radiogroup" aria-label="News filter">
+          {[
+            ['lineup', 'Lineup'],
+            ['all', 'All'],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={filter === id}
+              onClick={() => setFilter(id)}
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold touch-manipulation ${filter === id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
+      <div className="-mt-0.5 px-3 pb-1 text-[10px] text-zinc-500">Insiders on X · Rotowire</div>
       {loading ? (
         <div className="px-3 pb-3 text-[12px] text-zinc-500">Loading news…</div>
       ) : !notes.length ? (
-        <div className="px-3 pb-3 text-[12px] text-zinc-500">{state.error || 'No news on your players in the last 10 days.'}</div>
+        <div className="px-3 pb-3 text-[12px] text-zinc-500">
+          {state.error || (filter === 'lineup' ? 'No lineup news on your players right now.' : 'No news on your players in the last 10 days.')}
+        </div>
       ) : (
         <>
           <ul data-fantasy-news-list className="divide-y divide-zinc-800">

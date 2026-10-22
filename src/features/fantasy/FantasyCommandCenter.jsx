@@ -1495,29 +1495,6 @@ function shortLeagueName(lg) {
   return name.length > 16 ? `${name.slice(0, 15)}…` : name
 }
 
-const leagueSport = (lg) => String(lg?.sport || 'nfl').toLowerCase()
-
-/** Main-page alerts: one Roster banner per NFL / NBA league with an open slot or a swap worth making (NBA: today). */
-function HomeAlerts({ leagues, details, cardsFor, cardsLoading, onOpenLeague }) {
-  const list = (leagues || []).filter((lg) => ['nfl', 'nba'].includes(leagueSport(lg)) && details?.[lg.id])
-  if (!list.length) return null
-  return (
-    <section className="space-y-2">
-      {list.map((lg) => (
-        <LiveAlerts
-          key={lg.id}
-          detail={details[lg.id]}
-          cards={cardsFor(leagueSport(lg))}
-          cardsLoading={cardsLoading}
-          sport={leagueSport(lg)}
-          prefix={list.length > 1 ? shortLeagueName(lg) : ''}
-          onOpen={() => onOpenLeague(lg.id, 'start')}
-        />
-      ))}
-    </section>
-  )
-}
-
 /** Every NFL player on your teams (all slots) → the leagues they are on and whether you start them anywhere. */
 /** Sleeper NBA rows have no photo of their own; the lineup cards carry one (ESPN via our R2). */
 function withCardHeadshots(details, cards, sport) {
@@ -1588,38 +1565,41 @@ function lockInCalls(roster, cards, scoring) {
 }
 
 function useStartSitPlan(detail, cards, sport) {
-  return useMemo(() => {
-    const mine = (detail?.teams || []).find((t) => t.is_mine)
-    const roster = mine ? detail?.rostersByTeam?.[mine.id] || [] : []
-    if (!roster.length) return null
-    if (sport === 'nba') {
-      const slots = waiverLineupSlots(detail?.league, roster, 'nba')
-      if (!slots.length || !cards) return null
-      const scoring = detail?.league?.scoring
-      const lockIn = nbaLockIn(detail?.league?.provider, sport)
-      return {
-        inferred: false,
-        today: true,
-        lockIn,
-        lockCalls: lockIn ? lockInCalls(roster, cards, scoring) : [],
-        ...optimizeLineup({ roster, cards, scoring, slots, sport }),
-      }
+  return useMemo(() => startSitPlanOf(detail, cards, sport), [detail, cards, sport])
+}
+
+/** This week's (NBA: today's) best lineup and swaps for your team, or null without a roster / slots. */
+function startSitPlanOf(detail, cards, sport) {
+  const mine = (detail?.teams || []).find((t) => t.is_mine)
+  const roster = mine ? detail?.rostersByTeam?.[mine.id] || [] : []
+  if (!roster.length) return null
+  if (sport === 'nba') {
+    const slots = waiverLineupSlots(detail?.league, roster, 'nba')
+    if (!slots.length || !cards) return null
+    const scoring = detail?.league?.scoring
+    const lockIn = nbaLockIn(detail?.league?.provider, sport)
+    return {
+      inferred: false,
+      today: true,
+      lockIn,
+      lockCalls: lockIn ? lockInCalls(roster, cards, scoring) : [],
+      ...optimizeLineup({ roster, cards, scoring, slots, sport }),
     }
-    const { slots: own, inferred } = leagueLineupSlots(detail?.league, roster)
-    // Guessed from your starters, an empty K / DEF slot vanishes; if another team starts one, the league has it.
-    const slots = [...own]
-    if (inferred) {
-      for (const pos of ['K', 'DEF']) {
-        if (slots.includes(pos)) continue
-        const leagueHas = Object.values(detail?.rostersByTeam || {}).some((rows) =>
-          (rows || []).some((r) => r?.slot === 'starter' && fantasyPos(r.position) === pos),
-        )
-        if (leagueHas) slots.push(pos)
-      }
+  }
+  const { slots: own, inferred } = leagueLineupSlots(detail?.league, roster)
+  // Guessed from your starters, an empty K / DEF slot vanishes; if another team starts one, the league has it.
+  const slots = [...own]
+  if (inferred) {
+    for (const pos of ['K', 'DEF']) {
+      if (slots.includes(pos)) continue
+      const leagueHas = Object.values(detail?.rostersByTeam || {}).some((rows) =>
+        (rows || []).some((r) => r?.slot === 'starter' && fantasyPos(r.position) === pos),
+      )
+      if (leagueHas) slots.push(pos)
     }
-    if (!slots.length) return null
-    return { inferred, ...optimizeLineup({ roster, cards, scoring: detail?.league?.scoring, slots, sport }) }
-  }, [detail, cards, sport])
+  }
+  if (!slots.length) return null
+  return { inferred, ...optimizeLineup({ roster, cards, scoring: detail?.league?.scoring, slots, sport }) }
 }
 
 /** "M. Evans" for sentences (row labels use the all-caps `shortName`). */
@@ -1667,9 +1647,9 @@ function starterStatusAlerts(detail, cards, plan) {
  * Live banner: starters ruled out or doubtful (named, with the swap), then any other swaps and open slots.
  * One tap opens Roster. Hidden when there is nothing to do.
  */
-function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen, prefix = '' }) {
-  const plan = useStartSitPlan(detail, cards, sport)
-  if (cardsLoading || !plan) return null
+/** What needs doing in this league (hurt starters with the swap, locks, other swaps, open slots), one line each. */
+function leagueAlertLines(plan, detail, cards) {
+  if (!plan) return []
   const named = starterStatusAlerts(detail, cards, plan)
   const covered = new Set(named.map((a) => a.move).filter(Boolean))
   const otherMoves = plan.moves.filter((m) => !covered.has(m))
@@ -1685,8 +1665,14 @@ function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen, prefix = '' })
   // Lock-In: name the scores worth locking before the next tip (waits are not urgent).
   const locks = (plan.lockCalls || []).filter((c) => c.lock).slice(0, 2)
   const lockLines = locks.map((c) => `Lock in ${briefName(c.row.player_name, c.row.position)} (${c.score.toFixed(1)}) before ${kickoffShort(c.card.kickoff) || 'his next game'}`)
-  if (!named.length && !parts.length && !lockLines.length) return null
-  const lines = [...named.map((a) => a.text), ...lockLines, ...(parts.length ? [parts.join(' · ')] : [])]
+  return [...named.map((a) => a.text), ...lockLines, ...(parts.length ? [parts.join(' · ')] : [])]
+}
+
+function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen, prefix = '' }) {
+  const plan = useStartSitPlan(detail, cards, sport)
+  if (cardsLoading || !plan) return null
+  const lines = leagueAlertLines(plan, detail, cards)
+  if (!lines.length) return null
   return (
     <button
       type="button"
@@ -3423,7 +3409,7 @@ function SynopsisSection({ title, onOpen, children }) {
  * lineup fixes, and, once opened, the top waiver adds, sniper picks, and trade ideas. The summary line loads with
  * home (one trade-board read per league, shared-cached on the Edge); waivers and sniper load on open.
  */
-function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }) {
+function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool, alerts = [] }) {
   const leagueId = lg?.id || null
   const rosterStamp = useRosterStamp(detail)
   const [open, setOpen] = useState(false)
@@ -3550,8 +3536,16 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
         className="flex w-full items-center justify-between gap-2 text-left touch-manipulation [-webkit-tap-highlight-color:transparent]"
       >
         <span className="min-w-0">
-          <span className="block text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-            League outlook{lg?.last_sync_at ? <span className="font-semibold normal-case tracking-normal"> · {syncedAgo(lg.last_sync_at)}</span> : null}
+          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+            {alerts.length ? (
+              <span data-fantasy-attention className="inline-flex shrink-0 items-center gap-0.5" aria-label={`${alerts.length} to fix`}>
+                <AlertTriangle size={11} strokeWidth={2.5} aria-hidden />
+                {alerts.length}
+              </span>
+            ) : null}
+            <span className="min-w-0 truncate">
+              League outlook{lg?.last_sync_at ? <span className="font-semibold normal-case tracking-normal"> · {syncedAgo(lg.last_sync_at)}</span> : null}
+            </span>
           </span>
           <span className="block truncate text-[11px] font-semibold text-zinc-200">{summary.join(' · ') || 'No issues this week'}</span>
         </span>
@@ -3559,6 +3553,15 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
       </button>
       {open ? (
         <div className="mt-2 space-y-2">
+          {alerts.length ? (
+            <SynopsisSection title="Needs attention" onOpen={toolOpen('start')}>
+              {alerts.map((line) => (
+                <div key={line} data-fantasy-attention-line className="font-semibold">
+                  {line}
+                </div>
+              ))}
+            </SynopsisSection>
+          ) : null}
           <SynopsisSection title="Outlook">
             {outlook ? (
               <>
@@ -3671,12 +3674,28 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
   const [key, setKey] = useState(null)
   const found = entries.findIndex((e) => e.key === key)
   const index = found >= 0 ? found : 0
+  // What needs doing per league (once per league; the outlook card under the shown one lists it).
+  const alertsBy = useMemo(() => {
+    const out = {}
+    for (const e of entries) {
+      if (out[e.lg.id]) continue
+      out[e.lg.id] = leagueAlertLines(startSitPlanOf(e.leagueDetail, cards, group.sport), e.leagueDetail, cards)
+    }
+    return out
+  }, [entries, cards, group.sport])
+  const shownId = entries[index]?.lg.id
+  const elsewhere = entries.some((e) => e.lg.id !== shownId && alertsBy[e.lg.id]?.length)
   return (
     <section data-fantasy-sport-carousel={group.sport}>
       <div className="flex items-baseline justify-between gap-2 px-0.5">
         <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{group.label}</span>
         {entries.length > 1 ? (
-          <span className="text-[10px] font-semibold tabular-nums text-zinc-500">
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold tabular-nums text-zinc-500">
+            {elsewhere ? (
+              <span data-fantasy-attention className="inline-flex items-center" aria-label="Another league needs attention">
+                <AlertTriangle size={10} strokeWidth={2.5} aria-hidden />
+              </span>
+            ) : null}
             {index + 1} of {entries.length}
           </span>
         ) : null}
@@ -3718,6 +3737,7 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
           cards={cards}
           sport={group.sport}
           onOpenTool={(tool) => onOpenTool?.(entries[index].lg.id, entries[index].item.key, tool)}
+          alerts={alertsBy[entries[index].lg.id] || []}
         />
       ) : null}
     </section>
@@ -3829,12 +3849,6 @@ export default function FantasyCommandCenter({
     if (!deepLink) clearFantasyDeepLink()
   }, [deepLink])
 
-  const openLeagueTool = (id, nextTool) => {
-    const page = details?.[id] ? matchupPages(details[id]).find((p) => p.yours) : null
-    setTool(nextTool)
-    openMatchup(id, page?.key || null)
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
@@ -3886,13 +3900,6 @@ export default function FantasyCommandCenter({
 
       {!leagueId ? (
         <>
-          <HomeAlerts
-            leagues={leagues}
-            details={details}
-            cardsFor={cardsFor}
-            cardsLoading={cardsLoading}
-            onOpenLeague={openLeagueTool}
-          />
           {loadingDetail && !(leagues || []).some((lg) => details?.[lg.id]) ? (
             <div className="py-6 text-center text-sm text-zinc-500">Loading matchups…</div>
           ) : null}

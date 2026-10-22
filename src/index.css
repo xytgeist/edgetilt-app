@@ -12152,6 +12152,11 @@ html.light [data-fantasy-home] [data-fantasy-panel-news] {
 html.light [data-fantasy-news] [data-fantasy-news-leagues] {
   color: #0369a1;
 }
+/* Fantasy home: "needs attention" marks on the league outlook header + carousel counter, and the alert lines. */
+[data-fantasy-sport-carousel] [data-fantasy-attention] { color: #fbbf24; }
+[data-fantasy-synopsis] [data-fantasy-attention-line] { color: #fcd34d; }
+html.light [data-fantasy-sport-carousel] [data-fantasy-attention] { color: #b45309; }
+html.light [data-fantasy-synopsis] [data-fantasy-attention-line] { color: #92400e; }
 /* One color per league (index into the league list), so several leagues on one player read apart. */
 [data-fantasy-news] [data-league-tone='0'] { color: #7dd3fc; }
 [data-fantasy-news] [data-league-tone='1'] { color: #fcd34d; }

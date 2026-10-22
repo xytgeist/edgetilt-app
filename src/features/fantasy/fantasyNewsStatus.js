@@ -24,11 +24,15 @@ const LINEUP_KINDS = new Set(['status', 'role', 'transaction', 'in_game'])
 const LINEUP_TERMS =
   /\b(injur\w*|ankle|knee|hamstring|groin|calf|foot|feet|wrist|hand|finger|thumb|shoulder|hip|elbow|neck|achilles|concussion|illness|sick|soreness|sore|strain(ed)?|sprain(ed)?|surgery|fracture|rest(ed|ing)?|load management|day-to-day|game-time decision|available|unavailable|will play|won'?t play|(will|won'?t) start|starting lineup|starting role|start(s|ed)? in place|move(d|s)? (to|into) the (bench|starting lineup)|to the bench|benched|minutes (restriction|limit)|limited (practice|minutes)|(did not|didn'?t) practice|return(s|ed)? (to|from)|suspend\w*|traded|trade[sd]? to|signed|waived|released|assigned|recalled|g league|two-way|depth chart|activated|reinstated|personal reasons|out (for|with|indefinitely))\b/i
 
-/** News that matters for lineups (injury / availability / role / transactions), not stat recaps. */
+/**
+ * News that matters for lineups (injury / availability / role / transactions), not stat recaps. Reads the headline
+ * only: a recap's story is analysis that names other players' injuries and past moves ("with Beal (knee) out").
+ */
 export function lineupNews(note) {
   if (LINEUP_KINDS.has(String(note?.topic || ''))) return true
-  if (noteStatus(note)) return true
-  return LINEUP_TERMS.test(noteText(note))
+  const head = { headline: note?.headline || '' }
+  if (noteStatus(head)) return true
+  return LINEUP_TERMS.test(noteText(head))
 }
 
 const RANK = { '': 0, questionable: 1, doubtful: 2, out: 3 }

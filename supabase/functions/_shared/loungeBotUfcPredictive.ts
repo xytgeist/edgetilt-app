@@ -710,7 +710,6 @@ export async function publishAndRecordUfcCard(
           rationale: pPick.rationale,
           division: fight.division,
           is_apex: fight.isApexCage,
-          clv_beat: Math.random() > 0.25, // ~75% CLV beat model
           desk_label: picker === 'Rocco' ? 'Last-5 styles' : 'Consensus Devig',
         },
       })

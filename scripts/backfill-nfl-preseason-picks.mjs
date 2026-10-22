@@ -218,7 +218,6 @@ function generateDeskPicks(game) {
     const scottMargin = (scottBacksHome ? homeScore - awayScore : awayScore - homeScore) + scottLine
     const scottStatus = scottMargin > 0 ? 'won' : scottMargin < 0 ? 'lost' : 'push'
     const scottUnits = scottStatus === 'won' ? 1.0 : scottStatus === 'lost' ? -1.1 : 0.0
-    const scottClvBeat = Math.random() > 0.24 // ~76% CLV beat rate for head quant
 
     picks.push({
       picker_name: 'Scott',
@@ -232,8 +231,6 @@ function generateDeskPicks(game) {
       away_score: awayScore,
       metadata: {
         post_mortem: postMortemNote,
-        clv_beat: scottClvBeat,
-        closing_line: scottClvBeat ? (scottLine > 0 ? scottLine - 0.5 : scottLine + 0.5) : (scottLine > 0 ? scottLine + 0.5 : scottLine - 0.5),
         desk_label: 'Consensus +EV',
       },
     })
@@ -251,7 +248,6 @@ function generateDeskPicks(game) {
     const roccoMargin = (roccoTakesHome ? homeScore - awayScore : awayScore - homeScore) + roccoLine
     const roccoStatus = roccoMargin > 0 ? 'won' : roccoMargin < 0 ? 'lost' : 'push'
     const roccoUnits = roccoStatus === 'won' ? 1.0 : roccoStatus === 'lost' ? -1.1 : 0.0
-    const roccoClvBeat = Math.random() > 0.28 // ~72% CLV beat rate
 
     picks.push({
       picker_name: 'Rocco',
@@ -265,8 +261,6 @@ function generateDeskPicks(game) {
       away_score: awayScore,
       metadata: {
         post_mortem: `Trench Rating: Pass protection win rate differential (+4.8% PBWR edge).`,
-        clv_beat: roccoClvBeat,
-        closing_line: roccoClvBeat ? (roccoLine > 0 ? roccoLine - 0.5 : roccoLine + 0.5) : (roccoLine > 0 ? roccoLine + 0.5 : roccoLine - 0.5),
         desk_label: 'Trench EPA',
       },
     })
@@ -282,7 +276,6 @@ function generateDeskPicks(game) {
     const cheddaMargin = (cheddaTakesHome ? homeScore - awayScore : awayScore - homeScore) + cheddaLine
     const cheddaStatus = cheddaMargin > 0 ? 'won' : cheddaMargin < 0 ? 'lost' : 'push'
     const cheddaUnits = cheddaStatus === 'won' ? 1.0 : cheddaStatus === 'lost' ? -1.1 : 0.0
-    const cheddaClvBeat = Math.random() > 0.26 // ~74% CLV beat rate
 
     picks.push({
       picker_name: 'Chedda',
@@ -296,8 +289,6 @@ function generateDeskPicks(game) {
       away_score: awayScore,
       metadata: {
         post_mortem: `Sharp Divergence: Reverse line movement on underdog (+22% handle disparity).`,
-        clv_beat: cheddaClvBeat,
-        closing_line: cheddaClvBeat ? cheddaLine - 0.5 : cheddaLine + 0.5,
         desk_label: 'Dogs & RLM',
       },
     })
@@ -313,7 +304,6 @@ function generateDeskPicks(game) {
     const tankMargin = tankTakesUnder ? roundedTotal - totalPoints : totalPoints - roundedTotal
     const tankStatus = tankMargin > 0 ? 'won' : tankMargin < 0 ? 'lost' : 'push'
     const tankUnits = tankStatus === 'won' ? 1.0 : tankStatus === 'lost' ? -1.1 : 0.0
-    const tankClvBeat = Math.random() > 0.30 // ~70% CLV beat rate
 
     picks.push({
       picker_name: 'Tank',
@@ -327,8 +317,6 @@ function generateDeskPicks(game) {
       away_score: awayScore,
       metadata: {
         post_mortem: `Pace Analysis: ${totalPoints} total points vs ${roundedTotal} line. 2nd half tempo factor.`,
-        clv_beat: tankClvBeat,
-        closing_line: tankClvBeat ? (tankTakesUnder ? roundedTotal - 1.0 : roundedTotal + 1.0) : (tankTakesUnder ? roundedTotal + 1.0 : roundedTotal - 1.0),
         desk_label: 'Totals & Pace',
       },
     })
@@ -435,15 +423,12 @@ async function run() {
   }
 
   const winRate = ((totalWins / (totalWins + totalLosses)) * 100).toFixed(1)
-  const totalClvBeats = allPicksToInsert.filter((p) => p.metadata?.clv_beat === true).length
-  const clvRate = ((totalClvBeats / allPicksToInsert.length) * 100).toFixed(1)
 
   console.log(`\n📊 Backfill Simulation Summary:`)
   console.log(`   • Total Picks: ${allPicksToInsert.length}`)
   console.log(`   • Record: ${totalWins}W - ${totalLosses}L - ${totalPushes}P`)
   console.log(`   • Win Rate: ${winRate}%`)
   console.log(`   • Net Units: ${totalUnits >= 0 ? `+${totalUnits.toFixed(2)}` : totalUnits.toFixed(2)} U`)
-  console.log(`   • CLV Beat Rate: ${clvRate}% (${totalClvBeats}/${allPicksToInsert.length})`)
 
   // Breakdown by Desk
   const desks = ['Scott', 'Rocco', 'Chedda', 'Tank']
@@ -455,9 +440,7 @@ async function run() {
     const p = deskPicks.filter((p) => p.status === 'push').length
     const u = deskPicks.reduce((acc, x) => acc + x.units_net, 0)
     const wr = ((w / (w + l)) * 100).toFixed(1)
-    const clvB = deskPicks.filter((x) => x.metadata?.clv_beat === true).length
-    const clvR = ((clvB / deskPicks.length) * 100).toFixed(1)
-    console.log(`   • ${desk.padEnd(8)}: ${w}W - ${l}L - ${p}P (${wr}%) | ${u >= 0 ? `+${u.toFixed(2)}` : u.toFixed(2)} U | CLV: ${clvR}%`)
+    console.log(`   • ${desk.padEnd(8)}: ${w}W - ${l}L - ${p}P (${wr}%) | ${u >= 0 ? `+${u.toFixed(2)}` : u.toFixed(2)} U`)
   }
 
   // Consensus Signals Summary

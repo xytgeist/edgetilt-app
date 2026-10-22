@@ -387,14 +387,16 @@ function MatchupHalf({
   logoTreatment,
   gameStatus = 'pre',
   meshSrc,
+  face = null,
 }) {
   const scoring = useHubPointFormat()
   const isDef = slotPos === 'DEF' || normalizeFantasyPos(player) === 'DEF'
-  const points = matchupPointsBox(player, gameStatus, scoring)
+  // `face` (NBA) brings its own points and lines; football reads the Sleeper season fields.
+  const points = face?.points || matchupPointsBox(player, gameStatus, scoring)
   const empty = !player
   const nick = teamNickname(teamSide)
-  const stats = matchupStatLine(player, slotPos)
-  const avg = seasonAvgLine(player, scoring)
+  const stats = face ? face.stats : matchupStatLine(player, slotPos)
+  const avg = face ? face.avg : seasonAvgLine(player, scoring)
   const logoOpacity = isDef ? 0.82 : 0.3
 
   return (
@@ -493,7 +495,7 @@ function MatchupHalf({
 const SWIPE_THRESHOLD_PX = 56
 const SWIPE_OUT_MS = 240
 
-function MatchupCardFace({ matchup, game, gameStatus, awayColor, homeColor, awayTreatment, homeTreatment }) {
+function MatchupCardFace({ matchup, game, gameStatus, awayColor, homeColor, awayTreatment, homeTreatment, faceFor = null }) {
   const awaySide = game?.away || { abbrev: '' }
   const homeSide = game?.home || { abbrev: '' }
   return (
@@ -508,6 +510,7 @@ function MatchupCardFace({ matchup, game, gameStatus, awayColor, homeColor, away
         logoTreatment={awayTreatment}
         gameStatus={gameStatus}
         meshSrc="/sports/nfl/textures/jersey-mesh-1.jpg"
+        face={faceFor && matchup.away ? faceFor(matchup.away) : null}
       />
       <div className="w-px shrink-0 self-stretch bg-zinc-800" aria-hidden="true" />
       <MatchupHalf
@@ -520,13 +523,14 @@ function MatchupCardFace({ matchup, game, gameStatus, awayColor, homeColor, away
         logoTreatment={homeTreatment}
         gameStatus={gameStatus}
         meshSrc="/sports/nfl/textures/jersey-mesh-2.jpg"
+        face={faceFor && matchup.home ? faceFor(matchup.home) : null}
       />
     </div>
   )
 }
 
-/** Deck of H2H cards … swipe L/R sends the top card to the back of the stack. */
-function FantasyMatchupStack({ matchups, game, gameStatus }) {
+/** Deck of H2H cards … swipe L/R sends the top card to the back of the stack. `faceFor` (NBA) sets each half's numbers. */
+export function FantasyMatchupStack({ matchups, game, gameStatus, faceFor = null }) {
   const idsKey = matchups.map((m) => m.id).join('|')
   const [order, setOrder] = useState(() => matchups.map((_, i) => i))
   const [dragX, setDragX] = useState(0)
@@ -654,6 +658,7 @@ function FantasyMatchupStack({ matchups, game, gameStatus }) {
                   homeColor={homeColor}
                   awayTreatment={awayTreatment}
                   homeTreatment={homeTreatment}
+                  faceFor={faceFor}
                 />
               </div>
             )
@@ -668,6 +673,7 @@ function FantasyMatchupStack({ matchups, game, gameStatus }) {
             homeColor={homeColor}
             awayTreatment={awayTreatment}
             homeTreatment={homeTreatment}
+            faceFor={faceFor}
           />
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { KalshiPlayerPropsBoard } from './GameHubKalshiProps.jsx'
-import { GoToFantasyButton } from './GameHubFantasyPane.jsx'
+import { FantasyMatchupStack, GoToFantasyButton } from './GameHubFantasyPane.jsx'
+import { getFantasyPinRole, toggleFantasyPin, useFantasyPins } from './gameHubFantasyPins.js'
 import { useHeadshotSrc } from '../../../utils/playerHeadshot.js'
 import { scoreLine } from '../../fantasy/fantasyBoxScore.js'
 import { boxForPlayer, indexPlayerBox } from './gameHubPropStats.js'
@@ -180,6 +181,32 @@ export function GameHubNbaPlayersPane({ players, props = [], loading, error, gam
   )
 }
 
+const BATTLE_POS = ['PG', 'SG', 'SF', 'PF', 'C']
+
+/** Watch pins share the hub store; Sleeper NBA ids collide with NFL ones, so NBA pins live under `nba:`. */
+const pinKey = (p) => `nba:${p.sleeper_id}`
+
+/** Pregame position battles: each side's top projected player at each position (primary position first). */
+function positionBattles(rows) {
+  const byProj = rows.filter((r) => r.proj != null).sort((a, b) => b.proj - a.proj)
+  const used = new Set()
+  const pick = (side, pos) => {
+    const pool = byProj.filter((r) => r.p.side === side && !used.has(r.p.sleeper_id))
+    const hit =
+      pool.find((r) => String(r.p.position || '').toUpperCase() === pos) ||
+      pool.find((r) => (r.p.fantasy_positions || []).map((x) => String(x).toUpperCase()).includes(pos))
+    if (hit) used.add(hit.p.sleeper_id)
+    return hit?.p || null
+  }
+  const out = []
+  for (const pos of BATTLE_POS) {
+    const away = pick('away', pos)
+    const home = pick('home', pos)
+    if (away || home) out.push({ id: pos, label: pos, pos, away, home })
+  }
+  return out
+}
+
 /** NBA Fantasy tab: per-game projection and live / final points under the viewer's NBA league scoring. */
 export function GameHubNbaFantasyPane({ players, loading, error, game, live = null, playerBox = null }) {
   const status = statusOf(game, live)
@@ -190,6 +217,7 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
   const scoring = league?.scoring || DEFAULT_NBA_SCORING
   const owned = useRosterLeagues()
   const opponents = useLeagueOpponents(league?.id)
+  const pins = useFantasyPins()
 
   const rows = useMemo(() => {
     const list = (players || []).map((p) => {
@@ -198,10 +226,12 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
       const proj = p.proj_line ? scoreLine(p.proj_line, scoring, 'nba', p.position || null) : null
       const livePts = box ? scoreLine(nbaLineFromBox(box), scoring, 'nba', p.position || null) : boxLoaded ? 0 : null
       const mine = owned[id] || null
-      const enemy = !mine && Boolean(opponents[id])
-      return { p, box, proj, livePts, mine, enemy }
+      const pinRole = getFantasyPinRole(pinKey(p), pins)
+      const enemy = !mine && (Boolean(opponents[id]) || pinRole === 'enemy')
+      const watch = !mine && !enemy && pinRole === 'mine'
+      return { p, box, proj, livePts, mine, enemy, watch }
     })
-    const tier = (r) => (r.mine ? 0 : r.enemy ? 1 : 2)
+    const tier = (r) => (r.mine ? 0 : r.enemy ? 1 : r.watch ? 2 : 3)
     return list.sort((a, b) => {
       if (tier(a) !== tier(b)) return tier(a) - tier(b)
       const va = (liveOrFinal ? a.livePts : a.proj) ?? -1
@@ -209,7 +239,22 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
       if (vb !== va) return vb - va
       return (b.proj ?? -1) - (a.proj ?? -1)
     })
-  }, [players, boxIndex, boxLoaded, scoring, owned, opponents, liveOrFinal])
+  }, [players, boxIndex, boxLoaded, scoring, owned, opponents, liveOrFinal, pins])
+
+  const battles = useMemo(() => (liveOrFinal ? [] : positionBattles(rows)), [rows, liveOrFinal])
+  const faceFor = useMemo(() => {
+    const projBy = new Map(rows.map((r) => [String(r.p.sleeper_id), r.proj]))
+    return (p) => {
+      const avg = p.season_line
+      const seasonPts = avg ? scoreLine(avg, scoring, 'nba', p.position || null) : null
+      const line = avg || p.proj_line
+      return {
+        points: { main: projBy.get(String(p.sleeper_id)) ?? null, under: null, label: 'PROJ' },
+        stats: line ? `${fmt(line.pts ?? 0)} pts · ${fmt(line.reb ?? 0)} reb · ${fmt(line.ast ?? 0)} ast` : null,
+        avg: Number.isFinite(seasonPts) && p.season_gp > 0 ? `${fmt(seasonPts)} avg · ${p.season_gp} gp` : avg ? null : 'Projected',
+      }
+    }
+  }, [rows, scoring])
 
   if (loading) return <div className="py-10 text-center text-sm text-zinc-500">Loading fantasy…</div>
   if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
@@ -248,6 +293,7 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
         )}
         <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{caption}</span>
       </div>
+      {battles.length ? <FantasyMatchupStack matchups={battles} game={game} gameStatus={status} faceFor={faceFor} /> : null}
 
       <div className="space-y-2">
         <div className="grid grid-cols-[minmax(0,1fr)_3.25rem] gap-x-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
@@ -255,46 +301,72 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
           <span className="text-right">{status === 'post' ? 'Game' : status === 'in' ? 'Live' : 'Proj'}</span>
         </div>
         <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-          {rows.slice(0, 30).map(({ p, box, proj, livePts, mine, enemy }) => {
-            const pill = mine ? rosterLeaguePill(mine) : enemy && league?.name ? rosterLeaguePill({ leagues: [{ name: league.name }] }) : ''
+          {rows.slice(0, 30).map(({ p, box, proj, livePts, mine, enemy, watch }) => {
+            const pill = mine
+              ? rosterLeaguePill(mine)
+              : enemy && opponents[String(p.sleeper_id)] && league?.name
+                ? rosterLeaguePill({ leagues: [{ name: league.name }] })
+                : enemy
+                  ? 'Enemy'
+                  : watch
+                    ? 'Watch'
+                    : ''
             const boxLine = box ? nbaLineFromBox(box) : null
             const detail = boxLine ? `${boxLine.pts} pts · ${boxLine.reb} reb · ${boxLine.ast} ast` : ''
+            const pinned = Boolean(mine || enemy || watch)
+            const locked = Boolean(mine || opponents[String(p.sleeper_id)])
             return (
-              <li
-                key={p.sleeper_id}
-                className={`relative grid grid-cols-[minmax(0,1fr)_3.25rem] items-center gap-x-2 px-3 py-2.5 ${
-                  enemy ? 'bg-rose-500/10' : mine ? 'bg-sky-500/10' : ''
-                }`}
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <Avatar player={p} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</span>
-                      {pill ? (
-                        <span
-                          title={mine ? rosterLeagueTitle(mine) : `Opponent in ${league?.name}`}
-                          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-                            enemy ? 'bg-rose-500/25 text-rose-300' : 'bg-sky-500/25 text-sky-300'
-                          }`}
-                        >
-                          {pill}
-                        </span>
-                      ) : null}
-                      <InjuryTag status={p.injury_status} />
-                    </div>
-                    <div className="truncate text-[12px] text-zinc-500">
-                      {p.position} · {p.team}
-                      {detail ? ` · ${detail}` : ''}
+              <li key={p.sleeper_id}>
+                <button
+                  type="button"
+                  data-lounge-fantasy-pin={pinned ? (enemy ? 'enemy' : 'mine') : '0'}
+                  onClick={() => {
+                    if (!locked) toggleFantasyPin(pinKey(p))
+                  }}
+                  aria-pressed={pinned}
+                  aria-label={
+                    mine
+                      ? `${p.name} is on your ${rosterLeagueTitle(mine)} roster`
+                      : locked
+                        ? `${p.name} is on an opposing roster${league?.name ? ` in ${league.name}` : ''}`
+                        : watch
+                          ? `Deselect ${p.name} from fantasy watch`
+                          : `Select ${p.name} for fantasy watch`
+                  }
+                  className={`relative grid w-full grid-cols-[minmax(0,1fr)_3.25rem] items-center gap-x-2 px-3 py-2.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] ${
+                    enemy ? 'bg-rose-500/10' : pinned ? 'bg-sky-500/10' : 'active:bg-zinc-800/80'
+                  }`}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar player={p} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</span>
+                        {pill ? (
+                          <span
+                            title={mine ? rosterLeagueTitle(mine) : locked ? `Opponent in ${league?.name}` : undefined}
+                            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                              enemy ? 'bg-rose-500/25 text-rose-300' : 'bg-sky-500/25 text-sky-300'
+                            }`}
+                          >
+                            {pill}
+                          </span>
+                        ) : null}
+                        <InjuryTag status={p.injury_status} />
+                      </div>
+                      <div className="truncate text-[12px] text-zinc-500">
+                        {p.position} · {p.team}
+                        {detail ? ` · ${detail}` : ''}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[14px] font-bold tabular-nums text-zinc-100">{fmt(liveOrFinal ? livePts : proj)}</div>
-                  <div className="text-[10px] tabular-nums text-zinc-500">
-                    {liveOrFinal ? (proj != null ? `proj ${fmt(proj)}` : '') : 'per game'}
+                  <div className="text-right">
+                    <div className="text-[14px] font-bold tabular-nums text-zinc-100">{fmt(liveOrFinal ? livePts : proj)}</div>
+                    <div className="text-[10px] tabular-nums text-zinc-500">
+                      {liveOrFinal ? (proj != null ? `proj ${fmt(proj)}` : '') : 'per game'}
+                    </div>
                   </div>
-                </div>
+                </button>
               </li>
             )
           })}

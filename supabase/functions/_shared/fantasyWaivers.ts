@@ -715,7 +715,11 @@ async function buildNbaWaivers(
   const available = entries
     .filter((e) => !rostered.has(e.p.sleeper_id) && perGamePts(e.p.sleeper_id) > 0)
     .sort((a, b) => perGamePts(b.p.sleeper_id) * weekScale(b.left) - perGamePts(a.p.sleeper_id) * weekScale(a.left))
-  const players = available.slice(0, NBA_SHORTLIST).map((e) => e.out)
+  // Shortlist on each player's better week, this one or next: late in a week (or before a matchup starts) the
+  // best streams are often players whose team is idle now but busy next week.
+  const bestWeek = (e: (typeof entries)[number]) =>
+    perGamePts(e.p.sleeper_id) * Math.max(weekScale(e.left), weekScale(gamesNext(e.p.team)))
+  const players = [...available].sort((a, b) => bestWeek(b) - bestWeek(a)).slice(0, NBA_SHORTLIST).map((e) => e.out)
   const boom = withSniper
     ? available.filter((e) => e.out.next_up.length || e.left >= 3).slice(0, 30).map((e) => e.out)
     : []

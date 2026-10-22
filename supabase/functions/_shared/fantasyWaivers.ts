@@ -18,7 +18,7 @@ import {
   type GameRow,
 } from './fantasyLineupCards.ts'
 import { sharedCached } from './edgeSharedCache.ts'
-import { loadNbaBoard, teamWeek, weekGames, type NbaBoard } from './fantasyNbaBoard.ts'
+import { loadNbaBoard, nbaTeam, teamWeek, weekGames, type NbaBoard } from './fantasyNbaBoard.ts'
 import { nbaHeadshots, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
 
 const WEEKS_AHEAD = 4
@@ -260,7 +260,7 @@ export async function buildFantasyWaivers(
     rostered.add(id)
     if (String(r.team_id) === mineId) mineIds.add(id)
   }
-  if (sport === 'nba') return buildNbaWaivers(admin, rostered, mineIds, withSniper)
+  if (sport === 'nba') return buildNbaWaivers(admin, rostered, mineIds, { withLeague, withSniper })
 
   const [board, playersRes] = await Promise.all([
     loadProjBoard(),
@@ -563,21 +563,77 @@ function scaleLine(line: Record<string, number> | null | undefined, games: numbe
   return out
 }
 
+const NBA_SEASON_GAMES = 82
+/** NBA regular season ends mid-April of the season's second calendar year (Sleeper season "2026" = 2026-27). */
+const NBA_SEASON_END_MMDD = '04-12'
+const NBA_STANDINGS = 'https://site.api.espn.com/apis/v2/sports/basketball/nba/standings'
+
+type NbaTradeBoard = {
+  weeks_left: number
+  team_games: Record<string, number>
+  season: Record<string, { line: Record<string, number>; games: number }>
+}
+
+/**
+ * Rest-of-season inputs in the NFL `trade` shape: Sleeper season totals (games played), each team's regular
+ * season games left (82 minus ESPN standings W+L), and calendar weeks to the end of the regular season.
+ * Shared 6h; stat keys are trimmed to the ones Sleeper projects (the scoring keys).
+ */
+function loadNbaTradeBoard(admin: SupabaseClient, board: NbaBoard): Promise<NbaTradeBoard> {
+  return sharedCached<NbaTradeBoard>(
+    `fantasy:nba-trade-board:${board.season}:${board.week}`,
+    { ttlMs: 6 * 60 * 60_000, leaseMs: 120_000, staleMaxMs: 24 * 60 * 60_000, admin },
+    async () => {
+      const keys = new Set(Object.values(board.projLine).flatMap((l) => Object.keys(l)))
+      const [stats, standings] = await Promise.all([
+        fetchJson(`https://api.sleeper.app/v1/stats/nba/regular/${board.season}`).catch(() => ({})),
+        fetchJson(NBA_STANDINGS).catch(() => null),
+      ])
+      const season: NbaTradeBoard['season'] = {}
+      for (const [id, raw] of Object.entries((stats || {}) as Record<string, Record<string, unknown>>)) {
+        const gp = Number(raw?.gp) || 0
+        if (gp <= 0) continue
+        const line: Record<string, number> = {}
+        for (const k of keys) {
+          const n = Number(raw[k])
+          if (Number.isFinite(n) && n !== 0) line[k] = n
+        }
+        season[id] = { line, games: gp }
+      }
+      const team_games: Record<string, number> = {}
+      const groups = ((standings as { children?: Array<{ standings?: { entries?: unknown[] } }> } | null)?.children || [])
+      for (const g of groups) {
+        for (const e of (g?.standings?.entries || []) as Array<{ team?: { abbreviation?: string }; stats?: Array<{ name?: string; value?: number }> }>) {
+          const team = nbaTeam(e?.team?.abbreviation)
+          const stat = (name: string) => Number(e?.stats?.find((s) => s?.name === name)?.value) || 0
+          if (team) team_games[team] = Math.max(0, NBA_SEASON_GAMES - stat('wins') - stat('losses'))
+        }
+      }
+      const end = Date.parse(`${Number(board.season) + 1}-${NBA_SEASON_END_MMDD}T00:00:00Z`)
+      const weeks_left = Math.max(1, Math.ceil((end - Date.now()) / (7 * 86_400_000)))
+      return { weeks_left, team_games, season }
+    },
+  )
+}
+
 function nbaHurt(status: string | null | undefined): boolean {
   return /^(out|o|ir|inj|sus)/i.test(String(status || '').trim())
 }
 
 /**
- * Same pool shape as NFL (`weeks` of stat lines the app scores in league rules), so `rankWaivers` / `rankBoom`
- * run unchanged: week 1 = per-game projection x games left this week, week 2 = x next week's games.
+ * Same pool shape as NFL (`weeks` of stat lines the app scores in league rules), so `rankWaivers` / `rankBoom` /
+ * `findTrades` run unchanged: week 1 = per-game projection x games left this week, week 2 = x next week's games.
+ * Every valued player carries the NFL `trade` block (per-game projection as the rest-of-season rate, season
+ * production, team games left), so waivers and trades weigh rest of season. Trades mode adds `league_players`.
  * Sniper boom = available players next up behind an injured starter, or with 3+ games left this week.
  */
 async function buildNbaWaivers(
   admin: SupabaseClient,
   rostered: Set<string>,
   mineIds: Set<string>,
-  withSniper: boolean,
+  opts: { withLeague: boolean; withSniper: boolean },
 ): Promise<Record<string, unknown>> {
+  const { withLeague, withSniper } = opts
   const board: NbaBoard | null = await loadNbaBoard()
   if (!board) return { supported: true, players: [], roster: [] }
   const dayMs = 86_400_000
@@ -615,6 +671,7 @@ async function buildNbaWaivers(
           { week: board.week + 1, bye: gamesNext(p.team) === 0, opp: null, home: null, ppr: null, line: scaleLine(per, gamesNext(p.team)) },
         ] as WeekOut[],
         next_up: [] as string[],
+        trade: null as WaiverPlayer['trade'],
       },
     }
   })
@@ -642,16 +699,37 @@ async function buildNbaWaivers(
     ? available.filter((e) => e.out.next_up.length || e.left >= 3).slice(0, 30).map((e) => e.out)
     : []
 
-  const shots = await nbaHeadshots(admin, [...roster, ...players, ...boom])
+  const leaguePlayers = withLeague ? entries.filter((e) => rostered.has(e.p.sleeper_id)).map((e) => e.out) : []
+  const valued = [...new Set([...roster, ...players, ...boom, ...leaguePlayers])]
+  const [shots, tradeBoard] = await Promise.all([
+    nbaHeadshots(admin, [...roster, ...players, ...boom]),
+    loadNbaTradeBoard(admin, board).catch(() => null),
+  ])
   for (const e of [...roster, ...players, ...boom]) e.headshot_url = shots.get(e.sleeper_id)?.headshot_url || null
+  if (tradeBoard) {
+    for (const e of valued) {
+      const per = board.projLine[e.sleeper_id] || null
+      const past = tradeBoard.season[e.sleeper_id]
+      e.trade = {
+        ros_line: per || {},
+        ros_games: per ? 1 : 0,
+        season_line: past?.line || {},
+        season_games: past?.games || 0,
+        team_games: tradeBoard.team_games[nbaTeam(e.team)] || 0,
+        return_date: null,
+      }
+    }
+  }
 
   return {
     supported: true,
     season: board.season,
     week: board.week,
     weeks: [board.week, board.week + 1],
+    ...(tradeBoard ? { weeks_left: tradeBoard.weeks_left } : {}),
     players,
     roster,
+    ...(withLeague ? { league_players: leaguePlayers } : {}),
     ...(withSniper ? { sniper: { boom, handcuffs: [] } } : {}),
   }
 }

@@ -41,7 +41,7 @@ export function waiverLineupSlots(league, rosterRows, sport = 'nfl') {
 }
 
 /** NBA eligibility from Sleeper `fantasy_positions` (NFL players stay single-position). */
-function eligOf(entry, sport) {
+export function eligOf(entry, sport) {
   if (sport !== 'nba') return null
   const list = Array.isArray(entry?.fantasy_positions) ? entry.fantasy_positions.map((p) => String(p).toUpperCase()) : []
   return list.length ? list : null

@@ -1,5 +1,5 @@
 import { fantasyPosition } from './fantasyStartSit.js'
-import { bestSeats, horizonValue, rowId } from './fantasyWaivers.js'
+import { bestSeats, eligOf, horizonValue, rowId } from './fantasyWaivers.js'
 import { seasonProfile } from './fantasyValue.js'
 
 const SLOT_LABEL = { FLEX: 'FLEX', SUPER_FLEX: 'SUPERFLEX', WRRB_FLEX: 'W/R flex', REC_FLEX: 'W/T flex' }
@@ -98,6 +98,7 @@ function teamPlayers(rows, ctx) {
       return {
         id,
         pos,
+        elig: eligOf(entry, ctx.sport),
         // Lineup math: expected points per week (rest of season when we have it, else the 4-week average).
         value: prof ? prof.weekly : h.avg,
         // Per-game worth when he plays: blended rest-of-season rate, else the 4-week healthy rate.
@@ -411,6 +412,7 @@ export function findFlips({ values, pool, detail, scoring, slots, sport = 'nfl' 
       return {
         id: String(entry.sleeper_id),
         pos: fantasyPosition(entry.position),
+        elig: eligOf(entry, sport),
         value: h.avg,
         keep: h.known ? Math.max(h.avg, h.healthy) : h.avg,
         games: (entry.weeks || []).filter((w) => !w.bye).length,

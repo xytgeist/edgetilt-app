@@ -1819,7 +1819,7 @@ function SniperView({ supabaseClient, detail, sport }) {
   const mineTeam = (detail?.teams || []).find((t) => t.is_mine) || null
   const flips = useMemo(() => {
     if (!state.data?.league_players?.length || !mineTeam) return []
-    const { slots } = leagueLineupSlots(detail?.league, detail?.rostersByTeam?.[mineTeam.id] || [])
+    const slots = waiverLineupSlots(detail?.league, detail?.rostersByTeam?.[mineTeam.id] || [], sport)
     return findFlips({ values: state.data, pool: state.data, detail, scoring, slots, sport })
   }, [state.data, detail, mineTeam, scoring, sport])
   const host = providerLabel(detail?.league?.provider)
@@ -2434,7 +2434,7 @@ function PendingOfferCard({ offer, detail, values, sport, onOpen }) {
     const inp = pendingOfferInputs(offer, detail)
     const me = (detail?.teams || []).find((t) => t.is_mine)
     if (!inp?.complete || !values?.league_players?.length || !me) return null
-    const { slots } = leagueLineupSlots(detail?.league, detail?.rostersByTeam?.[me.id] || [])
+    const slots = waiverLineupSlots(detail?.league, detail?.rostersByTeam?.[me.id] || [], sport)
     return reviewOffer({ values, detail, scoring: detail?.league?.scoring, slots, sport, teamId: inp.teamId, giveIds: inp.giveIds, getIds: inp.getIds })
   }, [offer, values, detail, sport])
   const stale = !input?.complete || (review && review.give.length + review.get.length !== input.giveIds.length + input.getIds.length)
@@ -2539,7 +2539,7 @@ function OfferReview({ values, detail, sport, myName, pending }) {
   const review = useMemo(() => {
     const me = (detail?.teams || []).find((t) => t.is_mine)
     if (!values?.league_players?.length || !me || !teamId || !give.size || !get.size) return null
-    const { slots } = leagueLineupSlots(detail?.league, detail?.rostersByTeam?.[me.id] || [])
+    const slots = waiverLineupSlots(detail?.league, detail?.rostersByTeam?.[me.id] || [], sport)
     return reviewOffer({ values, detail, scoring: detail?.league?.scoring, slots, sport, teamId, giveIds: give, getIds: get })
   }, [values, detail, teamId, give, get, sport])
 
@@ -2755,7 +2755,7 @@ function TradesPanel({ supabaseClient, detail, sport }) {
   }
   const result = useMemo(() => {
     if (!state.data?.league_players?.length || !mine) return null
-    const { slots } = leagueLineupSlots(detail?.league, detail?.rostersByTeam?.[mine.id] || [])
+    const slots = waiverLineupSlots(detail?.league, detail?.rostersByTeam?.[mine.id] || [], sport)
     return findTrades({ values: state.data, detail, scoring: detail?.league?.scoring, slots, sport, stance: stanceStep / (TRADE_STANCES.length - 1) })
   }, [state.data, detail, mine, sport, stanceStep])
   const weeks = state.data?.weeks || []
@@ -3290,10 +3290,11 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
   const [open, setOpen] = useState(false)
   const [loaded, setLoaded] = useState({ key: '', data: null })
   const [extra, setExtra] = useState({ id: null, waivers: null, sniper: null })
-  const nfl = sport === 'nfl'
+  const nba = sport === 'nba'
+  const on = sport === 'nfl' || nba
 
   useEffect(() => {
-    if (!supabaseClient || !leagueId || !nfl) return undefined
+    if (!supabaseClient || !leagueId || !on) return undefined
     if (synopsisValues.get(leagueId)?.stamp === rosterStamp) return undefined
     let alive = true
     loadLeagueValues(supabaseClient, leagueId)
@@ -3305,11 +3306,10 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
     return () => {
       alive = false
     }
-  }, [supabaseClient, leagueId, rosterStamp, nfl])
+  }, [supabaseClient, leagueId, rosterStamp, on])
 
   useEffect(() => {
-    // Waivers + sniper teasers run for NBA too (same pool shape); the league outlook above stays NFL.
-    if (!open || !supabaseClient || !leagueId || !(nfl || sport === 'nba') || extra.id === leagueId) return undefined
+    if (!open || !supabaseClient || !leagueId || !on || extra.id === leagueId) return undefined
     let alive = true
     Promise.all([loadWaivers(supabaseClient, leagueId).catch(() => null), loadSniper(supabaseClient, leagueId).catch(() => null)]).then(
       ([waivers, sniper]) => {
@@ -3319,7 +3319,7 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
     return () => {
       alive = false
     }
-  }, [open, supabaseClient, leagueId, nfl, sport, extra.id])
+  }, [open, supabaseClient, leagueId, on, extra.id])
 
   const cached = synopsisValues.get(leagueId)
   const values =
@@ -3363,9 +3363,14 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
     [myRows],
   )
   const empty = useMemo(() => {
+    // NBA rows carry one position, so seat-by-position would misread dual-eligible starters; count instead.
+    if (nba) {
+      const missing = slots.length - myRows.filter((r) => r.slot === 'starter').length
+      return missing > 0 ? [`${missing} slot${missing > 1 ? 's' : ''}`] : []
+    }
     const open = slots.length ? openLineupSlots(myRows, slots) : {}
     return Object.entries(open).map(([pos, n]) => `${n > 1 ? `${n} ` : ''}${pos}`)
-  }, [myRows, slots])
+  }, [myRows, slots, nba])
   const lineup = useMemo(
     () => (cards && slots.length ? optimizeLineup({ roster: myRows, cards, scoring, slots, sport }) : null),
     [cards, slots, myRows, scoring, sport],
@@ -3386,14 +3391,14 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
     return [res.best, ...(res.alsoConsider || [])].filter(Boolean).slice(0, 2)
   }, [open, values, detail, scoring, slots, sport])
 
-  if (!nfl || !mine) return null
+  if (!on || !mine) return null
   const hurtStarters = hurt.filter((h) => h.starter).length
   const summary = [
     outlook?.odds ? `Playoffs ${pctText(outlook.odds.playoff)} · Title ${pctText(outlook.odds.title)}` : values ? null : 'Odds loading…',
     outlook?.place ? `${ordinal(outlook.place)} of ${teams.length}` : null,
     hurtStarters ? `${hurtStarters} hurt starter${hurtStarters > 1 ? 's' : ''}` : null,
     empty.length ? `Empty ${empty.join(', ')}` : null,
-    lineup?.gain > 0.05 ? `Lineup +${lineup.gain.toFixed(1)}` : null,
+    lineup?.gain > 0.05 ? `Lineup${nba ? ' today' : ''} +${lineup.gain.toFixed(1)}` : null,
   ].filter(Boolean)
   const toolOpen = (tool) => () => onOpenTool?.(tool)
 
@@ -3453,7 +3458,7 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool }
             {empty.length ? <div className="text-amber-300">Empty lineup slot: {empty.join(', ')}</div> : null}
           </SynopsisSection>
           {lineup?.moves?.length ? (
-            <SynopsisSection title="Lineup this week" onOpen={toolOpen('start')}>
+            <SynopsisSection title={nba ? 'Lineup today' : 'Lineup this week'} onOpen={toolOpen('start')}>
               {lineup.moves.slice(0, 3).map((m) => (
                 <div key={m.start.row.sleeper_id}>
                   Start {shortName(m.start.row.player_name, m.start.row.position)}

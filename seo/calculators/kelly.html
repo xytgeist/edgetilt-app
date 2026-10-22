@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="robots" content="index, follow" />
+    <title>Kelly Criterion Calculator | EdgeTilt</title>
+    <meta
+      name="description"
+      content="Kelly criterion calculator for American odds. Enter bankroll, price, and win percent for a full, half, or quarter Kelly stake. Runs in your browser."
+    />
+    <link rel="canonical" href="https://edgetilt.com/calculators/kelly" />
+    <meta property="og:site_name" content="EdgeTilt" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://edgetilt.com/calculators/kelly" />
+    <meta property="og:title" content="Kelly Criterion Calculator | EdgeTilt" />
+    <meta property="og:description" content="Kelly criterion calculator for American odds. Enter bankroll, price, and win percent for a full, half, or quarter Kelly stake. Runs in your browser." />
+    <meta property="og:image" content="https://edgetilt.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kelly Criterion Calculator | EdgeTilt" />
+    <meta name="twitter:description" content="Kelly criterion calculator for American odds. Enter bankroll, price, and win percent for a full, half, or quarter Kelly stake. Runs in your browser." />
+    <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/seo/base.css" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Kelly Criterion Calculator",
+  "url": "https://edgetilt.com/calculators/kelly",
+  "applicationCategory": "Calculator",
+  "operatingSystem": "Web",
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "Kelly criterion calculator for American odds. Enter bankroll, price, and win percent for a full, half, or quarter Kelly stake. Runs in your browser.",
+  "datePublished": "2026-10-22",
+  "dateModified": "2026-10-22",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Digiverse Ventures, LLC",
+    "url": "https://digiverse.ventures/"
+  },
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "EdgeTilt",
+    "url": "https://edgetilt.com/"
+  }
+}
+</script>
+      <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What do I type?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Bankroll in dollars, American odds, your win percent, and full, half, or quarter Kelly."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why is the implied percent not the win percent?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The price implies a break-even percent, hold included. Kelly uses your own win percent, the one you type in."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What if the edge is negative?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The page shows no stake. Kelly says sit this one out."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does half Kelly change the formula?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. It multiplies the full fraction by 0.5, then by the bankroll. Quarter Kelly uses 0.25."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does this use my bet tracker?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. It only uses the numbers in the form. No account needed."
+      }
+    }
+  ],
+  "datePublished": "2026-10-22",
+  "dateModified": "2026-10-22"
+}
+</script>
+  </head>
+  <body class="accent-cyan">
+    <main class="wrap">
+      <a class="brand" href="https://edgetilt.com/?auth=join">
+        <img src="/apple-touch-icon.png" alt="" width="36" height="36" />
+        <span>EDGETILT</span>
+      </a>
+      <p class="kicker">Free, no login</p>
+      <h1>Kelly criterion</h1>
+      <section class="prose">
+<p>Kelly turns your bankroll, an American price, and your win percent into a stake, sized as a percent of bankroll. Half and quarter Kelly are the same math with a smaller fraction.</p>
+<p>The form takes American odds only, like +150 or -110. It uses the win percent you type, not the one implied by the price.</p>
+</section>
+<form data-calc action="#" onsubmit="return false">
+        <div class="fields two">
+          <label class="field">Bankroll ($)
+            <input name="bankroll" inputmode="decimal" value="1000" autocomplete="off" />
+          </label>
+          <label class="field">American odds
+            <input name="odds" inputmode="decimal" value="+150" autocomplete="off" />
+          </label>
+        </div>
+        <div class="fields" style="margin-top: 0.75rem">
+          <label class="field">Your win percent
+            <input name="win" inputmode="decimal" value="45" autocomplete="off" />
+          </label>
+        </div>
+        <fieldset class="frac">
+          <legend>Kelly fraction</legend>
+          <div class="seg" role="radiogroup" aria-label="Kelly fraction">
+            <label><input type="radio" name="fraction" value="1" /><span>Full</span></label>
+            <label><input type="radio" name="fraction" value="0.5" checked /><span>Half</span></label>
+            <label><input type="radio" name="fraction" value="0.25" /><span>Quarter</span></label>
+          </div>
+        </fieldset>
+      </form>
+      <div class="out" data-out aria-live="polite"></div>
+      <figure class="shot">
+        <img
+          src="/seo/shots/kelly.webp"
+          alt="Kelly calculator filled with a $1,000 bankroll, +150, a 45 percent win chance, and half Kelly, showing a $41.67 stake."
+          width="960"
+          height="525"
+          loading="lazy"
+        />
+        <figcaption>Filled example: $1,000, +150, 45% to win, half Kelly.</figcaption>
+      </figure>
+      <section class="prose">
+<h2>The formula</h2>
+<p>b is the net profit on 1 unit. At +150, b is 1.50. At -110, b is 100/110, about 0.909.</p>
+<p>Full Kelly is (b times p, minus q) / b. p is your win percent as a decimal. q is 1 - p.</p>
+<p>The page multiplies full Kelly by your fraction, then by your bankroll. If full Kelly is zero or below, you get no stake.</p>
+<h2>Example 1</h2>
+<p>Bankroll $1,000, odds +150, win percent 45, half Kelly.</p>
+<p>The price implies 40.0%. Full Kelly is 8.33%. Fraction used is 50%. Bankroll percent is 4.17%. Stake is $41.67.</p>
+<h2>Example 2</h2>
+<p>Bankroll $5,000, odds -110, win percent 55, quarter Kelly.</p>
+<p>The price implies 52.4%. Full Kelly is 5.50%. Fraction used is 25%. Bankroll percent is 1.38%. Stake is $68.75.</p>
+<h2>No bet</h2>
+<p>-110 at a 30% win chance, any fraction. Full Kelly is negative. The stake rows stay hidden. The line is: "No edge at that win percent. Kelly says sit this one out."</p>
+<h2>Limits</h2>
+<p>Full Kelly can be a large share of the bankroll. Half and quarter Kelly bet less of it. This page doesn't place the bet or know your real bankroll.</p>
+</section>
+<p class="fine">Runs in your browser. Nothing is sent to EdgeTilt. For your own math, not betting advice.</p>
+      <noscript><p class="hint">Turn on JavaScript to run the numbers. The example above uses the same formula.</p></noscript>
+      <section class="faq">
+<h2>FAQ</h2>
+<h3>What do I type?</h3>
+<p>Bankroll in dollars, American odds, your win percent, and full, half, or quarter Kelly.</p>
+<h3>Why is the implied percent not the win percent?</h3>
+<p>The price implies a break-even percent, hold included. Kelly uses your own win percent, the one you type in.</p>
+<h3>What if the edge is negative?</h3>
+<p>The page shows no stake. Kelly says sit this one out.</p>
+<h3>Does half Kelly change the formula?</h3>
+<p>No. It multiplies the full fraction by 0.5, then by the bankroll. Quarter Kelly uses 0.25.</p>
+<h3>Does this use my bet tracker?</h3>
+<p>No. It only uses the numbers in the form. No account needed.</p>
+</section>
+<footer>
+        <a href="/calculators/no-vig">No-vig</a>
+        ·
+        <a href="/calculators/odds-converter">Odds converter</a>
+        ·
+        <a href="/calculators/arbitrage">Arbitrage</a>
+        ·
+        <a href="/calculators/clv">CLV</a>
+        ·
+        <a href="/sports/bet-tracker">Bet tracker</a>
+        <p class="owner">EdgeTilt is a product of <a href="https://digiverse.ventures/">Digiverse Ventures, LLC</a>.</p>
+      </footer>
+    </main>
+    <script type="module" src="/src/seo/calculators/kelly.js"></script>
+  </body>
+</html>

@@ -1259,6 +1259,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-22:** **Public SEO pages (PR, not merged):** crawlable landings `/sports/bet-tracker`, `/fantasy`, `/slots/w2g` plus free calculators `/calculators/kelly`, `/calculators/no-vig`, `/calculators/odds-converter`, `/calculators/arbitrage`, `/calculators/clv`. Static HTML ahead of the SPA catch-all. Calculators import `sportsBetCalcMath.js` and do not load bets. AP guide bodies and Local Intel stay off the sitemap. Playbook `docs/seo-edgetilt-slots.md`.
 - **2026-10-17:** **Lounge Mod hub SQL + Edge on prod.** Applied **`20261015220000`** + **`20261015240000`** on **`jtjgtucumuoswnbauxry`** (`needs_human` default false, `lounge_mod_actions`, `lounge_staff_notices`). Deployed **`lounge-report-triage`**. Theo invoke `{ classified: 0 }`. Git `main` already had the frontend. Ban / SLA clock still open.
 - **2026-10-16:** **Fantasy photos miss when ESPN keeps "Jr." (`1.4.1218`).** Sleeper stores "Travis Etienne". ESPN sends "Travis Etienne Jr." The name match now drops Jr/Sr/II/III/IV, and the home screen resolves a blank sleeper id the same way so the headshot can join.
 - **2026-10-16:** **Fantasy matchup is paired starters (`1.4.1217`).** Your week is a two-column starter list (projection, position, kickoff). The NFL game fantasy tab no longer prints "Swipe to cycle". The portrait stack still swipes. WR1 on that tab is still the depth-chart order 1, not the projection leader.

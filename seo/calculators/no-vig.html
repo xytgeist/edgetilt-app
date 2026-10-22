@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="robots" content="index, follow" />
+    <title>No-Vig Calculator | EdgeTilt</title>
+    <meta
+      name="description"
+      content="No vig calculator for two-way American lines. Strip the hold to get fair odds and true probabilities. Proportional method, in your browser."
+    />
+    <link rel="canonical" href="https://edgetilt.com/calculators/no-vig" />
+    <meta property="og:site_name" content="EdgeTilt" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://edgetilt.com/calculators/no-vig" />
+    <meta property="og:title" content="No-Vig Calculator | EdgeTilt" />
+    <meta property="og:description" content="No vig calculator for two-way American lines. Strip the hold to get fair odds and true probabilities. Proportional method, in your browser." />
+    <meta property="og:image" content="https://edgetilt.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="No-Vig Calculator | EdgeTilt" />
+    <meta name="twitter:description" content="No vig calculator for two-way American lines. Strip the hold to get fair odds and true probabilities. Proportional method, in your browser." />
+    <meta name="twitter:image" content="https://edgetilt.com/og-image.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/seo/base.css" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "No-Vig Calculator",
+  "url": "https://edgetilt.com/calculators/no-vig",
+  "applicationCategory": "Calculator",
+  "operatingSystem": "Web",
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "No vig calculator for two-way American lines. Strip the hold to get fair odds and true probabilities. Proportional method, in your browser.",
+  "datePublished": "2026-10-22",
+  "dateModified": "2026-10-22",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Digiverse Ventures, LLC",
+    "url": "https://digiverse.ventures/"
+  },
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "EdgeTilt",
+    "url": "https://edgetilt.com/"
+  }
+}
+</script>
+      <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is the hold on -110/-110?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "4.76%. The overround is 104.76%. Each fair price is -100, and each true probability is 50.00%."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why does fair even money print as -100?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The page formats a 50% fair probability as American -100."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does this remove vig from one side only?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. It needs both sides. A single price still has the hold in it."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which method is this?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Proportional. Each implied probability divided by the sum of both."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I enter three sides?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Two American prices."
+      }
+    }
+  ],
+  "datePublished": "2026-10-22",
+  "dateModified": "2026-10-22"
+}
+</script>
+  </head>
+  <body class="accent-cyan">
+    <main class="wrap">
+      <a class="brand" href="https://edgetilt.com/?auth=join">
+        <img src="/apple-touch-icon.png" alt="" width="36" height="36" />
+        <span>EDGETILT</span>
+      </a>
+      <p class="kicker">Free, no login</p>
+      <h1>No-vig calculator</h1>
+      <section class="prose">
+<p>Every two-way line has hold baked in, so the two implied probabilities add up to more than 100%. The calculator takes the hold out and shows the fair American price and true percent for each side.</p>
+<p>Type both sides in American odds. It uses one method: each side's implied probability divided by the sum. Not Shin, power, or additive.</p>
+</section>
+<form data-calc action="#" onsubmit="return false">
+        <div class="fields two">
+          <label class="field">Side A
+            <input name="a" inputmode="decimal" value="-110" autocomplete="off" />
+          </label>
+          <label class="field">Side B
+            <input name="b" inputmode="decimal" value="-110" autocomplete="off" />
+          </label>
+        </div>
+      </form>
+      <div class="out" data-out aria-live="polite"></div>
+      <figure class="shot">
+        <img
+          src="/seo/shots/no-vig.webp"
+          alt="No-vig calculator filled with -110 and -110, showing a 4.76 percent hold and fair prices of -100."
+          width="960"
+          height="385"
+          loading="lazy"
+        />
+        <figcaption>Filled example: -110 and -110.</figcaption>
+      </figure>
+      <section class="prose">
+<h2>The formula</h2>
+<p>Get each side's implied probability from its American odds, then divide each by the sum of the two. That sum is the overround. Hold here is (overround - 1) times 100. Fair American is the no-vig percent turned back into a price.</p>
+<h2>Example 1</h2>
+<p>-110 and -110.</p>
+<p>Hold 4.76%. Overround 104.76%. Fair A -100. Fair B -100. True A 50.00%. True B 50.00%.</p>
+<h2>Example 2</h2>
+<p>-150 and +130.</p>
+<p>Hold 3.48%. Overround 103.48%. Fair A -138. Fair B +138. True A 57.98%. True B 42.02%.</p>
+<h2>Limits</h2>
+<p>Fair odds are just the pair you typed with the vig removed. They're not a forecast or a price any book has to offer. Because the split is proportional, a very lopsided pair can come out differently under another method. Two-way only. It doesn't place bets.</p>
+</section>
+<p class="fine">
+        Runs in your browser. Nothing is sent to EdgeTilt.
+        Compare two books on <a href="/calculators/arbitrage">arbitrage and hold</a>.
+      </p>
+      <noscript><p class="hint">Turn on JavaScript to run the numbers. The example above uses the same formula.</p></noscript>
+      <section class="faq">
+<h2>FAQ</h2>
+<h3>What is the hold on -110/-110?</h3>
+<p>4.76%. The overround is 104.76%. Each fair price is -100, and each true probability is 50.00%.</p>
+<h3>Why does fair even money print as -100?</h3>
+<p>The page formats a 50% fair probability as American -100.</p>
+<h3>Does this remove vig from one side only?</h3>
+<p>No. It needs both sides. A single price still has the hold in it.</p>
+<h3>Which method is this?</h3>
+<p>Proportional. Each implied probability divided by the sum of both.</p>
+<h3>Can I enter three sides?</h3>
+<p>No. Two American prices.</p>
+</section>
+<footer>
+        <a href="/calculators/kelly">Kelly</a>
+        ·
+        <a href="/calculators/odds-converter">Odds converter</a>
+        ·
+        <a href="/calculators/arbitrage">Arbitrage</a>
+        ·
+        <a href="/calculators/clv">CLV</a>
+        ·
+        <a href="/sports/bet-tracker">Bet tracker</a>
+        <p class="owner">EdgeTilt is a product of <a href="https://digiverse.ventures/">Digiverse Ventures, LLC</a>.</p>
+      </footer>
+    </main>
+    <script type="module" src="/src/seo/calculators/no-vig.js"></script>
+  </body>
+</html>

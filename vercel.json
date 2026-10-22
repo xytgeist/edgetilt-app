@@ -105,6 +105,14 @@
     { "source": "/poker", "destination": "/poker.html" },
     { "source": "/poker/bankroll", "destination": "/poker-bankroll.html" },
     { "source": "/poker/stable", "destination": "/poker-stable.html" },
+    { "source": "/sports/bet-tracker", "destination": "/sports-bet-tracker.html" },
+    { "source": "/fantasy", "destination": "/fantasy.html" },
+    { "source": "/slots/w2g", "destination": "/slots-w2g.html" },
+    { "source": "/calculators/kelly", "destination": "/seo/calculators/kelly.html" },
+    { "source": "/calculators/no-vig", "destination": "/seo/calculators/no-vig.html" },
+    { "source": "/calculators/odds-converter", "destination": "/seo/calculators/odds-converter.html" },
+    { "source": "/calculators/arbitrage", "destination": "/seo/calculators/arbitrage.html" },
+    { "source": "/calculators/clv", "destination": "/seo/calculators/clv.html" },
     { "source": "/theo", "destination": "/api/theo" },
     { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ]

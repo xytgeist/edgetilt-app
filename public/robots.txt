@@ -3,6 +3,9 @@ User-agent: *
 Allow: /
 Disallow: /theo
 
+# Public tool landings and free calculators are allowed (/sports/bet-tracker, /fantasy, /slots/w2g, /calculators/*).
+# Paywalled AP guide bodies are not separate URLs. Do not add /guides/<slug>.
+
 # Legal policy pages stay reachable but are not search landing URLs (see sitemap + X-Robots-Tag on /privacy, /terms, /guidelines).
 
 # Legal policy pages stay reachable but are not search landing URLs (see sitemap + X-Robots-Tag on /privacy, /terms, /guidelines).

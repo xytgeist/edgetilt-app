@@ -7,11 +7,13 @@ import { useEffect } from 'react'
  * `rebindKey`: change it whenever the scroll element remounts so the ticker binds to the new node.
  *
  * @param {React.RefObject<HTMLElement | null>} scrollRef
- * @param {{ enabled?: boolean, speedPxPerSec?: number, resumeMs?: number, loop?: boolean, rebindKey?: string }} opts
+ * `bounce`: no duplicated items needed … glides to the end, holds, glides back (wins over `loop`).
+ *
+ * @param {{ enabled?: boolean, speedPxPerSec?: number, resumeMs?: number, loop?: boolean, bounce?: boolean, holdMs?: number, rebindKey?: string }} opts
  */
 export function useLoungeSlowTicker(
   scrollRef,
-  { enabled = true, speedPxPerSec = 26, resumeMs = 2400, loop = true, rebindKey = '' } = {},
+  { enabled = true, speedPxPerSec = 26, resumeMs = 2400, loop = true, bounce = false, holdMs = 1800, rebindKey = '' } = {},
 ) {
   useEffect(() => {
     if (!enabled) return undefined
@@ -29,6 +31,8 @@ export function useLoungeSlowTicker(
     let pos = el.scrollLeft
     // Scroll events land async, so our own writes are recognized by position, not a sync flag.
     let lastWritten = el.scrollLeft
+    let dir = 1
+    let holdUntil = 0
 
     const canScroll = () => el.scrollWidth > el.clientWidth + 4
 
@@ -45,7 +49,23 @@ export function useLoungeSlowTicker(
     const tick = (now) => {
       const dt = Math.min(0.048, (now - last) / 1000)
       last = now
-      if (!userPaused && canScroll()) {
+      if (!userPaused && canScroll() && bounce) {
+        if (now >= holdUntil) {
+          const max = el.scrollWidth - el.clientWidth
+          pos += dir * speedPxPerSec * dt
+          if (pos >= max) {
+            pos = max
+            dir = -1
+            holdUntil = now + holdMs
+          } else if (pos <= 0) {
+            pos = 0
+            dir = 1
+            holdUntil = now + holdMs
+          }
+          el.scrollLeft = pos
+          lastWritten = el.scrollLeft
+        }
+      } else if (!userPaused && canScroll()) {
         pos += speedPxPerSec * dt
         if (loop) {
           const half = el.scrollWidth / 2
@@ -80,5 +100,5 @@ export function useLoungeSlowTicker(
       el.removeEventListener('wheel', onWheel)
       el.removeEventListener('scroll', onScroll)
     }
-  }, [enabled, loop, rebindKey, resumeMs, scrollRef, speedPxPerSec])
+  }, [bounce, enabled, holdMs, loop, rebindKey, resumeMs, scrollRef, speedPxPerSec])
 }

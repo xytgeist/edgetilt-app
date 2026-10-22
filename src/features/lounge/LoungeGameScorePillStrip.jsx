@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import LoungeGameScorePill from './LoungeGameScorePill.jsx'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
@@ -33,16 +33,14 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
 
   const multi = games.length > 1
   const carouselFullBleed = multi && loungeFeedCarouselFullBleed(variant)
-  const tickerGames = useMemo(
-    () => (multi ? [...games, ...games] : games),
-    [games, multi],
-  )
+  // Each game once: a duplicated loop read as every pill posted twice (Ryan 2026-10-22), so the ticker bounces.
+  const tickerGames = games
 
   useLoungeFeedCarouselAxisLock(carouselScrollRef, multi)
   useLoungeSlowTicker(carouselScrollRef, {
     enabled: multi,
     speedPxPerSec: 24,
-    loop: multi,
+    bounce: true,
   })
 
   useLayoutEffect(() => {

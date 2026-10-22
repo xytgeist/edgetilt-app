@@ -654,6 +654,19 @@ async function buildNbaWaivers(
   ])
   const gamesNext = (team: string) => nextGames.filter((g) => g.home === team || g.away === team).length
   const perGamePts = (id: string) => Number(board.projLine[id]?.pts) || 0
+  // Streaming: US Eastern dates of each team's untipped games this week and next.
+  const etDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
+  const nightsOf = (games: typeof nextGames) => {
+    const out = new Map<string, string[]>()
+    for (const g of games) {
+      if (g.state !== 'pre' || !g.date) continue
+      const d = etDate.format(new Date(g.date))
+      for (const t of [g.home, g.away]) if (t) out.set(t, [...(out.get(t) || []), d])
+    }
+    return out
+  }
+  const nightsNow = nightsOf(board.games)
+  const nightsNext = nightsOf(nextGames)
 
   const entries = all.map((p) => {
     const wk = teamWeek(board, p.team)
@@ -671,6 +684,9 @@ async function buildNbaWaivers(
         injury_status: p.injury_status,
         headshot_url: null as string | null,
         games_left: left,
+        per_game: per,
+        nights: nightsNow.get(nbaTeam(p.team)) || [],
+        nights_next: nightsNext.get(nbaTeam(p.team)) || [],
         weeks: [
           { week: board.week, bye: left === 0, opp: null, home: null, ppr: null, line: scaleLine(per, weekScale(left)) },
           { week: board.week + 1, bye: gamesNext(p.team) === 0, opp: null, home: null, ppr: null, line: scaleLine(per, weekScale(gamesNext(p.team))) },

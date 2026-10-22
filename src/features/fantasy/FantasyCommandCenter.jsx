@@ -26,6 +26,7 @@ import {
   weekValue,
 } from './fantasyStartSit.js'
 import { rankWaivers, rowId, waiverLineupSlots } from './fantasyWaivers.js'
+import { streamPlan } from './fantasyStreaming.js'
 import {
   loadLeagueValues,
   loadLineupCards,
@@ -2113,6 +2114,95 @@ function WaiverBreakdown({ pick, span }) {
 }
 
 /** Waivers: best adds available in this league for your lineup, with a safe drop. Claims happen on the host. */
+const NIGHT_LABEL = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' })
+const nightLabel = (date) => NIGHT_LABEL.format(new Date(`${date}T12:00:00Z`))
+
+/** NBA streaming: open lineup slots by night and the available players who fill them (daily, all-games leagues). */
+function StreamView({ state, detail, rosterRows, sport, host }) {
+  const league = detail?.league
+  const upcoming = nbaMatchupUpcoming(league)
+  const unit = league?.settings?.category_value ? 'val' : 'pts'
+  const plan = useMemo(() => {
+    if (!state.data?.players?.length || !rosterRows.length) return { days: [], picks: [] }
+    return streamPlan({ pool: state.data, rosterRows, scoring: league?.scoring, slots: waiverLineupSlots(league, rosterRows, sport), upcoming })
+  }, [state.data, rosterRows, league, sport, upcoming])
+  const picks = plan.picks.slice(0, 8)
+  const openNights = plan.days.filter((d) => d.open > 0).length
+  const nights = (list) => list.map(nightLabel).join(', ')
+
+  return (
+    <>
+      <div className="mt-1 text-[10px] text-zinc-500">
+        {upcoming ? 'Next week (your matchup starts then)' : 'Nights left this week'} · open lineup slots
+      </div>
+      {state.loading ? (
+        <div className="mt-2 space-y-1.5" data-edge-skeleton aria-label="Loading streams">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="edge-skel block h-12 rounded-xl" />
+          ))}
+        </div>
+      ) : state.error ? (
+        <p className="mt-2 text-[12px] text-rose-300">{state.error}</p>
+      ) : (
+        <>
+          {plan.days.length ? (
+            <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {plan.days.map((d) => (
+                <div
+                  key={d.date}
+                  className={`shrink-0 rounded-lg border px-2 py-1 text-center ${d.open ? 'fantasy-sit-gain border-transparent' : 'border-zinc-800 bg-zinc-900'}`}
+                >
+                  <div className="text-[10px] font-bold uppercase text-zinc-400">{nightLabel(d.date)}</div>
+                  <div className={`text-[11px] font-bold tabular-nums ${d.open ? '' : 'text-zinc-500'}`}>{d.open ? `${d.open} open` : 'Full'}</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {!plan.days.length ? (
+            <p className="mt-2 text-[12px] text-zinc-500">No games left on the schedule this week.</p>
+          ) : !openNights ? (
+            <p className="mt-2 text-[12px] text-zinc-500">Every lineup slot has someone playing each night left. Nothing to stream.</p>
+          ) : !picks.length ? (
+            <p className="mt-2 text-[12px] text-zinc-500">No available player fills your open nights better than your bench.</p>
+          ) : (
+            <ul className="mt-2 space-y-1.5">
+              {picks.map((pick) => (
+                <li key={pick.cand.id} className="flex items-center gap-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2">
+                  <WaiverAvatar url={pick.cand.entry.headshot_url} pos={pick.cand.pos} team={pick.cand.entry.team} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="truncate text-[12px] font-bold text-zinc-100">{shortName(pick.cand.name, pick.cand.entry.position)}</span>
+                      {injuryPill(pick.cand.entry.injury_status)}
+                      <span className="shrink-0 text-[10px] text-zinc-500">
+                        {(pick.cand.elig || [pick.cand.pos]).join('/')}
+                        {pick.cand.entry.team ? ` · ${pick.cand.entry.team}` : ''}
+                      </span>
+                    </div>
+                    <div className="truncate text-[10px] leading-snug text-zinc-400">
+                      Starts {nights(pick.fills)} · {pick.cand.value.toFixed(1)} {unit}/game
+                    </div>
+                    <div className="truncate text-[10px] text-zinc-500">
+                      Drop <span className="fantasy-sit-out font-semibold">{shortName(pick.drop.name, pick.drop.pos)}</span>
+                      {pick.lost.length ? ` (starts ${nights(pick.lost)})` : ' (sits every night left)'}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-0.5">
+                    <span className="fantasy-sit-gain rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums">+{pick.gain.toFixed(1)}</span>
+                    <span className="text-[9px] text-zinc-500">{unit} this wk</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      <p className="mt-2 text-[10px] text-zinc-500">
+        Each stream uses an add, so check your league&apos;s weekly add limit. Same-night adds work only if {host} starts them that day.
+      </p>
+    </>
+  )
+}
+
 function WaiversPanel({ supabaseClient, detail, sport }) {
   const leagueId = detail?.league?.id || null
   const rosterStamp = useRosterStamp(detail)
@@ -2144,6 +2234,10 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
   const host = providerLabel(detail?.league?.provider)
   const weeks = state.data?.weeks || []
   const span = weeks.length ? `wk ${weeks[0]}${weeks.length > 1 ? `-${weeks[weeks.length - 1]}` : ''}` : ''
+  // Streaming needs daily lineups where every game counts (Lock-In counts one game a week).
+  const canStream = sport === 'nba' && Boolean(detail?.league?.settings?.daily_lineups) && !nbaLockIn(detail?.league?.provider, sport)
+  const tabs = [['adds', 'Adds'], ...(canStream ? [['stream', 'Stream']] : []), ['sniper', 'Sniper']]
+  const tab = tabs.some(([id]) => id === view) ? view : 'adds'
   // NBA chips match any eligible position (a PG/SG shows under both).
   const shown = picks.filter((p) => pos === 'All' || p.cand.pos === pos || (p.cand.elig || []).includes(pos)).slice(0, 10)
 
@@ -2152,23 +2246,22 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
       <div className="flex items-center justify-between gap-2">
         <div className="text-[13px] font-bold text-zinc-100">Waivers</div>
         <div className="flex rounded-full border border-zinc-800 p-0.5">
-          {[
-            ['adds', 'Adds'],
-            ['sniper', 'Sniper'],
-          ].map(([id, label]) => (
+          {tabs.map(([id, label]) => (
             <button
               key={id}
               type="button"
               onClick={() => setView(id)}
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${view === id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'}`}
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${tab === id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'}`}
             >
               {label}
             </button>
           ))}
         </div>
       </div>
-      {view === 'sniper' ? (
+      {tab === 'sniper' ? (
         <SniperView supabaseClient={supabaseClient} detail={detail} sport={sport} />
+      ) : tab === 'stream' ? (
+        <StreamView state={state} detail={detail} rosterRows={rosterRows} sport={sport} host={host} />
       ) : (
       <>
       <div className="mt-1 text-[10px] text-zinc-500">Available in your league{span ? ` · ${span} avg` : ''}</div>

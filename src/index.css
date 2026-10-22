@@ -12157,6 +12157,9 @@ html.light [data-fantasy-news] [data-fantasy-news-leagues] {
 [data-fantasy-synopsis] [data-fantasy-attention-line] { color: #fcd34d; }
 html.light [data-fantasy-sport-carousel] [data-fantasy-attention] { color: #b45309; }
 html.light [data-fantasy-synopsis] [data-fantasy-attention-line] { color: #92400e; }
+/* A league that needs attention: amber outline + tint on its outlook card. */
+[data-fantasy-synopsis][data-fantasy-synopsis-alert] { border-color: rgba(251, 191, 36, 0.6); background-color: rgba(251, 191, 36, 0.08); }
+html.light [data-fantasy-synopsis][data-fantasy-synopsis-alert] { border-color: #f59e0b; background-color: #fffbeb; }
 /* One color per league (index into the league list), so several leagues on one player read apart. */
 [data-fantasy-news] [data-league-tone='0'] { color: #7dd3fc; }
 [data-fantasy-news] [data-league-tone='1'] { color: #fcd34d; }

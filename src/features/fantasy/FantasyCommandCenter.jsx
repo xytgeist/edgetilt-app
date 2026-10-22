@@ -3528,7 +3528,11 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool, 
   const toolOpen = (tool) => () => onOpenTool?.(tool)
 
   return (
-    <div data-fantasy-synopsis className="mt-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+    <div
+      data-fantasy-synopsis
+      data-fantasy-synopsis-alert={alerts.length ? '' : undefined}
+      className="mt-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-3 py-2"
+    >
       <button
         type="button"
         aria-expanded={open}
@@ -3683,19 +3687,12 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
     }
     return out
   }, [entries, cards, group.sport])
-  const shownId = entries[index]?.lg.id
-  const elsewhere = entries.some((e) => e.lg.id !== shownId && alertsBy[e.lg.id]?.length)
   return (
     <section data-fantasy-sport-carousel={group.sport}>
       <div className="flex items-baseline justify-between gap-2 px-0.5">
         <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{group.label}</span>
         {entries.length > 1 ? (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold tabular-nums text-zinc-500">
-            {elsewhere ? (
-              <span data-fantasy-attention className="inline-flex items-center" aria-label="Another league needs attention">
-                <AlertTriangle size={10} strokeWidth={2.5} aria-hidden />
-              </span>
-            ) : null}
+          <span className="text-[10px] font-semibold tabular-nums text-zinc-500">
             {index + 1} of {entries.length}
           </span>
         ) : null}

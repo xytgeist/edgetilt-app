@@ -12248,6 +12248,39 @@ html.light [data-sports-bet-card] {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
 }
+@keyframes sports-bet-just-added {
+  0%,
+  55% {
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.85), 0 0 20px rgba(34, 211, 238, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0), 0 0 20px rgba(34, 211, 238, 0);
+  }
+}
+@keyframes sports-bet-just-added-light {
+  0%,
+  55% {
+    box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.75), 0 0 18px rgba(8, 145, 178, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(8, 145, 178, 0), 0 0 18px rgba(8, 145, 178, 0);
+  }
+}
+[data-sports-bet-card][data-sports-bet-just-added] {
+  animation: sports-bet-just-added 3s ease-out forwards;
+}
+html.light [data-sports-bet-card][data-sports-bet-just-added] {
+  animation-name: sports-bet-just-added-light;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-sports-bet-card][data-sports-bet-just-added] {
+    animation: none;
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.85);
+  }
+  html.light [data-sports-bet-card][data-sports-bet-just-added] {
+    box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.75);
+  }
+}
 html.light [data-sports-bet-tracker] .bg-zinc-900,
 html.light [data-sports-bet-tracker] .bg-zinc-900\/70,
 html.light [data-sports-bet-tracker] .bg-zinc-900\/80 {

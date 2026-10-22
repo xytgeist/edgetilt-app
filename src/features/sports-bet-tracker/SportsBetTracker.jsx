@@ -383,6 +383,8 @@ export default function SportsBetTracker({
   /** Card id while deleteSportsBet is in flight (card-local spinner). */
   const [deletingId, setDeletingId] = useState(null)
   const [filter, setFilter] = useState('all')
+  /** Bet just saved from the composer … glows in the list for a beat so a hold-to-log lands somewhere visible. */
+  const [justAddedId, setJustAddedId] = useState(null)
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -553,6 +555,19 @@ export default function SportsBetTracker({
     return () => window.removeEventListener('popstate', apply)
   }, [])
 
+  useEffect(() => {
+    if (!justAddedId) return undefined
+    const raf = window.requestAnimationFrame(() => {
+      const row = document.querySelector(`[data-sports-bet-card][data-bet-id="${CSS.escape(String(justAddedId))}"]`)
+      row?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+    const done = window.setTimeout(() => setJustAddedId(null), 3200)
+    return () => {
+      window.cancelAnimationFrame(raf)
+      window.clearTimeout(done)
+    }
+  }, [justAddedId])
+
   const summary = summarizeBets(bets)
   const bankrollNow = currentSportsBankroll(bankrollStart, bets, unitSize)
   const visible = bets.filter((b) => {
@@ -578,6 +593,10 @@ export default function SportsBetTracker({
         return
       }
       const bet = result.bet
+      if (!editingId && bet?.id) {
+        setJustAddedId(bet.id)
+        if (filter === 'settled') setFilter('all')
+      }
       const nextUnit = Number(draft.unit_size_dollars)
       if (Number.isFinite(nextUnit) && nextUnit > 0) {
         writeUnitSizeDollars(nextUnit)
@@ -1246,6 +1265,8 @@ export default function SportsBetTracker({
               <li
                 key={bet.id}
                 data-sports-bet-card
+                data-bet-id={bet.id}
+                data-sports-bet-just-added={justAddedId === bet.id ? '' : undefined}
                 className={`rounded-2xl border border-zinc-800 bg-zinc-900/70 px-3 py-3 transition-opacity ${
                   isDeleting ? 'pointer-events-none opacity-60' : ''
                 }`}

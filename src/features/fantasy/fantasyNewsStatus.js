@@ -18,6 +18,19 @@ const OUT = /\b(ruled out|will not play|won'?t play|out for (sunday|monday|thurs
 const DOUBTFUL = /\bdoubtful\b/i
 const QUESTIONABLE = /\bquestionable\b/i
 
+/** Insider news types (LLM `kind`) that change who plays or starts. */
+const LINEUP_KINDS = new Set(['status', 'role', 'transaction', 'in_game'])
+/** Availability, injury, role and roster words. A box-score recap ("tallied 23 points ...") has none of them. */
+const LINEUP_TERMS =
+  /\b(injur\w*|ankle|knee|hamstring|groin|calf|foot|feet|wrist|hand|finger|thumb|shoulder|hip|elbow|neck|achilles|concussion|illness|sick|soreness|sore|strain(ed)?|sprain(ed)?|surgery|fracture|rest(ed|ing)?|load management|day-to-day|game-time decision|available|unavailable|will play|won'?t play|(will|won'?t) start|starting lineup|starting role|start(s|ed)? in place|move(d|s)? (to|into) the (bench|starting lineup)|to the bench|benched|minutes (restriction|limit)|limited (practice|minutes)|(did not|didn'?t) practice|return(s|ed)? (to|from)|suspend\w*|traded|trade[sd]? to|signed|waived|released|assigned|recalled|g league|two-way|depth chart|activated|reinstated|personal reasons|out (for|with|indefinitely))\b/i
+
+/** News that matters for lineups (injury / availability / role / transactions), not stat recaps. */
+export function lineupNews(note) {
+  if (LINEUP_KINDS.has(String(note?.topic || ''))) return true
+  if (noteStatus(note)) return true
+  return LINEUP_TERMS.test(noteText(note))
+}
+
 const RANK = { '': 0, questionable: 1, doubtful: 2, out: 3 }
 const LABEL = { questionable: 'Questionable', doubtful: 'Doubtful', out: 'Out' }
 
@@ -45,7 +58,7 @@ export function noteStatus(note) {
 }
 
 /**
- * Per sleeper id: latest fresh note (for the row flag / panel) and the status the newest decisive note implies.
+ * Per sleeper id: latest fresh lineup note (for the row flag / panel) and the status the newest decisive note implies.
  * `notes` is the Player news list (newest first is not assumed).
  */
 export function newsByPlayer(notes, now = Date.now()) {
@@ -56,7 +69,8 @@ export function newsByPlayer(notes, now = Date.now()) {
     const at = Date.parse(note?.published || '')
     if (!id || !Number.isFinite(at)) continue
     const entry = out.get(id) || { latest: null, status: '', statusNote: null, decided: false }
-    if (!entry.latest && now - at <= FLAG_WINDOW_MS) entry.latest = note
+    // The row flag and panel note are for lineup news only (recaps stay in the Player news list).
+    if (!entry.latest && now - at <= FLAG_WINDOW_MS && lineupNews(note)) entry.latest = note
     if (!entry.decided && now - at <= STATUS_WINDOW_MS) {
       const s = noteStatus(note)
       if (s) {

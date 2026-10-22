@@ -88,7 +88,7 @@ function nbaFeed(espnId: string, admin: SupabaseClient) {
 function insiderRows(admin: SupabaseClient, sport: 'nfl' | 'nba', ids: string[]) {
   return admin
     .from('fantasy_insider_news')
-    .select('tweet_id, handle, author_name, posted_at, url, sleeper_ids, headline, summary, impact')
+    .select('tweet_id, handle, author_name, posted_at, url, sleeper_ids, headline, summary, impact, kind')
     .eq('status', 'show')
     .eq('sport', sport)
     .overlaps('sleeper_ids', ids)
@@ -101,6 +101,8 @@ function insiderNote(row: Obj, player: Obj): Obj {
   return {
     id: `x:${row.tweet_id}`,
     kind: 'insider',
+    // The judge's news type (status / role / transaction / in_game / other): the app flags lineup news only.
+    topic: str(row.kind) || null,
     ...player,
     headline: str(row.headline),
     story: str(row.summary),

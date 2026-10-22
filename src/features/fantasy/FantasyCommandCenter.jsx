@@ -895,6 +895,7 @@ function sideStatus(card) {
 /** Expanded player panel. Page 1 is this game's totals (or projection), swipe left for every market. */
 function SidePanel({ row, card }) {
   const [page, setPage] = useState(0)
+  const [newsOpen, setNewsOpen] = useState(false)
   if (!row) return <div />
   const status = sideStatus(card)
   const live = status !== 'Proj'
@@ -916,18 +917,30 @@ function SidePanel({ row, card }) {
       >
         <div className="w-full min-w-full shrink-0 snap-start px-2 py-1.5">
           {row.news_note ? (
-            <div data-fantasy-panel-news className="mb-1.5 border-b border-zinc-800 pb-1.5">
+            <button
+              type="button"
+              data-fantasy-panel-news
+              aria-expanded={newsOpen}
+              onClick={(e) => {
+                e.stopPropagation()
+                setNewsOpen((v) => !v)
+              }}
+              className="mb-1.5 block w-full border-b border-zinc-800 pb-1.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent]"
+            >
               <div className="flex items-baseline justify-between gap-1 text-[9px] font-bold uppercase tracking-wide">
                 <span data-fantasy-panel-news-label>News</span>
                 <span className="font-semibold normal-case tracking-normal text-zinc-500">
                   {newsTimeAgo(row.news_note.published)} · {row.news_note.source}
                 </span>
               </div>
-              <p className="mt-0.5 line-clamp-3 text-[11px] font-semibold leading-snug text-zinc-200">{row.news_note.headline}</p>
-              {row.news_note.impact ? (
-                <p className="mt-0.5 line-clamp-3 text-[10px] leading-snug text-zinc-400">{row.news_note.impact}</p>
+              <p className={`mt-0.5 text-[11px] font-semibold leading-snug text-zinc-200 ${newsOpen ? '' : 'line-clamp-3'}`}>{row.news_note.headline}</p>
+              {newsOpen && row.news_note.story ? (
+                <p className="mt-1 text-[10px] leading-snug text-zinc-300">{row.news_note.story}</p>
               ) : null}
-            </div>
+              {row.news_note.impact ? (
+                <p className={`mt-0.5 text-[10px] leading-snug text-zinc-400 ${newsOpen ? '' : 'line-clamp-3'}`}>{row.news_note.impact}</p>
+              ) : null}
+            </button>
           ) : null}
           <div className="flex items-center justify-between gap-1 text-[9px] font-bold uppercase tracking-wide text-zinc-500">
             <span className={live ? 'text-rose-300' : ''}>{status}</span>

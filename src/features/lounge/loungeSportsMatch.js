@@ -951,6 +951,41 @@ function shouldSuggestAmbiguousTeam(hit, mentioned, { hasMatchup, hasSportsConte
   return abbrevPeers.length >= 1
 }
 
+/** NFL prime-time windows: TNF / SNF / MNF (or spelled out) pick that night's game(s). */
+const NFL_PRIMETIME = [
+  { key: 'tnf', weekday: 'Thu', words: 'tnf|thursday\\s+night\\s+football' },
+  { key: 'snf', weekday: 'Sun', words: 'snf|sunday\\s+night\\s+football' },
+  { key: 'mnf', weekday: 'Mon', words: 'mnf|monday\\s+night\\s+football' },
+]
+/** Prime-time kickoffs start 7pm ET or later (MNF doubleheaders tip around 7:15). */
+const NFL_PRIMETIME_FROM_ET_HOUR = 19
+const NFL_PRIMETIME_WINDOW_MS = 8 * 24 * 60 * 60 * 1000
+const ET_WEEKDAY_HOUR = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', hourCycle: 'h23' })
+const ET_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' })
+
+function primetimeMentions(original, { committed = false } = {}) {
+  const text = String(original || '')
+  // Committed: the word needs a space or punctuation after it, same as team names.
+  return NFL_PRIMETIME.filter((row) => new RegExp(`\\b(?:${row.words})${committed ? '(?=[^A-Za-z0-9])' : '\\b'}`, 'i').test(text))
+}
+
+/** That night's NFL game(s): live first, else the nearest one within about a week (both games of a doubleheader). */
+function primetimeGames(games, weekday, now = Date.now()) {
+  const picks = []
+  for (const game of games || []) {
+    if (!String(game?.sport_key || '').includes('americanfootball_nfl')) continue
+    const t = Date.parse(game?.commence_time || '')
+    if (!Number.isFinite(t) || Math.abs(t - now) > NFL_PRIMETIME_WINDOW_MS) continue
+    const parts = Object.fromEntries(ET_WEEKDAY_HOUR.formatToParts(t).map((x) => [x.type, x.value]))
+    if (parts.weekday !== weekday || Number(parts.hour) < NFL_PRIMETIME_FROM_ET_HOUR) continue
+    picks.push({ game, t })
+  }
+  if (!picks.length) return []
+  picks.sort((a, b) => Number(b.game.status === 'in') - Number(a.game.status === 'in') || Math.abs(a.t - now) - Math.abs(b.t - now))
+  const night = ET_DAY.format(picks[0].t)
+  return picks.filter((x) => ET_DAY.format(x.t) === night).sort((a, b) => a.t - b.t).map((x) => x.game)
+}
+
 function teamContextKey(abbrev) {
   return `team:${String(abbrev || '').toUpperCase()}`
 }
@@ -1003,6 +1038,10 @@ export function matchLoungePostToSportsGamesDetailed(caption, games, limit = LOU
     const candidates = games.filter((game) => gameHasTeam(game, pair[0]) && gameHasTeam(game, pair[1]))
     const picked = pickSpecificMatchupGame(candidates, games)
     if (picked) add(picked, true, matchupContextKey(pair[0], pair[1]))
+  }
+
+  for (const prime of primetimeMentions(original, { committed })) {
+    primetimeGames(games, prime.weekday, opts.now).forEach((game, i) => add(game, true, `prime:${prime.key}${i ? `:${i}` : ''}`))
   }
 
   for (const hit of mentioned) {

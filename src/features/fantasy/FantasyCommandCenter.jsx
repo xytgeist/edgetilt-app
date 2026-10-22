@@ -3,6 +3,7 @@ import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
 import { nbaWeekOf } from './fantasyNbaWeek.js'
+import { lockInCall, nbaLockIn } from './fantasyLockIn.js'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { useLiveGames, useLivePlays } from './useFantasyLive.js'
@@ -444,9 +445,9 @@ function pointsOf(card, scoring, sport) {
  * Starter total. Before kickoff this is the projection. After, live points so far plus what is still to play:
  * full projections for players yet to start, the paced share for players mid-game, nothing once final.
  */
-function sideOutlook(roster, cards, scoring, sport) {
+function sideOutlook(roster, cards, scoring, sport, lockIn = false) {
   const starters = startersOf(roster)
-  if (sport === 'nba') return nbaSideOutlook(starters, cards, scoring)
+  if (sport === 'nba') return nbaSideOutlook(starters, cards, scoring, lockIn)
   let projected = 0
   let projectedN = 0
   let scored = 0
@@ -493,8 +494,8 @@ function sideOutlook(roster, cards, scoring, sport) {
   }
 }
 
-/** NBA side: host week-to-date + live points it has not caught yet, plus per-game projections x games left. */
-function nbaSideOutlook(starters, cards, scoring) {
+/** NBA side: host week-to-date + live points it has not caught yet, plus per-game projections x games left (Lock-In: one game counts). */
+function nbaSideOutlook(starters, cards, scoring, lockIn = false) {
   let projected = 0
   let projectedN = 0
   let scored = 0
@@ -509,7 +510,7 @@ function nbaSideOutlook(starters, cards, scoring) {
       allDone = false
       continue
     }
-    const w = nbaWeekOf(row, card, scoring)
+    const w = nbaWeekOf(row, card, scoring, undefined, { lockIn })
     if (Number.isFinite(w.pregame)) {
       projected += w.pregame
       projectedN += 1
@@ -994,8 +995,8 @@ function liveProjection(card, actual, sport, proj) {
  * Small line under a started game = the pregame projection, or the live-paced number during it (green / red vs
  * the pregame projection).
  */
-function PointsCell({ card, row, loading, scoring, sport, align }) {
-  if (sport === 'nba') return <NbaPointsCell card={card} row={row} loading={loading} scoring={scoring} align={align} />
+function PointsCell({ card, row, loading, scoring, sport, align, lockIn = false }) {
+  if (sport === 'nba') return <NbaPointsCell card={card} row={row} loading={loading} scoring={scoring} align={align} lockIn={lockIn} />
   const status = sideStatus(card)
   const proj = projectedOf(card, scoring, sport)
   const hasProj = Number.isFinite(proj)
@@ -1035,8 +1036,8 @@ function PointsCell({ card, row, loading, scoring, sport, align }) {
  * NBA: big number = week-to-date points (green while a game is on); before his first game it is the week's
  * projection (muted, "PROJ"). Small line = projected week total, green / red vs the start-of-week projection.
  */
-function NbaPointsCell({ card, row, loading, scoring, align }) {
-  const w = card ? nbaWeekOf(row, card, scoring) : null
+function NbaPointsCell({ card, row, loading, scoring, align, lockIn = false }) {
+  const w = card ? nbaWeekOf(row, card, scoring, undefined, { lockIn }) : null
   const hasProj = Number.isFinite(w?.pregame)
   const pregame = !!w && w.played === 0 && !w.host
   let main = !card && loading ? '…' : '-'
@@ -1065,7 +1066,7 @@ function NbaPointsCell({ card, row, loading, scoring, align }) {
   )
 }
 
-function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
+function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn = false }) {
   const [openKeys, setOpenKeys] = useState(() => new Set())
   const toggle = (key) =>
     setOpenKeys((prev) => {
@@ -1170,7 +1171,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
               {/* Pinned to the card's vertical middle; it clears the name line above and the props row below. */}
               <div className="absolute inset-x-0 top-1/2 z-[1] flex -translate-y-1/2 justify-center">
                 <div className="flex items-center gap-1">
-                  <PointsCell card={leftCard} row={pair.left} loading={cardsLoading} scoring={scoring} sport={sport} align="left" />
+                  <PointsCell card={leftCard} row={pair.left} loading={cardsLoading} scoring={scoring} sport={sport} align="left" lockIn={lockIn} />
                   {bench ? (
                     <span data-fantasy-bench-pill className="rounded-md px-1.5 py-0.5 text-[10px] font-bold">
                       BN
@@ -1190,7 +1191,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport }) {
                       {pair.label}
                     </span>
                   )}
-                  <PointsCell card={rightCard} row={pair.right} loading={cardsLoading} scoring={scoring} sport={sport} align="right" />
+                  <PointsCell card={rightCard} row={pair.right} loading={cardsLoading} scoring={scoring} sport={sport} align="right" lockIn={lockIn} />
                 </div>
               </div>
               <div className="relative z-[1] mt-[17px] grid min-h-[14px] grid-cols-2 gap-1.5 px-1">
@@ -1533,6 +1534,28 @@ function myPlayers(leagues, details, sport = 'nfl') {
   return out
 }
 
+/**
+ * Lock-In calls: starters with a finished game this week (the host's score in hand) and games still to play, best
+ * edge first. Lock when that score beats what his games left are worth; the lock window closes at his next tip.
+ * The public API does not say what is already locked, so the panel tells managers to skip those.
+ */
+function lockInCalls(roster, cards, scoring) {
+  const out = []
+  for (const row of roster || []) {
+    if (row?.slot !== 'starter' || !row.sleeper_id) continue
+    const card = cards?.[row.sleeper_id]
+    const score = Number(row.week_points)
+    const left = Number(card?.games_left) || 0
+    if (!card || card.game_status === 'in_progress' || !(Number(card.games_played) > 0) || !(score > 0) || left <= 0) continue
+    const mean = projectionOf(card, scoring, 'nba', card.pos || null)
+    if (!Number.isFinite(mean) || mean <= 0) continue
+    const games = String(row.injury_status || '').toLowerCase() === 'out' ? left - 1 : left
+    const call = lockInCall(score, mean, games)
+    out.push({ row, card, score, games, after: call.after, lock: call.lock, edge: score - call.after })
+  }
+  return out.sort((a, b) => Number(b.lock) - Number(a.lock) || Math.abs(b.edge) - Math.abs(a.edge))
+}
+
 function useStartSitPlan(detail, cards, sport) {
   return useMemo(() => {
     const mine = (detail?.teams || []).find((t) => t.is_mine)
@@ -1541,7 +1564,15 @@ function useStartSitPlan(detail, cards, sport) {
     if (sport === 'nba') {
       const slots = waiverLineupSlots(detail?.league, roster, 'nba')
       if (!slots.length || !cards) return null
-      return { inferred: false, today: true, ...optimizeLineup({ roster, cards, scoring: detail?.league?.scoring, slots, sport }) }
+      const scoring = detail?.league?.scoring
+      const lockIn = nbaLockIn(detail?.league?.provider, sport)
+      return {
+        inferred: false,
+        today: true,
+        lockIn,
+        lockCalls: lockIn ? lockInCalls(roster, cards, scoring) : [],
+        ...optimizeLineup({ roster, cards, scoring, slots, sport }),
+      }
     }
     const { slots: own, inferred } = leagueLineupSlots(detail?.league, roster)
     // Guessed from your starters, an empty K / DEF slot vanishes; if another team starts one, the league has it.
@@ -1620,8 +1651,11 @@ function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen, prefix = '' })
     const gain = otherMoves.reduce((acc, m) => acc + m.gain, 0)
     parts.push(`${otherMoves.length}${named.length ? ' more' : ''} swap${otherMoves.length > 1 ? 's' : ''}, +${gain.toFixed(1)} proj`)
   }
-  if (!named.length && !parts.length) return null
-  const lines = [...named.map((a) => a.text), ...(parts.length ? [parts.join(' · ')] : [])]
+  // Lock-In: name the scores worth locking before the next tip (waits are not urgent).
+  const locks = (plan.lockCalls || []).filter((c) => c.lock).slice(0, 2)
+  const lockLines = locks.map((c) => `Lock in ${briefName(c.row.player_name, c.row.position)} (${c.score.toFixed(1)}) before ${kickoffShort(c.card.kickoff) || 'his next game'}`)
+  if (!named.length && !parts.length && !lockLines.length) return null
+  const lines = [...named.map((a) => a.text), ...lockLines, ...(parts.length ? [parts.join(' · ')] : [])]
   return (
     <button
       type="button"
@@ -1648,7 +1682,8 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
   const plan = useStartSitPlan(detail, cards, sport)
   const empty = plan?.empty || []
   const fills = useOpenSlotFills({ supabaseClient, detail, empty, sport })
-  if (!plan || (!plan.moves.length && !empty.length)) return null
+  const lockCalls = plan?.lockCalls || []
+  if (!plan || (!plan.moves.length && !empty.length && !lockCalls.length)) return null
   const host = providerLabel(detail?.league?.provider)
   const moves = plan.moves
   return (
@@ -1699,6 +1734,33 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
         </ul>
       ) : null}
       {empty.length ? <OpenSlotAlert empty={empty} fills={fills} host={host} /> : null}
+      {lockCalls.length ? (
+        <div data-fantasy-lock-calls className="mt-2">
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Lock-in calls</div>
+          <ul className="space-y-1.5">
+            {lockCalls.map((c) => (
+              <li
+                key={c.row.sleeper_id}
+                className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/60 px-2.5 py-2 text-[12px]"
+              >
+                <span className={`${c.lock ? 'fantasy-sit-in' : 'fantasy-sit-out'} w-11 shrink-0 text-[10px] font-bold uppercase`}>
+                  {c.lock ? 'Lock' : 'Wait'}
+                </span>
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="font-semibold text-zinc-100">{shortName(c.row.player_name, c.row.position)}</span>{' '}
+                  <span className="text-zinc-500">
+                    {c.score.toFixed(1)} vs ~{c.after.toFixed(1)} from {c.games} game{c.games === 1 ? '' : 's'} left
+                  </span>
+                </span>
+                {c.card.kickoff ? <span className="shrink-0 text-[10px] text-zinc-500">{kickoffShort(c.card.kickoff)}</span> : null}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[10px] text-zinc-500">
+            One game counts each week. Lock on {host} before his next tip; skip any you already locked.
+          </p>
+        </div>
+      ) : null}
       <p className="mt-2 text-[10px] text-zinc-500">
         {moves.length ? `Make the swap on ${host}.` : ''}
         {plan.locked
@@ -2933,7 +2995,7 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
   }
   return (
     <ul className="space-y-1.5">
-      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} />
+      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} />
       {bench.length ? (
         <li data-fantasy-bench-divider className="flex items-center gap-2 px-1 pb-0.5 pt-3" aria-label="Bench">
           <span className="h-px flex-1" />
@@ -2941,7 +3003,7 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
           <span className="h-px flex-1" />
         </li>
       ) : null}
-      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} />
+      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport)} />
     </ul>
   )
 }
@@ -3090,8 +3152,9 @@ function projectedFinish(outlook, hostScore) {
 }
 
 function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
-  const leftOut = sideOutlook(page.roster, cards, scoring, sport)
-  const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport)
+  const lockIn = nbaLockIn(provider, sport)
+  const leftOut = sideOutlook(page.roster, cards, scoring, sport, lockIn)
+  const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport, lockIn)
   const leftAccent = useTeamAccent(page.left?.avatar_url, page.left?.id || page.left?.team_name)
   const rightRaw = useTeamAccent(page.right?.avatar_url, page.right?.id || page.right?.team_name)
   const rightAccent = distinctTeamAccent(rightRaw, leftAccent)

@@ -59,8 +59,8 @@ export function rankBoom({ sniper, scoring, sport = 'nfl', perPos = 2 }) {
       reasons.push(`${ladder.strike}+ ${YARD_WORD[ladder.stat]} at ${Math.round(ladder.price * 100)}¢`)
       score += ladder.strike / 25
     }
-    // NBA streaming: games this week is most of a pickup's value.
-    if (sport === 'nba' && Number(entry.games_left) >= 3) {
+    // NBA streaming: games this week is most of a pickup's value (not under Lock-In, where one game counts).
+    if (sport === 'nba' && !sniper?.lock_in && Number(entry.games_left) >= 3) {
       reasons.push(`${entry.games_left} games left this week`)
       score += Number(entry.games_left) * 0.8
     }
@@ -90,7 +90,7 @@ export function rankBoom({ sniper, scoring, sport = 'nfl', perPos = 2 }) {
         td: td && td.price >= 0.3 ? { price: td.price } : null,
         ladder: ladder ? { strike: ladder.strike, stat: ladder.stat, word: YARD_WORD[ladder.stat], price: ladder.price } : null,
         matchup: entry.matchup_grade === 'A' ? { rank: entry.matchup_rank } : null,
-        games: sport === 'nba' && Number(entry.games_left) >= 3 ? Number(entry.games_left) : null,
+        games: sport === 'nba' && !sniper?.lock_in && Number(entry.games_left) >= 3 ? Number(entry.games_left) : null,
       },
     })
   }

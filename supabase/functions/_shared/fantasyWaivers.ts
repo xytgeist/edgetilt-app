@@ -20,6 +20,8 @@ import {
 import { sharedCached } from './edgeSharedCache.ts'
 import { loadNbaBoard, nbaTeam, teamWeek, weekGames, type NbaBoard } from './fantasyNbaBoard.ts'
 import { nbaHeadshots, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
+// The app's Lock-In math (plain ESM): one game per player per week counts in Sleeper NBA.
+import { lockInFactor, nbaLockIn } from '../../../src/features/fantasy/fantasyLockIn.js'
 
 const WEEKS_AHEAD = 4
 const CACHE_MS = 20 * 60 * 1000
@@ -226,7 +228,7 @@ export async function buildFantasyWaivers(
   const withSniper = opts.mode === 'sniper'
   const { data: league, error: lgErr } = await admin
     .from('fantasy_leagues')
-    .select('id, sport, scoring, settings')
+    .select('id, sport, provider, scoring, settings')
     .eq('id', leagueId)
     .eq('user_id', userId)
     .maybeSingle()
@@ -260,7 +262,7 @@ export async function buildFantasyWaivers(
     rostered.add(id)
     if (String(r.team_id) === mineId) mineIds.add(id)
   }
-  if (sport === 'nba') return buildNbaWaivers(admin, rostered, mineIds, { withLeague, withSniper })
+  if (sport === 'nba') return buildNbaWaivers(admin, rostered, mineIds, { withLeague, withSniper, lockIn: nbaLockIn(league.provider, sport) })
 
   const [board, playersRes] = await Promise.all([
     loadProjBoard(),
@@ -631,9 +633,12 @@ async function buildNbaWaivers(
   admin: SupabaseClient,
   rostered: Set<string>,
   mineIds: Set<string>,
-  opts: { withLeague: boolean; withSniper: boolean },
+  opts: { withLeague: boolean; withSniper: boolean; lockIn?: boolean },
 ): Promise<Record<string, unknown>> {
   const { withLeague, withSniper } = opts
+  // Lock-In counts one game a week: more games are more chances at a big one, not more points.
+  const lockIn = Boolean(opts.lockIn)
+  const weekScale = (games: number) => (lockIn ? lockInFactor(games) : games)
   const board: NbaBoard | null = await loadNbaBoard()
   if (!board) return { supported: true, players: [], roster: [] }
   const dayMs = 86_400_000
@@ -667,8 +672,8 @@ async function buildNbaWaivers(
         headshot_url: null as string | null,
         games_left: left,
         weeks: [
-          { week: board.week, bye: left === 0, opp: null, home: null, ppr: null, line: scaleLine(per, left) },
-          { week: board.week + 1, bye: gamesNext(p.team) === 0, opp: null, home: null, ppr: null, line: scaleLine(per, gamesNext(p.team)) },
+          { week: board.week, bye: left === 0, opp: null, home: null, ppr: null, line: scaleLine(per, weekScale(left)) },
+          { week: board.week + 1, bye: gamesNext(p.team) === 0, opp: null, home: null, ppr: null, line: scaleLine(per, weekScale(gamesNext(p.team))) },
         ] as WeekOut[],
         next_up: [] as string[],
         trade: null as WaiverPlayer['trade'],
@@ -693,7 +698,7 @@ async function buildNbaWaivers(
   const roster = entries.filter((e) => mineIds.has(e.p.sleeper_id)).map((e) => e.out)
   const available = entries
     .filter((e) => !rostered.has(e.p.sleeper_id) && perGamePts(e.p.sleeper_id) > 0)
-    .sort((a, b) => perGamePts(b.p.sleeper_id) * b.left - perGamePts(a.p.sleeper_id) * a.left)
+    .sort((a, b) => perGamePts(b.p.sleeper_id) * weekScale(b.left) - perGamePts(a.p.sleeper_id) * weekScale(a.left))
   const players = available.slice(0, NBA_SHORTLIST).map((e) => e.out)
   const boom = withSniper
     ? available.filter((e) => e.out.next_up.length || e.left >= 3).slice(0, 30).map((e) => e.out)
@@ -706,6 +711,12 @@ async function buildNbaWaivers(
     loadNbaTradeBoard(admin, board).catch(() => null),
   ])
   for (const e of [...roster, ...players, ...boom]) e.headshot_url = shots.get(e.sleeper_id)?.headshot_url || null
+  // Lock-In: a week is worth lockInFactor(its games) of one game, so rest-of-season "games" become that many weeks' worth.
+  const lockInGames = (teamGames: number) => {
+    if (!lockIn || !tradeBoard) return teamGames
+    const weeks = tradeBoard.weeks_left || 1
+    return Math.round(weeks * lockInFactor(Math.max(1, Math.round(teamGames / weeks))) * 10) / 10
+  }
   if (tradeBoard) {
     for (const e of valued) {
       const per = board.projLine[e.sleeper_id] || null
@@ -715,7 +726,7 @@ async function buildNbaWaivers(
         ros_games: per ? 1 : 0,
         season_line: past?.line || {},
         season_games: past?.games || 0,
-        team_games: tradeBoard.team_games[nbaTeam(e.team)] || 0,
+        team_games: lockInGames(tradeBoard.team_games[nbaTeam(e.team)] || 0),
         return_date: null,
       }
     }
@@ -727,10 +738,11 @@ async function buildNbaWaivers(
     week: board.week,
     weeks: [board.week, board.week + 1],
     ...(tradeBoard ? { weeks_left: tradeBoard.weeks_left } : {}),
+    ...(lockIn ? { lock_in: true } : {}),
     players,
     roster,
     ...(withLeague ? { league_players: leaguePlayers } : {}),
-    ...(withSniper ? { sniper: { boom, handcuffs: [] } } : {}),
+    ...(withSniper ? { sniper: { boom, handcuffs: [], lock_in: lockIn } } : {}),
   }
 }
 

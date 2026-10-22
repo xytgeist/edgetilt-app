@@ -5,6 +5,7 @@
  * (`week_points`, saved at sync).
  */
 import { scoreLine } from './fantasyBoxScore.js'
+import { lockInValue } from './fantasyLockIn.js'
 import { projectionOf } from './fantasyProjection.js'
 
 const NBA_GAME_MS = 140 * 60_000
@@ -25,7 +26,8 @@ function liveProgress(card, now) {
  *   progress: number, host: number, boost: number, scored: number, remaining: number, total: number,
  *   pregame: number }}
  */
-export function nbaWeekOf(row, card, scoring, now = Date.now()) {
+export function nbaWeekOf(row, card, scoring, now = Date.now(), { lockIn = false } = {}) {
+  if (lockIn) return lockInWeekOf(row, card, scoring, now)
   const perGame = card ? projectionOf(card, scoring, 'nba', card.pos || null) : NaN
   const hasPer = Number.isFinite(perGame)
   const hostRaw = Number(row?.week_points)
@@ -67,5 +69,49 @@ export function nbaWeekOf(row, card, scoring, now = Date.now()) {
     remaining,
     total: scored + remaining,
     pregame: hasPer ? perGame * gamesWeek : NaN,
+  }
+}
+
+/**
+ * Lock-In (Sleeper): one game counts. The host's number is the score in hand (his latest or locked game); the week
+ * is the better of that and what his games left are worth. A live game counts as its paced final against the games
+ * after it. The host already shows the counted score, so nothing is added on top of it.
+ */
+function lockInWeekOf(row, card, scoring, now) {
+  const perGame = card ? projectionOf(card, scoring, 'nba', card.pos || null) : NaN
+  const hasPer = Number.isFinite(perGame)
+  const hostRaw = Number(row?.week_points)
+  const host = Number.isFinite(hostRaw) ? hostRaw : 0
+  const gamesWeek = Number(card?.games_week) || 0
+  let gamesLeft = Number(card?.games_left) || 0
+  const live = card?.game_status === 'in_progress'
+  const progress = live ? liveProgress(card, now) : 0
+  const playedBefore = Number(card?.games_played) || 0
+  if (!live && String(row?.injury_status || '').toLowerCase() === 'out' && gamesLeft > 0) gamesLeft -= 1
+  const after = hasPer ? lockInValue(perGame, gamesLeft) : 0
+  let total
+  if (live) {
+    const scored = scoreLine(card.line, scoring, 'nba', card.pos || null)
+    const paced = (Number.isFinite(scored) ? scored : 0) + (hasPer ? perGame * (1 - progress) : 0)
+    total = Math.max(paced, after)
+  } else if (playedBefore > 0 || host) {
+    total = Math.max(host, after)
+  } else {
+    total = after
+  }
+  return {
+    perGame,
+    gamesWeek,
+    gamesLeft,
+    played: playedBefore + (live ? 1 : 0),
+    live,
+    progress,
+    host,
+    boost: 0,
+    scored: host,
+    remaining: Math.max(0, total - host),
+    total,
+    pregame: hasPer ? lockInValue(perGame, gamesWeek) : NaN,
+    lockIn: true,
   }
 }

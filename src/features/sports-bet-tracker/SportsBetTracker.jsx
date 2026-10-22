@@ -1087,7 +1087,7 @@ export default function SportsBetTracker({
             </h1>
           )}
           <p className={`text-sm text-zinc-400 ${ipadShell ? '' : 'mt-0.5'}`}>
-            Hold a hub line to review the form. Tap through to the book to auto-log 1u.
+            Long press any bet on a game screen to review the form. Tap through to the book to auto-log 1u.
           </p>
         </div>
 
@@ -1244,7 +1244,7 @@ export default function SportsBetTracker({
           <div className="rounded-2xl border border-dashed border-zinc-700 px-4 py-10 text-center">
             <p className="text-sm font-semibold text-zinc-300">No bets yet</p>
             <p className="mt-1 text-sm text-zinc-500">
-              Hold a line to review, or tap through to the book to auto-log.
+              Long press any bet to review it, or tap through to the book to auto-log.
             </p>
           </div>
         ) : null}

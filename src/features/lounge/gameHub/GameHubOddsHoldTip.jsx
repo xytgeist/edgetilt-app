@@ -34,7 +34,7 @@ function placeFor(el) {
   }
 }
 
-/** One-time bubble on the first holdable line: "Hold any line to log it". Gone on any touch, a hold, or 8s. */
+/** One-time bubble on the first holdable line: "Long press any bet to log it". Gone on any touch, a hold, or 8s. */
 export default function GameHubOddsHoldTip() {
   const [target, setTarget] = useState(null)
   const [place, setPlace] = useState(null)
@@ -101,7 +101,7 @@ export default function GameHubOddsHoldTip() {
         }}
       />
       <span className="relative block whitespace-nowrap rounded-full border border-cyan-400/50 bg-zinc-900 px-3 py-1.5 text-[12px] font-semibold text-zinc-100 shadow-[0_6px_24px_rgba(0,0,0,0.45)]">
-        Hold any line to log it
+        Long press any bet to log it
       </span>
     </div>,
     document.body,

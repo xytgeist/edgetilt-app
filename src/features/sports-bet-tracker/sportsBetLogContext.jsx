@@ -29,7 +29,7 @@ function TapLoggedToast({ toast, onDismiss }) {
     >
       <span className="block truncate text-[13px] font-semibold text-zinc-100">Logged {toast.units}u on {toast.label}</span>
       {toast.hint ? (
-        <span className="mt-0.5 block text-[11px] text-zinc-400">Next time, hold a line to set your own stake.</span>
+        <span className="mt-0.5 block text-[11px] text-zinc-400">Next time, long press any bet to set your own stake.</span>
       ) : null}
     </button>,
     document.body,

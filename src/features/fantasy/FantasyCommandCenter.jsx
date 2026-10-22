@@ -3052,6 +3052,22 @@ function matchupPages(detail) {
   if (mineMu) pushPair(mineMu, mine?.id)
   for (const mu of matchups) pushPair(mu, null)
 
+  // No matchups at all this week (before the league's first scoring week, offseason): still show your team.
+  if (!matchups.length && mine) {
+    out.push({
+      key: `idle-${mine.id}`,
+      kind: 'idle',
+      left: mine,
+      right: null,
+      leftScore: null,
+      rightScore: null,
+      yours: true,
+      roster: byTeam[mine.id] || [],
+      oppRoster: [],
+    })
+    return out
+  }
+
   const unpaired = teams.filter((t) => !usedTeams.has(t.id))
   if (unpaired.length && unpaired.length < matchups.length) {
     for (const t of unpaired) {
@@ -3210,7 +3226,7 @@ function MatchupCard({ page, teams, week, provider, cards, scoring, sport }) {
             projFinal={ro}
           />
         ) : (
-          <p className="text-[12px] text-zinc-500">Bye this week.</p>
+          <p className="text-[12px] text-zinc-500">{page.kind === 'idle' ? 'No matchup this week.' : 'Bye this week.'}</p>
         )}
       </div>
       {page.right ? (

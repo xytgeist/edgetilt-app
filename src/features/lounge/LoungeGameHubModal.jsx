@@ -52,6 +52,7 @@ import {
 import { readGameHubCache, writeGameHubCache } from './gameHub/gameHubCache.js'
 import { requestSportsBetLog } from '../sports-bet-tracker/sportsBetNav.js'
 import { SportsBetLogGameProvider } from '../sports-bet-tracker/sportsBetLogContext.jsx'
+import GameHubOddsHoldTip from './gameHub/GameHubOddsHoldTip.jsx'
 import { isPgaGame } from './loungeSportsSlateWindow.js'
 import LoungeGolfTournamentHub from './LoungeGolfTournamentHub.jsx'
 import { fetchHubFantasyPins } from '../fantasy/fantasyApi.js'
@@ -935,6 +936,7 @@ function LoungeMatchupGameHubModal({
       supabaseClient={supabaseClient}
       onBeforeLog={() => sports.closeSlate?.()}
     >
+    <GameHubOddsHoldTip />
     <div
       data-lounge-game-hub
       className={

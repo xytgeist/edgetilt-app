@@ -4,9 +4,37 @@ import { buildBetSummaryLabel, americanFromImplied } from './sportsBetMath.js'
 import { insertSportsBet } from './sportsBetApi.js'
 import { DEFAULT_STAKE_UNITS, readUnitSizeDollars, stakeDollarsFromUnits } from './sportsBetStake.js'
 import { resolveSportsBetSport } from './sportsBetSports.js'
+import { createPortal } from 'react-dom'
+import { Z_APP_ALERT } from '../../constants/appZIndex.js'
+import { isOddsHoldLearned } from './oddsHoldHint.js'
 
 const SportsBetLogGameContext = createContext(null)
 const TAP_DEDUPE_MS = 20_000
+const TAP_TOAST_MS = 4500
+/** In-app book sheets never hide the page, so wait a beat before confirming. */
+const TAP_TOAST_VISIBLE_DELAY_MS = 900
+const TAP_TOAST_RETURN_DELAY_MS = 350
+
+/** Tap-through auto-log confirmation. Until the viewer has held a line once, it also teaches the hold. */
+function TapLoggedToast({ toast, onDismiss }) {
+  if (!toast || typeof document === 'undefined') return null
+  return createPortal(
+    <button
+      type="button"
+      key={toast.key}
+      data-sports-bet-tap-toast
+      onClick={onDismiss}
+      className="fixed left-1/2 w-[min(calc(100vw-1.5rem),22rem)] -translate-x-1/2 touch-manipulation rounded-2xl border border-cyan-400/30 bg-zinc-900/95 px-3.5 py-2.5 text-left shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-xl [-webkit-tap-highlight-color:transparent]"
+      style={{ zIndex: Z_APP_ALERT, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
+    >
+      <span className="block truncate text-[13px] font-semibold text-zinc-100">Logged {toast.units}u on {toast.label}</span>
+      {toast.hint ? (
+        <span className="mt-0.5 block text-[11px] text-zinc-400">Next time, hold a line to set your own stake.</span>
+      ) : null}
+    </button>,
+    document.body,
+  )
+}
 
 export function formatSportsBetBook(name) {
   return String(name || '').replace(/\.(ag|com|eu|lv)$/i, '').replace(/\s*\(US\)\s*$/i, '').trim()
@@ -82,6 +110,45 @@ function tapDedupeKey(row) {
 export function SportsBetLogGameProvider({ game, supabaseClient, onBeforeLog, children }) {
   const [userId, setUserId] = useState(null)
   const tapAtRef = useRef(new Map())
+  const [tapToast, setTapToast] = useState(null)
+  const tapToastTimersRef = useRef({ show: 0, hide: 0, onVis: null })
+
+  const clearTapToastTimers = useCallback(() => {
+    const t = tapToastTimersRef.current
+    window.clearTimeout(t.show)
+    window.clearTimeout(t.hide)
+    if (t.onVis) document.removeEventListener('visibilitychange', t.onVis)
+    tapToastTimersRef.current = { show: 0, hide: 0, onVis: null }
+  }, [])
+  useEffect(() => clearTapToastTimers, [clearTapToastTimers])
+
+  const queueTapToast = useCallback(
+    (row) => {
+      clearTapToastTimers()
+      const show = () => {
+        setTapToast({ ...row, key: Date.now(), hint: !isOddsHoldLearned() })
+        tapToastTimersRef.current.hide = window.setTimeout(() => setTapToast(null), TAP_TOAST_MS)
+      }
+      // Show once the page is back in front (an external book app hides it; an in-app sheet does not).
+      const whenVisible = () => {
+        if (!document.hidden) {
+          show()
+          return
+        }
+        const onVis = () => {
+          if (document.hidden) return
+          document.removeEventListener('visibilitychange', onVis)
+          tapToastTimersRef.current.onVis = null
+          tapToastTimersRef.current.show = window.setTimeout(show, TAP_TOAST_RETURN_DELAY_MS)
+        }
+        tapToastTimersRef.current.onVis = onVis
+        document.addEventListener('visibilitychange', onVis)
+      }
+      if (document.hidden) whenVisible()
+      else tapToastTimersRef.current.show = window.setTimeout(whenVisible, TAP_TOAST_VISIBLE_DELAY_MS)
+    },
+    [clearTapToastTimers],
+  )
 
   useEffect(() => {
     if (!supabaseClient) {
@@ -131,9 +198,12 @@ export function SportsBetLogGameProvider({ game, supabaseClient, onBeforeLog, ch
       const prev = tapAtRef.current.get(key) || 0
       if (now - prev < TAP_DEDUPE_MS) return
       tapAtRef.current.set(key, now)
-      void insertSportsBet(supabaseClient, userId, draft)
+      void insertSportsBet(supabaseClient, userId, draft).then((result) => {
+        if (result?.error) return
+        queueTapToast({ units, label: String(draft.selection_label || 'this line').replace(/\s+·\s+\d{1,2}\/\d{1,2}\/\d{2,4}$/, '') })
+      })
     },
-    [game, supabaseClient, userId],
+    [game, supabaseClient, userId, queueTapToast],
   )
 
   const value = useMemo(
@@ -143,6 +213,7 @@ export function SportsBetLogGameProvider({ game, supabaseClient, onBeforeLog, ch
   return (
     <SportsBetLogGameContext.Provider value={value}>
       {children}
+      <TapLoggedToast toast={tapToast} onDismiss={() => setTapToast(null)} />
     </SportsBetLogGameContext.Provider>
   )
 }

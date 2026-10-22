@@ -12152,6 +12152,19 @@ html.light [data-fantasy-home] [data-fantasy-panel-news] {
 html.light [data-fantasy-news] [data-fantasy-news-leagues] {
   color: #0369a1;
 }
+/* One color per league (index into the league list), so several leagues on one player read apart. */
+[data-fantasy-news] [data-league-tone='0'] { color: #7dd3fc; }
+[data-fantasy-news] [data-league-tone='1'] { color: #fcd34d; }
+[data-fantasy-news] [data-league-tone='2'] { color: #6ee7b7; }
+[data-fantasy-news] [data-league-tone='3'] { color: #f9a8d4; }
+[data-fantasy-news] [data-league-tone='4'] { color: #c4b5fd; }
+[data-fantasy-news] [data-league-tone='5'] { color: #fdba74; }
+html.light [data-fantasy-news] [data-league-tone='0'] { color: #0369a1; }
+html.light [data-fantasy-news] [data-league-tone='1'] { color: #b45309; }
+html.light [data-fantasy-news] [data-league-tone='2'] { color: #047857; }
+html.light [data-fantasy-news] [data-league-tone='3'] { color: #be185d; }
+html.light [data-fantasy-news] [data-league-tone='4'] { color: #6d28d9; }
+html.light [data-fantasy-news] [data-league-tone='5'] { color: #c2410c; }
 /* Fantasy main page: player news Breaking pill */
 [data-fantasy-news] [data-fantasy-news-breaking] {
   background-color: rgb(244 63 94 / 0.18);

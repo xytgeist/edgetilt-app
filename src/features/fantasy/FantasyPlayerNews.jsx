@@ -12,7 +12,26 @@ function isBreaking(note) {
   return note?.kind === 'insider' && Number.isFinite(posted) && Date.now() - posted < BREAKING_MS
 }
 
-function NoteRow({ note, tags, bench }) {
+/** League tones (index into the league list), so each league reads in its own color; colors live in index.css. */
+const LEAGUE_TONES = 6
+
+function LeagueTags({ leagues, leagueOrder }) {
+  return (
+    <div data-fantasy-news-leagues className="truncate text-[10px] font-semibold">
+      {leagues.map((name, i) => {
+        const at = leagueOrder.indexOf(name)
+        return (
+          <span key={name}>
+            {i ? <span className="text-zinc-500"> · </span> : null}
+            <span data-league-tone={(at >= 0 ? at : i) % LEAGUE_TONES}>{name}</span>
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+function NoteRow({ note, leagues, leagueOrder, bench }) {
   const [open, setOpen] = useState(false)
   const shot = useHeadshotSrc(note.headshot_url, 96)
   const insider = note.kind === 'insider'
@@ -50,7 +69,7 @@ function NoteRow({ note, tags, bench }) {
             ) : null}
             <span className="ml-auto shrink-0 text-[11px] text-zinc-500">{newsTimeAgo(note.published)}</span>
           </div>
-          {tags ? <div data-fantasy-news-leagues className="truncate text-[10px] font-semibold">{tags}</div> : null}
+          {leagues?.length ? <LeagueTags leagues={leagues} leagueOrder={leagueOrder} /> : null}
           <div className={`mt-0.5 text-[13px] leading-snug ${insider ? 'font-semibold text-zinc-100' : 'text-zinc-300'} ${open ? '' : 'line-clamp-2'}`}>
             {note.headline}
           </div>
@@ -81,7 +100,7 @@ function NoteRow({ note, tags, bench }) {
  * Main Fantasy page: insider and Rotowire notes for every NFL player on your rosters, newest first.
  * `players` maps sleeper id → { leagues: string[], starting: boolean }; `news` comes from `usePlayerNews`.
  */
-export default function FantasyPlayerNews({ players, news, showLeagues }) {
+export default function FantasyPlayerNews({ players, news, showLeagues, leagueOrder = [] }) {
   const [all, setAll] = useState(false)
   if (!news?.key) return null
   const { loading, notes } = news
@@ -107,7 +126,8 @@ export default function FantasyPlayerNews({ players, news, showLeagues }) {
                 <NoteRow
                   key={`${note.sleeper_id}:${note.id}`}
                   note={note}
-                  tags={showLeagues && p?.leagues?.length ? p.leagues.join(' · ') : ''}
+                  leagues={showLeagues && p?.leagues?.length ? p.leagues : null}
+                  leagueOrder={leagueOrder}
                   bench={p ? !p.starting : false}
                 />
               )

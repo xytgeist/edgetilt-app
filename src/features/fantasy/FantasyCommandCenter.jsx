@@ -3897,6 +3897,7 @@ export default function FantasyCommandCenter({
             players={newsPlayers}
             news={news}
             showLeagues={(leagues || []).filter((lg) => ['nfl', 'nba'].includes(String(lg.sport || 'nfl').toLowerCase())).length > 1}
+            leagueOrder={groups.flatMap((g) => g.leagues.map(shortLeagueName))}
           />
         </>
       ) : (

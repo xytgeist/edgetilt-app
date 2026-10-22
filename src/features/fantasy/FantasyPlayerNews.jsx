@@ -46,6 +46,17 @@ function NoteRow({ note, leagues, leagueOrder, bench }) {
       >
         {shot.failed || !note.headshot_url ? (
           <span className="mt-0.5 h-8 w-8 shrink-0 rounded-full bg-zinc-800" aria-hidden />
+        ) : (note.sport || 'nfl') === 'nfl' ? (
+          // NFL headshots are wide shoulder-up shots; zoom to the face like the waiver list does.
+          <span className="relative mt-0.5 h-8 w-8 shrink-0 overflow-hidden rounded-full bg-zinc-800">
+            <img
+              src={shot.src}
+              alt=""
+              onError={shot.onError}
+              className="absolute inset-0 h-full w-full origin-[center_30%] scale-[1.75] object-cover"
+              loading="lazy"
+            />
+          </span>
         ) : (
           <img
             src={shot.src}

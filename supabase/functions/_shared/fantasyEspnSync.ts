@@ -1,14 +1,37 @@
 /**
  * ESPN Fantasy Connect. Session cookie only (espn_s2 + SWID). Password is never accepted or stored.
  * League reads: lm-api-reads.fantasy.espn.com v3. Players map onto nfl_players.sleeper_id by name + team.
+ * NBA (`games/fba`, fan-profile game id 3) syncs in a second pass: Sleeper NBA ids (shared map), points or
+ * categories rules, daily lineup slots, eligible positions, injuries, and per-matchup category results
+ * (`fantasy_matchups.categories`). ESPN numbers the NBA season by its end year; it is saved by its start year
+ * (Sleeper / Yahoo). An NBA failure never fails the NFL sync.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { type NbaPlayer, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
 
-const READS = 'https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl'
+const READS_BASE = 'https://lm-api-reads.fantasy.espn.com/apis/v3/games'
+const READS = `${READS_BASE}/ffl`
 const FAN = 'https://fan.api.espn.com/apis/v2/fans'
 /** ESPN fantasy preference types (league manager + regular member). NFL game id is 1. */
 const FAN_PREF_TYPES = new Set([9, 10])
 const NFL_GAME_ID = 1
+const NBA_GAME_ID = 3
+
+const NBA_PRO_TEAM: Record<number, string> = {
+  1: 'ATL', 2: 'BOS', 3: 'NOP', 4: 'CHI', 5: 'CLE', 6: 'DAL', 7: 'DEN', 8: 'DET', 9: 'GSW', 10: 'HOU',
+  11: 'IND', 12: 'LAC', 13: 'LAL', 14: 'MIA', 15: 'MIL', 16: 'MIN', 17: 'BKN', 18: 'NYK', 19: 'ORL', 20: 'PHI',
+  21: 'PHX', 22: 'POR', 23: 'SAC', 24: 'SAS', 25: 'OKC', 26: 'UTA', 27: 'WAS', 28: 'TOR', 29: 'MEM', 30: 'CHA',
+}
+const NBA_POS: Record<number, string> = { 1: 'PG', 2: 'SG', 3: 'SF', 4: 'PF', 5: 'C' }
+/** ESPN NBA `lineupSlotId` → app slot (12 bench, 13 IR). */
+const NBA_SLOT: Record<number, string> = { 0: 'PG', 1: 'SG', 2: 'SF', 3: 'PF', 4: 'C', 5: 'G', 6: 'F', 7: 'SG/SF', 8: 'G/F', 9: 'PF/C', 10: 'F/C', 11: 'UTIL' }
+/** ESPN NBA stat ids → Sleeper NBA stat keys (checked against a season line: 13/14 = 19, 6 = 4 + 5). */
+const NBA_STAT: Record<number, string> = {
+  0: 'pts', 1: 'blk', 2: 'stl', 3: 'ast', 4: 'oreb', 5: 'dreb', 6: 'reb', 8: 'ff', 9: 'pf', 10: 'tf', 11: 'to',
+  13: 'fgm', 14: 'fga', 15: 'ftm', 16: 'fta', 17: 'tpm', 18: 'tpa', 19: 'fg_pct', 20: 'ft_pct', 21: 'tp_pct',
+  23: 'fgmi', 24: 'ftmi', 25: 'tpmi', 37: 'dd', 38: 'td',
+}
+const NBA_INJURY: Record<string, string> = { OUT: 'Out', DAY_TO_DAY: 'DTD', QUESTIONABLE: 'Questionable', DOUBTFUL: 'Doubtful', SUSPENSION: 'Sus', INJURY_RESERVE: 'IR' }
 
 const PRO_TEAM: Record<number, string> = {
   1: 'ATL',
@@ -89,8 +112,8 @@ function espnCookieHeader(session: EspnSession): string {
   return `espn_s2=${session.espnS2}; SWID=${encodeURIComponent(session.swid)}`
 }
 
-async function espnGet(path: string, session: EspnSession): Promise<unknown> {
-  const res = await fetch(`${READS}${path}`, {
+async function espnGet(path: string, session: EspnSession, game = 'ffl'): Promise<unknown> {
+  const res = await fetch(`${READS_BASE}/${game}${path}`, {
     headers: {
       Accept: 'application/json',
       Cookie: espnCookieHeader(session),
@@ -117,10 +140,13 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>
 }
 
-type FanLeagueRef = { id: string; name: string }
+type FanLeagueRef = { id: string; name: string; season: number }
 
-/** ESPN's site lists "my leagues" on the fan profile, not on the season URL (that one is `{}`). */
-async function listFanLeagueRefs(session: EspnSession, season: number): Promise<FanLeagueRef[]> {
+/**
+ * ESPN's site lists "my leagues" on the fan profile, not on the season URL (that one is `{}`).
+ * `season` null keeps each entry's own season (NBA spans two years; ESPN files it under the end year).
+ */
+async function listFanLeagueRefs(session: EspnSession, season: number | null, gameIdWanted = NFL_GAME_ID): Promise<FanLeagueRef[]> {
   const res = await fetch(`${FAN}/${encodeURIComponent(session.swid)}`, {
     headers: {
       Accept: 'application/json',
@@ -147,9 +173,9 @@ async function listFanLeagueRefs(session: EspnSession, season: number): Promise<
     const entry = asRecord(asRecord(row.metaData)?.entry)
     if (!entry) continue
     const gameId = Number(entry.gameId)
-    if (gameId && gameId !== NFL_GAME_ID) continue
-    const entrySeason = Number(entry.seasonId) || season
-    if (entrySeason !== season) continue
+    if (gameId && gameId !== gameIdWanted) continue
+    const entrySeason = Number(entry.seasonId) || season || 0
+    if (season != null && entrySeason !== season) continue
     const groups = Array.isArray(entry.groups) ? entry.groups : []
     const group = asRecord(groups[0])
     const idNum = Math.abs(Number(group?.groupId))
@@ -158,7 +184,7 @@ async function listFanLeagueRefs(session: EspnSession, season: number): Promise<
     if (seen.has(id)) continue
     seen.add(id)
     const name = String(group?.groupName || `ESPN ${id}`).trim() || `ESPN ${id}`
-    out.push({ id, name })
+    out.push({ id, name, season: entrySeason })
   }
   return out
 }
@@ -406,20 +432,6 @@ async function syncEspnConnection(
       const raw = await espnGet(`/seasons/${season}?${views}`, session)
       leagues.push(...normalizeLeagues(raw))
     }
-    if (!leagues.length) {
-      await admin
-        .from('fantasy_connections')
-        .update({
-          status: 'error',
-          last_error: 'No ESPN NFL leagues on this account.',
-          last_sync_at: new Date().toISOString(),
-        })
-        .eq('id', connectionId)
-      return { ok: false, error: 'No ESPN NFL leagues on this account.', season, leagues: 0 }
-    }
-
-    await admin.from('fantasy_leagues').delete().eq('connection_id', connectionId).neq('season', season)
-
     const { data: existingPrimary } = await admin
       .from('fantasy_leagues')
       .select('id')
@@ -427,6 +439,26 @@ async function syncEspnConnection(
       .eq('is_primary', true)
       .limit(1)
     const userHasPrimary = Boolean(existingPrimary?.length)
+
+    // NBA rides a second pass; a failure there never fails the NFL sync.
+    const nba = await syncEspnNba(admin, edgeUserId, connectionId, session).catch((err) => {
+      console.error('espn nba sync', connectionId, err instanceof Error ? err.message : err)
+      return { leagues: 0, firstMineLeague: null as string | null }
+    })
+
+    if (!leagues.length && !nba.leagues) {
+      await admin
+        .from('fantasy_connections')
+        .update({
+          status: 'error',
+          last_error: 'No ESPN NFL or NBA leagues on this account.',
+          last_sync_at: new Date().toISOString(),
+        })
+        .eq('id', connectionId)
+      return { ok: false, error: 'No ESPN NFL or NBA leagues on this account.', season, leagues: 0 }
+    }
+
+    await admin.from('fantasy_leagues').delete().eq('connection_id', connectionId).eq('sport', 'nfl').neq('season', season)
 
     const players = await loadPlayerIndex(admin)
     const mineKey = swidKey(session.swid)
@@ -580,6 +612,7 @@ async function syncEspnConnection(
       }
     }
 
+    if (!firstMineLeague) firstMineLeague = nba.firstMineLeague
     if (!userHasPrimary && firstMineLeague) {
       await admin.from('fantasy_leagues').update({ is_primary: false }).eq('connection_id', connectionId)
       await admin.from('fantasy_leagues').update({ is_primary: true }).eq('id', firstMineLeague)
@@ -596,7 +629,7 @@ async function syncEspnConnection(
       })
       .eq('id', connectionId)
 
-    return { ok: true, connectionId, season, week: defaultWeek, leagues: created }
+    return { ok: true, connectionId, season, week: defaultWeek, leagues: created + nba.leagues }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'ESPN sync failed.'
     await admin
@@ -605,6 +638,225 @@ async function syncEspnConnection(
       .eq('id', connectionId)
     return { ok: false, connectionId, error: message }
   }
+}
+
+function nbaNameKey(name: string): string {
+  return String(name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '')
+    .replace(/[^a-z]/g, '')
+}
+
+function nbaIndexOf(players: NbaPlayer[]): Map<string, NbaPlayer[]> {
+  const index = new Map<string, NbaPlayer[]>()
+  for (const p of players) {
+    const key = nbaNameKey(p.name)
+    if (key) index.set(key, [...(index.get(key) || []), p])
+  }
+  return index
+}
+
+function nbaSleeperId(index: Map<string, NbaPlayer[]>, name: string, team: string): string | null {
+  const rows = index.get(nbaNameKey(name)) || []
+  if (rows.length <= 1) return rows[0]?.sleeper_id || null
+  return (rows.find((r) => r.team === team) || rows[0]).sleeper_id
+}
+
+/** Category totals by Sleeper stat key from ESPN `scoreByStat` ({ statId: { score, result } }). */
+function nbaCategoryTotals(side: Record<string, unknown> | null) {
+  const by = asRecord(asRecord(side?.cumulativeScore)?.scoreByStat) || {}
+  const totals: Record<string, number> = {}
+  const results: Record<string, string> = {}
+  for (const [id, raw] of Object.entries(by)) {
+    const key = NBA_STAT[Number(id)]
+    const row = asRecord(raw)
+    if (!key || !row) continue
+    const score = num(row.score)
+    if (score != null) totals[key] = score
+    if (row.result) results[key] = String(row.result)
+  }
+  return { totals, results }
+}
+
+/**
+ * ESPN NBA leagues for this session (fan profile game id 3): league, teams, today's lineup, and this matchup
+ * period's results. Points leagues keep `scoring`; categories leagues save `settings.categories` and per-matchup
+ * category totals, with category wins as the matchup score.
+ */
+async function syncEspnNba(
+  admin: SupabaseClient,
+  edgeUserId: string,
+  connectionId: string,
+  session: EspnSession,
+): Promise<{ leagues: number; firstMineLeague: string | null }> {
+  const refs = await listFanLeagueRefs(session, null, NBA_GAME_ID)
+  if (!refs.length) return { leagues: 0, firstMineLeague: null }
+  const index = nbaIndexOf(await sleeperNbaPlayers(admin).catch(() => [] as NbaPlayer[]))
+  const mineKey = swidKey(session.swid)
+  const views = 'view=mTeam&view=mRoster&view=mMatchup&view=mSettings&view=mStatus&view=mMatchupScore'
+  let count = 0
+  let firstMineLeague: string | null = null
+  for (const ref of refs) {
+    const lg = asRecord(await espnGet(`/seasons/${ref.season}/segments/0/leagues/${encodeURIComponent(ref.id)}?${views}`, session, 'fba'))
+    if (!lg) continue
+    const settings = asRecord(lg.settings) || {}
+    const status = asRecord(lg.status) || {}
+    const scoringSettings = asRecord(settings.scoringSettings) || {}
+    const scoringType = String(scoringSettings.scoringType || '')
+    const categoriesLeague = scoringType.includes('CATEGORY') || scoringType.includes('ROTO')
+    const items = Array.isArray(scoringSettings.scoringItems) ? scoringSettings.scoringItems.map(asRecord).filter(Boolean) as Record<string, unknown>[] : []
+    const scoring: Record<string, number> = {}
+    const categories: Array<{ stat_id: number; key: string; label: string; higher_better: boolean }> = []
+    for (const item of items) {
+      const id = Number(item.statId)
+      const key = NBA_STAT[id]
+      if (!key) continue
+      if (categoriesLeague) categories.push({ stat_id: id, key, label: key.toUpperCase().replace('_PCT', '%'), higher_better: item.isReverseItem !== true })
+      else if (num(item.points) != null) scoring[key] = Number(item.points)
+    }
+    const roster = asRecord(settings.rosterSettings) || {}
+    const lineupSlots: string[] = []
+    for (const [id, raw] of Object.entries(asRecord(roster.lineupSlotCounts) || {})) {
+      const name = NBA_SLOT[Number(id)]
+      for (let i = 0; name && i < (Number(raw) || 0); i++) lineupSlots.push(name)
+    }
+    const week = Math.max(1, Number(status.currentMatchupPeriod) || 1)
+    const espnSeason = Number(lg.seasonId) || ref.season
+    const { data: leagueRow, error: lgErr } = await admin
+      .from('fantasy_leagues')
+      .upsert(
+        {
+          connection_id: connectionId,
+          user_id: edgeUserId,
+          provider: 'espn',
+          external_league_id: ref.id,
+          name: String(settings.name || ref.name || `ESPN ${ref.id}`).trim(),
+          season: espnSeason - 1,
+          sport: 'nba',
+          scoring,
+          settings: {
+            size: settings.size ?? null,
+            espn_season: espnSeason,
+            scoring_type: scoringType,
+            categories,
+            daily_lineups: String(roster.lineupLocktimeType || '') !== 'WEEKLY',
+            lineup_slots: lineupSlots,
+            current_week: week,
+            waiver: espnWaiver(settings),
+            ...espnPlayoffs(settings),
+          },
+        },
+        { onConflict: 'connection_id,external_league_id' },
+      )
+      .select('id')
+      .single()
+    if (lgErr || !leagueRow?.id) throw new Error(lgErr?.message || 'NBA league save failed.')
+    const leagueId = String(leagueRow.id)
+    count += 1
+
+    const teamIdByEspn = new Map<string, string>()
+    for (const team of (Array.isArray(lg.teams) ? lg.teams : []).map(asRecord).filter(Boolean) as Record<string, unknown>[]) {
+      const externalTeamId = String(team.id ?? '').trim()
+      if (!externalTeamId) continue
+      const owners = Array.isArray(team.owners) ? team.owners.map((o) => swidKey(String(o))) : []
+      const isMine = swidKey(String(team.primaryOwner || '')) === mineKey || owners.includes(mineKey)
+      const record = asRecord(asRecord(team.record)?.overall) || {}
+      const { data: teamRow, error: teamErr } = await admin
+        .from('fantasy_teams')
+        .upsert(
+          {
+            league_id: leagueId,
+            user_id: edgeUserId,
+            external_team_id: externalTeamId,
+            owner_name: String(team.abbrev || '').trim(),
+            team_name: String(team.name || team.abbrev || `Team ${externalTeamId}`).trim(),
+            avatar_url: typeof team.logo === 'string' ? team.logo : null,
+            is_mine: isMine,
+            wins: Number(record.wins) || 0,
+            losses: Number(record.losses) || 0,
+            ties: Number(record.ties) || 0,
+            points_for: num(record.pointsFor),
+            points_against: num(record.pointsAgainst),
+            metadata: { espn_team_id: team.id ?? null, waiver: espnTeamWaiver(team, settings) },
+          },
+          { onConflict: 'league_id,external_team_id' },
+        )
+        .select('id')
+        .single()
+      if (teamErr || !teamRow?.id) throw new Error(teamErr?.message || 'NBA team save failed.')
+      teamIdByEspn.set(externalTeamId, String(teamRow.id))
+      if (isMine && !firstMineLeague) firstMineLeague = leagueId
+
+      const rows = []
+      for (const entryRaw of (Array.isArray(asRecord(team.roster)?.entries) ? (asRecord(team.roster)!.entries as unknown[]) : [])) {
+        const entry = asRecord(entryRaw)
+        const player = asRecord(asRecord(entry?.playerPoolEntry)?.player)
+        const fullName = String(player?.fullName || '').trim()
+        if (!entry || !fullName) continue
+        const team3 = NBA_PRO_TEAM[Number(player?.proTeamId)] || ''
+        const slotId = Number(entry.lineupSlotId)
+        const slot = slotId === 13 ? 'ir' : slotId === 12 ? 'bench' : 'starter'
+        const elig = (Array.isArray(player?.eligibleSlots) ? player!.eligibleSlots : [])
+          .map((id) => NBA_SLOT[Number(id)])
+          .filter((p): p is string => Boolean(p) && !p.includes('/'))
+        const injury = NBA_INJURY[String(player?.injuryStatus || entry.injuryStatus || '').toUpperCase()] || null
+        rows.push({
+          team_id: teamRow.id,
+          user_id: edgeUserId,
+          week,
+          sleeper_id: nbaSleeperId(index, fullName, team3),
+          player_name: fullName,
+          position: NBA_POS[Number(player?.defaultPositionId)] || null,
+          nfl_team: team3 || null,
+          slot,
+          slot_label: `${slot}:${String(entry.playerId || player?.id || fullName)}${slot === 'starter' && NBA_SLOT[slotId] ? `:${NBA_SLOT[slotId]}` : ''}`,
+          injury_status: injury,
+          eligible_positions: elig.length ? elig : null,
+        })
+      }
+      // Clear and write back to back so a waiver read never sees the team empty.
+      await admin.from('fantasy_rosters').delete().eq('team_id', teamRow.id).eq('week', week)
+      if (rows.length) {
+        const { error: rostErr } = await admin.from('fantasy_rosters').insert(rows)
+        if (rostErr) throw new Error(rostErr.message)
+      }
+    }
+
+    await admin.from('fantasy_matchups').delete().eq('league_id', leagueId).eq('week', week)
+    for (const rowRaw of Array.isArray(lg.schedule) ? lg.schedule : []) {
+      const row = asRecord(rowRaw)
+      if (!row || Number(row.matchupPeriodId) !== week) continue
+      const home = asRecord(row.home)
+      const away = asRecord(row.away)
+      const homeId = teamIdByEspn.get(String(home?.teamId ?? '')) || null
+      const awayId = teamIdByEspn.get(String(away?.teamId ?? '')) || null
+      if (!homeId) continue
+      const left = nbaCategoryTotals(home)
+      const right = nbaCategoryTotals(away)
+      const cs = asRecord(home?.cumulativeScore) || {}
+      const { error: muErr } = await admin.from('fantasy_matchups').upsert(
+        {
+          league_id: leagueId,
+          user_id: edgeUserId,
+          week,
+          mine_team_id: homeId,
+          opp_team_id: awayId,
+          mine_score: categoriesLeague ? Number(cs.wins) || 0 : num(home?.totalPoints),
+          opp_score: awayId ? (categoriesLeague ? Number(asRecord(away?.cumulativeScore)?.wins) || 0 : num(away?.totalPoints)) : null,
+          categories: categoriesLeague
+            ? { left: left.totals, right: right.totals, results: left.results, wins: Number(cs.wins) || 0, losses: Number(cs.losses) || 0, ties: Number(cs.ties) || 0 }
+            : null,
+          external_matchup_id: row.id != null ? String(row.id) : `${homeId}:${awayId}`,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'league_id,week,mine_team_id' },
+      )
+      if (muErr) throw new Error(muErr.message)
+    }
+  }
+  return { leagues: count, firstMineLeague }
 }
 
 export type PendingTradeItem = {

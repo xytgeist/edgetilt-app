@@ -21,6 +21,11 @@ const SLOT_ELIGIBLE = {
   G: ['PG', 'SG'],
   F: ['SF', 'PF'],
   UTIL: ['PG', 'SG', 'SF', 'PF', 'C'],
+  // ESPN combo slots.
+  'SG/SF': ['SG', 'SF'],
+  'G/F': ['PG', 'SG', 'SF'],
+  'PF/C': ['PF', 'C'],
+  'F/C': ['SF', 'PF', 'C'],
 }
 
 /** Slots `leagueLineupSlots` returns (football); NBA leagues read theirs through `waiverLineupSlots`. */

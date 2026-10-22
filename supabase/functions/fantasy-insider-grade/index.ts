@@ -190,6 +190,8 @@ Deno.serve(async (req) => {
     const { data: rows, error } = await admin
       .from('fantasy_insider_news')
       .select('tweet_id, handle, author_name, posted_at, text, url, next_status, status_sleeper_id, status_trusted, next_statuses, grade')
+      // Grading reads the NFL schedule and Sleeper NFL stats (NBA ids collide), so NBA statuses stay ungraded.
+      .eq('sport', 'nfl')
       .in('next_status', ['out', 'ir', 'doubtful'])
       .not('status_sleeper_id', 'is', null)
       .gte('posted_at', since)

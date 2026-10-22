@@ -406,6 +406,7 @@ Deno.serve(async (req) => {
       .from('fantasy_insider_news')
       .select('tweet_id, handle, author_name, posted_at, headline, impact, kind, sleeper_ids, next_status, status_sleeper_id, status_trusted')
       .eq('status', 'show')
+      .eq('sport', 'nfl')
       .gte('created_at', since)
       .order('created_at', { ascending: true })
       .limit(80)

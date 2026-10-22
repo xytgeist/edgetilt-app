@@ -1,5 +1,5 @@
 /**
- * Match an insider post to NFL players by full name (punctuation / suffix agnostic: "D.K. Metcalf" = "DK Metcalf",
+ * Match an insider post to NFL (or NBA, with `NBA_TEAM_NICKNAMES`) players by full name (punctuation / suffix agnostic: "D.K. Metcalf" = "DK Metcalf",
  * "Kenneth Walker III" = "Kenneth Walker"). Two players with the same name are told apart by a team nickname in the
  * post or the beat writer's team; still ambiguous → dropped.
  */
@@ -14,6 +14,15 @@ const TEAM_NICKNAMES: Record<string, string[]> = {
   LAR: ['rams'], MIA: ['dolphins'], MIN: ['vikings'], NE: ['patriots', 'pats'], NO: ['saints'], NYG: ['giants'],
   NYJ: ['jets'], PHI: ['eagles'], PIT: ['steelers'], SF: ['49ers', 'niners'], SEA: ['seahawks'], TB: ['buccaneers', 'bucs'],
   TEN: ['titans'], WAS: ['commanders'],
+}
+
+/** NBA nicknames by Sleeper team code (same codes as `nbaTeam`). */
+export const NBA_TEAM_NICKNAMES: Record<string, string[]> = {
+  ATL: ['hawks'], BOS: ['celtics'], BKN: ['nets'], CHA: ['hornets'], CHI: ['bulls'], CLE: ['cavaliers', 'cavs'],
+  DAL: ['mavericks', 'mavs'], DEN: ['nuggets'], DET: ['pistons'], GSW: ['warriors'], HOU: ['rockets'], IND: ['pacers'],
+  LAC: ['clippers'], LAL: ['lakers'], MEM: ['grizzlies'], MIA: ['heat'], MIL: ['bucks'], MIN: ['timberwolves', 'wolves'],
+  NOP: ['pelicans'], NYK: ['knicks'], OKC: ['thunder'], ORL: ['magic'], PHI: ['76ers', 'sixers'], PHX: ['suns'],
+  POR: ['trail blazers', 'blazers'], SAC: ['kings'], SAS: ['spurs'], TOR: ['raptors'], UTA: ['jazz'], WAS: ['wizards'],
 }
 
 export function normName(raw: string): string {
@@ -42,18 +51,23 @@ export function buildPlayerIndex(players: InsiderPlayer[]): PlayerIndex {
   return { byName, names }
 }
 
-function teamsMentioned(text: string): Set<string> {
+function teamsMentioned(text: string, nicknames: Record<string, string[]>): Set<string> {
   const out = new Set<string>()
-  for (const [abbrev, words] of Object.entries(TEAM_NICKNAMES)) {
+  for (const [abbrev, words] of Object.entries(nicknames)) {
     if (words.some((w) => text.includes(` ${w} `))) out.add(abbrev)
   }
   return out
 }
 
 /** Sleeper ids of the players this post is about, in the order they appear. */
-export function matchPlayers(rawText: string, index: PlayerIndex, beatTeam: string | null = null): string[] {
+export function matchPlayers(
+  rawText: string,
+  index: PlayerIndex,
+  beatTeam: string | null = null,
+  nicknames: Record<string, string[]> = TEAM_NICKNAMES,
+): string[] {
   let text = ` ${normName(rawText)} `
-  const teams = teamsMentioned(text)
+  const teams = teamsMentioned(text, nicknames)
   const hits: Array<{ at: number; id: string }> = []
   for (const name of index.names) {
     const at = text.indexOf(` ${name} `)

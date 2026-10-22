@@ -28,14 +28,15 @@ async function getJson(url: string): Promise<unknown> {
 /** Active players on a team (one shared row, refreshed twice a day). */
 export function sleeperNbaPlayers(admin: SupabaseClient): Promise<NbaPlayer[]> {
   return sharedCached(
-    'sleeper:nba-players:v2',
+    'sleeper:nba-players:v3',
     { ttlMs: 12 * 60 * 60 * 1000, staleMaxMs: 3 * 24 * 60 * 60 * 1000, leaseMs: 60_000, admin, shouldStore: (v) => v.length > 300 },
     async () => {
       const raw = (await getJson(`${SLEEPER}/players/nba`)) as Record<string, Record<string, unknown>>
       const out: NbaPlayer[] = []
       for (const [id, p] of Object.entries(raw || {})) {
         const team = nbaTeam(String(p?.team || ''))
-        if (!team || p?.active === false) continue
+        // Sleeper keeps football-style team "DEF" rows in the NBA map ("Golden State Warriors"); none are players.
+        if (!team || p?.active === false || String(p?.position || '').toUpperCase() === 'DEF') continue
         const name = String(p?.full_name || `${p?.first_name || ''} ${p?.last_name || ''}`).trim()
         if (!name) continue
         out.push({

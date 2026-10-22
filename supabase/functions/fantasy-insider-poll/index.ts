@@ -9,13 +9,18 @@
  * Reads X only inside news windows (ET): Sun 10:30-13:30, 15:00-16:30, 18:30-20:30; Mon 18:30-20:30;
  * Thu 12:00-18:00 + 18:30-20:30; Wed / Fri 12:00-18:00; Sat 14:00-18:00. When a window opens after a gap the
  * search starts from now, so posts outside the windows are never read (or billed).
+ * NBA (`{ sport: 'nba' }`, its own cron): national NBA insiders + Underdog / FantasyLabs, read only 11:00-13:00 and
+ * 17:00-23:00 ET and at most NBA_DAILY_READ_CAP posts in any 24 hours; own cursor row (`poll_nba`), NBA player index
+ * (Sleeper NBA map), NBA prompt, NBA in-game guard, pushes through the NBA starter path. Rows carry `sport`.
  * `{ evaluate: [{ handle, text, created_at }] }` judges posts without storing or pushing (validation);
  * `{ regression: true }` runs the known-answer set in `fantasy_insider_regression` and reports false alarms / misses.
  */
 import { type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
-import { buildPlayerIndex, matchPlayers, type InsiderPlayer, type PlayerIndex } from '../_shared/fantasyInsiderMatch.ts'
-import { ESPN_NFL, ESPN_TO_SLEEPER, RANK, espnJson, pushStarterAlerts, type StatusTransition } from '../_shared/fantasyStatusPush.ts'
+import { NBA_TEAM_NICKNAMES, buildPlayerIndex, matchPlayers, type InsiderPlayer, type PlayerIndex } from '../_shared/fantasyInsiderMatch.ts'
+import { ESPN_NBA, ESPN_NFL, ESPN_TO_SLEEPER, RANK, espnJson, pushStarterAlerts, type StatusTransition } from '../_shared/fantasyStatusPush.ts'
+import { nbaTeam } from '../_shared/fantasyNbaBoard.ts'
+import { sleeperNbaPlayers } from '../_shared/sleeperNbaPlayers.ts'
 import {
   openaiChatMaxCompletionTokens,
   openaiChatReasoningNone,
@@ -32,6 +37,12 @@ const RESTART_AFTER_MS = 10 * 60 * 1000
 const RESTART_LOOKBACK_MS = 5 * 60 * 1000
 /** Sources whose word alone can move a player's status (plus each team's own beat writer). */
 const CORE = new Set(['adamschefter', 'rapsheet', 'tompelissero', 'mikegarafolo', 'underdognfl', 'caplannfl'])
+/** NBA sources whose word alone can move a player's status (the rest show news only). */
+const NBA_CORE = new Set(['shamscharania', 'chrisbhaynes', 'underdognba'])
+/** NBA posts read in any 24 hours before the poller pauses (X bills ~$0.005 a read; ~$1.25 a day at the cap). */
+const NBA_DAILY_READ_CAP = 250
+
+type Sport = 'nfl' | 'nba'
 const STATUSES = ['out', 'doubtful', 'ir', 'questionable', 'cleared']
 const RETURNING = /\b(activated|reinstated|coming off|returns? from|returning from|back from|designated to return|window to return|return to practice)\b[^.]{0,80}\b(injured reserve|ir|pup|reserve)\b/i
 const PLACED = /\b(plac(e|ed|es|ing)|headed|heading|going|goes|moved?|lands?|landed)\b[^.]{0,40}\b(on|to)\s+(injured reserve|ir)\b/i
@@ -68,6 +79,12 @@ function etParts(d = new Date()) {
   const map: Record<string, string> = {}
   for (const p of fmt.formatToParts(d)) map[p.type] = p.value
   return { wd: map.weekday, mins: (Number(map.hour) % 24) * 60 + Number(map.minute) }
+}
+
+/** NBA: shootaround / injury-report news late morning, then pregame through the late games. */
+export function inNbaNewsWindow(d = new Date()): boolean {
+  const { mins } = etParts(d)
+  return (mins >= 11 * 60 && mins < 13 * 60) || (mins >= 17 * 60 && mins < 23 * 60)
 }
 
 /** True inside the windows where NFL status news breaks. */
@@ -142,10 +159,18 @@ async function searchRecent(query: string, token: string, cursor: { since_id: st
   return { tweets, newest }
 }
 
-let indexCache: { at: number; index: PlayerIndex; byId: Map<string, InsiderPlayer> } | null = null
+type IndexEntry = { at: number; index: PlayerIndex; byId: Map<string, InsiderPlayer> }
+const indexCache = new Map<Sport, IndexEntry>()
 
-async function playerIndex(admin: SupabaseClient) {
-  if (indexCache && Date.now() - indexCache.at < 6 * 60 * 60 * 1000) return indexCache
+async function playerIndex(admin: SupabaseClient, sport: Sport = 'nfl'): Promise<IndexEntry> {
+  const hit = indexCache.get(sport)
+  if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000) return hit
+  if (sport === 'nba') {
+    const players = (await sleeperNbaPlayers(admin)).map((p) => ({ sleeper_id: p.sleeper_id, full_name: p.name, position: p.position, team: p.team }))
+    const entry = { at: Date.now(), index: buildPlayerIndex(players), byId: new Map(players.map((p) => [p.sleeper_id, p])) }
+    indexCache.set(sport, entry)
+    return entry
+  }
   const { data, error } = await admin
     .from('nfl_players')
     .select('sleeper_id, full_name, position, team')
@@ -158,8 +183,9 @@ async function playerIndex(admin: SupabaseClient) {
     position: String(p.position || ''),
     team: p.team ? String(p.team).toUpperCase() : null,
   }))
-  indexCache = { at: Date.now(), index: buildPlayerIndex(players), byId: new Map(players.map((p) => [p.sleeper_id, p])) }
-  return indexCache
+  const entry = { at: Date.now(), index: buildPlayerIndex(players), byId: new Map(players.map((p) => [p.sleeper_id, p])) }
+  indexCache.set(sport, entry)
+  return entry
 }
 
 function cleanProse(s: unknown, max: number): string {
@@ -177,7 +203,49 @@ function fallbackVerdict(t: Tweet): Verdict {
   return { status: 'show', headline: cleanProse(first, 140), summary: '', impact: '', kind: null, statuses: [] }
 }
 
-async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Promise<Verdict> {
+/** NBA judge prompt: same JSON contract as NFL, basketball availability terms (the NFL prompt stays untouched). */
+const NBA_PROMPT =
+  'You write a fantasy basketball news desk, like RotoWire player news. Input: one post by an NBA reporter, ' +
+  'the players it names, and items we already published on those players in the last 90 minutes.\n' +
+  'Return JSON only: {"status":"show"|"duplicate"|"skip","headline":string,"summary":string,"impact":string,' +
+  '"kind":"status"|"transaction"|"in_game"|"role"|"other",' +
+  '"statuses":[{"player":string,"next":"out"|"doubtful"|"ir"|"questionable"|"cleared","injury":string}]}\n' +
+  'status:\n' +
+  '- "skip" when the post is not fantasy-relevant news about the player: opinions, jokes, highlights or stat lines ' +
+  'with no news, podcast or show plugs, betting odds, coach quotes with no availability or role info.\n' +
+  '- "duplicate" when an earlier item already reports the same fact (a repeat by another reporter). A real update ' +
+  '(questionable -> ruled out, game-time decision -> will play, minutes limit lifted) is NOT a duplicate.\n' +
+  '- otherwise "show".\n' +
+  'For show: headline max 90 chars in the style "Stephen Curry (ankle) ruled out Wednesday vs. Lakers" or "Jalen ' +
+  'Brunson available Wednesday vs. Celtics"; parentheses hold only a body part the post names. summary: ' +
+  '1-2 sentences of only the facts in the post. impact: 1-2 sentences on what it means for fantasy managers (who ' +
+  'gains minutes or usage, streaming options, what to watch). Never invent facts not in the post; hedge with "likely" ' +
+  'or "watch" when unsure. Third person. Never use em dashes, en dashes, or middle dots. For skip / duplicate, ' +
+  'headline / summary / impact may be empty.\n' +
+  'kind (always fill): "in_game" for an injury during a game in progress (left the game, will not return, questionable ' +
+  'to return). "transaction" for trades, signings, waivers, two-way contracts, G League assignments, extensions. ' +
+  '"role" for starting-lineup changes, minutes restrictions, bench or rotation changes. "status" for availability ' +
+  'news about an upcoming game (injury report designations, game-time decisions, ruled out, rest days, return ' +
+  'timelines). "other" for anything else.\n' +
+  'statuses (always fill, even for duplicate / skip): one entry for EACH named player whose NEXT-game status the post ' +
+  'sets ([] when it sets none). player: the full name from Players named. next: "out" when he will not play his next ' +
+  'game: ruled out, will not play, will rest, out for the game, also multi-game absences ("out 2-3 weeks", "will ' +
+  'miss time", "season is over"). The NBA has no injured reserve: use "out", never "ir". "doubtful" / "questionable" ' +
+  'when listed that way on the injury report; a game-time decision is "questionable"; "probable" or "will play" or ' +
+  '"available" or "cleared to return" is "cleared". "none" for anything else, including in-game injuries (left the ' +
+  'game, will not return, questionable to return), rumors, and stat lines: leave those players out of statuses. ' +
+  'injury: body part if stated ("" if not).'
+
+/** Parentheses hold an injury: "(not specified)" goes, "(game-time decision)" / "(available)" lose the brackets. */
+function nbaHeadline(h: string): string {
+  return h
+    .replace(/\s*\((?:not specified|unspecified|undisclosed|none|n\/a)\)/gi, '')
+    .replace(/\((game-time decision|available|questionable|probable|doubtful|out|active)\)/gi, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+async function judge(t: Tweet, players: InsiderPlayer[], recent: string[], sport: Sport = 'nfl'): Promise<Verdict> {
   const key = Deno.env.get('OPENAI_API_KEY')?.trim()
   if (!key) return fallbackVerdict(t)
   const who = players.map((p) => `${p.full_name} (${p.position}, ${p.team || 'FA'})`).join('; ')
@@ -196,7 +264,7 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
         messages: [
           {
             role: 'system',
-            content:
+            content: sport === 'nba' ? NBA_PROMPT :
               'You write a fantasy football news desk, like FantasyPros player news. Input: one post by an NFL reporter, ' +
               'the players it names, and items we already published on those players in the last 90 minutes.\n' +
               'Return JSON only: {"status":"show"|"duplicate"|"skip","headline":string,"summary":string,"impact":string,' +
@@ -257,7 +325,7 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
     }
     const verdict: Verdict = {
       status,
-      headline: cleanProse(parsed.headline, 140),
+      headline: sport === 'nba' ? nbaHeadline(cleanProse(parsed.headline, 140)) : cleanProse(parsed.headline, 140),
       summary: cleanProse(parsed.summary, 500),
       impact: cleanProse(parsed.impact, 500),
       kind: KINDS.includes(String(parsed.kind)) ? String(parsed.kind) : null,
@@ -272,7 +340,10 @@ async function judge(t: Tweet, players: InsiderPlayer[], recent: string[]): Prom
 
 /** Words that make "ruled out" about a future game even when posted mid-game. */
 const FUTURE = /\b(next week|this week|week \d+|sunday|monday|thursday|saturday|season|weeks|months|injured reserve|ir|surgery|indefinitely|practice)\b/i
+/** NBA plays nightly, so any weekday or "tomorrow" / "next game" marks a future game. */
+const NBA_FUTURE = /\b(tomorrow|next game|monday|tuesday|wednesday|thursday|friday|saturday|sunday|season|weeks|months|surgery|indefinitely|road trip|back-to-back)\b/i
 const IN_GAME_MS = 4 * 60 * 60 * 1000
+const NBA_IN_GAME_MS = 3 * 60 * 60 * 1000
 
 function etYmd(ms: number): string {
   const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms))
@@ -280,42 +351,44 @@ function etYmd(ms: number): string {
 }
 
 const dayCache = new Map<string, Promise<Array<{ teams: string[]; kickoff: number }>>>()
-function dayGames(ymd: string) {
-  if (!dayCache.has(ymd)) {
+function dayGames(ymd: string, sport: Sport = 'nfl') {
+  const key = `${sport}:${ymd}`
+  if (!dayCache.has(key)) {
     dayCache.set(
-      ymd,
-      espnJson(`${ESPN_NFL}/scoreboard?dates=${ymd}`, 10_000).then((body) => {
+      key,
+      espnJson(`${sport === 'nba' ? ESPN_NBA : ESPN_NFL}/scoreboard?dates=${ymd}`, 10_000).then((body) => {
         const events = Array.isArray(body?.events) ? (body!.events as Array<Record<string, unknown>>) : []
         return events.map((ev) => {
           const comp = (ev.competitions as Array<Record<string, unknown>> | undefined)?.[0]
           const teams = ((comp?.competitors as Array<Record<string, unknown>> | undefined) || []).map((c) => {
             const abbr = String((c.team as Record<string, unknown> | undefined)?.abbreviation || '').toUpperCase()
-            return ESPN_TO_SLEEPER[abbr] || abbr
+            return sport === 'nba' ? nbaTeam(abbr) : ESPN_TO_SLEEPER[abbr] || abbr
           })
           return { teams, kickoff: Date.parse(String(ev.date || '')) }
         })
       }).catch(() => []),
     )
   }
-  return dayCache.get(ymd)!
+  return dayCache.get(key)!
 }
 
-/** True when this team's game was underway at `iso` (kickoff to kickoff + 4h). */
-async function teamInGameAt(team: string, iso: string): Promise<boolean> {
+/** True when this team's game was underway at `iso` (kickoff to kickoff + 4h; NBA tip to tip + 3h). */
+async function teamInGameAt(team: string, iso: string, sport: Sport = 'nfl'): Promise<boolean> {
   const t = Date.parse(iso)
   if (!Number.isFinite(t) || !team) return false
+  const span = sport === 'nba' ? NBA_IN_GAME_MS : IN_GAME_MS
   for (const ymd of new Set([etYmd(t), etYmd(t - 6 * 3600 * 1000)])) {
-    for (const g of await dayGames(ymd)) {
-      if (g.teams.includes(team) && Number.isFinite(g.kickoff) && t >= g.kickoff && t <= g.kickoff + IN_GAME_MS) return true
+    for (const g of await dayGames(ymd, sport)) {
+      if (g.teams.includes(team) && Number.isFinite(g.kickoff) && t >= g.kickoff && t <= g.kickoff + span) return true
     }
   }
   return false
 }
 
 /** `judge`, then: an Out / Doubtful posted while that player's game is underway is an in-game ruling, not next week's. */
-async function judgeGuarded(t: Tweet, players: InsiderPlayer[], recent: string[]): Promise<Verdict> {
-  const v = await judge(t, players, recent)
-  if (FUTURE.test(t.text) || !t.created_at) return v
+async function judgeGuarded(t: Tweet, players: InsiderPlayer[], recent: string[], sport: Sport = 'nfl'): Promise<Verdict> {
+  const v = await judge(t, players, recent, sport)
+  if ((sport === 'nba' ? NBA_FUTURE : FUTURE).test(t.text) || !t.created_at) return v
   const kept: PlayerStatus[] = []
   for (const st of v.statuses) {
     if (st.next === 'out' || st.next === 'doubtful') {
@@ -323,7 +396,7 @@ async function judgeGuarded(t: Tweet, players: InsiderPlayer[], recent: string[]
       const p =
         players.find((x) => x.full_name.toLowerCase().replace(/[^a-z ]/g, '').trim() === want) ||
         (players.length === 1 ? players[0] : undefined)
-      if (p?.team && (await teamInGameAt(p.team, t.created_at))) continue
+      if (p?.team && (await teamInGameAt(p.team, t.created_at, sport))) continue
     }
     kept.push(st)
   }
@@ -368,9 +441,15 @@ function statusPlayerId(name: string, ids: string[], byId: Map<string, InsiderPl
   return byLast.length === 1 ? byLast[0] : null
 }
 
-function trusted(handle: string, player: InsiderPlayer | undefined, beatTeam: Map<string, string | null>, pushOk?: Set<string>): boolean {
+function trusted(
+  handle: string,
+  player: InsiderPlayer | undefined,
+  beatTeam: Map<string, string | null>,
+  pushOk?: Set<string>,
+  sport: Sport = 'nfl',
+): boolean {
   if (pushOk && !pushOk.has(handle)) return false
-  if (CORE.has(handle)) return true
+  if ((sport === 'nba' ? NBA_CORE : CORE).has(handle)) return true
   const team = beatTeam.get(handle)
   return Boolean(team && player?.team && team === player.team)
 }
@@ -385,6 +464,7 @@ Deno.serve(async (req) => {
     return adminOpsJson(401, { error: 'Unauthorized' })
   }
   const body = (await req.json().catch(() => ({}))) as {
+    sport?: string
     force?: boolean
     dryRun?: boolean
     evaluate?: Array<{ handle?: string; text?: string; created_at?: string }>
@@ -392,8 +472,14 @@ Deno.serve(async (req) => {
     regression?: boolean
   }
   const now = new Date()
+  const sport: Sport = body.sport === 'nba' ? 'nba' : 'nfl'
+  const stateId = sport === 'nba' ? 'poll_nba' : 'poll'
 
-  const { data: srcRows, error: srcErr } = await admin.from('fantasy_insider_sources').select('handle, display_name, team, push_trusted').eq('active', true)
+  const { data: srcRows, error: srcErr } = await admin
+    .from('fantasy_insider_sources')
+    .select('handle, display_name, team, push_trusted')
+    .eq('active', true)
+    .eq('sport', sport)
   if (srcErr) return adminOpsJson(500, { error: srcErr.message })
   const sources = (srcRows || []) as Source[]
   const beatTeam = new Map(sources.map((s) => [s.handle, s.team]))
@@ -401,17 +487,17 @@ Deno.serve(async (req) => {
 
   // Validation: judge posts with the live prompt, store nothing, push nothing.
   const judgeAll = async (items: Array<{ handle?: string; text?: string; created_at?: string }>) => {
-    const { index, byId } = await playerIndex(admin)
+    const { index, byId } = await playerIndex(admin, sport)
     return mapLimit(items, 6, async (e) => {
       const handle = String(e.handle || '').toLowerCase()
       const t: Tweet = { id: '0', text: String(e.text || ''), created_at: String(e.created_at || ''), author_id: '', handle, name: handle }
-      const ids = matchPlayers(t.text, index, beatTeam.get(handle) || null)
+      const ids = matchPlayers(t.text, index, beatTeam.get(handle) || null, sport === 'nba' ? NBA_TEAM_NICKNAMES : undefined)
       if (!ids.length) return { handle, text: t.text.slice(0, 160), matched: [], verdict: null, statuses: [], next: null, next_player: null, trusted: false, headline: '' }
-      const v = await judgeGuarded(t, ids.map((id) => byId.get(id)).filter(Boolean) as InsiderPlayer[], [])
+      const v = await judgeGuarded(t, ids.map((id) => byId.get(id)).filter(Boolean) as InsiderPlayer[], [], sport)
       const resolved = resolveStatuses(v, ids, byId).map((r) => ({
         player: byId.get(r.sleeper_id)?.full_name || r.player,
         next: r.next,
-        trusted: trusted(handle, byId.get(r.sleeper_id), beatTeam, pushOk),
+        trusted: trusted(handle, byId.get(r.sleeper_id), beatTeam, pushOk, sport),
       }))
       return {
         handle,
@@ -482,15 +568,24 @@ Deno.serve(async (req) => {
 
   const token = String(Deno.env.get('X_API_BEARER_TOKEN') || '').trim()
   if (!token) return adminOpsJson(503, { error: 'X_API_BEARER_TOKEN missing.' })
-  if (!body.force && !inNewsWindow(now)) return adminOpsJson(200, { ok: true, polled: false, window: false })
+  if (!body.force && !(sport === 'nba' ? inNbaNewsWindow(now) : inNewsWindow(now))) {
+    return adminOpsJson(200, { ok: true, sport, polled: false, window: false })
+  }
+  if (sport === 'nba') {
+    // Daily read cap (rolling 24h): once hit, NBA stops reading X until older reads age out.
+    const dayAgo = new Date(now.getTime() - 24 * 3600 * 1000).toISOString()
+    const { data: logs } = await admin.from('fantasy_insider_poll_log').select('fetched').eq('sport', 'nba').gte('polled_at', dayAgo).limit(2000)
+    const readToday = (logs || []).reduce((a, l) => a + (Number(l.fetched) || 0), 0)
+    if (!body.force && readToday >= NBA_DAILY_READ_CAP) return adminOpsJson(200, { ok: true, sport, polled: false, capped: readToday })
+  }
 
-  const { data: before } = await admin.from('fantasy_insider_state').select('since_id, last_polled_at').eq('id', 'poll').maybeSingle()
+  const { data: before } = await admin.from('fantasy_insider_state').select('since_id, last_polled_at').eq('id', stateId).maybeSingle()
   // Claim this tick: only one caller per gap gets past here.
   const gapCutoff = new Date(now.getTime() - (body.force ? 0 : POLL_GAP_MS)).toISOString()
   const { data: claimed, error: claimErr } = await admin
     .from('fantasy_insider_state')
     .update({ last_polled_at: now.toISOString(), updated_at: now.toISOString() })
-    .eq('id', 'poll')
+    .eq('id', stateId)
     .or(`last_polled_at.is.null,last_polled_at.lt.${gapCutoff}`)
     .select('id')
   if (claimErr) return adminOpsJson(500, { error: claimErr.message })
@@ -528,9 +623,10 @@ Deno.serve(async (req) => {
     const byHandle: Record<string, number> = {}
     for (const t of all) byHandle[t.handle] = (byHandle[t.handle] || 0) + 1
 
-    const { index, byId } = await playerIndex(admin)
+    const { index, byId } = await playerIndex(admin, sport)
+    const nicknames = sport === 'nba' ? NBA_TEAM_NICKNAMES : undefined
     const matched = all
-      .map((t) => ({ t, ids: matchPlayers(t.text, index, beatTeam.get(t.handle) || null) }))
+      .map((t) => ({ t, ids: matchPlayers(t.text, index, beatTeam.get(t.handle) || null, nicknames) }))
       .filter((m) => m.ids.length)
       .sort((a, b) => (BigInt(a.t.id) < BigInt(b.t.id) ? -1 : 1))
       .slice(-MAX_LLM_PER_POLL)
@@ -545,15 +641,16 @@ Deno.serve(async (req) => {
         .from('fantasy_insider_news')
         .select('headline')
         .eq('status', 'show')
+        .eq('sport', sport)
         .overlaps('sleeper_ids', ids)
         .gte('posted_at', since)
         .order('posted_at', { ascending: true })
         .limit(6)
-      const verdict = await judgeGuarded(t, ids.map((id) => byId.get(id)).filter(Boolean) as InsiderPlayer[], (prior || []).map((p) => String(p.headline)))
+      const verdict = await judgeGuarded(t, ids.map((id) => byId.get(id)).filter(Boolean) as InsiderPlayer[], (prior || []).map((p) => String(p.headline)), sport)
       if (verdict.status === 'show') shown++
       else if (verdict.status === 'duplicate') duplicate++
       else skipped++
-      const resolved = resolveStatuses(verdict, ids, byId).map((r) => ({ ...r, trusted: trusted(t.handle, byId.get(r.sleeper_id), beatTeam, pushOk) }))
+      const resolved = resolveStatuses(verdict, ids, byId).map((r) => ({ ...r, trusted: trusted(t.handle, byId.get(r.sleeper_id), beatTeam, pushOk, sport) }))
       const top = resolved[0] || null
       if (body.dryRun) continue
       const { data: stored } = await admin
@@ -561,6 +658,7 @@ Deno.serve(async (req) => {
         .upsert(
           {
             tweet_id: t.id,
+            sport,
             handle: t.handle,
             author_name: t.name,
             posted_at: t.created_at || now.toISOString(),
@@ -593,7 +691,10 @@ Deno.serve(async (req) => {
     let pushed = 0
     if (statusRows.length) {
       const sids = [...new Set(statusRows.map((r) => r.sleeper_id))]
-      const { data: current } = await admin.from('nfl_player_status').select('sleeper_id, status, injury').in('sleeper_id', sids)
+      const { data: current } = await admin
+        .from(sport === 'nba' ? 'nba_player_status' : 'nfl_player_status')
+        .select('sleeper_id, status, injury')
+        .in('sleeper_id', sids)
       const currentBy = new Map((current || []).map((c) => [String(c.sleeper_id), c]))
       const transitions: StatusTransition[] = []
       const seen = new Set<string>()
@@ -615,7 +716,7 @@ Deno.serve(async (req) => {
         })
       }
       if (transitions.length) {
-        const res = await pushStarterAlerts(admin, transitions)
+        const res = await pushStarterAlerts(admin, transitions, { sport })
         alerts = res.alerts
         pushed = res.pushed
       }
@@ -628,10 +729,11 @@ Deno.serve(async (req) => {
     await admin
       .from('fantasy_insider_state')
       .update({ since_id: newest, last_error: null, updated_at: new Date().toISOString() })
-      .eq('id', 'poll')
-    await admin.from('fantasy_insider_poll_log').insert({ fetched: all.length, matched: matched.length, by_handle: byHandle }).then(() => null, () => null)
+      .eq('id', stateId)
+    await admin.from('fantasy_insider_poll_log').insert({ sport, fetched: all.length, matched: matched.length, by_handle: byHandle }).then(() => null, () => null)
     return adminOpsJson(200, {
       ok: true,
+      sport,
       polled: true,
       fresh,
       fetched: all.length,
@@ -645,7 +747,7 @@ Deno.serve(async (req) => {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    await admin.from('fantasy_insider_state').update({ last_error: message.slice(0, 500), updated_at: new Date().toISOString() }).eq('id', 'poll')
+    await admin.from('fantasy_insider_state').update({ last_error: message.slice(0, 500), updated_at: new Date().toISOString() }).eq('id', stateId)
     return adminOpsJson(502, { error: message })
   }
 })

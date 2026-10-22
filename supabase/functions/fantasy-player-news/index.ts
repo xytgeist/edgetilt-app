@@ -4,7 +4,8 @@
  * Body: { sleeper_ids: string[] } (max 80). Each player's feed is one shared row in `edge_shared_cache`
  * for 20 minutes, so every user rostering the same player shares a single ESPN read.
  * NBA: Body { sport: 'nba', players: [{ sleeper_id, name, team, position }] } … Sleeper NBA ids have no ESPN id,
- * so names map through ESPN's team rosters (one shared row a day); Rotowire notes come from ESPN fantasy basketball.
+ * so names map through ESPN's team rosters (one shared row a day); Rotowire notes come from ESPN fantasy basketball,
+ * insider items from `fantasy_insider_news` where sport = 'nba' (Sleeper NBA ids collide with NFL ones).
  * Returns { ok, notes: PlayerNewsNote[] } newest first.
  */
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -83,6 +84,49 @@ function nbaFeed(espnId: string, admin: SupabaseClient) {
   return sharedCached(`fantasy:news:fba:${espnId}`, { ttlMs: FEED_TTL_MS, leaseMs: 20_000, admin }, () => readPlayerFeed(espnId, 'fba'))
 }
 
+/** Recent insider items (status show) for these Sleeper ids in one sport, newest first. */
+function insiderRows(admin: SupabaseClient, sport: 'nfl' | 'nba', ids: string[]) {
+  return admin
+    .from('fantasy_insider_news')
+    .select('tweet_id, handle, author_name, posted_at, url, sleeper_ids, headline, summary, impact')
+    .eq('status', 'show')
+    .eq('sport', sport)
+    .overlaps('sleeper_ids', ids)
+    .gte('posted_at', new Date(Date.now() - INSIDER_WINDOW_MS).toISOString())
+    .order('posted_at', { ascending: false })
+    .limit(MAX_INSIDER)
+}
+
+function insiderNote(row: Obj, player: Obj): Obj {
+  return {
+    id: `x:${row.tweet_id}`,
+    kind: 'insider',
+    ...player,
+    headline: str(row.headline),
+    story: str(row.summary),
+    impact: str(row.impact),
+    published: row.posted_at,
+    source: `${str(row.author_name) || `@${str(row.handle)}`} on X`,
+    url: str(row.url),
+  }
+}
+
+/** Rotowire usually re-reports an insider's post minutes later; keep the insider item and drop the echo. */
+function dropEchoes(notes: Obj[]): Obj[] {
+  const insiderAt = new Map<string, number[]>()
+  for (const n of notes) {
+    if (n.kind !== 'insider') continue
+    const list = insiderAt.get(str(n.sleeper_id)) || []
+    list.push(Date.parse(str(n.published)))
+    insiderAt.set(str(n.sleeper_id), list)
+  }
+  return notes.filter((n) => {
+    if (n.kind !== 'rotowire') return true
+    const at = Date.parse(str(n.published))
+    return !(insiderAt.get(str(n.sleeper_id)) || []).some((t) => at - t >= -ECHO_AFTER_MS && at - t <= ECHO_WINDOW_MS)
+  })
+}
+
 async function nbaNotes(raw: unknown, admin: SupabaseClient): Promise<Obj[]> {
   const seen = new Set<string>()
   const players = (Array.isArray(raw) ? raw : [])
@@ -94,7 +138,7 @@ async function nbaNotes(raw: unknown, admin: SupabaseClient): Promise<Obj[]> {
   const list = players
     .map((p) => ({ p, espnId: lookupNbaEspnId(ids, p.name, p.team) }))
     .filter((x) => x.espnId)
-  const [feeds, { data: shots }] = await Promise.all([
+  const [feeds, { data: shots }, { data: insider }] = await Promise.all([
     mapLimit(list, CONCURRENCY, (x) => nbaFeed(x.espnId, admin).catch(() => [] as FeedNote[])),
     admin
       .from('player_headshots')
@@ -102,10 +146,12 @@ async function nbaNotes(raw: unknown, admin: SupabaseClient): Promise<Obj[]> {
       .eq('league', 'nba')
       .eq('status', 'ok')
       .in('espn_id', [...new Set(list.map((x) => x.espnId))]),
+    insiderRows(admin, 'nba', players.map((p) => str(p.sleeper_id))),
   ])
   const photo = new Map((shots || []).map((r) => [str(r.espn_id), str(r.full_url)]))
+  const espnBy = new Map(list.map((x) => [str(x.p.sleeper_id), x.espnId]))
   const cutoff = Date.now() - NOTE_WINDOW_MS
-  return list.flatMap(({ p, espnId }, i) =>
+  const notes = list.flatMap(({ p, espnId }, i) =>
     (feeds[i] || [])
       .filter((n) => n.published && Date.parse(n.published) >= cutoff)
       .map((n) => ({
@@ -124,6 +170,24 @@ async function nbaNotes(raw: unknown, admin: SupabaseClient): Promise<Obj[]> {
         url: `https://www.espn.com/nba/player/_/id/${espnId}`,
       })),
   )
+  const byId = new Map(players.map((p) => [str(p.sleeper_id), p]))
+  for (const row of insider || []) {
+    const id = ((row.sleeper_ids as string[]) || []).map(String).find((x) => byId.has(x))
+    const p = id ? byId.get(id)! : null
+    if (!p) continue
+    const espnId = espnBy.get(str(p.sleeper_id)) || ''
+    notes.push(
+      insiderNote(row as Obj, {
+        sport: 'nba',
+        sleeper_id: str(p.sleeper_id),
+        player: str(p.name),
+        position: str(p.position),
+        team: str(p.team),
+        headshot_url: espnId ? photo.get(espnId) || `https://a.espncdn.com/i/headshots/nba/players/full/${espnId}.png` : null,
+      }),
+    )
+  }
+  return dropEchoes(notes)
 }
 
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -165,14 +229,7 @@ Deno.serve(async (req) => {
 
   const [{ data: players, error }, { data: insider }] = await Promise.all([
     admin.from('nfl_players').select('sleeper_id, espn_id, full_name, position, team, headshot_url').in('sleeper_id', ids),
-    admin
-      .from('fantasy_insider_news')
-      .select('tweet_id, handle, author_name, posted_at, url, sleeper_ids, headline, summary, impact')
-      .eq('status', 'show')
-      .overlaps('sleeper_ids', ids)
-      .gte('posted_at', new Date(Date.now() - INSIDER_WINDOW_MS).toISOString())
-      .order('posted_at', { ascending: false })
-      .limit(MAX_INSIDER),
+    insiderRows(admin, 'nfl', ids),
   ])
   if (error) return json(502, { error: error.message })
 
@@ -206,31 +263,9 @@ Deno.serve(async (req) => {
     const id = (row.sleeper_ids as string[] || []).find((x) => wanted.has(String(x)))
     const p = id ? meta.get(String(id)) : null
     if (!p) continue
-    notes.push({
-      id: `x:${row.tweet_id}`,
-      kind: 'insider',
-      ...playerFields(p),
-      headline: str(row.headline),
-      story: str(row.summary),
-      impact: str(row.impact),
-      published: row.posted_at,
-      source: `${str(row.author_name) || `@${str(row.handle)}`} on X`,
-      url: str(row.url),
-    })
+    notes.push(insiderNote(row as Obj, playerFields(p)))
   }
-  // Rotowire usually re-reports an insider's post minutes later; keep the insider item and drop the echo.
-  const insiderAt = new Map<string, number[]>()
-  for (const n of notes) {
-    if (n.kind !== 'insider') continue
-    const list = insiderAt.get(str(n.sleeper_id)) || []
-    list.push(Date.parse(str(n.published)))
-    insiderAt.set(str(n.sleeper_id), list)
-  }
-  const kept = notes.filter((n) => {
-    if (n.kind !== 'rotowire') return true
-    const at = Date.parse(str(n.published))
-    return !(insiderAt.get(str(n.sleeper_id)) || []).some((t) => at - t >= -ECHO_AFTER_MS && at - t <= ECHO_WINDOW_MS)
-  })
+  const kept = dropEchoes(notes)
   kept.sort((a, b) => Date.parse(str(b.published)) - Date.parse(str(a.published)))
   return json(200, { ok: true, notes: kept.slice(0, MAX_NOTES) })
 })

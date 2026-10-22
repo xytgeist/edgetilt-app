@@ -165,3 +165,65 @@ export function cbsScoringFromRules(root: unknown): Record<string, number> {
   })
   return out
 }
+
+/** Yahoo NBA stat ids → Sleeper NBA stat keys (the keys `scoreLine` multiplies for NBA). */
+const YAHOO_NBA_STAT: Record<number, string> = {
+  3: 'fga',
+  4: 'fgm',
+  6: 'fta',
+  7: 'ftm',
+  9: 'tpa',
+  10: 'tpm',
+  12: 'pts',
+  13: 'oreb',
+  14: 'dreb',
+  15: 'reb',
+  16: 'ast',
+  17: 'stl',
+  18: 'blk',
+  19: 'to',
+  21: 'pf',
+  23: 'tf',
+  25: 'ff',
+  27: 'dd',
+  28: 'td',
+}
+/** Percentage categories (no points value; categories leagues only). */
+const YAHOO_NBA_PCT: Record<number, string> = { 5: 'fg_pct', 8: 'ft_pct', 11: 'tp_pct' }
+
+/** Points-league values from Yahoo NBA `stat_modifiers` (by stat id). */
+export function yahooNbaScoringFromSettings(root: unknown): Record<string, number> {
+  const out: Record<string, number> = {}
+  walk(root, (obj) => {
+    const mods = obj.stat_modifiers as { stats?: Array<{ stat?: { stat_id?: unknown; value?: unknown } }> } | undefined
+    if (!mods || !Array.isArray(mods.stats)) return
+    for (const row of mods.stats) {
+      const key = YAHOO_NBA_STAT[Number(row?.stat?.stat_id)]
+      const value = num(row?.stat?.value)
+      if (key && value != null) out[key] = value
+    }
+  })
+  return out
+}
+
+export type NbaCategory = { stat_id: number; key: string; label: string; higher_better: boolean }
+
+/** Scored categories from Yahoo NBA `stat_categories` (display-only stats skipped); empty for points leagues. */
+export function yahooNbaCategories(root: unknown): NbaCategory[] {
+  const out: NbaCategory[] = []
+  const seen = new Set<number>()
+  walk(root, (obj) => {
+    const cats = obj.stat_categories as { stats?: Array<{ stat?: Record<string, unknown> }> } | undefined
+    if (!cats || !Array.isArray(cats.stats)) return
+    for (const row of cats.stats) {
+      const st = row?.stat || {}
+      const id = Number(st.stat_id)
+      if (!Number.isFinite(id) || seen.has(id) || Number(st.is_only_display_stat) === 1) continue
+      const key = YAHOO_NBA_STAT[id] || YAHOO_NBA_PCT[id]
+      if (!key) continue
+      seen.add(id)
+      out.push({ stat_id: id, key, label: String(st.display_name || st.abbr || key), higher_better: String(st.sort_order) !== '0' })
+    }
+  })
+  return out
+}

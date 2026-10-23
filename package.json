@@ -1,7 +1,7 @@
 {
   "name": "phoenixlinkcalc",
   "private": true,
-  "version": "1.4.1412",
+  "version": "1.4.1413",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -88,6 +88,8 @@
     "sports:teams:assets": "node scripts/sync-major-league-team-assets.mjs",
     "cfb:players:sync": "node scripts/sync-cfb-players.mjs --target=test",
     "cfb:players:sync:production": "node scripts/sync-cfb-players.mjs --target=production",
+    "cfb:stats:sync": "node scripts/sync-cfb-player-stats.mjs --target=test",
+    "cfb:stats:sync:both": "node scripts/sync-cfb-player-stats.mjs --target=both",
     "syndicate:pval-sleeper": "node scripts/pval-sleeper-sync.mjs --dry-run --target=test",
     "syndicate:pval-sleeper:apply:test": "node scripts/pval-sleeper-sync.mjs --apply --target=test",
     "syndicate:pval-sleeper:apply:production": "node scripts/pval-sleeper-sync.mjs --apply --target=production",

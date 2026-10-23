@@ -24,6 +24,7 @@ export type CfbGamePlayer = {
   game_ppr: number | null
   injury_status: string | null
   jersey: string | null
+  [seasonStat: `season_${string}`]: number
 }
 
 export type CfbGamePlayersPayload = {
@@ -88,12 +89,32 @@ type DbRow = {
   team_abbrev: string | null
   headshot_url: string | null
   status: string | null
+  season_stats: Record<string, number> | null
+  season_stats_year: number | null
+}
+
+/** CFB season = calendar year of the August kickoff (Jan bowls still count to last year). */
+function currentCfbSeason(): number {
+  const now = new Date()
+  return now.getUTCMonth() < 7 ? now.getUTCFullYear() - 1 : now.getUTCFullYear()
+}
+
+/** `season_*` keys the hub stats table reads (same names as NFL). Stale seasons are dropped. */
+function seasonStatsOf(row: DbRow): Record<string, number> {
+  const stats = row.season_stats
+  if (!stats || typeof stats !== 'object' || row.season_stats_year !== currentCfbSeason()) return {}
+  const out: Record<string, number> = {}
+  for (const [k, v] of Object.entries(stats)) {
+    if (k.startsWith('season_') && Number.isFinite(Number(v))) out[k] = Number(v)
+  }
+  return out
 }
 
 function mapRow(row: DbRow, side: 'home' | 'away', team: string): CfbGamePlayer {
   const espnId = String(row.espn_id || '').trim()
   const pos = row.position ? String(row.position).trim().toUpperCase() : null
   return {
+    ...seasonStatsOf(row),
     sleeper_id: `cfb:${espnId}`,
     espn_id: espnId || null,
     name: String(row.full_name || '').trim(),
@@ -209,7 +230,9 @@ export async function buildCfbGamePlayers(
 
   const { data, error } = await admin
     .from('cfb_players')
-    .select('espn_id, full_name, position, jersey, team_abbrev, headshot_url, status')
+    .select(
+      'espn_id, full_name, position, jersey, team_abbrev, headshot_url, status, season_stats, season_stats_year',
+    )
     .in('team_abbrev', [away, home])
 
   if (error) throw new Error(error.message)

@@ -10,4 +10,6 @@ supabase functions deploy lounge-cfb-game-players --project-ref kcosfvmreeiosdjd
 
 **Populate:** `npm run cfb:players:sync` (migration **`20260925200000_cfb_players`**).
 
+**Season stats (Roster expand):** `cfb_players.season_stats` (migration **`20261023150000`**) holds NFL-style `season_*` keys from CFBD, spread onto each player when `season_stats_year` is the current season. Filled daily by GHA **`cfb-player-stats-sync.yml`** (`node scripts/sync-cfb-player-stats.mjs --target=both`, one CFBD call for every team; CFBD free tier is 1,000 calls / month, so never fetch per request). No games played, distance splits, or career, so the table shows Regular Season only.
+
 Client: `loungeCfbGamePlayers` in `src/utils/loungeSportsApi.js`.

@@ -143,6 +143,14 @@
     "abbrev": "HC",
     "espn": "107"
   },
+  "houston baptist": {
+    "abbrev": "HCU",
+    "espn": "2277"
+  },
+  "houston baptist huskies": {
+    "abbrev": "HCU",
+    "espn": "2277"
+  },
   "idaho state bengals": {
     "abbrev": "IDST",
     "espn": "304"
@@ -279,6 +287,14 @@
     "abbrev": "SHU",
     "espn": "2529"
   },
+  "sam houston state": {
+    "abbrev": "SHSU",
+    "espn": "2534"
+  },
+  "sam houston state bearkats": {
+    "abbrev": "SHSU",
+    "espn": "2534"
+  },
   "samford bulldogs": {
     "abbrev": "SAM",
     "espn": "2535"
@@ -298,6 +314,14 @@
   "south dakota state jackrabbits": {
     "abbrev": "SDST",
     "espn": "2571"
+  },
+  "southeastern louisiana": {
+    "abbrev": "SELA",
+    "espn": "2545"
+  },
+  "southeastern louisiana lions": {
+    "abbrev": "SELA",
+    "espn": "2545"
   },
   "southern mississippi golden eagles": {
     "abbrev": "USM",

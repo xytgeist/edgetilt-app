@@ -517,16 +517,16 @@ export async function hubPinsForUser(
   let leagueId = primaryLeague?.id ? String(primaryLeague.id) : null
   if (primaryLeague?.sport && primaryLeague.sport !== 'nfl') leagueId = null
   if (!leagueId) {
-    const { data: conn } = await admin
-      .from('fantasy_connections')
-      .select('primary_league_id')
+    // Pins are NFL game-hub pins: never fall back to an NBA league (Sleeper NBA and NFL ids collide).
+    const { data: nfl } = await admin
+      .from('fantasy_leagues')
+      .select('id')
       .eq('user_id', edgeUserId)
-      .eq('status', 'active')
-      .not('primary_league_id', 'is', null)
-      .order('last_sync_at', { ascending: false, nullsFirst: false })
+      .eq('sport', 'nfl')
+      .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle()
-    leagueId = conn?.primary_league_id ? String(conn.primary_league_id) : null
+    leagueId = nfl?.id ? String(nfl.id) : null
   }
 
   if (!leagueId) {

@@ -3640,6 +3640,8 @@ function MatchupCard({
   onBack = null,
   headerActions = null,
   seasonLong = false,
+  /** Neighbors of a card that shows header icons keep the same row height, so swiping does not resize cards. */
+  reserveHeader = false,
 }) {
   const lockIn = nbaLockIn(provider, sport, settings)
   const leftSide = sideOutlook(page.roster, cards, scoring, sport, lockIn, upcoming)
@@ -3674,8 +3676,8 @@ function MatchupCard({
       }}
     >
       <span aria-hidden className="fantasy-vs-glow pointer-events-none absolute inset-0" />
-      {leagueName || format || onBack || headerActions ? (
-        <div data-fantasy-card-league className="relative flex items-center gap-2 px-3 pt-2.5">
+      {leagueName || format || onBack || headerActions || reserveHeader ? (
+        <div data-fantasy-card-league className={`relative flex items-center gap-2 px-3 pt-2.5 ${reserveHeader ? 'min-h-[2.375rem]' : ''}`}>
           {onBack ? (
             <button
               type="button"
@@ -3699,7 +3701,7 @@ function MatchupCard({
         </div>
       ) : null}
       {/* Names get the full width on top; the site badge sits between the scores below. */}
-      <div className={`relative grid gap-3 px-3 ${leagueName || format || onBack || headerActions ? 'pt-1.5' : 'pt-3'} ${page.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
+      <div className={`relative grid gap-3 px-3 ${leagueName || format || onBack || headerActions || reserveHeader ? 'pt-1.5' : 'pt-3'} ${page.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
         <TeamHead team={page.left} teams={teams} align="left" />
         {page.right ? <TeamHead team={page.right} teams={teams} align="right" /> : null}
       </div>
@@ -4267,6 +4269,7 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
             className="block w-full text-left"
           >
             <MatchupCard
+              reserveHeader={Boolean(actions)}
               headerActions={
                 isCurrent && actions ? (
                   // Sync / Manage act on every league; their taps must not open this one.
@@ -4556,6 +4559,7 @@ export default function FantasyCommandCenter({
                 <MatchupCard
                   page={page}
                   onBack={isCurrent ? () => setLeagueId(null) : null}
+                  reserveHeader
                   seasonLong={Boolean(seasonLongFormat(detail?.league))}
                   headerActions={
                     isCurrent ? (

@@ -96,6 +96,11 @@ export default function ScrollLinkedEdgeTitleBarShell({
   const titleRevealRef = useRef(1)
   const scrollVisualRafRef = useRef(0)
   const tuckActivityRef = useRef(Date.now())
+  const autoTuckRef = useRef(Boolean(autoTuckMs))
+  autoTuckRef.current = Boolean(autoTuckMs)
+  const scrollRunRef = useRef({ dir: 0, px: 0 })
+  const snapRevealRef = useRef(null)
+  const tabDragRef = useRef(null)
   const [titleBarHeight, setTitleBarHeight] = useState(0)
   const [titleReveal, setTitleReveal] = useState(1)
   const [feedViewportTopPx, setFeedViewportTopPx] = useState(0)
@@ -186,6 +191,21 @@ export default function ScrollLinkedEdgeTitleBarShell({
       const eff =
         rawDelta === 0 ? 0 : Math.sign(rawDelta) * Math.min(Math.abs(rawDelta), maxAbsScrollStepPx)
 
+      tuckActivityRef.current = Date.now()
+      // Auto-tuck bars are all or nothing (a half-shrunk bar reads as a mini title bar): a short run of scroll in
+      // one direction flips them, animated.
+      if (autoTuckRef.current) {
+        const run = scrollRunRef.current
+        if (eff === 0) return
+        if (Math.sign(eff) !== Math.sign(run.dir)) {
+          run.dir = Math.sign(eff)
+          run.px = 0
+        }
+        run.px += Math.abs(eff)
+        const want = st <= 2 ? 1 : run.px >= 24 ? (eff > 0 ? 0 : 1) : titleRevealRef.current
+        if (want !== titleRevealRef.current && !tabDragRef.current) snapRevealRef.current?.(want)
+        return
+      }
       let r = titleRevealRef.current
       if (st <= 2) {
         r = 1
@@ -194,7 +214,6 @@ export default function ScrollLinkedEdgeTitleBarShell({
       } else if (eff > minScrollStepPx) {
         r = Math.max(0, r - eff / titleHidePerScrollPx)
       }
-      tuckActivityRef.current = Date.now()
       if (r !== titleRevealRef.current) {
         titleRevealRef.current = r
         queueScrollVisualFlush()
@@ -218,14 +237,14 @@ export default function ScrollLinkedEdgeTitleBarShell({
   const [tabDragging, setTabDragging] = useState(false)
   const [tuckHint, setTuckHint] = useState(false)
   const revealAnimTimerRef = useRef(0)
-  const tabDragRef = useRef(null)
   const animateReveal = useCallback((to) => {
     setRevealAnimating(true)
     titleRevealRef.current = to
     setTitleReveal(to)
     window.clearTimeout(revealAnimTimerRef.current)
-    revealAnimTimerRef.current = window.setTimeout(() => setRevealAnimating(false), 280)
+    revealAnimTimerRef.current = window.setTimeout(() => setRevealAnimating(false), 320)
   }, [])
+  snapRevealRef.current = animateReveal
   useEffect(() => () => window.clearTimeout(revealAnimTimerRef.current), [])
 
   const tuck = useCallback(() => {

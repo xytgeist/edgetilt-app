@@ -3642,7 +3642,9 @@ function MatchupCard({ page, teams, week, provider, settings = null, leagueName 
   const rightAccent = distinctTeamAccent(rightRaw, leftAccent)
   const ls = scoreValue(leftOut, page.leftScore)
   const rs = scoreValue(rightOut, page.rightScore)
-  const lead = page.right && ls != null && rs != null && ls !== rs ? (ls > rs ? 'left' : 'right') : null
+  // The loser's score dims only once the matchup is decided (both lineups final), not while one side trails.
+  const decided = Boolean(page.right && leftOut.final && rightOut.final)
+  const lead = decided && ls != null && rs != null && ls !== rs ? (ls > rs ? 'left' : 'right') : null
   const lo = projectedFinish(leftOut, page.leftScore)
   const ro = page.right ? projectedFinish(rightOut, page.rightScore) : null
   const format = leagueFormatLabel(provider, sport, settings)
@@ -3682,7 +3684,7 @@ function MatchupCard({ page, teams, week, provider, settings = null, leagueName 
             won={cat.record.wins}
             expected={cat.expected}
             align="left"
-            lead={cat.record.wins > cat.record.losses ? 'lead' : cat.record.wins < cat.record.losses ? 'trail' : null}
+            lead={!decided ? null : cat.record.wins > cat.record.losses ? 'lead' : cat.record.wins < cat.record.losses ? 'trail' : null}
           />
         ) : (
           <ScoreLine
@@ -3707,7 +3709,7 @@ function MatchupCard({ page, teams, week, provider, settings = null, leagueName 
             won={cat.record.losses}
             expected={Math.max(0, cat.total - cat.expected)}
             align="right"
-            lead={cat.record.losses > cat.record.wins ? 'lead' : cat.record.losses < cat.record.wins ? 'trail' : null}
+            lead={!decided ? null : cat.record.losses > cat.record.wins ? 'lead' : cat.record.losses < cat.record.wins ? 'trail' : null}
           />
         ) : page.right ? (
           <ScoreLine

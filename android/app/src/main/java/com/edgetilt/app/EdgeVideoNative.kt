@@ -661,22 +661,72 @@ class EdgeVideoNative(
     return ""
   }
 
+  /**
+   * Chunked tus PATCH with resume. A dropped or corrupted connection asks Stream for the
+   * committed `Upload-Offset` and continues from there, like tus-js-client on web.
+   */
   private fun patchFile(file: File, location: String, assetId: String, byteSize: Long) {
-    if (byteSize <= Limits.cfSingleRequestMaxBytes) {
-      patchChunk(file, location, assetId, byteSize, offset = 0, length = byteSize, sentBefore = 0)
-      return
-    }
     var offset = 0L
+    var failures = 0
     while (offset < byteSize) {
       checkCancelled(assetId)
       val length = Limits.nextChunkLength(offset, byteSize)
-      val slice = sliceFile(file, offset, length)
       try {
-        patchChunk(slice, location, assetId, byteSize, offset = offset, length = length, sentBefore = offset)
-      } finally {
-        slice.delete()
+        if (offset == 0L && length == byteSize) {
+          patchChunk(file, location, assetId, byteSize, offset = 0, length = byteSize, sentBefore = 0)
+        } else {
+          val slice = sliceFile(file, offset, length)
+          try {
+            patchChunk(slice, location, assetId, byteSize, offset = offset, length = length, sentBefore = offset)
+          } finally {
+            slice.delete()
+          }
+        }
+        offset += length
+        failures = 0
+      } catch (e: java.io.IOException) {
+        checkCancelled(assetId)
+        if (failures >= Limits.tusRetryDelaysMs.size) throw e
+        val delay = Limits.tusRetryDelaysMs[failures]
+        failures++
+        Log.w(TAG, "tus patch dropped at $offset; retry $failures in ${delay}ms", e)
+        sleepUnlessCancelled(delay, assetId)
+        offset = committedOffset(location) ?: offset
       }
-      offset += length
+    }
+  }
+
+  private fun sleepUnlessCancelled(ms: Long, assetId: String) {
+    var left = ms
+    while (left > 0) {
+      checkCancelled(assetId)
+      val step = min(left, 250L)
+      try {
+        Thread.sleep(step)
+      } catch (_: InterruptedException) {
+        Thread.currentThread().interrupt()
+        throw Cancelled()
+      }
+      left -= step
+    }
+  }
+
+  /** tus HEAD → server-committed byte offset, or null if Stream did not answer. */
+  private fun committedOffset(location: String): Long? {
+    val conn = (URL(location).openConnection() as HttpURLConnection).apply {
+      requestMethod = "HEAD"
+      setRequestProperty("Tus-Resumable", "1.0.0")
+      connectTimeout = 30_000
+      readTimeout = 30_000
+    }
+    return try {
+      if (conn.responseCode !in 200..299) null
+      else responseHeader(conn, "Upload-Offset").toLongOrNull()
+    } catch (e: java.io.IOException) {
+      Log.w(TAG, "tus HEAD failed", e)
+      null
+    } finally {
+      conn.disconnect()
     }
   }
 
@@ -719,6 +769,9 @@ class EdgeVideoNative(
         }
       }
       val code = conn.responseCode
+      if (code == 409 || code == 423 || code >= 500) {
+        throw java.io.IOException("Video upload failed ($code).")
+      }
       if (code !in 200..299) throw IllegalArgumentException("Video upload failed ($code).")
     } finally {
       try {
@@ -981,8 +1034,9 @@ class EdgeVideoNative(
     const val absoluteMaxUploadBytes: Long = 8L * 1024 * 1024 * 1024
     const val absoluteMaxClipSeconds: Double = 1200.35
     const val absoluteStreamMaxDurationSeconds = 1215
-    const val cfSingleRequestMaxBytes: Long = 200L * 1024 * 1024
-    const val cfChunkBytes: Long = 100L * 1024 * 1024
+    /** Small PATCHes so a dropped connection only re-sends one chunk. */
+    const val cfChunkBytes: Long = 8L * 1024 * 1024
+    val tusRetryDelaysMs = longArrayOf(2_000, 5_000, 10_000, 20_000, 30_000)
     const val cfMinChunkBytes: Long = 5_242_880
     const val cfChunkUnit: Long = 262_144
 
@@ -1014,7 +1068,6 @@ class EdgeVideoNative(
 
     fun nextChunkLength(offset: Long, total: Long): Long {
       val left = total - offset
-      if (offset == 0L && left <= cfSingleRequestMaxBytes) return left
       if (left <= cfChunkBytes) return left
       var take = cfChunkBytes
       val after = left - take

@@ -296,7 +296,7 @@ export async function loadLeagueValues(supabase, leagueId) {
   return finishEdge(data, error, 'Could not load trade values.')
 }
 
-/** Live trade proposals that involve your team (ESPN today); `supported: false` for hosts that do not share them. */
+/** Live trade proposals that involve your team (ESPN, Yahoo); `supported: false` for hosts that do not share them (Sleeper). */
 export async function loadPendingTrades(supabase, leagueId) {
   const id = String(leagueId || '').trim()
   if (!id) return null

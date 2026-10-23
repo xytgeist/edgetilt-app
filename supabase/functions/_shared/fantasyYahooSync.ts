@@ -8,6 +8,8 @@
  */
 import { addSchedulePair, reusableSchedule, saveLeagueSchedule, type ScheduleWeeks } from './fantasySchedule.ts'
 import { pruneMissingLeagues } from './fantasyLeaguePrune.ts'
+import { parseYahooPendingTrades } from './yahooPendingTrades.ts'
+import type { PendingTrade } from './fantasyEspnSync.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { resolvePublicAppOrigin } from './publicAppOrigin.ts'
 import { fetchNflState, type SyncResult } from './fantasySleeperSync.ts'
@@ -474,6 +476,60 @@ async function saveTokens(
     },
     { onConflict: 'connection_id' },
   )
+}
+
+/**
+ * Open trade offers that involve the caller's team in one Yahoo league, in the ESPN `PendingTrade` shape so Offer
+ * Review grades them the same way. Players map to synced roster rows by `yahoo_player_key` (latest week).
+ */
+export async function yahooPendingTrades(
+  admin: SupabaseClient,
+  league: { id: string; connection_id: string; external_league_id: string },
+): Promise<PendingTrade[]> {
+  const { data: teams } = await admin.from('fantasy_teams').select('id, external_team_id, is_mine').eq('league_id', league.id)
+  const mine = (teams || []).find((t) => t.is_mine)
+  if (!mine?.external_team_id) return []
+  const auth = await accessTokenForConnection(admin, league.connection_id)
+  const payload = await yahooGet(
+    auth,
+    `/league/${encodeURIComponent(league.external_league_id)}/transactions;types=pending_trade;team_key=${encodeURIComponent(String(mine.external_team_id))}`,
+  )
+  const open = parseYahooPendingTrades(payload).filter((t) =>
+    t.players.some((p) => p.from_team_key === mine.external_team_id || p.to_team_key === mine.external_team_id),
+  )
+  if (!open.length) return []
+
+  const teamByExt = new Map((teams || []).map((t) => [String(t.external_team_id), String(t.id)]))
+  const keys = [...new Set(open.flatMap((t) => t.players.map((p) => p.player_key)))]
+  const { data: rows } = await admin
+    .from('fantasy_rosters')
+    .select('team_id, week, sleeper_id, yahoo_player_key')
+    .in('team_id', (teams || []).map((t) => t.id))
+    .in('yahoo_player_key', keys)
+  const latest = new Map<string, { week: number; sleeper_id: string | null }>()
+  for (const r of rows || []) {
+    const k = String(r.yahoo_player_key || '')
+    const w = Number(r.week) || 0
+    if (k && (!latest.has(k) || w > (latest.get(k)?.week || 0))) latest.set(k, { week: w, sleeper_id: r.sleeper_id ? String(r.sleeper_id) : null })
+  }
+
+  return open.map((t) => ({
+    id: t.transaction_key,
+    proposer_team_id: t.trader_team_key ? teamByExt.get(t.trader_team_key) || null : null,
+    proposed_at: t.proposed_at,
+    expires_at: null,
+    // `accepted`: the other team said yes; it now waits on the league / commissioner.
+    accepted_by: t.status === 'accepted' && t.tradee_team_key ? [teamByExt.get(t.tradee_team_key) || t.tradee_team_key] : [],
+    items: t.players.map((p) => ({
+      from_team_id: p.from_team_key ? teamByExt.get(p.from_team_key) || null : null,
+      to_team_id: p.to_team_key ? teamByExt.get(p.to_team_key) || null : null,
+      external_player_id: p.player_key,
+      sleeper_id: latest.get(p.player_key)?.sleeper_id || null,
+      player_name: p.name,
+      position: p.position,
+      nfl_team: p.nfl_team,
+    })),
+  }))
 }
 
 async function accessTokenForConnection(

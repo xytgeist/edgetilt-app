@@ -1,11 +1,12 @@
 /**
  * Pending trade offers for one of the caller's leagues, read live from the host so Offer Review can grade them.
- * Body: { league_id }. ESPN only for now (Sleeper's public API has no proposals; Yahoo waits on API approval).
+ * Body: { league_id }. ESPN and Yahoo (Sleeper's public API has no proposals).
  * Returns { ok, provider, supported, offers: PendingTrade[] }.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { userIdFromJwt } from '../_shared/userJwt.ts'
 import { espnPendingTrades } from '../_shared/fantasyEspnSync.ts'
+import { yahooPendingTrades } from '../_shared/fantasyYahooSync.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,6 +62,14 @@ Deno.serve(async (req) => {
         espn_season: Number((league.settings as Record<string, unknown> | null)?.espn_season) || null,
       })
       return json(200, { ok: true, provider: 'espn', supported: true, offers })
+    }
+    if (league.provider === 'yahoo') {
+      const offers = await yahooPendingTrades(admin, {
+        id: String(league.id),
+        connection_id: String(league.connection_id),
+        external_league_id: String(league.external_league_id),
+      })
+      return json(200, { ok: true, provider: 'yahoo', supported: true, offers })
     }
     return json(200, { ok: true, provider: league.provider, supported: false, offers: [] })
   } catch (err) {

@@ -61,6 +61,9 @@ Running list of shipped work that still needs a real-data check. **Add a line wh
 
 - [ ] Game hub Fantasy: my bench players show blue with a dashed outline + BN (IR / Taxi) chip; opponent bench players are not red (NFL + NBA, dark + light).
 
+- [ ] NFL league tabs: Roster pill reads Live (pulsing dot) while a starter in this matchup is in a game; Plays pill appears once the week kicks off (game chips + scoring plays, polls only while open); no Live tab / Live banner for NFL; NBA tabs unchanged; an old `fantasyTool=live` link opens Roster.
+- [ ] Dismiss Start/Sit swaps (X on each swap): hidden for that league for the rest of the week (NBA daily plan: the day), also gone from the home alert line and League outlook "Lineup this week"; an injured starter whose covering swap was dismissed drops off the alert; "N dismissed · Show" restores. Per device.
+
 - [ ] Matchup card: once either lineup has a game under way, both sides show a live score (0.0 until they score) with the colored projected finish under it; the LIVE label (with a pulsing green dot, dark + light) only on a side with a starter in a game right now (FINAL once all done), no label otherwise, not just the side with a player playing (NFL + NBA points; category leagues unchanged).
 
 **Checked**

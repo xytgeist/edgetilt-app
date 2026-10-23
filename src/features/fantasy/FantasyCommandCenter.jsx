@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, RefreshCw, SlidersHorizontal } from 'lucide-react'
+import { AlertTriangle, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
 import { nbaMatchupUpcoming, nbaWeekOf } from './fantasyNbaWeek.js'
@@ -51,6 +51,14 @@ import {
   valueContext,
 } from './fantasyTrades.js'
 import { playoffFormat, simulateLeague, weekPairs } from './fantasyLeagueOutlook.js'
+import {
+  dismissMove,
+  dismissPeriod,
+  moveDismissKey,
+  restoreMoves,
+  useFantasyDismissVersion,
+  withoutDismissed,
+} from './fantasyDismissals.js'
 import { openExternalUrl, shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { positionPillClass, slotPillPosition } from '../../utils/fantasyPositionPill.js'
 import { sportsBetPropTapPayload, useSportsBetOddsActions } from '../sports-bet-tracker/sportsBetLogContext.jsx'
@@ -76,6 +84,18 @@ const TOOLS = [
 ]
 
 const DEFAULT_TOOL = TOOLS[0].id
+
+/** NFL: Roster carries the live matchup (its pill reads Live while a starter plays); Plays shows once the week kicks off. */
+function nflTools({ live, kicked }) {
+  return [
+    { id: 'start', label: live ? 'Live' : 'Roster', live },
+    ...(kicked ? [{ id: 'plays', label: 'Plays' }] : []),
+    { id: 'waiver', label: 'Waivers' },
+    { id: 'trade', label: 'Trades' },
+  ]
+}
+
+const TOOL_IDS = new Set([...TOOLS.map((t) => t.id), 'plays'])
 
 function providerLabel(provider) {
   if (provider === 'yahoo') return 'Yahoo'
@@ -1558,14 +1578,16 @@ function LivePlayRow({ item, tagFor }) {
  * Live: games with these lineups' starters (tap opens the game hub) and the plays that scored for them.
  * NBA shows the game chips only (a scoring-play feed would be every possession).
  */
-function LivePanel({ supabaseClient, page, detail, sport, active }) {
+function LivePanel({ supabaseClient, page, detail, sport, active, emptyText = '' }) {
   const s = String(sport || 'nfl').toLowerCase()
   const nfl = s === 'nfl'
   const on = nfl || s === 'nba'
   const games = useLiveGames({ supabaseClient, active: active && on, leftRows: page?.roster, rightRows: page?.oppRoster, sport: s })
   const rates = useMemo(() => leagueRates(detail?.league?.scoring, 'nfl'), [detail?.league?.scoring])
   const plays = useLivePlays({ supabaseClient, active: active && nfl, games, rates })
-  if (!on || !games.length) return null
+  if (!on || !games.length) {
+    return emptyText ? <p className="px-0.5 text-[11px] text-zinc-500">{emptyText}</p> : null
+  }
   const leftName = shortTeamName(page?.left) || 'Left'
   const rightName = shortTeamName(page?.right) || 'Right'
   const anyLive = games.some((g) => g.game.status === 'in')
@@ -1665,11 +1687,22 @@ function lockInCalls(roster, cards, scoring) {
 }
 
 function useStartSitPlan(detail, cards, sport) {
-  return useMemo(() => startSitPlanOf(detail, cards, sport), [detail, cards, sport])
+  const dismissVersion = useFantasyDismissVersion()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- dismissVersion re-reads the dismissed swaps
+  return useMemo(() => startSitPlanOf(detail, cards, sport), [detail, cards, sport, dismissVersion])
+}
+
+/** The best lineup minus swaps you dismissed this period (Roster, home alerts, and outlook all read this). */
+function startSitPlanOf(detail, cards, sport) {
+  const plan = rawStartSitPlanOf(detail, cards, sport)
+  if (!plan) return plan
+  const leagueId = detail?.league?.id
+  const period = dismissPeriod(detail, Boolean(plan.today))
+  return { ...withoutDismissed(plan, leagueId, period), dismissLeague: leagueId, dismissPeriod: period }
 }
 
 /** This week's (NBA: today's) best lineup and swaps for your team, or null without a roster / slots. */
-function startSitPlanOf(detail, cards, sport) {
+function rawStartSitPlanOf(detail, cards, sport) {
   const mine = (detail?.teams || []).find((t) => t.is_mine)
   const roster = mine ? detail?.rostersByTeam?.[mine.id] || [] : []
   if (!roster.length) return null
@@ -1732,6 +1765,8 @@ function starterStatusAlerts(detail, cards, plan) {
     if (card?.bye || gameLocked(card)) continue
     // NBA plans today: an injured starter matters when his team tips today and he has not played.
     if (plan?.today && card?.today !== 'pre') continue
+    // You dismissed the swap that covers him: no nag (and not a false "no healthy backup").
+    if ((plan?.dismissed || []).some((m) => m.bench?.row?.sleeper_id === row.sleeper_id)) continue
     const move = (plan?.moves || []).find((m) => m.bench?.row?.sleeper_id === row.sleeper_id) || null
     const name = briefName(row.player_name, row.position)
     out.push({
@@ -1802,9 +1837,23 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
   const empty = plan?.empty || []
   const fills = useOpenSlotFills({ supabaseClient, detail, empty, sport })
   const lockCalls = plan?.lockCalls || []
-  if (!plan || (!plan.moves.length && !empty.length && !lockCalls.length)) return null
+  const dismissed = plan?.dismissed || []
+  if (!plan || (!plan.moves.length && !empty.length && !lockCalls.length && !dismissed.length)) return null
   const host = providerLabel(detail?.league?.provider)
   const moves = plan.moves
+  const restore = dismissed.length ? (
+    <button
+      type="button"
+      data-fantasy-dismissed-restore
+      onClick={() => restoreMoves(plan.dismissLeague, plan.dismissPeriod)}
+      className="text-[10px] font-semibold text-zinc-500 underline-offset-2 hover:underline"
+    >
+      {dismissed.length} dismissed · Show
+    </button>
+  ) : null
+  if (!moves.length && !empty.length && !lockCalls.length) {
+    return <div className="flex justify-end px-1">{restore}</div>
+  }
   return (
     <div data-fantasy-start-sit className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
       <div className="flex items-center justify-between gap-2">
@@ -1848,6 +1897,15 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
               <span className="fantasy-sit-gain shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums">
                 +{m.gain.toFixed(1)}
               </span>
+              <button
+                type="button"
+                data-fantasy-dismiss-move
+                aria-label={`Dismiss: start ${m.start.row.player_name}`}
+                onClick={() => dismissMove(plan.dismissLeague, plan.dismissPeriod, moveDismissKey(m))}
+                className="-mr-1 shrink-0 rounded-full p-1 text-zinc-500 hover:text-zinc-200"
+              >
+                <X size={14} strokeWidth={2.25} aria-hidden />
+              </button>
             </li>
           ))}
         </ul>
@@ -1887,6 +1945,7 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
           : ''}
         {plan.inferred ? ' Slots read from your current lineup; Sync to load league slots.' : ''}
       </p>
+      {restore ? <div className="mt-1 flex justify-end">{restore}</div> : null}
     </div>
   )
 }
@@ -3885,9 +3944,18 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool, 
     const open = slots.length ? openLineupSlots(myRows, slots) : {}
     return Object.entries(open).map(([pos, n]) => `${n > 1 ? `${n} ` : ''}${pos}`)
   }, [myRows, slots, nba])
+  const dismissVersion = useFantasyDismissVersion()
   const lineup = useMemo(
-    () => (cards && slots.length ? optimizeLineup({ roster: myRows, cards, scoring, slots, sport }) : null),
-    [cards, slots, myRows, scoring, sport],
+    () =>
+      cards && slots.length
+        ? withoutDismissed(
+            optimizeLineup({ roster: myRows, cards, scoring, slots, sport }),
+            detail?.league?.id,
+            dismissPeriod(detail, sport === 'nba'),
+          )
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dismissVersion re-reads the dismissed swaps
+    [cards, slots, myRows, scoring, sport, detail, dismissVersion],
   )
 
   const waiverPicks = useMemo(() => {
@@ -4113,6 +4181,7 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
   const [key, setKey] = useState(null)
   const found = entries.findIndex((e) => e.key === key)
   const index = found >= 0 ? found : 0
+  const dismissVersion = useFantasyDismissVersion()
   // What needs doing per league (once per league; the outlook card under the shown one lists it).
   const alertsBy = useMemo(() => {
     const out = {}
@@ -4121,7 +4190,8 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
       out[e.lg.id] = leagueAlertLines(startSitPlanOf(e.leagueDetail, cards, group.sport), e.leagueDetail, cards)
     }
     return out
-  }, [entries, cards, group.sport])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dismissVersion re-reads the dismissed swaps
+  }, [entries, cards, group.sport, dismissVersion])
   return (
     <section data-fantasy-sport-carousel={group.sport}>
       <div className={`flex items-center justify-between gap-2 px-0.5 ${actions ? 'pb-1' : ''}`}>
@@ -4261,6 +4331,21 @@ export default function FantasyCommandCenter({
   const keyed = pages.findIndex((item) => item.key === pageKey)
   const safePage = keyed >= 0 ? keyed : 0
   const current = pages[safePage] || null
+  const leagueSport = String(selected?.sport || detail?.league?.sport || 'nfl').toLowerCase()
+  const nflLeague = leagueSport === 'nfl'
+  const nflState = useMemo(() => {
+    if (!nflLeague || !current || !cards) return { live: false, kicked: false }
+    const scoring = detail?.league?.scoring
+    const left = sideOutlook(current.roster, cards, scoring, 'nfl')
+    const right = sideOutlook(current.oppRoster, cards, scoring, 'nfl')
+    return {
+      live: Boolean(left.playing || right.playing),
+      kicked: Boolean(left.kicked || right.kicked || Number(current.leftScore) > 0 || Number(current.rightScore) > 0),
+    }
+  }, [nflLeague, current, cards, detail])
+  const tools = nflLeague ? nflTools(nflState) : TOOLS
+  // Tool state is shared across leagues: an id this league's pills do not have (NBA Live, NFL Plays pre-kickoff) opens Roster.
+  const shownTool = nflLeague && tool === 'live' ? 'start' : tools.some((t) => t.id === tool) ? tool : DEFAULT_TOOL
 
   const openMatchup = (id, key) => {
     setLeagueId(id)
@@ -4277,7 +4362,7 @@ export default function FantasyCommandCenter({
   const linkedLeague = deepLink ? (leagues || []).find((l) => String(l.id) === deepLink.league) : null
   if (deepLink && linkedLeague && details?.[linkedLeague.id]) {
     const page = matchupPages(details[linkedLeague.id]).find((p) => p.yours)
-    setTool(TOOLS.some((t) => t.id === deepLink.tool) ? deepLink.tool : DEFAULT_TOOL)
+    setTool(TOOL_IDS.has(deepLink.tool) ? deepLink.tool : DEFAULT_TOOL)
     setLeagueId(linkedLeague.id)
     setPageKey(page?.key || null)
     setDeepLink(null)
@@ -4433,24 +4518,40 @@ export default function FantasyCommandCenter({
           ) : null}
 
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {TOOLS.map((item) => {
-              const on = item.id === tool
+            {tools.map((item) => {
+              const on = item.id === shownTool
               return (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => setTool(item.id)}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold ${
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold ${
                     on ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
                   }`}
                 >
+                  {item.live ? (
+                    <span data-fantasy-live-dot aria-hidden className="relative inline-flex h-1.5 w-1.5">
+                      <span className="fantasy-live-dot-halo absolute inline-flex h-full w-full rounded-full motion-safe:animate-ping" />
+                      <span className="fantasy-live-dot-core relative inline-flex h-1.5 w-1.5 rounded-full" />
+                    </span>
+                  ) : null}
                   {item.label}
                 </button>
               )
             })}
           </div>
 
-          {tool === 'live' && detail ? (
+          {shownTool === 'plays' && detail && current ? (
+            <LivePanel
+              supabaseClient={supabaseClient}
+              page={current}
+              detail={detail}
+              sport={selected?.sport || detail?.league?.sport}
+              active
+              emptyText="No games for these lineups on the board right now. Scoring plays show here while games are live."
+            />
+          ) : null}
+          {shownTool === 'live' && detail ? (
             <LiveAlerts
               detail={detail}
               cards={cards}
@@ -4459,7 +4560,7 @@ export default function FantasyCommandCenter({
               onOpen={() => setTool('start')}
             />
           ) : null}
-          {tool === 'live' && detail && current ? (
+          {shownTool === 'live' && detail && current ? (
             <LivePanel
               supabaseClient={supabaseClient}
               page={current}
@@ -4468,16 +4569,16 @@ export default function FantasyCommandCenter({
               active
             />
           ) : null}
-          {tool === 'start' && detail ? (
+          {shownTool === 'start' && detail ? (
             <StartSitPanel supabaseClient={supabaseClient} detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} />
           ) : null}
-          {tool === 'start' && detail && current && (selected?.sport || detail?.league?.sport) === 'nba' ? (
+          {shownTool === 'start' && detail && current && (selected?.sport || detail?.league?.sport) === 'nba' ? (
             <NbaSchedulePanel page={current} cards={cards} league={detail?.league} />
           ) : null}
-          {tool === 'waiver' && detail ? (
+          {shownTool === 'waiver' && detail ? (
             <WaiversPanel supabaseClient={supabaseClient} detail={detail} sport={selected?.sport || detail?.league?.sport} />
           ) : null}
-          {tool === 'trade' && detail ? (
+          {shownTool === 'trade' && detail ? (
             <TradesPanel supabaseClient={supabaseClient} detail={detail} sport={selected?.sport || detail?.league?.sport} />
           ) : null}
 

@@ -41,7 +41,7 @@ import {
   unlockChatCallAudio,
 } from './chatCallRingTone.js'
 import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, preloadEdgeAvatar, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
-import { canEdgeAndroidCallRing } from '../../../utils/edgeAndroid.js'
+import { canEdgeAndroidCallRing, setEdgeAndroidOngoingCall } from '../../../utils/edgeAndroid.js'
 import { getEdgeiOSPushToken, isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
 import ChatCallSession from './ChatCallSession.jsx'
@@ -177,6 +177,32 @@ export function ChatCallProvider({
   const callerProfileFetchedRef = useRef(/** @type {Set<string>} */ (new Set()))
   activeCallRef.current = activeCall
   incomingRef.current = incoming
+
+  /** Android: in-call notification + phoneCall FGS so a backgrounded WebView call stays up. */
+  const ongoingStartedAtRef = useRef(/** @type {{ key: string, at: number } | null} */ (null))
+  const ongoingCallId = activeCall ? String(activeCall.serverCallId || activeCall.callId || '') : ''
+  const ongoingSessionKey = activeCall ? String(activeCall.sessionKey || activeCall.callId || '') : ''
+  const ongoingTitle = activeCall ? String(activeCall.title || '') : ''
+  const ongoingHasVideo = activeCall?.mediaMode === 'video'
+  useEffect(() => {
+    if (!ongoingSessionKey) {
+      if (ongoingStartedAtRef.current) {
+        ongoingStartedAtRef.current = null
+        setEdgeAndroidOngoingCall({ active: false })
+      }
+      return
+    }
+    if (ongoingStartedAtRef.current?.key !== ongoingSessionKey) {
+      ongoingStartedAtRef.current = { key: ongoingSessionKey, at: Date.now() }
+    }
+    setEdgeAndroidOngoingCall({
+      active: true,
+      callId: ongoingCallId,
+      title: ongoingTitle,
+      hasVideo: ongoingHasVideo,
+      startedAt: ongoingStartedAtRef.current.at,
+    })
+  }, [ongoingSessionKey, ongoingCallId, ongoingTitle, ongoingHasVideo])
   /** callId → ended-at ms … blocks presentIncoming while leave_call is still settling. */
   const recentlyEndedCallIdsRef = useRef(/** @type {Map<string, number>} */ (new Map()))
   const markCallEndedLocally = useCallback((callId) => {

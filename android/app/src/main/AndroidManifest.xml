@@ -126,6 +126,11 @@
       android:exported="false"
       android:foregroundServiceType="dataSync" />
 
+    <service
+      android:name=".EdgeCallOngoingService"
+      android:exported="false"
+      android:foregroundServiceType="phoneCall" />
+
     <receiver
       android:name=".EdgeCallActionReceiver"
       android:exported="false" />

@@ -36,6 +36,8 @@ object EdgeCallRing {
   const val EXTRA_AVATAR = "edge_avatar"
   const val ACTION_ANSWER = "com.edgetilt.app.CALL_ANSWER"
   const val ACTION_DECLINE = "com.edgetilt.app.CALL_DECLINE"
+  /** Hang up from [EdgeCallOngoingService]'s notification. */
+  const val ACTION_HANGUP = "com.edgetilt.app.CALL_HANGUP"
   /** Finishes a live `EdgeIncomingCallActivity` after Answer / Decline from the pill. */
   const val ACTION_DISMISS_UI = "com.edgetilt.app.CALL_DISMISS_UI"
 
@@ -354,6 +356,19 @@ object EdgeCallRing {
       flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
     }
     ctx.startActivity(open)
+  }
+
+  /**
+   * Ongoing-call Hang up. Answered rings go through [endInternal] (Telecom teardown + event);
+   * outgoing calls have no native invite, so ask web to hang up directly.
+   */
+  fun requestWebHangup(ctx: Context, callId: String?) {
+    val id = callId?.trim().orEmpty()
+    if (id.isNotEmpty() && inCall?.callId == id) {
+      endInternal(ctx, id, remote = false, emitEvent = true, fromTelecom = false)
+      return
+    }
+    emit("edge-callkit-end", JSONObject().put("callId", id).put("reason", "local"))
   }
 
   fun end(ctx: Context, callId: String?, remote: Boolean = false): JSONObject {

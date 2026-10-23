@@ -220,6 +220,8 @@ class MainActivity : Activity() {
 
   override fun onDestroy() {
     EdgeCallRing.bindHost(null)
+    // The call lives in this WebView; do not leave a "you're in a call" notification behind.
+    if (!isChangingConfigurations) EdgeCallOngoingService.stop(this)
     super.onDestroy()
   }
 
@@ -275,6 +277,8 @@ class MainActivity : Activity() {
       onAppPage = EdgeLinks.isAppHost(Uri.parse(url))
       // Full document loads drop JS listeners; buffer call events until callRingWebReady again.
       EdgeCallRing.resetWebReady()
+      // A full load also ends any WebView call, so clear its ongoing notification.
+      EdgeCallOngoingService.stop(this@MainActivity)
       // A full load drops the web's composer lock count, so drop the native lock with it.
       requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
@@ -398,6 +402,33 @@ class MainActivity : Activity() {
         EdgeCallRing.end(this@MainActivity, callId, remote = remote).toString()
       } catch (_: Exception) {
         JSONObject().put("ok", false).toString()
+      }
+    }
+
+    /**
+     * Ongoing chat call notification + `phoneCall` FGS while backgrounded.
+     * JSON `{ active, callId?, title?, hasVideo?, startedAt? }` … `active: false` clears.
+     * Hang up → `edge-callkit-end`.
+     */
+    @JavascriptInterface
+    fun setOngoingCall(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("skipped", "off-app").toString()
+      return try {
+        val o = JSONObject(json.ifBlank { "{}" })
+        if (!o.optBoolean("active", false)) {
+          EdgeCallOngoingService.stop(this@MainActivity)
+        } else {
+          EdgeCallOngoingService.start(
+            this@MainActivity,
+            callId = o.optString("callId").trim(),
+            title = o.optString("title").trim(),
+            hasVideo = o.optBoolean("hasVideo", false),
+            startedAt = o.optLong("startedAt", 0L),
+          )
+        }
+        JSONObject().put("ok", true).toString()
+      } catch (e: Exception) {
+        JSONObject().put("ok", false).put("error", e.message ?: "failed").toString()
       }
     }
 

@@ -258,6 +258,31 @@ export function markEdgeAndroidCallRingWebReady() {
   }
 }
 
+/**
+ * Ongoing chat call notification + `phoneCall` foreground service (APK 1.3.27+).
+ * `active: false` clears it. Hang up from the notification fires `edge-callkit-end`.
+ * @param {{ active: boolean, callId?: string, title?: string, hasVideo?: boolean, startedAt?: number }} args
+ */
+export function setEdgeAndroidOngoingCall(args) {
+  const b = bridgeWith('setOngoingCall')
+  if (!b) return { ok: false, via: 'noop' }
+  try {
+    const raw = b.setOngoingCall(
+      JSON.stringify({
+        active: Boolean(args?.active),
+        callId: String(args?.callId || '').trim(),
+        title: String(args?.title || '').trim(),
+        hasVideo: Boolean(args?.hasVideo),
+        startedAt: Number(args?.startedAt) || 0,
+      }),
+    )
+    const result = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+    return { ok: result?.ok !== false, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 /** True when this APK can drive earpiece ↔ speakerphone via AudioManager. */
 export function canEdgeAndroidSetAudioRoute() {
   return Boolean(bridgeWith('setAudioRoute'))

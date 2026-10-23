@@ -2664,6 +2664,12 @@ function readTradeStance() {
   }
 }
 
+/** Same team + same players = same card; a new offer remounts it so the composer drafts that offer's message. */
+function offerKey(offer) {
+  const ids = (list) => (list || []).map((p) => p?.id).join('-')
+  return `${offer?.team?.id || ''}:${ids(offer?.give)}:${ids(offer?.get)}`
+}
+
 function ComposeOffer({ offer, myTeamName, initialText, casualText }) {
   const [style, setStyle] = useState('casual')
   const [texts, setTexts] = useState(() => ({
@@ -3127,7 +3133,7 @@ function OfferReview({ values, detail, sport, myName, pending }) {
       {review?.betterAsk ? (
         <div>
           <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Better ask them for</div>
-          <OfferCard offer={review.betterAsk} myTeamName={myName} />
+          <OfferCard key={offerKey(review.betterAsk)} offer={review.betterAsk} myTeamName={myName} />
         </div>
       ) : null}
     </div>
@@ -3264,7 +3270,7 @@ function TradesPanel({ supabaseClient, detail, sport }) {
         <div className="mt-2 space-y-2">
           <div>
             <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Best offer</div>
-            <OfferCard offer={result.best} myTeamName={myName} />
+            <OfferCard key={offerKey(result.best)} offer={result.best} myTeamName={myName} />
           </div>
           {result.ifDeclined.length ? (
             <div>

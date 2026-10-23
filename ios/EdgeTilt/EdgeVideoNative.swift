@@ -24,6 +24,9 @@ private enum EdgeVideoLimits {
   static let cfChunkBytes: Int64 = 100 * 1024 * 1024
   static let cfMinChunkBytes: Int64 = 5_242_880
   static let cfChunkUnit: Int64 = 262_144
+  /// Resume chunks after a dropped PATCH (small so a flaky link only re-sends one piece).
+  static let cfResumeChunkBytes: Int64 = 8 * 1024 * 1024
+  static let tusRetryDelaysSeconds: [UInt64] = [2, 5, 10, 20, 30]
 
   static func positiveInt64(_ raw: Any?) -> Int64? {
     if let n = raw as? Int64, n > 0 { return n }
@@ -71,8 +74,17 @@ private enum EdgeVideoLimits {
   static func nextChunkLength(offset: Int64, total: Int64) -> Int64 {
     let left = total - offset
     if offset == 0 && left <= cfSingleRequestMaxBytes { return left }
-    if left <= cfChunkBytes { return left }
-    var take = cfChunkBytes
+    return chunkLength(offset: offset, total: total, chunkBytes: cfChunkBytes)
+  }
+
+  static func resumeChunkLength(offset: Int64, total: Int64) -> Int64 {
+    chunkLength(offset: offset, total: total, chunkBytes: cfResumeChunkBytes)
+  }
+
+  private static func chunkLength(offset: Int64, total: Int64, chunkBytes: Int64) -> Int64 {
+    let left = total - offset
+    if left <= chunkBytes { return left }
+    var take = chunkBytes
     let after = left - take
     if after > 0 && after < cfMinChunkBytes {
       take = ((left - cfMinChunkBytes) / cfChunkUnit) * cfChunkUnit
@@ -1123,14 +1135,24 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     var sentBefore: Int64 = 0
   }
 
+  /// Network drop or retryable tus status; `patchFile` resumes from the committed offset.
+  private struct TusDropped: LocalizedError {
+    let message: String
+    var errorDescription: String? { message }
+  }
+
   private let lock = NSLock()
   private var waiters: [ObjectIdentifier: Waiter] = [:]
   private var tasksByAsset: [String: URLSessionUploadTask] = [:]
+  /// Cancels that land while a resume is waiting between PATCHes (no task to cancel).
+  private var cancelledAssets = Set<String>()
+  private var cancelAllRequested = false
 
   func cancel() {
     lock.lock()
     let tasks = Array(tasksByAsset.values)
     tasksByAsset.removeAll()
+    cancelAllRequested = true
     lock.unlock()
     for task in tasks { task.cancel() }
   }
@@ -1143,12 +1165,28 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     }
     lock.lock()
     let task = tasksByAsset[key]
+    cancelledAssets.insert(key)
     lock.unlock()
     task?.cancel()
   }
 
+  private func clearCancel(assetId: String) {
+    lock.lock()
+    cancelledAssets.remove(assetId)
+    cancelAllRequested = false
+    lock.unlock()
+  }
+
+  private func checkCancelled(assetId: String) throws {
+    lock.lock()
+    let cancelled = cancelAllRequested || cancelledAssets.contains(assetId)
+    lock.unlock()
+    if cancelled { throw EdgeVideoError.cancelled }
+  }
+
   func uploadTus(payload: [String: Any]?) async throws -> [String: Any] {
     let assetId = Self.string(payload?["assetId"])
+    clearCancel(assetId: assetId)
     EdgeVideoBackgroundKeepAlive.beginJob(id: assetId, phase: "upload", title: "Uploading video", subtitle: "EdgeTilt")
     var ok = false
     defer { EdgeVideoBackgroundKeepAlive.endJob(id: assetId, success: ok) }
@@ -1267,29 +1305,72 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     return TusCreate(location: location, uid: uid)
   }
 
+  /// First pass keeps the original sizes (one PATCH up to 200 MB) so the background session can
+  /// finish while the app is suspended. After a drop, resume from Stream's committed offset in
+  /// small chunks, like tus-js-client on web.
   private func patchFile(_ fileURL: URL, location: URL, assetId: String, byteSize: Int64) async throws {
-    if byteSize <= EdgeVideoLimits.cfSingleRequestMaxBytes {
-      var request = URLRequest(url: location)
-      request.httpMethod = "PATCH"
-      request.setValue("1.0.0", forHTTPHeaderField: "Tus-Resumable")
-      request.setValue("0", forHTTPHeaderField: "Upload-Offset")
-      request.setValue("application/offset+octet-stream", forHTTPHeaderField: "Content-Type")
+    var offset: Int64 = 0
+    var resuming = false
+    var failures = 0
+    while offset < byteSize {
+      try checkCancelled(assetId: assetId)
+      let length = resuming
+        ? EdgeVideoLimits.resumeChunkLength(offset: offset, total: byteSize)
+        : EdgeVideoLimits.nextChunkLength(offset: offset, total: byteSize)
+      do {
+        try await patchChunk(fileURL, location: location, assetId: assetId, byteSize: byteSize, offset: offset, length: length)
+        offset += length
+        failures = 0
+      } catch let dropped as TusDropped {
+        try checkCancelled(assetId: assetId)
+        guard failures < EdgeVideoLimits.tusRetryDelaysSeconds.count else {
+          throw EdgeVideoError.uploadFailed(dropped.message)
+        }
+        let delay = EdgeVideoLimits.tusRetryDelaysSeconds[failures]
+        failures += 1
+        resuming = true
+        NSLog("EdgeVideo tus patch dropped at \(offset); retry \(failures) in \(delay)s")
+        try await sleepUnlessCancelled(seconds: delay, assetId: assetId)
+        if let committed = await committedOffset(location) { offset = committed }
+      }
+    }
+  }
+
+  private func patchChunk(_ fileURL: URL, location: URL, assetId: String, byteSize: Int64, offset: Int64, length: Int64) async throws {
+    var request = URLRequest(url: location)
+    request.httpMethod = "PATCH"
+    request.setValue("1.0.0", forHTTPHeaderField: "Tus-Resumable")
+    request.setValue(String(offset), forHTTPHeaderField: "Upload-Offset")
+    request.setValue("application/offset+octet-stream", forHTTPHeaderField: "Content-Type")
+    if offset == 0 && length == byteSize {
       try await send(request: request, fileURL: fileURL, assetId: assetId, byteSize: byteSize, sentBefore: 0)
       return
     }
-    var offset: Int64 = 0
-    while offset < byteSize {
-      let length = EdgeVideoLimits.nextChunkLength(offset: offset, total: byteSize)
-      let slice = try Self.sliceFile(fileURL, offset: offset, length: length)
-      defer { try? FileManager.default.removeItem(at: slice) }
-      var request = URLRequest(url: location)
-      request.httpMethod = "PATCH"
-      request.setValue("1.0.0", forHTTPHeaderField: "Tus-Resumable")
-      request.setValue(String(offset), forHTTPHeaderField: "Upload-Offset")
-      request.setValue("application/offset+octet-stream", forHTTPHeaderField: "Content-Type")
-      try await send(request: request, fileURL: slice, assetId: assetId, byteSize: byteSize, sentBefore: offset)
-      offset += length
+    let slice = try Self.sliceFile(fileURL, offset: offset, length: length)
+    defer { try? FileManager.default.removeItem(at: slice) }
+    try await send(request: request, fileURL: slice, assetId: assetId, byteSize: byteSize, sentBefore: offset)
+  }
+
+  private func sleepUnlessCancelled(seconds: UInt64, assetId: String) async throws {
+    var left = seconds * 4
+    while left > 0 {
+      try checkCancelled(assetId: assetId)
+      try await Task.sleep(nanoseconds: 250_000_000)
+      left -= 1
     }
+  }
+
+  /// tus HEAD → Stream's committed byte offset, or nil if it did not answer.
+  private func committedOffset(_ location: URL) async -> Int64? {
+    var request = URLRequest(url: location)
+    request.httpMethod = "HEAD"
+    request.setValue("1.0.0", forHTTPHeaderField: "Tus-Resumable")
+    request.timeoutInterval = 30
+    guard let (_, response) = try? await URLSession.shared.data(for: request),
+          let http = response as? HTTPURLResponse,
+          (200...299).contains(http.statusCode),
+          let raw = http.value(forHTTPHeaderField: "Upload-Offset") else { return nil }
+    return Int64(raw.trimmingCharacters(in: .whitespacesAndNewlines))
   }
 
   private static func sliceFile(_ fileURL: URL, offset: Int64, length: Int64) throws -> URL {
@@ -1372,13 +1453,15 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
         waiter.continuation?.resume(throwing: EdgeVideoError.cancelled)
       } else {
         NSLog("EdgeVideo upload failed \(ns.domain) \(ns.code) \(ns.localizedDescription)")
-        waiter.continuation?.resume(throwing: EdgeVideoError.uploadFailed("Video upload failed (\(ns.code)). Try again."))
+        waiter.continuation?.resume(throwing: TusDropped(message: "Video upload failed (\(ns.code)). Try again."))
       }
       return
     }
     let status = (task.response as? HTTPURLResponse)?.statusCode ?? 0
     if status == 0 || (200...299).contains(status) {
       waiter.continuation?.resume()
+    } else if status == 409 || status == 423 || status >= 500 {
+      waiter.continuation?.resume(throwing: TusDropped(message: "Video upload failed (\(status))."))
     } else {
       waiter.continuation?.resume(throwing: EdgeVideoError.uploadFailed("Video upload failed (\(status))."))
     }

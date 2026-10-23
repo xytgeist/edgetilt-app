@@ -3199,25 +3199,48 @@ function OfferReview({ values, detail, sport, myName, pending }) {
   )
 }
 
+/** One live read of a league's trade offers, shared by the Trades tab badge and the panel (2 min cache). */
+const PENDING_TRADES_TTL_MS = 120_000
+const pendingTradesCache = new Map()
+
+function usePendingTrades(supabaseClient, leagueId) {
+  const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
+  useEffect(() => {
+    if (!supabaseClient || !leagueId) return undefined
+    let alive = true
+    let hit = pendingTradesCache.get(leagueId)
+    if (!hit || Date.now() - hit.at > PENDING_TRADES_TTL_MS) {
+      hit = { at: Date.now(), promise: loadPendingTrades(supabaseClient, leagueId) }
+      pendingTradesCache.set(leagueId, hit)
+      hit.promise.catch(() => pendingTradesCache.delete(leagueId))
+    }
+    hit.promise
+      .then((data) => alive && setLoaded({ id: leagueId, data, error: '' }))
+      .catch((err) => alive && setLoaded({ id: leagueId, data: null, error: err?.message || 'Could not load offers.' }))
+    return () => {
+      alive = false
+    }
+  }, [supabaseClient, leagueId])
+  return loaded.id === leagueId ? { ...loaded, loading: false } : { data: null, error: '', loading: Boolean(leagueId) }
+}
+
+/** Offers someone else sent you (not the ones you proposed). */
+function incomingOffers(pending, detail) {
+  const mineId = (detail?.teams || []).find((t) => t.is_mine)?.id || null
+  return (pending?.data?.offers || []).filter((o) => !mineId || o.proposer_team_id !== mineId)
+}
+
 /** Trade Finder: offers that raise your best lineup, realistic for the other side, with a pasteable message. */
 function TradesPanel({ supabaseClient, detail, sport }) {
   const leagueId = detail?.league?.id || null
   const rosterStamp = useRosterStamp(detail)
   const [loaded, setLoaded] = useState({ id: null, data: null, error: '' })
-  const [view, setView] = useState('find')
-  const [pendingLoaded, setPendingLoaded] = useState({ id: null, data: null, error: '' })
-  useEffect(() => {
-    if (!supabaseClient || !leagueId) return undefined
-    let alive = true
-    loadPendingTrades(supabaseClient, leagueId)
-      .then((data) => alive && setPendingLoaded({ id: leagueId, data, error: '' }))
-      .catch((err) => alive && setPendingLoaded({ id: leagueId, data: null, error: err?.message || 'Could not load offers.' }))
-    return () => {
-      alive = false
-    }
-  }, [supabaseClient, leagueId])
-  const pending = pendingLoaded.id === leagueId ? { ...pendingLoaded, loading: false } : { data: null, error: '', loading: true }
+  const [pickedView, setView] = useState(null)
+  const pending = usePendingTrades(supabaseClient, leagueId)
   const offerCount = pending.data?.offers?.length || 0
+  const incomingCount = incomingOffers(pending, detail).length
+  // Offers waiting on you: open on Review, unless you already switched views.
+  const view = pickedView ?? (incomingCount > 0 ? 'review' : 'find')
   useEffect(() => {
     if (!supabaseClient || !leagueId) return undefined
     let alive = true
@@ -4405,6 +4428,8 @@ export default function FantasyCommandCenter({
   const tools = nflLeague ? nflTools(nflState) : TOOLS
   const rosterPlan = useStartSitPlan(detail, cards, leagueSport)
   const dismissedCount = rosterPlan?.dismissed?.length || 0
+  const leaguePending = usePendingTrades(supabaseClient, leagueId ? detail?.league?.id || null : null)
+  const incomingTradeCount = incomingOffers(leaguePending, detail).length
   // Tool state is shared across leagues: an id this league's pills do not have (NBA Live, NFL Plays pre-kickoff) opens Roster.
   const shownTool = nflLeague && tool === 'live' ? 'start' : tools.some((t) => t.id === tool) ? tool : DEFAULT_TOOL
 
@@ -4612,6 +4637,15 @@ export default function FantasyCommandCenter({
                       </span>
                     ) : null}
                     {item.label}
+                    {item.id === 'trade' && incomingTradeCount > 0 ? (
+                      <span
+                        data-fantasy-tab-count
+                        aria-label={`${incomingTradeCount} trade offer${incomingTradeCount > 1 ? 's' : ''}`}
+                        className="mb-0.5 rounded-full bg-zinc-800 px-1.5 py-px text-[10px] font-bold tabular-nums text-zinc-300"
+                      >
+                        {incomingTradeCount}
+                      </span>
+                    ) : null}
                   </button>
                   {showDismissed ? (
                     <button

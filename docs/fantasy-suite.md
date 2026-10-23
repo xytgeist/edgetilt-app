@@ -66,6 +66,7 @@ Running list of shipped work that still needs a real-data check. **Add a line wh
 - [ ] NFL Roster / Live: game chips row under the tabs once the week kicks off, live + final games only (score, clock / Final, my / their starter counts; tap opens the game hub); Plays keeps its own chips (dark + light).
 - [ ] Fantasy home: vertical sport label in the left gap of the first league card, gone after the first swipe; Sync / Manage icons on the first sport's shown card (tap syncs / opens Manage, does not open the league); card tap still opens the league (dark + light).
 - [ ] Yahoo trade offer (USF Bulls: Olave for A. Jones Sr.) lists and grades in Trades > Review on prod.
+- [ ] Trades tab count shows incoming offers (Yahoo USF Bulls, ESPN New Orleans); Trades opens on Review when there are any (dark + light).
 - [ ] Fantasy title bar: shrinks into the pull tab ~3 s after opening / last touch (no slide under the status bar), content slides up; pull tab drag + tap reopen it; scroll up / to the top reveal it; no × (back button only when opened from a game / hub / Chat); ☰ menu open never tucks; one-time hint (dark + light, iPhone + web).
 - [ ] League screen: back ("‹ League name") + Sync / Manage icons on the current matchup card (no separate row), underlined tabs, dismissed count on Roster; old row still shows while loading / with no matchup (dark + light, NFL + NBA).
 

@@ -920,13 +920,15 @@ function usePagerPeek(ref, enabled) {
       if (touched || el.scrollLeft > 2) return
       for (const page of el.children) {
         page.animate?.(
+          // Slide out, hold so the market pills read, slide back with a small overshoot.
           [
-            { transform: 'translateX(0)' },
-            { transform: `translateX(-${PEEK_SHARE * 100}%)`, offset: 0.4, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
-            { transform: 'translateX(6px)', offset: 0.75, easing: 'ease-in-out' },
+            { transform: 'translateX(0)', easing: 'cubic-bezier(0.25, 0.8, 0.3, 1)' },
+            { transform: `translateX(-${PEEK_SHARE * 100}%)`, offset: 0.32 },
+            { transform: `translateX(-${PEEK_SHARE * 100}%)`, offset: 0.5, easing: 'cubic-bezier(0.5, 0, 0.3, 1)' },
+            { transform: 'translateX(8px)', offset: 0.86, easing: 'ease-in-out' },
             { transform: 'translateX(0)' },
           ],
-          { duration: 1400, easing: 'ease-out' },
+          { duration: 2600 },
         )
       }
     }, PEEK_DELAY_MS)

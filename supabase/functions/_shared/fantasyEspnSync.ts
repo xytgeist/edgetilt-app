@@ -791,6 +791,19 @@ async function syncEspnNba(
       const owners = Array.isArray(team.owners) ? team.owners.map((o) => swidKey(String(o))) : []
       const isMine = swidKey(String(team.primaryOwner || '')) === mineKey || owners.includes(mineKey)
       const record = asRecord(asRecord(team.record)?.overall) || {}
+      // Season-long leagues (ROTO, TOTAL_SEASON_POINTS) have no matchups: the standings view reads ESPN's own total
+      // (`points`: roto points or season points) and each category's season value.
+      const seasonLong = scoringType === 'ROTO' || scoringType === 'TOTAL_SEASON_POINTS'
+      const standings = seasonLong
+        ? {
+            points: num(team.points),
+            stats: Object.fromEntries(
+              Object.entries(asRecord(team.valuesByStat) || {})
+                .map(([id, v]) => [NBA_STAT[Number(id)], num(v)])
+                .filter(([k, v]) => k && v != null),
+            ),
+          }
+        : null
       const { data: teamRow, error: teamErr } = await admin
         .from('fantasy_teams')
         .upsert(
@@ -807,7 +820,11 @@ async function syncEspnNba(
             ties: Number(record.ties) || 0,
             points_for: num(record.pointsFor),
             points_against: num(record.pointsAgainst),
-            metadata: { espn_team_id: team.id ?? null, waiver: espnTeamWaiver(team, settings) },
+            metadata: {
+              espn_team_id: team.id ?? null,
+              waiver: espnTeamWaiver(team, settings),
+              ...(standings ? { standings } : {}),
+            },
           },
           { onConflict: 'league_id,external_team_id' },
         )

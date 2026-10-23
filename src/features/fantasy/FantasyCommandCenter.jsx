@@ -4,7 +4,7 @@ import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
 import { nbaMatchupUpcoming, nbaWeekOf } from './fantasyNbaWeek.js'
 import { lockInCall, nbaLockIn } from './fantasyLockIn.js'
-import { CategoryBoard, CategoryScoreLine, leagueCategories, useCategoryMatchup } from './FantasyCategoryBoard.jsx'
+import { CategoryBoard, CategoryScoreLine, leagueCategories, SeasonStandings, seasonLongFormat, useCategoryMatchup } from './FantasyCategoryBoard.jsx'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { useLiveGames, useLivePlays } from './useFantasyLive.js'
@@ -3639,6 +3639,7 @@ function MatchupCard({
   upcoming = false,
   onBack = null,
   headerActions = null,
+  seasonLong = false,
 }) {
   const lockIn = nbaLockIn(provider, sport, settings)
   const leftSide = sideOutlook(page.roster, cards, scoring, sport, lockIn, upcoming)
@@ -3749,7 +3750,9 @@ function MatchupCard({
             projFinal={ro}
           />
         ) : (
-          <p className="text-[12px] text-zinc-500">{page.kind === 'idle' ? 'No matchup this week.' : 'Bye this week.'}</p>
+          <p className="text-[12px] text-zinc-500">
+            {page.kind === 'idle' ? (seasonLong ? 'Season-long league: no weekly matchup.' : 'No matchup this week.') : 'Bye this week.'}
+          </p>
         )}
       </div>
       {page.right ? (
@@ -4532,6 +4535,7 @@ export default function FantasyCommandCenter({
                 <MatchupCard
                   page={page}
                   onBack={isCurrent ? () => setLeagueId(null) : null}
+                  seasonLong={Boolean(seasonLongFormat(detail?.league))}
                   headerActions={
                     isCurrent ? (
                       <HomeSyncActions syncing={syncing} busy={busy} onSync={onSync} onOpenManage={onOpenManage} syncedIso={null} />
@@ -4554,6 +4558,9 @@ export default function FantasyCommandCenter({
 
           {current && leagueCategories(detail?.league) ? (
             <CategoryBoard page={current} cards={cards} categories={leagueCategories(detail?.league)} upcoming={nbaMatchupUpcoming(detail?.league)} />
+          ) : null}
+          {current?.kind === 'idle' && seasonLongFormat(detail?.league) ? (
+            <SeasonStandings league={detail?.league} teams={detail?.teams} />
           ) : null}
 
           <div data-fantasy-tool-tabs role="tablist" className="-mt-1 flex gap-5 overflow-x-auto border-b border-zinc-800 px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

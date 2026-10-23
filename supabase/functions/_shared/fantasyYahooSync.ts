@@ -263,6 +263,55 @@ function yahooMatchupObjects(root: unknown): Record<string, unknown>[] {
   return out
 }
 
+type YahooNbaCategory = { stat_id: number; key: string }
+
+/**
+ * Yahoo categories matchup in the ESPN shape (`fantasy_matchups.categories`): each side's week totals keyed like
+ * `settings.categories`, and WIN / LOSS / TIE per category from the matchup's `stat_winners` (side `a`'s view).
+ * Display-only stats (FGM/FGA "123/267") are not categories and are skipped; blank values (week not started) too.
+ */
+export function yahooCategoryMatchup(
+  mu: Record<string, unknown>,
+  a: Record<string, unknown>,
+  b: Record<string, unknown> | null,
+  cats: YahooNbaCategory[],
+) {
+  const keyById = new Map(cats.map((c) => [Number(c.stat_id), c.key]))
+  const totals = (team: Record<string, unknown> | null) => {
+    const out: Record<string, number> = {}
+    const stats = (team?.team_stats as { stats?: Array<{ stat?: Record<string, unknown> }> } | undefined)?.stats
+    for (const row of Array.isArray(stats) ? stats : []) {
+      const st = row?.stat || {}
+      const key = keyById.get(Number(st.stat_id))
+      const raw = String(st.value ?? '').trim()
+      if (!key || !raw) continue
+      const v = Number(raw)
+      if (Number.isFinite(v)) out[key] = v
+    }
+    return out
+  }
+  const results: Record<string, string> = {}
+  let wins = 0
+  let losses = 0
+  let ties = 0
+  const aKey = str(a.team_key)
+  for (const w of collectByKey(mu.stat_winners, 'stat_id')) {
+    const key = keyById.get(Number(w.stat_id))
+    if (!key) continue
+    if (str(w.is_tied) === '1') {
+      results[key] = 'TIE'
+      ties += 1
+    } else if (str(w.winner_team_key) === aKey) {
+      results[key] = 'WIN'
+      wins += 1
+    } else if (str(w.winner_team_key)) {
+      results[key] = 'LOSS'
+      losses += 1
+    }
+  }
+  return { left: totals(a), right: totals(b), results, wins, losses, ties }
+}
+
 /** Yahoo scoreboard matchup blocks (nested arrays + objects). */
 function findScoreboardMatchups(root: unknown): Record<string, unknown>[] {
   const out: Record<string, unknown>[] = []
@@ -1021,6 +1070,9 @@ export async function syncYahooConnection(
                     : tt.points,
                 )
               }
+              // Categories leagues: category wins are the score (same as ESPN), with per-category totals + results.
+              const cats = sport === 'nba' && Array.isArray(leagueSettings.categories) ? (leagueSettings.categories as YahooNbaCategory[]) : []
+              const catMu = cats.length ? yahooCategoryMatchup(mu, teamsIn[0], bId ? teamsIn[1] : null, cats) : null
               const { error: muErr } = await admin.from('fantasy_matchups').upsert(
                 {
                   league_id: leagueId,
@@ -1028,8 +1080,9 @@ export async function syncYahooConnection(
                   week,
                   mine_team_id: aId,
                   opp_team_id: bId,
-                  mine_score: pointsFor(teamsIn[0]),
-                  opp_score: bId ? pointsFor(teamsIn[1]) : null,
+                  mine_score: catMu ? catMu.wins : pointsFor(teamsIn[0]),
+                  opp_score: bId ? (catMu ? catMu.losses : pointsFor(teamsIn[1])) : null,
+                  categories: catMu,
                   external_matchup_id: `${leagueKey}:w${week}:${pairKey}`,
                   updated_at: new Date().toISOString(),
                 },

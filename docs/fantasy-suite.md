@@ -23,13 +23,13 @@ Running list of shipped work that still needs a real-data check. **Add a line wh
 - [ ] NBA weekly digest arrives Monday 9 AM PT with sensible content.
 
 **After each new league drafts + syncs**
-- [ ] Yahoo H2H-Cat 49714 (draft 2026-10-22 3pm): categories saved; then build Yahoo categories matchup totals.
-- [ ] Yahoo High Score 271599 (4 teams; settings HTTP 400 pre-draft): syncs as High Score after draft.
-- [ ] Yahoo Roto 272771: syncs (no matchups); Roto / season-points standings view not built yet.
+- [x] 2026-10-23 Yahoo H2H-Cat 49714: drafted, 9 categories saved on prod.
+- [ ] Yahoo categories matchup totals (1.4.1423, `yahooCategoryMatchup`): week 2 (from Mon 10-26) saves `fantasy_matchups.categories` (team_stats totals + stat_winners WIN / LOSS / TIE) and category wins as the score; category board + win chance on live Yahoo data.
+- [x] 2026-10-23 Yahoo High Score 271599 + Yahoo Roto 272771 are no longer on Ryan's Yahoo account (not in `/users;use_login=1/games;game_keys=nba/teams`; league reads 400). Stale rows stay on prod until removed (sync never prunes leagues that disappear).
 - [ ] ESPN NBA H2H Points: first real test of the ESPN points path.
 - [ ] ESPN NBA H2H Most Categories (New Orleans): re-sync saves categories (was synced as points: `H2H_MOST_CATEGORIES` missed the CATEGORY check, fixed 1.4.1396); category board win chance = more categories won, which is how Most Categories scores.
 - [ ] ESPN NBA trade offer in New Orleans (from team 9, 5 players, expires 2026-10-24 3:14pm PT): Trades > Review lists and grades it after the re-sync (pending trades now read games/fba + ESPN season).
-- [ ] ESPN NBA Roto + Season Points: standings view (not built).
+- [ ] ESPN NBA Roto (OKC) + Season Points (Miami) standings view (1.4.1423, `SeasonStandings`): ESPN sync saves `fantasy_teams.metadata.standings` ({ points, stats } from mTeam `points` / `valuesByStat`) for ROTO / TOTAL_SEASON_POINTS; league view shows ranked teams, roto category values per team, mine highlighted, once games are scored (dark + light).
 - [ ] ESPN NHL leagues (5 types): NHL not supported at all yet (own project).
 
 **After the High Score promote**

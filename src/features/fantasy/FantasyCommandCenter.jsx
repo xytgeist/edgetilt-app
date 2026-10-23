@@ -1617,6 +1617,20 @@ function LivePanel({ supabaseClient, page, detail, sport, active, emptyText = ''
   )
 }
 
+/** Roster / Live: chips for this matchup's games that are live or final (upcoming games stay off until they start). */
+function RosterGameChips({ supabaseClient, page }) {
+  const all = useLiveGames({ supabaseClient, active: true, leftRows: page?.roster, rightRows: page?.oppRoster, sport: 'nfl' })
+  const games = all.filter((entry) => entry.game.status === 'in' || entry.game.status === 'post')
+  if (!games.length) return null
+  return (
+    <div data-fantasy-roster-games className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {games.map((entry) => (
+        <LiveGameChip key={entry.game.id} entry={entry} />
+      ))}
+    </div>
+  )
+}
+
 /** Every NFL player on your teams (all slots) → the leagues they are on and whether you start them anywhere. */
 /** Sleeper NBA rows have no photo of their own; the lineup cards carry one (ESPN via our R2). */
 function withCardHeadshots(details, cards, sport) {
@@ -4613,6 +4627,9 @@ export default function FantasyCommandCenter({
               sport={selected?.sport || detail?.league?.sport}
               active
             />
+          ) : null}
+          {shownTool === 'start' && nflLeague && nflState.kicked && current ? (
+            <RosterGameChips supabaseClient={supabaseClient} page={current} />
           ) : null}
           {shownTool === 'start' && detail ? (
             <StartSitPanel supabaseClient={supabaseClient} detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} />

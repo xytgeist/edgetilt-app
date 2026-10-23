@@ -741,6 +741,7 @@ function LoungeMatchupGameHubModal({
     { id: 'chat', label: 'Chat' },
   ]
   const activeTab = tabs.some((t) => t.id === tab) ? tab : tabs[0].id
+  const activeTabIndex = tabs.findIndex((t) => t.id === activeTab)
   const tabIdsKey = tabs.map((t) => t.id).join(',')
 
   const scrollTabPagerTo = useCallback((id, behavior = 'smooth') => {
@@ -1066,7 +1067,7 @@ function LoungeMatchupGameHubModal({
         className="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden snap-x snap-mandatory overscroll-x-contain overscroll-y-none no-scrollbar [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={onTabPagerScroll}
       >
-        {tabs.map((item) => (
+        {tabs.map((item, i) => (
           <div
             key={item.id}
             ref={(el) => {
@@ -1076,7 +1077,8 @@ function LoungeMatchupGameHubModal({
             data-lounge-game-hub-tab-pane={item.id}
             className="h-full min-h-0 w-full min-w-full shrink-0 snap-start overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] [-webkit-overflow-scrolling:touch]"
           >
-            {renderHubTabPane(item.id)}
+            {/* Only the active pane and its swipe neighbors mount: all seven at once pushed WebContent past 800MB on iPhone. */}
+            {Math.abs(i - activeTabIndex) <= 1 ? renderHubTabPane(item.id) : <GameHubPaneSkeleton />}
           </div>
         ))}
       </div>

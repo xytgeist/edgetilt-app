@@ -925,7 +925,7 @@ function usePagerPeek(ref, enabled) {
             { transform: 'translateX(6px)', offset: 0.75, easing: 'ease-in-out' },
             { transform: 'translateX(0)' },
           ],
-          { duration: 900, easing: 'ease-out' },
+          { duration: 1400, easing: 'ease-out' },
         )
       }
     }, PEEK_DELAY_MS)

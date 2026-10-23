@@ -4716,7 +4716,7 @@ export default function FantasyCommandCenter({
             <TradesPanel supabaseClient={supabaseClient} detail={detail} sport={selected?.sport || detail?.league?.sport} />
           ) : null}
 
-          {current ? (
+          {current && shownTool !== 'waiver' && shownTool !== 'trade' ? (
             <VsMatchup
               mine={current.roster}
               opp={current.oppRoster}

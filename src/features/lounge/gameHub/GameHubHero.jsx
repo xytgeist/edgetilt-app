@@ -76,6 +76,21 @@ import {
   yardLineLabel,
 } from './gameHubFormatters.js'
 import { armGameHubWhistle, playGameHubWhistle } from './gameHubWhistle.js'
+import { useHeadshotSrc } from '../../../utils/playerHeadshot.js'
+
+function FieldChipHeadshot({ url, def }) {
+  const { src, failed, onError } = useHeadshotSrc(url, 72)
+  if (failed) return <span className="h-6 w-1" aria-hidden="true" />
+  return (
+    <img
+      src={src}
+      alt=""
+      onError={onError}
+      className={`h-6 w-6 rounded-full ${def ? 'object-contain p-0.5' : 'object-cover'}`}
+      style={{ background: 'rgba(255,255,255,0.12)' }}
+    />
+  )
+}
 
 /** RB slide duration (start LOS → gain yardage). */
 const RUSH_RUN_MS = 1100
@@ -4193,12 +4208,7 @@ function FieldViz({
                 }
               >
                 {r.headshotUrl ? (
-                  <img
-                    src={r.headshotUrl}
-                    alt=""
-                    className={`h-6 w-6 rounded-full ${r.position === 'DEF' ? 'object-contain p-0.5' : 'object-cover'}`}
-                    style={{ background: 'rgba(255,255,255,0.12)' }}
-                  />
+                  <FieldChipHeadshot url={r.headshotUrl} def={r.position === 'DEF'} />
                 ) : (
                   <span className="h-6 w-1" aria-hidden="true" />
                 )}

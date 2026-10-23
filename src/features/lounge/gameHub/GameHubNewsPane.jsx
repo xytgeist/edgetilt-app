@@ -31,6 +31,24 @@ function statusShort(inj) {
   return String(inj.status || '').slice(0, 3).toUpperCase()
 }
 
+const ESPN_PHOTO = /^https:\/\/a\.espncdn\.com(\/photo\/[^?#]+\.(?:jpe?g|png))$/i
+
+/** ESPN news photos arrive at ~1300-1920 px; the combiner crops them to the slot so each decodes in a fraction of the memory. */
+function NewsImage({ src, w, h, className }) {
+  const [useOriginal, setUseOriginal] = useState(false)
+  const m = String(src || '').match(ESPN_PHOTO)
+  const small = m && !useOriginal ? `https://a.espncdn.com/combiner/i?img=${m[1]}&w=${w}&h=${h}&scale=crop&cquality=70` : src
+  return (
+    <img
+      src={small}
+      alt=""
+      className={className}
+      loading="lazy"
+      onError={small !== src ? () => setUseOriginal(true) : undefined}
+    />
+  )
+}
+
 function SectionTitle({ children, right }) {
   return (
     <div className="flex items-baseline justify-between px-3 pb-1.5 pt-2.5">
@@ -51,7 +69,7 @@ function ArticleCard({ article }) {
       className="block overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 touch-manipulation active:opacity-90"
     >
       {article.image ? (
-        <img src={article.image} alt="" className="h-36 w-full object-cover" loading="lazy" />
+        <NewsImage src={article.image} w={800} h={320} className="h-36 w-full object-cover" />
       ) : null}
       <div className="px-3 py-2.5">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
@@ -170,7 +188,7 @@ function StoryRow({ story }) {
           </div>
         </div>
         {story.image ? (
-          <img src={story.image} alt="" className="h-14 w-20 shrink-0 rounded-lg object-cover" loading="lazy" />
+          <NewsImage src={story.image} w={240} h={168} className="h-14 w-20 shrink-0 rounded-lg object-cover" />
         ) : null}
       </a>
     </li>

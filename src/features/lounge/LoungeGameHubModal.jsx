@@ -744,6 +744,32 @@ function LoungeMatchupGameHubModal({
   const activeTabIndex = tabs.findIndex((t) => t.id === activeTab)
   const tabIdsKey = tabs.map((t) => t.id).join(',')
 
+  // Every pane stays mounted so tab taps are instant, but they mount one per idle slot (nearest the active
+  // tab first) instead of all in the open frame … seven panes at once spiked WebContent ~350MB on iPhone.
+  const paneMountKey = hubPresented ? `${game.id}:${hubOpenNonce}` : ''
+  const [paneMounts, setPaneMounts] = useState({ key: '', ids: [] })
+  const mountedPaneIds = paneMounts.key === paneMountKey ? paneMounts.ids : []
+  const nextPaneToMount = paneMountKey
+    ? tabs
+        .map((t, i) => ({ id: t.id, d: Math.abs(i - activeTabIndex) }))
+        .filter((t) => t.id !== activeTab && !mountedPaneIds.includes(t.id))
+        .sort((a, b) => a.d - b.d)[0]?.id || ''
+    : ''
+  useEffect(() => {
+    if (!paneMountKey || !nextPaneToMount) return undefined
+    const mount = () =>
+      setPaneMounts((prev) => {
+        const ids = prev.key === paneMountKey ? prev.ids : []
+        return ids.includes(nextPaneToMount) ? prev : { key: paneMountKey, ids: [...ids, nextPaneToMount] }
+      })
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(mount, { timeout: 400 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const t = window.setTimeout(mount, 120)
+    return () => window.clearTimeout(t)
+  }, [paneMountKey, nextPaneToMount])
+
   const scrollTabPagerTo = useCallback((id, behavior = 'smooth') => {
     const pager = tabPagerRef.current
     if (!pager) return
@@ -1067,7 +1093,7 @@ function LoungeMatchupGameHubModal({
         className="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden snap-x snap-mandatory overscroll-x-contain overscroll-y-none no-scrollbar [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={onTabPagerScroll}
       >
-        {tabs.map((item, i) => (
+        {tabs.map((item) => (
           <div
             key={item.id}
             ref={(el) => {
@@ -1077,8 +1103,7 @@ function LoungeMatchupGameHubModal({
             data-lounge-game-hub-tab-pane={item.id}
             className="h-full min-h-0 w-full min-w-full shrink-0 snap-start overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] [-webkit-overflow-scrolling:touch]"
           >
-            {/* Only the active pane and its swipe neighbors mount: all seven at once pushed WebContent past 800MB on iPhone. */}
-            {Math.abs(i - activeTabIndex) <= 1 ? renderHubTabPane(item.id) : <GameHubPaneSkeleton />}
+            {item.id === activeTab || mountedPaneIds.includes(item.id) ? renderHubTabPane(item.id) : <GameHubPaneSkeleton />}
           </div>
         ))}
       </div>

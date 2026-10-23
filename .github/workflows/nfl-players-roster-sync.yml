@@ -1,0 +1,106 @@
+# Sleeper → nfl_players (depth, injury, K/DEF) for Lounge game hub.
+# Schedule: Tue + Fri 15:00 UTC (~8am PT) → test AND production.
+# Manual: workflow_dispatch; set sync_production=false to skip prod.
+#
+# Required GitHub repo secrets:
+#   SUPABASE_URL_TEST / SUPABASE_SERVICE_ROLE_KEY_TEST
+#   SUPABASE_URL_PRODUCTION / SUPABASE_SERVICE_ROLE_KEY_PRODUCTION
+#
+# Optional for espn-ids / R2 headshot steps:
+#   Same service role secrets (headshots hit lounge-nfl-game-fantasy mirror on that project).
+
+name: NFL players roster sync
+
+on:
+  schedule:
+    - cron: '0 15 * * 2'
+    - cron: '0 15 * * 5'
+  workflow_dispatch:
+    inputs:
+      sync_production:
+        description: 'Also upsert production Supabase (default true)'
+        type: boolean
+        default: true
+      mirror_headshots:
+        description: 'Also run ESPN id fill + R2 headshot mirror (slower)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: nfl-players-roster-sync
+  cancel-in-progress: false
+
+jobs:
+  sync-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync nfl_players from Sleeper (test)
+        env:
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+        run: npm run nfl:players:sync
+
+      - name: Fill missing ESPN ids (test)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mirror_headshots }}
+        env:
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+        run: npm run nfl:players:espn-ids
+
+      - name: Mirror headshots to R2 (test)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mirror_headshots }}
+        env:
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+        run: npm run nfl:players:headshots:r2
+
+  sync-production:
+    needs: sync-test
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.sync_production }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync nfl_players from Sleeper (production)
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: npm run nfl:players:sync:production
+
+      - name: Fill missing ESPN ids (production)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mirror_headshots }}
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: npm run nfl:players:espn-ids:production
+
+      - name: Mirror headshots to R2 (production)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mirror_headshots }}
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: npm run nfl:players:headshots:r2:production

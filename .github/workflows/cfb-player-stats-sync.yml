@@ -1,0 +1,48 @@
+# Daily CFB season stats for the game hub Players expand (cfb_players.season_stats).
+# One CFBD call (every team) → test + production. CFBD free tier is 1,000 calls / month.
+# GitHub schedule only runs from the default branch (main).
+#
+# Required GitHub repo secrets:
+#   CFBD_API_KEY
+#   SUPABASE_URL_TEST / SUPABASE_SERVICE_ROLE_KEY_TEST
+#   SUPABASE_URL_PRODUCTION / SUPABASE_SERVICE_ROLE_KEY_PRODUCTION
+
+name: CFB player stats sync
+
+on:
+  schedule:
+    - cron: '0 10 * 8-12,1 *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cfb-player-stats-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync CFB season stats (test + production)
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: node scripts/sync-cfb-player-stats.mjs --target=both

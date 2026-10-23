@@ -1,0 +1,80 @@
+# Daily: every CFB team name The Odds API uses must map to a catalog team (logo + ESPN id).
+# New misses open (or comment on) a GitHub issue with suggested cfbOddsNameEspn.json aliases.
+# GitHub schedule only runs from the default branch (main).
+#
+# Required GitHub repo secrets: THE_ODDS_API_KEY (1 credit per run).
+
+name: CFB odds name audit
+
+on:
+  schedule:
+    - cron: '30 13 * 8-12,1 *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: cfb-odds-name-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit Odds API CFB names
+        id: audit
+        env:
+          THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+        run: node --experimental-strip-types scripts/cfb-odds-name-audit.mjs
+
+      - name: Open or comment GitHub issue
+        if: steps.audit.outputs.unmatched != '0'
+        uses: actions/github-script@v7
+        env:
+          REPORT: ${{ steps.audit.outputs.report }}
+        with:
+          script: |
+            const title = 'CFB odds names without a team match (no logo / ESPN id)'
+            const body = [
+              'These Odds API team names do not map to a catalog team, so the game hub shows a text stub and no logo.',
+              'Add each line to `supabase/functions/_shared/cfbOddsNameEspn.json`, or add the name to `KNOWN_UNMAPPABLE` in `scripts/cfb-odds-name-audit.mjs` when the school is not on ESPN. Then redeploy `lounge-sports-scoreboard`.',
+              '',
+              process.env.REPORT || '',
+            ].join('\n')
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            })
+            const existing = open.find((i) => i.title === title)
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              })
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              })
+            }

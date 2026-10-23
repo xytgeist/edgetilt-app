@@ -900,24 +900,55 @@ const PEEK_DELAY_MS = 1000
 /** How far the pages slide, as a share of the panel width (enough to show the market Yes / No pills). */
 const PEEK_SHARE = 0.8
 
+/** The peek is a hint: it plays on the first few expansions, then stops (and stops early once someone swipes over). */
+const PEEK_KEY = 'edgetilt:fantasyPanelPeeks'
+const PEEK_MAX = 3
+let lastPeekAt = 0
+
+function peeksShown() {
+  try {
+    return Number(localStorage.getItem(PEEK_KEY)) || 0
+  } catch {
+    return PEEK_MAX
+  }
+}
+
+function setPeeksShown(n) {
+  try {
+    localStorage.setItem(PEEK_KEY, String(n))
+  } catch {
+    /* private mode: the in-memory cap still applies this session */
+  }
+}
+
 /**
- * Hints a hidden next page: shortly after the pager appears, its pages slide left a little and spring back.
+ * Hints a hidden next page: shortly after the pager appears, its pages slide over and spring back.
  * Moves the pages (transform), not the scroll position, so snapping is untouched. Skipped once the user touches
- * the pager, and under reduced motion.
+ * the pager, under reduced motion, and after PEEK_MAX expansions (both panels of one row count once).
  */
 function usePagerPeek(ref, enabled) {
   useEffect(() => {
     const el = ref.current
     if (!enabled || !el || typeof window === 'undefined') return undefined
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined
+    if (peeksShown() >= PEEK_MAX) return undefined
     let touched = false
     const onTouch = () => {
       touched = true
+      // Swiping to the markets page means the hint did its job.
+      if (el.scrollLeft > el.clientWidth / 2) setPeeksShown(PEEK_MAX)
     }
     el.addEventListener('pointerdown', onTouch, { passive: true })
     el.addEventListener('scroll', onTouch, { passive: true })
     const timer = window.setTimeout(() => {
       if (touched || el.scrollLeft > 2) return
+      // The other panel of the same row peeks along without spending another play.
+      const now = Date.now()
+      if (now - lastPeekAt > 1500) {
+        if (peeksShown() >= PEEK_MAX) return
+        setPeeksShown(peeksShown() + 1)
+      }
+      lastPeekAt = now
       for (const page of el.children) {
         page.animate?.(
           // Slide out, hold so the market pills read, slide back with a small overshoot.

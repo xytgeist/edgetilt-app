@@ -12,10 +12,10 @@ import {
 
 /**
  * @typedef {{ id: string, heading?: string, paragraphs: string[] }} LegalSection
- * @typedef {{ slug: 'terms' | 'privacy' | 'guidelines' | 'delete-account', title: string, effectiveDate: string, intro?: string, sections: LegalSection[] }} LegalDocument
+ * @typedef {{ slug: 'terms' | 'privacy' | 'guidelines' | 'delete-account' | 'child-safety', title: string, effectiveDate: string, intro?: string, sections: LegalSection[] }} LegalDocument
  */
 
-/** @type {Record<'terms' | 'privacy' | 'guidelines' | 'delete-account', LegalDocument>} */
+/** @type {Record<'terms' | 'privacy' | 'guidelines' | 'delete-account' | 'child-safety', LegalDocument>} */
 export const LEGAL_DOCUMENTS = {
   terms: {
     slug: 'terms',
@@ -399,6 +399,34 @@ export const LEGAL_DOCUMENTS = {
           'Your login, profile, posts, comments, messages, media, and logbook, bankroll, and offers data.',
           'Records we must keep for legal, security, or billing purposes are retained only as long as required.',
         ],
+      },
+    ],
+  },
+  'child-safety': {
+    slug: 'child-safety',
+    title: 'Child safety standards',
+    effectiveDate: LEGAL_EFFECTIVE_DATE,
+    intro:
+      'EdgeTilt is for adults 18 and older. We have zero tolerance for child sexual abuse and exploitation (CSAE), including child sexual abuse material (CSAM).',
+    sections: [
+      {
+        id: 'prohibited',
+        heading: 'What is prohibited',
+        paragraphs: [
+          'Any content or behavior that sexualizes, exploits, or endangers minors, including grooming, sextortion, and sharing CSAM.',
+        ],
+      },
+      {
+        id: 'enforcement',
+        heading: 'What we do',
+        paragraphs: [
+          'We remove violating content, ban the accounts involved, and report apparent CSAM to the National Center for Missing & Exploited Children (NCMEC) and to law enforcement as required by law.',
+        ],
+      },
+      {
+        id: 'report',
+        heading: 'How to report',
+        paragraphs: [`Tap Report on any post, profile, or message in the app, or email ${LEGAL_CONTACT_EMAIL}.`],
       },
     ],
   },

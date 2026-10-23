@@ -11,7 +11,7 @@
 
 import { getLegalDocument } from '../src/features/legal/legalDocuments.js'
 
-const SLUGS = new Set(['terms', 'privacy', 'guidelines', 'delete-account'])
+const SLUGS = new Set(['terms', 'privacy', 'guidelines', 'delete-account', 'child-safety'])
 
 function escapeHtml(s) {
   return String(s ?? '')
@@ -48,6 +48,7 @@ function slugFromRequest(req) {
     if (path === '/terms' || path.endsWith('/terms')) return 'terms'
     if (path === '/guidelines' || path.endsWith('/guidelines')) return 'guidelines'
     if (path === '/delete-account' || path.endsWith('/delete-account')) return 'delete-account'
+    if (path === '/child-safety' || path.endsWith('/child-safety')) return 'child-safety'
   } catch {
     // ignore
   }

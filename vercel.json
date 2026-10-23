@@ -74,6 +74,8 @@
     { "source": "/guidelines/", "destination": "/api/legal-document?slug=guidelines" },
     { "source": "/delete-account", "destination": "/api/legal-document?slug=delete-account" },
     { "source": "/delete-account/", "destination": "/api/legal-document?slug=delete-account" },
+    { "source": "/child-safety", "destination": "/api/legal-document?slug=child-safety" },
+    { "source": "/child-safety/", "destination": "/api/legal-document?slug=child-safety" },
     { "source": "/reset-password", "destination": "/index.html" },
     { "source": "/auth/confirm", "destination": "/index.html" },
     {

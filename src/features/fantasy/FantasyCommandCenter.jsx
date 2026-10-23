@@ -3769,7 +3769,7 @@ function MatchupCard({
  * Bleeds to the screen edge (-mx-4 matches the page gutter). `onSettle` fires once a swipe comes to rest.
  * A tap on a side card centers it; `renderCard(page, isCurrent)` lets the centered card own its tap.
  */
-function MatchupCarousel({ pages, index, onSettle, renderCard, className = '-mt-3 mb-1' }) {
+function MatchupCarousel({ pages, index, onSettle, renderCard, className = '-mt-3 mb-1', leading = null }) {
   const ref = useRef(null)
   const settleRef = useRef(0)
 
@@ -3820,9 +3820,15 @@ function MatchupCarousel({ pages, index, onSettle, renderCard, className = '-mt-
       {pages.map((page, i) => (
         <div
           key={page.key}
-          className={`w-full shrink-0 snap-center snap-always transition-opacity duration-200 ${i === index ? '' : 'opacity-60'}`}
+          className={`relative w-full shrink-0 snap-center snap-always transition-opacity duration-200 ${i === index ? '' : 'opacity-60'}`}
           onClick={i === index ? undefined : () => centerOn(i, 'smooth')}
         >
+          {/* `leading` hangs in the gutter left of the first card and scrolls away with it. */}
+          {i === 0 && leading ? (
+            <div aria-hidden className="pointer-events-none absolute inset-y-0 right-full mr-1.5 flex w-3.5 items-center justify-center">
+              {leading}
+            </div>
+          ) : null}
           {renderCard(page, i === index)}
         </div>
       ))}
@@ -4227,32 +4233,48 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
   }, [entries, cards, group.sport, dismissVersion])
   return (
     <section data-fantasy-sport-carousel={group.sport}>
-      <div className={`flex items-center justify-between gap-2 px-0.5 ${actions ? 'pb-1' : ''}`}>
-        <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-          {group.label}
-          {entries.length > 1 ? (
-            <span className="ml-1.5 font-semibold normal-case tabular-nums text-zinc-600">
-              {index + 1} of {entries.length}
-            </span>
-          ) : null}
-        </span>
-        {actions}
-      </div>
       <MatchupCarousel
         pages={entries}
         index={index}
-        className="-mt-1"
+        className="-mt-2"
+        leading={
+          <span
+            data-fantasy-sport-gutter
+            className="whitespace-nowrap text-[10.5px] font-black uppercase tracking-[0.12em] text-zinc-500 [transform:rotate(180deg)] [writing-mode:vertical-rl]"
+          >
+            {group.label}
+          </span>
+        }
         onSettle={(i) => {
           const entry = entries[i]
           if (entry) setKey(entry.key)
         }}
         renderCard={(entry, isCurrent) => (
-          <button
-            type="button"
+          <div
+            role={isCurrent ? 'button' : undefined}
+            tabIndex={isCurrent ? 0 : undefined}
             onClick={isCurrent ? () => onOpen(entry.lg.id, entry.item.key) : undefined}
-            className="block w-full border-0 bg-transparent p-0 text-left"
+            onKeyDown={
+              isCurrent
+                ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onOpen(entry.lg.id, entry.item.key)
+                    }
+                  }
+                : undefined
+            }
+            className="block w-full text-left"
           >
             <MatchupCard
+              headerActions={
+                isCurrent && actions ? (
+                  // Sync / Manage act on every league; their taps must not open this one.
+                  <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                    {actions}
+                  </span>
+                ) : null
+              }
               page={entry.item}
               teams={entry.leagueDetail.teams}
               week={entry.leagueDetail.week}
@@ -4265,7 +4287,7 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
               categories={leagueCategories(entry.leagueDetail.league)}
               upcoming={group.sport === 'nba' && nbaMatchupUpcoming(entry.leagueDetail.league)}
             />
-          </button>
+          </div>
         )}
       />
       {entries[index] ? (
@@ -4421,7 +4443,6 @@ export default function FantasyCommandCenter({
           }),
         }))
         .filter((g) => g.matchups.length)
-  const lastSynced = (leagues || []).reduce((a, lg) => (lg?.last_sync_at && (!a || lg.last_sync_at > a) ? lg.last_sync_at : a), null)
 
   return (
     <div className="space-y-4">
@@ -4488,7 +4509,7 @@ export default function FantasyCommandCenter({
                 entries={matchups}
                 actions={
                   gi === 0 ? (
-                    <HomeSyncActions syncing={syncing} busy={busy} onSync={onSync} onOpenManage={onOpenManage} syncedIso={lastSynced} />
+                    <HomeSyncActions syncing={syncing} busy={busy} onSync={onSync} onOpenManage={onOpenManage} syncedIso={null} />
                   ) : null
                 }
                 cards={cardsFor(group.sport)}

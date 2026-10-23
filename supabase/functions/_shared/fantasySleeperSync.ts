@@ -533,7 +533,18 @@ export async function hubPinsForUser(
     return { week, mine: [], enemy: [], leagueId: null }
   }
 
-  // Prefer matchup row for Sleeper state week; else latest matchup for that league.
+  // The league stores every game of the week; only the one my team plays counts, and I can be either side.
+  const { data: myTeam } = await admin
+    .from('fantasy_teams')
+    .select('id')
+    .eq('league_id', leagueId)
+    .eq('is_mine', true)
+    .limit(1)
+    .maybeSingle()
+  const me = myTeam?.id ? String(myTeam.id) : null
+  if (!me) return { week, mine: [], enemy: [], leagueId }
+  const mineFilter = `mine_team_id.eq.${me},opp_team_id.eq.${me}`
+  // Prefer the Sleeper state week; else my latest matchup in that league.
   let matchup =
     (
       await admin
@@ -541,6 +552,8 @@ export async function hubPinsForUser(
         .select('mine_team_id, opp_team_id, week')
         .eq('league_id', leagueId)
         .eq('week', week)
+        .or(mineFilter)
+        .limit(1)
         .maybeSingle()
     ).data || null
   if (!matchup) {
@@ -550,6 +563,7 @@ export async function hubPinsForUser(
           .from('fantasy_matchups')
           .select('mine_team_id, opp_team_id, week')
           .eq('league_id', leagueId)
+          .or(mineFilter)
           .order('week', { ascending: false })
           .limit(1)
           .maybeSingle()
@@ -557,8 +571,10 @@ export async function hubPinsForUser(
   }
 
   const pinWeek = matchup?.week != null ? Number(matchup.week) : week
-  const mineTeam = matchup?.mine_team_id ? String(matchup.mine_team_id) : null
-  const oppTeam = matchup?.opp_team_id ? String(matchup.opp_team_id) : null
+  const mineTeam = me
+  const left = matchup?.mine_team_id ? String(matchup.mine_team_id) : null
+  const right = matchup?.opp_team_id ? String(matchup.opp_team_id) : null
+  const oppTeam = left === me ? right : right === me ? left : null
 
   const loadStarters = async (teamId: string | null) => {
     if (!teamId) return [] as string[]

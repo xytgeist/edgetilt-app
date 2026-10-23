@@ -471,11 +471,13 @@ function sideOutlook(roster, cards, scoring, sport, lockIn = false, upcoming = f
   let fromLine = false
   let remaining = 0
   let outlookOk = false
+  let kicked = false
   let allFinal = starters.length > 0
   for (const row of starters) {
     const card = row?.sleeper_id ? cards?.[row.sleeper_id] : null
     if (!card || sideStatus(card) !== 'Final') allFinal = false
     if (!card) continue
+    if (gameStarted(card)) kicked = true
     const livePts = pointsOf(card, scoring, sport)
     // A starter ruled out projects zero until his game starts (hosts score him the same way).
     const ruledOut = !livePts && injuryKey(row.injury_status) === 'out'
@@ -501,6 +503,7 @@ function sideOutlook(roster, cards, scoring, sport, lockIn = false, upcoming = f
   }
   return {
     live: started,
+    kicked: kicked || started,
     final: started && allFinal,
     fromLine,
     projected: projectedN ? projected : null,
@@ -518,6 +521,7 @@ function nbaSideOutlook(starters, cards, scoring, lockIn = false, upcoming = fal
   let boost = 0
   let remaining = 0
   let started = false
+  let kicked = false
   let outlookOk = false
   let allDone = starters.length > 0
   for (const row of starters) {
@@ -532,6 +536,7 @@ function nbaSideOutlook(starters, cards, scoring, lockIn = false, upcoming = fal
       projectedN += 1
     }
     if (w.played > 0 || w.host) started = true
+    if (w.live) kicked = true
     if (w.live || w.gamesLeft > 0) allDone = false
     scored += w.scored
     boost += w.boost
@@ -540,6 +545,7 @@ function nbaSideOutlook(starters, cards, scoring, lockIn = false, upcoming = fal
   }
   return {
     live: started,
+    kicked: kicked || started,
     final: started && allDone,
     fromLine: false,
     boost,
@@ -3541,8 +3547,15 @@ function leagueFormatLabel(provider, sport, settings) {
 
 function MatchupCard({ page, teams, week, provider, settings = null, leagueName = '', cards, scoring, sport, categories = null, upcoming = false }) {
   const lockIn = nbaLockIn(provider, sport, settings)
-  const leftOut = sideOutlook(page.roster, cards, scoring, sport, lockIn, upcoming)
-  const rightOut = sideOutlook(page.oppRoster, cards, scoring, sport, lockIn, upcoming)
+  const leftSide = sideOutlook(page.roster, cards, scoring, sport, lockIn, upcoming)
+  const rightSide = sideOutlook(page.oppRoster, cards, scoring, sport, lockIn, upcoming)
+  // Once either lineup has a game under way, both sides show a live score (0.0 until they score), like the hosts.
+  const weekStarted =
+    leftSide.kicked || rightSide.kicked || Number(page.leftScore) > 0 || Number(page.rightScore) > 0
+  const asLive = (o) =>
+    weekStarted && !o.live ? { ...o, live: true, final: false, scored: 0, outlook: o.outlook ?? o.projected } : o
+  const leftOut = asLive(leftSide)
+  const rightOut = asLive(rightSide)
   const leftAccent = useTeamAccent(page.left?.avatar_url, page.left?.id || page.left?.team_name)
   const rightRaw = useTeamAccent(page.right?.avatar_url, page.right?.id || page.right?.team_name)
   const cat = useCategoryMatchup(page, cards, categories, upcoming)

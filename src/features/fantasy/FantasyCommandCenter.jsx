@@ -896,10 +896,54 @@ function sideStatus(card) {
   return 'Proj'
 }
 
+const PEEK_DELAY_MS = 1000
+const PEEK_PX = 48
+
+/**
+ * Hints a hidden next page: shortly after the pager appears, its pages slide left a little and spring back.
+ * Moves the pages (transform), not the scroll position, so snapping is untouched. Skipped once the user touches
+ * the pager, and under reduced motion.
+ */
+function usePagerPeek(ref, enabled) {
+  useEffect(() => {
+    const el = ref.current
+    if (!enabled || !el || typeof window === 'undefined') return undefined
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined
+    let touched = false
+    const onTouch = () => {
+      touched = true
+    }
+    el.addEventListener('pointerdown', onTouch, { passive: true })
+    el.addEventListener('scroll', onTouch, { passive: true })
+    const timer = window.setTimeout(() => {
+      if (touched || el.scrollLeft > 2) return
+      for (const page of el.children) {
+        page.animate?.(
+          [
+            { transform: 'translateX(0)' },
+            { transform: `translateX(-${PEEK_PX}px)`, offset: 0.4, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
+            { transform: 'translateX(6px)', offset: 0.75, easing: 'ease-in-out' },
+            { transform: 'translateX(0)' },
+          ],
+          { duration: 900, easing: 'ease-out' },
+        )
+      }
+    }, PEEK_DELAY_MS)
+    return () => {
+      window.clearTimeout(timer)
+      el.removeEventListener('pointerdown', onTouch)
+      el.removeEventListener('scroll', onTouch)
+    }
+  }, [ref, enabled])
+}
+
 /** Expanded player panel. Page 1 is this game's totals (or projection), swipe left for every market. */
 function SidePanel({ row, card }) {
   const [page, setPage] = useState(0)
   const [newsOpen, setNewsOpen] = useState(false)
+  const pagerRef = useRef(null)
+  const hasMarkets = Boolean(card?.props?.length)
+  usePagerPeek(pagerRef, hasMarkets)
   if (!row) return <div />
   const status = sideStatus(card)
   const live = status !== 'Proj'
@@ -912,6 +956,7 @@ function SidePanel({ row, card }) {
   return (
     <div data-fantasy-side-panel className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950/60">
       <div
+        ref={pagerRef}
         className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={(e) => {
           const el = e.currentTarget

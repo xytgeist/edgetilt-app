@@ -4682,6 +4682,12 @@ html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] button[data-on]
 html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] > span {
   color: #71717a !important;
 }
+/* Compact Go to Fantasy pill in the switcher row: keep its own colors over the switcher's button rules. */
+html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] [data-game-hub-go-fantasy] {
+  color: #18181b !important;
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
 [data-fantasy-h2h-wash] {
   background: #111113;
 }

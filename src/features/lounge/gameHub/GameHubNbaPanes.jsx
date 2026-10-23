@@ -260,10 +260,8 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
   if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
   if (!rows.length) return <div className="py-10 text-center text-sm text-zinc-500">No fantasy board for this game yet.</div>
 
-  const caption = status === 'post' ? 'Final · pts' : status === 'in' ? 'Live · pts' : 'Projected · pts'
   return (
     <div data-lounge-game-fantasy className="space-y-4 py-3">
-      <GoToFantasyButton game={game} />
       <div data-fantasy-scoring-bar className="flex items-center justify-between gap-3 px-1">
         {leagues.length > 1 ? (
           <div role="radiogroup" aria-label="Fantasy league" className="flex min-w-0 rounded-full bg-zinc-900 p-0.5 ring-1 ring-zinc-800">
@@ -291,7 +289,7 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
             {league?.name || 'Default points'}
           </span>
         )}
-        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{caption}</span>
+        <GoToFantasyButton game={game} compact />
       </div>
       {battles.length ? <FantasyMatchupStack matchups={battles} game={game} gameStatus={status} faceFor={faceFor} /> : null}
 

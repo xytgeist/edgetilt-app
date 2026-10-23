@@ -157,15 +157,18 @@ export function loadGameRosterLeagues(supabase, sleeperIds, sport = 'nfl') {
     const leagueIds = [...new Set(nflTeams.map((team) => String(team.league.id)))]
     const { data: matchups, error: matchErr } = await supabase
       .from('fantasy_matchups')
-      .select('league_id, opp_team_id')
+      .select('league_id, mine_team_id, opp_team_id')
       .in('league_id', leagueIds)
       .eq('week', week)
     if (seq !== loadSeq) return
     const opponents = {}
     if (!matchErr) {
+      // Only the team playing me this week: hosts store every game in the league, and either side can be mine.
       const leaguesByOpp = new Map()
       for (const matchup of matchups || []) {
-        const oppId = String(matchup?.opp_team_id || '').trim()
+        const left = String(matchup?.mine_team_id || '').trim()
+        const right = String(matchup?.opp_team_id || '').trim()
+        const oppId = teamById.has(left) ? right : teamById.has(right) ? left : ''
         const leagueId = String(matchup?.league_id || '').trim()
         if (!oppId || !leagueId) continue
         const list = leaguesByOpp.get(oppId) || []

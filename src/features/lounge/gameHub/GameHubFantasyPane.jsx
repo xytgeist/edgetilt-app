@@ -774,10 +774,8 @@ function leagueShortName(name) {
 }
 
 /** Connected league when one is synced. Otherwise the device Std / Half / PPR toggle. */
-function FantasyScoringBar({ scoring, status, leagues, league, onSelectLeague }) {
-  const caption = status === 'post' ? 'Final · pts' : status === 'in' ? 'Live · pts' : 'Projected · pts'
+function FantasyScoringBar({ scoring, leagues, league, onSelectLeague, action = null }) {
   if (leagues?.length) {
-    const leagueCaption = status === 'pre' ? '' : caption
     return (
       <div data-fantasy-scoring-bar className="flex items-center justify-between gap-3 px-1">
         {leagues.length === 1 ? (
@@ -811,9 +809,7 @@ function FantasyScoringBar({ scoring, status, leagues, league, onSelectLeague })
             })}
           </div>
         )}
-        {leagueCaption ? (
-          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{leagueCaption}</span>
-        ) : null}
+        {action}
       </div>
     )
   }
@@ -844,13 +840,16 @@ function FantasyScoringBar({ scoring, status, leagues, league, onSelectLeague })
           )
         })}
       </div>
-      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{caption}</span>
+      {action}
     </div>
   )
 }
 
-/** Opens the Fantasy tab; closing Fantasy comes back to this game (and its slate, when opened from one). */
-export function GoToFantasyButton({ game }) {
+/**
+ * Opens the Fantasy tab; closing Fantasy comes back to this game (and its slate, when opened from one).
+ * `compact`: a small pill that shares the league switcher row.
+ */
+export function GoToFantasyButton({ game, compact = false }) {
   const sports = useLoungeSportsFeed()
   const onOpen = () => {
     if (typeof window === 'undefined') return
@@ -862,6 +861,21 @@ export function GoToFantasyButton({ game }) {
     window.dispatchEvent(new PopStateEvent('popstate'))
     // Hub + slate are body portals over the still-mounted feed, so they would cover Fantasy.
     sports?.closeSlate?.()
+  }
+  if (compact) {
+    return (
+      <button
+        type="button"
+        data-game-hub-go-fantasy
+        data-compact
+        onClick={onOpen}
+        className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900 py-1 pl-2 pr-1.5 text-[11px] font-semibold text-zinc-100 touch-manipulation active:bg-zinc-800/80 [-webkit-tap-highlight-color:transparent]"
+      >
+        <Shirt className="h-3.5 w-3.5 text-sky-400" strokeWidth={2.25} aria-hidden />
+        <span className="text-zinc-100">Fantasy</span>
+        <ChevronRight className="h-3.5 w-3.5 text-zinc-500" strokeWidth={2.25} aria-hidden />
+      </button>
+    )
   }
   return (
     <button
@@ -989,13 +1003,12 @@ export default function GameHubFantasyPane({
 
   return (
     <div data-lounge-game-fantasy className="space-y-4 py-3">
-      <GoToFantasyButton game={game} />
       <FantasyScoringBar
         scoring={scoring}
-        status={status}
         leagues={leagues}
         league={league}
         onSelectLeague={selectLeague}
+        action={<GoToFantasyButton game={game} compact />}
       />
       {liveOrFinal ? null : <FantasyMatchupStack matchups={matchups} game={game} gameStatus={status} />}
 

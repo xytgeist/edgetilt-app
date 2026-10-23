@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
 import { nbaMatchupUpcoming, nbaWeekOf } from './fantasyNbaWeek.js'
@@ -1837,23 +1837,10 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
   const empty = plan?.empty || []
   const fills = useOpenSlotFills({ supabaseClient, detail, empty, sport })
   const lockCalls = plan?.lockCalls || []
-  const dismissed = plan?.dismissed || []
-  if (!plan || (!plan.moves.length && !empty.length && !lockCalls.length && !dismissed.length)) return null
+  // Dismissed swaps come back from the count on the Roster tab.
+  if (!plan || (!plan.moves.length && !empty.length && !lockCalls.length)) return null
   const host = providerLabel(detail?.league?.provider)
   const moves = plan.moves
-  const restore = dismissed.length ? (
-    <button
-      type="button"
-      data-fantasy-dismissed-restore
-      onClick={() => restoreMoves(plan.dismissLeague, plan.dismissPeriod)}
-      className="text-[10px] font-semibold text-zinc-500 underline-offset-2 hover:underline"
-    >
-      {dismissed.length} dismissed · Show
-    </button>
-  ) : null
-  if (!moves.length && !empty.length && !lockCalls.length) {
-    return <div className="flex justify-end px-1">{restore}</div>
-  }
   return (
     <div data-fantasy-start-sit className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
       <div className="flex items-center justify-between gap-2">
@@ -1945,7 +1932,6 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
           : ''}
         {plan.inferred ? ' Slots read from your current lineup; Sync to load league slots.' : ''}
       </p>
-      {restore ? <div className="mt-1 flex justify-end">{restore}</div> : null}
     </div>
   )
 }
@@ -3625,7 +3611,21 @@ function leagueFormatLabel(provider, sport, settings) {
   return ''
 }
 
-function MatchupCard({ page, teams, week, provider, settings = null, leagueName = '', cards, scoring, sport, categories = null, upcoming = false }) {
+function MatchupCard({
+  page,
+  teams,
+  week,
+  provider,
+  settings = null,
+  leagueName = '',
+  cards,
+  scoring,
+  sport,
+  categories = null,
+  upcoming = false,
+  onBack = null,
+  headerActions = null,
+}) {
   const lockIn = nbaLockIn(provider, sport, settings)
   const leftSide = sideOutlook(page.roster, cards, scoring, sport, lockIn, upcoming)
   const rightSide = sideOutlook(page.oppRoster, cards, scoring, sport, lockIn, upcoming)
@@ -3659,18 +3659,32 @@ function MatchupCard({ page, teams, week, provider, settings = null, leagueName 
       }}
     >
       <span aria-hidden className="fantasy-vs-glow pointer-events-none absolute inset-0" />
-      {leagueName || format ? (
+      {leagueName || format || onBack || headerActions ? (
         <div data-fantasy-card-league className="relative flex items-center gap-2 px-3 pt-2.5">
-          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-zinc-400">{leagueName}</span>
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="All leagues"
+              data-fantasy-card-back
+              className="-ml-1 flex min-w-0 flex-1 items-center gap-0.5 text-left text-[11px] font-semibold text-zinc-400 touch-manipulation"
+            >
+              <ChevronLeft size={14} strokeWidth={2.5} className="shrink-0" aria-hidden />
+              <span className="min-w-0 truncate">{leagueName || 'All leagues'}</span>
+            </button>
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-zinc-400">{leagueName}</span>
+          )}
           {format ? (
             <span className="shrink-0 rounded-full border border-zinc-700 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-zinc-300">
               {format}
             </span>
           ) : null}
+          {headerActions}
         </div>
       ) : null}
       {/* Names get the full width on top; the site badge sits between the scores below. */}
-      <div className={`relative grid gap-3 px-3 ${leagueName || format ? 'pt-1.5' : 'pt-3'} ${page.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
+      <div className={`relative grid gap-3 px-3 ${leagueName || format || onBack || headerActions ? 'pt-1.5' : 'pt-3'} ${page.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
         <TeamHead team={page.left} teams={teams} align="left" />
         {page.right ? <TeamHead team={page.right} teams={teams} align="right" /> : null}
       </div>
@@ -4346,6 +4360,8 @@ export default function FantasyCommandCenter({
     }
   }, [nflLeague, current, cards, detail])
   const tools = nflLeague ? nflTools(nflState) : TOOLS
+  const rosterPlan = useStartSitPlan(detail, cards, leagueSport)
+  const dismissedCount = rosterPlan?.dismissed?.length || 0
   // Tool state is shared across leagues: an id this league's pills do not have (NBA Live, NFL Plays pre-kickoff) opens Roster.
   const shownTool = nflLeague && tool === 'live' ? 'start' : tools.some((t) => t.id === tool) ? tool : DEFAULT_TOOL
 
@@ -4392,7 +4408,8 @@ export default function FantasyCommandCenter({
 
   return (
     <div className="space-y-4">
-      {leagueId || !homeGroups.length ? (
+      {/* League view with a matchup card: back / Sync / Manage ride the card's league row instead. */}
+      {(leagueId ? !current : !homeGroups.length) ? (
       <div className="flex items-center justify-between gap-2">
         {leagueId ? (
           <button
@@ -4497,9 +4514,15 @@ export default function FantasyCommandCenter({
                 const item = pages[i]
                 if (item) setPageKey(item.key)
               }}
-              renderCard={(page) => (
+              renderCard={(page, isCurrent) => (
                 <MatchupCard
                   page={page}
+                  onBack={isCurrent ? () => setLeagueId(null) : null}
+                  headerActions={
+                    isCurrent ? (
+                      <HomeSyncActions syncing={syncing} busy={busy} onSync={onSync} onOpenManage={onOpenManage} syncedIso={null} />
+                    ) : null
+                  }
                   teams={detail?.teams || []}
                   week={detail?.week}
                   provider={selected?.provider || detail?.league?.provider}
@@ -4519,26 +4542,46 @@ export default function FantasyCommandCenter({
             <CategoryBoard page={current} cards={cards} categories={leagueCategories(detail?.league)} upcoming={nbaMatchupUpcoming(detail?.league)} />
           ) : null}
 
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div data-fantasy-tool-tabs role="tablist" className="-mt-1 flex gap-5 overflow-x-auto border-b border-zinc-800 px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {tools.map((item) => {
               const on = item.id === shownTool
+              const showDismissed = item.id === 'start' && dismissedCount > 0
               return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setTool(item.id)}
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold ${
-                    on ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
-                  }`}
-                >
-                  {item.live ? (
-                    <span data-fantasy-live-dot aria-hidden className="relative inline-flex h-1.5 w-1.5">
-                      <span className="fantasy-live-dot-halo absolute inline-flex h-full w-full rounded-full motion-safe:animate-ping" />
-                      <span className="fantasy-live-dot-core relative inline-flex h-1.5 w-1.5 rounded-full" />
-                    </span>
+                <div key={item.id} className="relative flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => setTool(item.id)}
+                    data-fantasy-tool-tab={on ? 'on' : 'off'}
+                    className={`inline-flex items-center gap-1.5 border-b-2 pb-2 pt-1 text-[14px] font-semibold ${
+                      on ? 'border-zinc-100 text-zinc-100' : 'border-transparent text-zinc-500'
+                    }`}
+                  >
+                    {item.live ? (
+                      <span data-fantasy-live-dot aria-hidden className="relative inline-flex h-1.5 w-1.5">
+                        <span className="fantasy-live-dot-halo absolute inline-flex h-full w-full rounded-full motion-safe:animate-ping" />
+                        <span className="fantasy-live-dot-core relative inline-flex h-1.5 w-1.5 rounded-full" />
+                      </span>
+                    ) : null}
+                    {item.label}
+                  </button>
+                  {showDismissed ? (
+                    <button
+                      type="button"
+                      data-fantasy-dismissed-restore
+                      onClick={() => {
+                        setTool('start')
+                        restoreMoves(rosterPlan.dismissLeague, rosterPlan.dismissPeriod)
+                      }}
+                      aria-label={`Show ${dismissedCount} dismissed suggestion${dismissedCount > 1 ? 's' : ''}`}
+                      title="Show dismissed"
+                      className="mb-1.5 rounded-full bg-zinc-800 px-1.5 py-px text-[10px] font-bold tabular-nums text-zinc-300"
+                    >
+                      {dismissedCount}
+                    </button>
                   ) : null}
-                  {item.label}
-                </button>
+                </div>
               )
             })}
           </div>

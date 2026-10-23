@@ -4,6 +4,7 @@
  * A trailing + means the same player is on more than one of their teams.
  */
 import { useEffect, useState } from 'react'
+import { fantasyLeagueDisplayName } from '../../fantasy/fantasyLeagueName.js'
 
 const CHANGE_EVENT = 'edgetilt:game-hub-roster-leagues'
 
@@ -157,7 +158,7 @@ export function loadGameRosterLeagues(supabase, sleeperIds, sport = 'nfl') {
       if (!bucket.leagues.some((item) => item.id === String(league.id))) {
         bucket.leagues.push({
           id: String(league.id),
-          name: String(league.name || 'League').trim() || 'League',
+          name: fantasyLeagueDisplayName(String(league.name || 'League')).trim() || 'League',
           primary: league.is_primary === true,
           bench: String(row?.slot || '') !== 'starter',
           slot: String(row?.slot || ''),

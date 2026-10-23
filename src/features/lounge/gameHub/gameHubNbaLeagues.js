@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react'
 import { leagueRates } from '../../fantasy/fantasyBoxScore.js'
+import { fantasyLeagueDisplayName } from '../../fantasy/fantasyLeagueName.js'
 
 const STORAGE_KEY = 'edgetilt:gameHubNbaLeague'
 const CHANGE_EVENT = 'edgetilt:game-hub-nba-league'
@@ -74,7 +75,7 @@ export function loadNbaLeagueRules(supabase) {
             .filter((row) => leagueRates(row.scoring, 'nba'))
             .map((row) => ({
               id: String(row.id),
-              name: String(row.name || 'League').trim() || 'League',
+              name: fantasyLeagueDisplayName(String(row.name || 'League')).trim() || 'League',
               isPrimary: row.is_primary === true,
               scoring: row.scoring,
             }))

@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import { leagueRates } from '../../fantasy/fantasyBoxScore.js'
 import { useFantasyScoring } from './gameHubFantasyScoring.js'
+import { fantasyLeagueDisplayName } from '../../fantasy/fantasyLeagueName.js'
 
 const STORAGE_KEY = 'edgetilt:gameHubFantasyLeague'
 const CHANGE_EVENT = 'edgetilt:game-hub-fantasy-league'
@@ -109,7 +110,7 @@ export function loadNflLeagueRules(supabase) {
           if (!rates) return null
           return {
             id: String(row.id),
-            name: String(row.name || 'League').trim() || 'League',
+            name: fantasyLeagueDisplayName(String(row.name || 'League')).trim() || 'League',
             isPrimary: row.is_primary === true,
             scoring: row.scoring,
             rates,

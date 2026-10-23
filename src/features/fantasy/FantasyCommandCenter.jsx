@@ -51,6 +51,7 @@ import {
   valueContext,
 } from './fantasyTrades.js'
 import { playoffFormat, simulateLeague, weekPairs } from './fantasyLeagueOutlook.js'
+import { fantasyLeagueDisplayName } from './fantasyLeagueName.js'
 import {
   dismissMove,
   dismissPeriod,
@@ -3635,23 +3636,6 @@ function projectedFinish(outlook, hostScore) {
 }
 
 /** NBA league formats vary a lot (one host can run five); the chip tells same-host leagues apart. NFL is all points. */
-/**
- * Host default names spell out the format ("New Orleans Pro H2H Most Categories League", "Yahoo H2H-Pts 272329").
- * The format chip already says it, so the card shows the rest. Falls back to the full name if nothing is left.
- */
-const LEAGUE_FORMAT_WORDS =
-  /\b(h2h(?:[\s-]*(?:pts|points|cat|cats|categories))?|head[\s-]*to[\s-]*head|most\s+categories|most\s+cats|categories|cats|season\s+points|total\s+points|points|pts|ppr|roto(?:sserie)?|high\s+score|lock[\s-]*in)\b/gi
-function leagueNameWithoutFormat(name) {
-  const full = String(name || '').trim()
-  const rest = full
-    .replace(LEAGUE_FORMAT_WORDS, ' ')
-    .replace(/\bleague\b\s*$/i, ' ')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/\s*[-·|:]\s*$/, '')
-    .trim()
-  return rest || full
-}
-
 function leagueFormatLabel(provider, sport, settings) {
   if (String(sport || '').toLowerCase() !== 'nba') return ''
   if (String(provider || '').toLowerCase() === 'sleeper') return 'Lock-In'
@@ -3705,7 +3689,7 @@ function MatchupCard({
   const lo = projectedFinish(leftOut, page.leftScore)
   const ro = page.right ? projectedFinish(rightOut, page.rightScore) : null
   const format = leagueFormatLabel(provider, sport, settings)
-  const shownName = format ? leagueNameWithoutFormat(leagueName) : leagueName
+  const shownName = fantasyLeagueDisplayName(leagueName)
   return (
     <div
       className="fantasy-card-lift relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900"

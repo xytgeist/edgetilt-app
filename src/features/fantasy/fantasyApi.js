@@ -1,6 +1,7 @@
 /**
  * Fantasy Connect client … Sleeper + Yahoo link/sync + RLS reads.
  */
+import { withLeagueDisplayName } from './fantasyLeagueName.js'
 
 /** supabase-js hides the JSON `{ error }` behind "non-2xx status code". */
 async function messageFromEdgeError(error, fallback) {
@@ -248,7 +249,7 @@ export async function loadFantasySnapshot(supabase) {
 
   return {
     connections: connections || [],
-    leagues: leagues || [],
+    leagues: (leagues || []).map(withLeagueDisplayName),
   }
 }
 
@@ -484,7 +485,7 @@ export async function loadLeagueDetail(supabase, leagueId) {
   const oppRoster = oppTeamId ? rostersByTeam[oppTeamId] || [] : []
 
   return {
-    league,
+    league: withLeagueDisplayName(league),
     teams: teams || [],
     week,
     matchups,

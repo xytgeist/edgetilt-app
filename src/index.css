@@ -11943,6 +11943,20 @@ html.light [data-fantasy-home] .fantasy-live-glow {
 html.light [data-fantasy-home] .fantasy-live-pts {
   color: #15803d !important;
 }
+[data-fantasy-home] .fantasy-live-dot-halo {
+  background-color: rgb(52 211 153 / 0.7);
+}
+[data-fantasy-home] .fantasy-live-dot-core {
+  background-color: #34d399;
+  box-shadow: 0 0 6px rgb(52 211 153 / 0.9);
+}
+html.light [data-fantasy-home] .fantasy-live-dot-halo {
+  background-color: rgb(22 163 74 / 0.45);
+}
+html.light [data-fantasy-home] .fantasy-live-dot-core {
+  background-color: #16a34a;
+  box-shadow: 0 0 5px rgb(22 163 74 / 0.6);
+}
 /* Light position pills: solid position color, white text, no ring */
 html.light [data-fantasy-home] [data-pos-pill] { color: #ffffff !important; --tw-ring-color: transparent !important; }
 html.light [data-fantasy-home] [data-pos-pill='QB'] { background-color: #1d4ed8 !important; }

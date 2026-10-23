@@ -61,7 +61,7 @@ Running list of shipped work that still needs a real-data check. **Add a line wh
 
 - [ ] Game hub Fantasy: my bench players show blue with a dashed outline + BN (IR / Taxi) chip; opponent bench players are not red (NFL + NBA, dark + light).
 
-- [ ] Matchup card: once either lineup has a game under way, both sides show a live score (0.0 until they score) with the colored projected finish under it; the LIVE label only on a side with a starter in a game right now (FINAL once all done), no label otherwise, not just the side with a player playing (NFL + NBA points; category leagues unchanged).
+- [ ] Matchup card: once either lineup has a game under way, both sides show a live score (0.0 until they score) with the colored projected finish under it; the LIVE label (with a pulsing green dot, dark + light) only on a side with a starter in a game right now (FINAL once all done), no label otherwise, not just the side with a player playing (NFL + NBA points; category leagues unchanged).
 
 **Checked**
 - [x] 2026-10-22 Real schedules on prod (Edge Lord sync, approved by Ryan): ESPN NBA Dallas / New Orleans / Utah weeks 2-19 (5 games), ESPN NFL 8-14, Sleeper 2K 2-21 (3 games), Yahoo NBA H2H-Pts / H2H-Cat / High Score 3-19, Yahoo NFL 8-14 (6 games); Roto / Season Points / pre-draft leagues save none (expected). First Yahoo sync with 4 schedule reads took 63s; later syncs reuse the schedule for 7 days.

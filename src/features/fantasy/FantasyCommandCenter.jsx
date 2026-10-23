@@ -3489,6 +3489,7 @@ function ScoreLine({ outlook, hostScore, align, lead, projUp, projFinal: finish 
   const score = displayScore(outlook, hostScore)
   const projFinal = score.live && !outlook?.final && finish != null ? finish.toFixed(1) : null
   const end = align === 'right'
+  const playingNow = score.live && !outlook?.final && outlook?.playing
   return (
     <div className={`min-w-0 ${end ? 'text-right' : 'text-left'}`}>
       <div
@@ -3499,8 +3500,14 @@ function ScoreLine({ outlook, hostScore, align, lead, projUp, projFinal: finish 
         {score.text}
       </div>
       <div className={`mt-1 flex items-baseline gap-1.5 ${end ? 'justify-end' : ''}`}>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-          {score.live ? (outlook?.final ? 'Final' : outlook?.playing ? 'Live' : '') : score.text === '–' ? '' : 'Proj'}
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          {playingNow ? (
+            <span data-fantasy-live-dot aria-hidden className="relative inline-flex h-1.5 w-1.5">
+              <span className="fantasy-live-dot-halo absolute inline-flex h-full w-full rounded-full motion-safe:animate-ping" />
+              <span className="fantasy-live-dot-core relative inline-flex h-1.5 w-1.5 rounded-full" />
+            </span>
+          ) : null}
+          {score.live ? (outlook?.final ? 'Final' : playingNow ? 'Live' : '') : score.text === '–' ? '' : 'Proj'}
         </span>
         {projFinal ? (
           <span className={`text-[11px] font-bold tabular-nums ${projUp ? 'fantasy-proj-up' : 'fantasy-proj-down'}`}>

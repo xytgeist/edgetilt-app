@@ -34,6 +34,7 @@ import EdgeStatusBarScrollPlate from './EdgeStatusBarScrollPlate.jsx'
  */
 const defaultShellContentClassName = 'px-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
 const TUCK_HINT_KEY = 'edge.titleBarTuckHint.v1'
+const TUCK_RETRY_MS = 1000
 
 /** Auto-tuck: fully shown = 1, tucked = a small sliver at the top center where the pull tab sits. */
 function shrinkScale(reveal) {
@@ -250,13 +251,13 @@ export default function ScrollLinkedEdgeTitleBarShell({
   const tuck = useCallback(() => {
     const el = feedScrollRef.current
     const bar = titleBarRef.current
-    if (!el || !bar) return
+    if (!el || !bar) return false
     // Never pull the bar out from under its open menu.
-    if (bar.querySelector('[aria-expanded="true"]')) return
+    if (bar.querySelector('[aria-expanded="true"]')) return false
     const h = titleBarHeight || Math.ceil(bar.getBoundingClientRect().height)
     if (el.scrollTop < h) {
-      // Near the top the content slides up into the bar's space; a page that fits has nothing to gain.
-      if (el.scrollHeight - el.clientHeight < h) return
+      // Near the top the content slides up into the bar's space; a page that fits (or is still loading) waits.
+      if (el.scrollHeight - el.clientHeight < h) return false
       const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
       el.scrollTo({ top: h, behavior: reduce ? 'auto' : 'smooth' })
     }
@@ -270,6 +271,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
     } catch {
       /* private mode */
     }
+    return true
     // feedScrollRef is a stable ref object
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titleBarHeight, animateReveal])
@@ -284,8 +286,10 @@ export default function ScrollLinkedEdgeTitleBarShell({
       if (titleBarRef.current?.querySelector('[aria-expanded="true"]')) {
         tuckActivityRef.current = Date.now()
         timer = window.setTimeout(check, autoTuckMs)
-      } else if (idle >= autoTuckMs) tuck()
-      else timer = window.setTimeout(check, autoTuckMs - idle)
+      } else if (idle >= autoTuckMs) {
+        // Skipped (content still loading, page fits): keep trying until it can tuck.
+        if (!tuck()) timer = window.setTimeout(check, TUCK_RETRY_MS)
+      } else timer = window.setTimeout(check, autoTuckMs - idle)
     }
     timer = window.setTimeout(check, autoTuckMs)
     return () => window.clearTimeout(timer)

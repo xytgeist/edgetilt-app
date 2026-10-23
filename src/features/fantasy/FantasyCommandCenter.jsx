@@ -897,7 +897,8 @@ function sideStatus(card) {
 }
 
 const PEEK_DELAY_MS = 1000
-const PEEK_PX = 48
+/** How far the pages slide, as a share of the panel width (enough to show the market Yes / No pills). */
+const PEEK_SHARE = 0.8
 
 /**
  * Hints a hidden next page: shortly after the pager appears, its pages slide left a little and spring back.
@@ -921,7 +922,7 @@ function usePagerPeek(ref, enabled) {
         page.animate?.(
           [
             { transform: 'translateX(0)' },
-            { transform: `translateX(-${PEEK_PX}px)`, offset: 0.4, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
+            { transform: `translateX(-${PEEK_SHARE * 100}%)`, offset: 0.4, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
             { transform: 'translateX(6px)', offset: 0.75, easing: 'ease-in-out' },
             { transform: 'translateX(0)' },
           ],

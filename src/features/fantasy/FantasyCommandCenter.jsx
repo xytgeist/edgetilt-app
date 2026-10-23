@@ -3684,14 +3684,15 @@ function MatchupCard({
               onClick={onBack}
               aria-label="All leagues"
               data-fantasy-card-back
-              className="-ml-1 flex min-w-0 flex-1 items-center gap-0.5 text-left text-[11px] font-semibold text-zinc-400 touch-manipulation"
+              className="-ml-1 flex min-w-0 items-center gap-0.5 text-left text-[11px] font-semibold text-zinc-400 touch-manipulation"
             >
               <ChevronLeft size={14} strokeWidth={2.5} className="shrink-0" aria-hidden />
-              <span className="min-w-0 truncate">{leagueName || 'All leagues'}</span>
+              <span data-fantasy-card-title className="min-w-0 truncate">{leagueName || 'All leagues'}</span>
             </button>
           ) : (
-            <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-zinc-400">{leagueName}</span>
+            <span data-fantasy-card-title className="min-w-0 truncate text-[11px] font-semibold text-zinc-400">{leagueName}</span>
           )}
+          <span className="min-w-0 flex-1" aria-hidden />
           {format ? (
             <span className="shrink-0 rounded-full border border-zinc-700 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-zinc-300">
               {format}

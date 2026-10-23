@@ -11871,6 +11871,36 @@ html.light [data-fantasy-home] .bg-sky-500\/10 {
 html.light [data-fantasy-home] .text-sky-300 {
   color: #0369a1 !important;
 }
+/* Links (Details / Hide / Open, schedule "today"): regular light-mode blue, not raw sky teal. */
+html.light [data-fantasy-home] .text-sky-400 {
+  color: #2563eb !important;
+}
+/* Matchup card league row reads as a title area: league name chip + Sync / Manage chips share one fill. */
+html.light [data-fantasy-home] [data-fantasy-card-league] > [data-fantasy-card-title],
+html.light [data-fantasy-home] [data-fantasy-card-back] {
+  display: inline-flex;
+  align-items: center;
+  height: 1.75rem;
+  margin-left: 0;
+  padding: 0 0.7rem;
+  border-radius: 9999px;
+  background-color: rgb(255 255 255 / 0.72);
+  border: 1px solid rgb(255 255 255 / 0.72);
+  color: #18181b !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+html.light [data-fantasy-home] [data-fantasy-card-back] {
+  padding-left: 0.45rem;
+}
+html.light [data-fantasy-home] [data-fantasy-card-back] [data-fantasy-card-title] {
+  color: inherit !important;
+}
+html.light [data-fantasy-home] [data-fantasy-card-league] [data-fantasy-home-actions] button {
+  background-color: rgb(255 255 255 / 0.72);
+  border-color: rgb(255 255 255 / 0.72) !important;
+  color: #3f3f46 !important;
+}
 html.light [data-fantasy-home] .text-rose-300,
 html.light [data-fantasy-home] .text-rose-400 {
   color: #be123c !important;

@@ -263,7 +263,7 @@ Excluded users do not get new **`app_section_visits`** rows; Monitor aggregates 
 
 ### App Store Review logins (production)
 
-Apple Sign-In Information is **`appstorereview@edgetilt.com`** (`@appstorereview`, `38444254-…`). Second CallKit login **`appstorereview2@edgetilt.com`** (`@appstorereview2`, `4260f0f5-…`) … created Sep 28, 2026, email pre-confirmed, `role = user`, same password as the ASC demo field, analytics-excluded. They follow each other. Do not give reviewers `@theo_ops`.
+Apple Sign-In Information is **`appstorereview@edgetilt.com`** (`@appstorereview`, `38444254-…`). Second CallKit login **`appstorereview2@edgetilt.com`** (`@appstorereview2`, `4260f0f5-…`) … created Sep 28, 2026, email pre-confirmed, `role = user`, same password as the ASC demo field, analytics-excluded. They follow each other. Do not give reviewers `@theo_ops`. **Comped for Google Play review (2026-10-22, Ryan approved):** `@appstorereview` has `slots-edge` + `edge-pro` active in `user_subscriptions` with `admin_comp_<uid>_<slug>` ids (billing reconcile skips `admin_comp_*`), `has_active_subscription = true`, so reviewers reach every paid area without a purchase or trial. Same login goes in Play Console > App content > Sign-in details.
 
 ## 6. Local env override
 

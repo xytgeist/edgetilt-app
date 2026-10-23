@@ -5,7 +5,7 @@ import { getFantasyPinRole, toggleFantasyPin, useFantasyPins } from './gameHubFa
 import { useHeadshotSrc } from '../../../utils/playerHeadshot.js'
 import { scoreLine } from '../../fantasy/fantasyBoxScore.js'
 import { boxForPlayer, indexPlayerBox } from './gameHubPropStats.js'
-import { rosterLeaguePill, rosterLeagueTitle, useLeagueOpponents, useRosterLeagues } from './gameHubRosterLeagues.js'
+import { rosterBench, rosterBenchLabel, rosterLeaguePill, rosterLeagueTitle, useLeagueOpponents, useRosterLeagues } from './gameHubRosterLeagues.js'
 import { DEFAULT_NBA_SCORING, useNbaLeagueRules } from './gameHubNbaLeagues.js'
 
 /** ESPN box (`player_box` stats bag) → Sleeper NBA stat keys, with the double / triple-double flags Sleeper scores. */
@@ -313,18 +313,20 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
             const detail = boxLine ? `${boxLine.pts} pts · ${boxLine.reb} reb · ${boxLine.ast} ast` : ''
             const pinned = Boolean(mine || enemy || watch)
             const locked = Boolean(mine || opponents[String(p.sleeper_id)])
+            const bench = Boolean(mine) && rosterBench(mine, league?.id)
             return (
               <li key={p.sleeper_id}>
                 <button
                   type="button"
                   data-lounge-fantasy-pin={pinned ? (enemy ? 'enemy' : 'mine') : '0'}
+                  data-lounge-fantasy-bench={bench ? '' : undefined}
                   onClick={() => {
                     if (!locked) toggleFantasyPin(pinKey(p))
                   }}
                   aria-pressed={pinned}
                   aria-label={
                     mine
-                      ? `${p.name} is on your ${rosterLeagueTitle(mine)} roster`
+                      ? `${p.name} is on your ${rosterLeagueTitle(mine)} ${bench ? 'bench' : 'roster'}`
                       : locked
                         ? `${p.name} is on an opposing roster${league?.name ? ` in ${league.name}` : ''}`
                         : watch
@@ -332,9 +334,12 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
                           : `Select ${p.name} for fantasy watch`
                   }
                   className={`relative grid w-full grid-cols-[minmax(0,1fr)_3.25rem] items-center gap-x-2 px-3 py-2.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] ${
-                    enemy ? 'bg-rose-500/10' : pinned ? 'bg-sky-500/10' : 'active:bg-zinc-800/80'
+                    enemy ? 'bg-rose-500/10' : bench ? 'bg-sky-500/[0.04]' : pinned ? 'bg-sky-500/10' : 'active:bg-zinc-800/80'
                   }`}
                 >
+                  {bench ? (
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-1 rounded-xl border border-dashed border-sky-400/45" />
+                  ) : null}
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar player={p} />
                     <div className="min-w-0 flex-1">
@@ -348,6 +353,11 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
                             }`}
                           >
                             {pill}
+                          </span>
+                        ) : null}
+                        {bench ? (
+                          <span data-lounge-fantasy-bench-chip className="shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide">
+                            {rosterBenchLabel(mine, league?.id)}
                           </span>
                         ) : null}
                         <InjuryTag status={p.injury_status} />

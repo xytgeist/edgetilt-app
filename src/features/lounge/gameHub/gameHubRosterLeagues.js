@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 
 const CHANGE_EVENT = 'edgetilt:game-hub-roster-leagues'
 
-/** @type {Record<string, { leagues: { id: string, name: string, primary: boolean }[] }>} */
+/** @type {Record<string, { leagues: { id: string, name: string, primary: boolean, bench: boolean, slot: string }[] }>} */
 let ownedSnapshot = {}
 /** @type {Record<string, Record<string, true>>} league id → sleeper ids on that week's opponent roster */
 let opponentSnapshot = {}
@@ -38,6 +38,21 @@ export function rosterLeaguePill(entry) {
   const name = String(leagues[0].name || 'League').trim() || 'League'
   const short = name.length > 14 ? `${name.slice(0, 13)}…` : name
   return leagues.length > 1 ? `${short}+` : short
+}
+
+/** Benched (not starting) in the shown league: the selected league when he is on that team, else his first league. */
+export function rosterBench(entry, leagueId = '') {
+  const leagues = entry?.leagues || []
+  const hit = (leagueId && leagues.find((l) => l.id === String(leagueId))) || leagues[0]
+  return Boolean(hit?.bench)
+}
+
+/** Chip for a non-starter in the shown league: IR, Taxi, or BN. */
+export function rosterBenchLabel(entry, leagueId = '') {
+  const leagues = entry?.leagues || []
+  const hit = (leagueId && leagues.find((l) => l.id === String(leagueId))) || leagues[0]
+  if (!hit?.bench) return ''
+  return hit.slot === 'ir' ? 'IR' : hit.slot === 'taxi' ? 'Taxi' : 'BN'
 }
 
 export function rosterLeagueTitle(entry) {
@@ -121,7 +136,7 @@ export function loadGameRosterLeagues(supabase, sleeperIds, sport = 'nfl') {
     }
     const { data: rows, error: rowErr } = await supabase
       .from('fantasy_rosters')
-      .select('sleeper_id, team_id')
+      .select('sleeper_id, team_id, slot')
       .in('team_id', teamIds)
       .in('sleeper_id', ids)
       .eq('week', week)
@@ -144,6 +159,8 @@ export function loadGameRosterLeagues(supabase, sleeperIds, sport = 'nfl') {
           id: String(league.id),
           name: String(league.name || 'League').trim() || 'League',
           primary: league.is_primary === true,
+          bench: String(row?.slot || '') !== 'starter',
+          slot: String(row?.slot || ''),
         })
       }
       next[playerId] = bucket
@@ -183,6 +200,8 @@ export function loadGameRosterLeagues(supabase, sleeperIds, sport = 'nfl') {
           .in('team_id', oppTeamIds)
           .in('sleeper_id', ids)
           .eq('week', week)
+          // Only their starters matter to my matchup; their bench is just players.
+          .eq('slot', 'starter')
         if (seq !== loadSeq) return
         if (!oppErr) {
           for (const row of oppRows || []) {

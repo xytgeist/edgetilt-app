@@ -14,6 +14,8 @@ import {
 import { useHubPointFormat, useNflLeagueRules } from './gameHubLeagueRules.js'
 import {
   fantasyBoardTier,
+  rosterBench,
+  rosterBenchLabel,
   rosterLeaguePill,
   rosterLeagueTitle,
   useLeagueOpponents,
@@ -1039,11 +1041,13 @@ export default function GameHubFantasyPane({
               // Opponents carry the league they face you in (the selected league), not a generic "Enemy".
               const enemyLabel = leagueOpponent && league?.name ? rosterLeaguePill({ leagues: [{ name: league.name }] }) : ''
               const pinned = Boolean(ownership || enemy || pinRole)
+              const bench = Boolean(ownership) && rosterBench(ownership, league?.id)
               return (
                 <li key={p.sleeper_id}>
                   <button
                     type="button"
                     data-lounge-fantasy-pin={pinned ? (enemy ? 'enemy' : 'mine') : '0'}
+                    data-lounge-fantasy-bench={bench ? '' : undefined}
                     onClick={() => {
                       if (ownership || enemy) return
                       toggleFantasyPin(p.sleeper_id)
@@ -1051,7 +1055,7 @@ export default function GameHubFantasyPane({
                     aria-pressed={pinned}
                     aria-label={
                       ownership
-                        ? `${p.name} is on your ${rosterLeagueTitle(ownership)} roster`
+                        ? `${p.name} is on your ${rosterLeagueTitle(ownership)} ${bench ? 'bench' : 'roster'}`
                         : enemy
                           ? `${p.name} is on an opposing roster${leagueOpponent && league?.name ? ` in ${league.name}` : ''}`
                           : pinned
@@ -1061,9 +1065,11 @@ export default function GameHubFantasyPane({
                     className={`relative grid w-full grid-cols-[minmax(0,1fr)_3.25rem_3.25rem] items-center gap-x-2 px-3 py-2.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] first:rounded-t-2xl last:rounded-b-2xl ${
                       enemy
                         ? 'bg-rose-500/10'
-                        : pinned
-                          ? 'bg-sky-500/10'
-                          : 'active:bg-zinc-800/80'
+                        : bench
+                          ? 'bg-sky-500/[0.04]'
+                          : pinned
+                            ? 'bg-sky-500/10'
+                            : 'active:bg-zinc-800/80'
                     }`}
                   >
                     {pinned ? (
@@ -1071,8 +1077,8 @@ export default function GameHubFantasyPane({
                       // rounded top no longer clips the watch outline.
                       <span
                         aria-hidden="true"
-                        className={`pointer-events-none absolute inset-1 z-[1] rounded-xl ring-1 ${
-                          enemy ? 'ring-rose-400/50' : 'ring-sky-400/45'
+                        className={`pointer-events-none absolute inset-1 z-[1] rounded-xl ${
+                          enemy ? 'ring-1 ring-rose-400/50' : bench ? 'border border-dashed border-sky-400/45' : 'ring-1 ring-sky-400/45'
                         }`}
                       />
                     ) : null}
@@ -1094,6 +1100,11 @@ export default function GameHubFantasyPane({
                               }`}
                             >
                               {leagueLabel || (enemy ? enemyLabel || 'Enemy' : 'Watch')}
+                            </span>
+                          ) : null}
+                          {bench ? (
+                            <span data-lounge-fantasy-bench-chip className="shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide">
+                              {rosterBenchLabel(ownership, league?.id)}
                             </span>
                           ) : null}
                           <InjuryPill status={p.injury_status} />

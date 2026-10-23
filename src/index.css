@@ -4682,6 +4682,15 @@ html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] button[data-on]
 html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] > span {
   color: #71717a !important;
 }
+/* My bench players in the game hub Fantasy list: BN chip (rows also get a dashed outline + lighter tint). */
+[data-lounge-game-fantasy] [data-lounge-fantasy-bench-chip] {
+  background-color: rgba(161, 161, 170, 0.2);
+  color: #d4d4d8;
+}
+html.light [data-lounge-game-fantasy] [data-lounge-fantasy-bench-chip] {
+  background-color: #e4e4e7;
+  color: #52525b;
+}
 /* Compact Go to Fantasy pill in the switcher row: keep its own colors over the switcher's button rules. */
 html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] [data-game-hub-go-fantasy] {
   color: #18181b !important;

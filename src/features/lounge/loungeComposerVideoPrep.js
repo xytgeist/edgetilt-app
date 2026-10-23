@@ -660,8 +660,14 @@ async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onPr
       maxUploadBytes: limits.maxBytes,
     })
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    if (uploaded?.cancelled) throw new DOMException('Aborted', 'AbortError')
+    if (!uploaded?.ok) {
+      const nativeErr = String(uploaded?.error || '').trim()
+      if (nativeErr === 'timeout') throw new Error('Video upload timed out. Try again.')
+      throw new Error(nativeErr && nativeErr !== 'noop' ? nativeErr : 'Video upload failed. Try again.')
+    }
     const uid = String(uploaded?.streamVideoUid || '').trim()
-    if (!uploaded?.ok || !uid) {
+    if (!uid) {
       throw new Error('Video upload finished but the service did not return a video id.')
     }
     maybeReportLoungeVideoUploadDebug('encode', 'native ready')

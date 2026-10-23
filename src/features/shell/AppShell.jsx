@@ -113,6 +113,16 @@ import AttentionDot from '../../components/AttentionDot.jsx'
 import TitleBarQuickLinks from '../../components/TitleBarQuickLinks.jsx'
 import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import TitleBarCloseButton from '../../components/TitleBarCloseButton.jsx'
+import TitleBarBackButton from '../../components/TitleBarBackButton.jsx'
+
+/** Fantasy's back label for the tab it was opened from (Lounge needs none: the dock Home button goes there). */
+const FANTASY_BACK_TAB_LABEL = {
+  chat: 'Chat',
+  slots: 'Slots',
+  poker: 'Poker',
+  settings: 'Settings',
+  monitor: 'Monitor',
+}
 import LiveSessionTitleChip from '../../components/LiveSessionTitleChip.jsx'
 import { useActiveLiveSessions } from './useActiveLiveSessions.js'
 import { usePokerPendingOfferAttention } from '../poker/usePokerPendingOfferAttention.js'
@@ -533,13 +543,19 @@ export default function AppShell({
   tabRef.current = tab
   /** Where Fantasy was opened from, so closing it lands there instead of always on the Lounge. */
   const fantasyReturnRef = useRef({ tab: 'home', hubFilter: null, game: null })
+  // Title bar back label: only when Fantasy was opened from somewhere the dock Home button does not lead.
+  const [fantasyBackLabel, setFantasyBackLabel] = useState('')
   const prevTabForFantasyRef = useRef(tab)
   useEffect(() => {
     const prev = prevTabForFantasyRef.current
     prevTabForFantasyRef.current = tab
     // Coming back from a bet logged off a lineup pill keeps the original origin.
     if (tab === 'fantasy' && prev !== 'fantasy' && prev !== 'sports-bets') {
-      fantasyReturnRef.current = { tab: prev || 'home', hubFilter: takeFantasyHubReturn(), game: takeFantasyGameReturn() }
+      const ret = { tab: prev || 'home', hubFilter: takeFantasyHubReturn(), game: takeFantasyGameReturn() }
+      fantasyReturnRef.current = ret
+      setFantasyBackLabel(
+        ret.game ? 'Game' : ret.hubFilter ? 'Sports' : ret.tab && ret.tab !== 'home' ? FANTASY_BACK_TAB_LABEL[ret.tab] || 'Back' : '',
+      )
     }
   }, [tab])
   // The cold-boot splash belongs to a launch that lands on the Lounge. A session that starts anywhere else (a
@@ -2800,13 +2816,13 @@ export default function AppShell({
       </button>
       </div>
       {slotsToolTitleBarCloseVisible ? (
-        <TitleBarCloseButton onClick={backToSlotsHub} ariaLabel="Close" />
+        <TitleBarBackButton onClick={backToSlotsHub} label="Slots" />
       ) : tab === 'sports-bets' ? (
         <TitleBarCloseButton onClick={closeBetTracker} ariaLabel="Close Bet Tracker" />
-      ) : tab === 'fantasy' ? (
-        <TitleBarCloseButton onClick={closeFantasyHome} ariaLabel="Close Fantasy" />
+      ) : tab === 'fantasy' && fantasyBackLabel ? (
+        <TitleBarBackButton onClick={closeFantasyHome} label={fantasyBackLabel} />
       ) : pokerToolTitleBarCloseVisible ? (
-        <TitleBarCloseButton onClick={backToPokerHub} ariaLabel="Close" />
+        <TitleBarBackButton onClick={backToPokerHub} label="Poker" />
       ) : null}
     </div>
   )

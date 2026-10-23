@@ -14,7 +14,9 @@ export function edgeLogoTitleBarClassName(quickLinkCount, { panelCloseVisible = 
     typeof window !== 'undefined' && window.matchMedia(IPAD_NAV_RAIL_QUERY).matches
   const q = navRail ? 0 : Math.max(0, Math.min(QUICK_LINK_MAX, quickLinkCount))
   let reserveRem = 9 + q * 2.75
-  if (panelCloseVisible || toolCloseVisible) reserveRem += 2.75
+  // Panels: ×. Tool screens: "‹ Slots" / "‹ Poker" back label (wider than the old ×).
+  if (panelCloseVisible) reserveRem += 2.75
+  else if (toolCloseVisible) reserveRem += 4.5
   // Keep logo from eating the live gap (~7.5rem useful pill width).
   if (liveSessionChipVisible) reserveRem += 7.5
   return `h-6 w-auto max-w-[min(140px,calc(100vw-${reserveRem}rem))] shrink-0 object-contain object-left`

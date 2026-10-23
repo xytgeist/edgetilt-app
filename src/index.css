@@ -11950,6 +11950,14 @@ html.light [data-fantasy-home] .fantasy-live-pts {
   background-color: #34d399;
   box-shadow: 0 0 6px rgb(52 211 153 / 0.9);
 }
+html.light [data-edge-title-pull-tab] > span {
+  background-color: rgb(113 113 122 / 0.7);
+}
+html.light [data-edge-title-pull-hint] {
+  background-color: rgb(255 255 255 / 0.96);
+  border-color: #e4e4e7;
+  color: #3f3f46;
+}
 html.light [data-fantasy-home] [data-fantasy-tool-tabs] {
   border-color: #e4e4e7;
 }

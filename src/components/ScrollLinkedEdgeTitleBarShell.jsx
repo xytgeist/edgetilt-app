@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
 import TitleBarStatusLine from './TitleBarStatusLine.jsx'
 import PwaInstallTitleBarRow from './PwaInstallBanner.jsx'
@@ -33,6 +33,7 @@ import EdgeStatusBarScrollPlate from './EdgeStatusBarScrollPlate.jsx'
  *   (landscape list column inside a split shell).
  */
 const defaultShellContentClassName = 'px-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+const TUCK_HINT_KEY = 'edge.titleBarTuckHint.v1'
 
 export default function ScrollLinkedEdgeTitleBarShell({
   titleBarNavSlot = null,
@@ -57,6 +58,11 @@ export default function ScrollLinkedEdgeTitleBarShell({
   titleBarBrand = null,
   titleBarAlignStartWidth = null,
   fillParentHeight = false,
+  /**
+   * Tuck the bar away after this many idle ms (0 = never) and leave a pull tab to bring it back
+   * (drag down or tap). Scroll up / to the top still reveals it like the Lounge.
+   */
+  autoTuckMs = 0,
 }) {
   const ipadNavRail = useIpadNavRail()
   /**
@@ -83,6 +89,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
   const scrollPrevTopRef = useRef(0)
   const titleRevealRef = useRef(1)
   const scrollVisualRafRef = useRef(0)
+  const tuckActivityRef = useRef(Date.now())
   const [titleBarHeight, setTitleBarHeight] = useState(0)
   const [titleReveal, setTitleReveal] = useState(1)
   const [feedViewportTopPx, setFeedViewportTopPx] = useState(0)
@@ -181,6 +188,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
       } else if (eff > minScrollStepPx) {
         r = Math.max(0, r - eff / titleHidePerScrollPx)
       }
+      tuckActivityRef.current = Date.now()
       if (r !== titleRevealRef.current) {
         titleRevealRef.current = r
         queueScrollVisualFlush()
@@ -198,6 +206,92 @@ export default function ScrollLinkedEdgeTitleBarShell({
     setEdgeTitleBarReveal(titleReveal)
     return () => setEdgeTitleBarReveal(1)
   }, [publishScrollReveal, titleReveal])
+
+  // Auto-tuck + pull tab (opt-in). Programmatic reveal changes animate; finger-driven ones do not.
+  const [revealAnimating, setRevealAnimating] = useState(false)
+  const [tabDragging, setTabDragging] = useState(false)
+  const [tuckHint, setTuckHint] = useState(false)
+  const revealAnimTimerRef = useRef(0)
+  const tabDragRef = useRef(null)
+  const animateReveal = useCallback((to) => {
+    setRevealAnimating(true)
+    titleRevealRef.current = to
+    setTitleReveal(to)
+    window.clearTimeout(revealAnimTimerRef.current)
+    revealAnimTimerRef.current = window.setTimeout(() => setRevealAnimating(false), 280)
+  }, [])
+  useEffect(() => () => window.clearTimeout(revealAnimTimerRef.current), [])
+
+  const tuck = useCallback(() => {
+    const el = feedScrollRef.current
+    const bar = titleBarRef.current
+    if (!el || !bar) return
+    // Never pull the bar out from under its open menu.
+    if (bar.querySelector('[aria-expanded="true"]')) return
+    const h = titleBarHeight || Math.ceil(bar.getBoundingClientRect().height)
+    if (el.scrollTop < h) {
+      // Near the top the content slides up into the bar's space; a page that fits has nothing to gain.
+      if (el.scrollHeight - el.clientHeight < h) return
+      const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      el.scrollTo({ top: h, behavior: reduce ? 'auto' : 'smooth' })
+    }
+    animateReveal(0)
+    try {
+      if (!localStorage.getItem(TUCK_HINT_KEY)) {
+        localStorage.setItem(TUCK_HINT_KEY, '1')
+        setTuckHint(true)
+        window.setTimeout(() => setTuckHint(false), 3200)
+      }
+    } catch {
+      /* private mode */
+    }
+    // feedScrollRef is a stable ref object
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [titleBarHeight, animateReveal])
+
+  useEffect(() => {
+    if (!autoTuckMs || embedded || fillViewport || hideFixedTitleBar || tabDragging) return undefined
+    if (titleReveal < 1) return undefined
+    let timer = 0
+    const check = () => {
+      const idle = Date.now() - tuckActivityRef.current
+      // Menu open: try again once it has been closed for a full idle window.
+      if (titleBarRef.current?.querySelector('[aria-expanded="true"]')) {
+        tuckActivityRef.current = Date.now()
+        timer = window.setTimeout(check, autoTuckMs)
+      } else if (idle >= autoTuckMs) tuck()
+      else timer = window.setTimeout(check, autoTuckMs - idle)
+    }
+    timer = window.setTimeout(check, autoTuckMs)
+    return () => window.clearTimeout(timer)
+  }, [autoTuckMs, embedded, fillViewport, hideFixedTitleBar, tabDragging, titleReveal, tuck])
+
+  const onTabPointerDown = (event) => {
+    event.preventDefault()
+    tabDragRef.current = { y: event.clientY, moved: false, r: titleRevealRef.current }
+    setTabDragging(true)
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+  const onTabPointerMove = (event) => {
+    const g = tabDragRef.current
+    if (!g) return
+    const dy = event.clientY - g.y
+    if (Math.abs(dy) > 6) g.moved = true
+    const h = titleBarHeight || 56
+    const r = Math.max(0, Math.min(1, dy / h))
+    g.r = r
+    titleRevealRef.current = r
+    setTitleReveal(r)
+  }
+  const onTabPointerUp = () => {
+    const g = tabDragRef.current
+    tabDragRef.current = null
+    setTabDragging(false)
+    tuckActivityRef.current = Date.now()
+    if (!g) return
+    animateReveal(!g.moved || g.r >= 0.5 ? 1 : 0)
+  }
+  const showPullTab = Boolean(autoTuckMs) && !hideFixedTitleBar && !embedded && (titleReveal < 0.15 || tabDragging)
 
   if (embedded) {
     return (
@@ -248,8 +342,10 @@ export default function ScrollLinkedEdgeTitleBarShell({
               ? `fixed z-[50] border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform`
               : `fixed left-1/2 z-[50] w-full ${colMax} border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform`
           }
+          onPointerDown={autoTuckMs ? () => { tuckActivityRef.current = Date.now() } : undefined}
           style={{
             top: feedViewportTopPx,
+            ...(revealAnimating ? { transition: 'transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1)' } : {}),
             ...(titleBarAlignStart
               ? {
                   left: 'var(--edge-rail-inset-start, var(--edge-ipad-rail, 0px))',
@@ -282,6 +378,34 @@ export default function ScrollLinkedEdgeTitleBarShell({
           />
         </div>
       )}
+
+      {showPullTab ? (
+        <div
+          className="pointer-events-none fixed left-1/2 z-[51] flex -translate-x-1/2 flex-col items-center"
+          style={{ top: feedViewportTopPx }}
+        >
+          <button
+            type="button"
+            data-edge-title-pull-tab
+            aria-label="Show title bar"
+            onPointerDown={onTabPointerDown}
+            onPointerMove={onTabPointerMove}
+            onPointerUp={onTabPointerUp}
+            onPointerCancel={onTabPointerUp}
+            className="pointer-events-auto flex h-6 w-20 touch-none items-start justify-center pt-1.5 [-webkit-tap-highlight-color:transparent]"
+          >
+            <span className="block h-[5px] w-10 rounded-full bg-zinc-500/80" />
+          </button>
+          {tuckHint && !tabDragging ? (
+            <span
+              data-edge-title-pull-hint
+              className="-mt-1 rounded-full border border-zinc-700 bg-zinc-900/95 px-2 py-0.5 text-[10px] font-semibold text-zinc-300"
+            >
+              Pull down for menu
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       <div
         ref={feedScrollRef}

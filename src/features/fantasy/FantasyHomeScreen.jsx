@@ -644,7 +644,7 @@ export default function FantasyHomeScreen({
       titleBarNavSlot={titleBarNavSlot}
       titleBarCenterSlot={titleBarCenterSlot}
       titleBarBrand={<TitleBarScreenTitle>Fantasy</TitleBarScreenTitle>}
-      autoTuckMs={2000}
+      autoTuckMs={3000}
       contentClassName="px-4 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
     >
       <div data-fantasy-home className="text-white">

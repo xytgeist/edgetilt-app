@@ -35,6 +35,12 @@ import EdgeStatusBarScrollPlate from './EdgeStatusBarScrollPlate.jsx'
 const defaultShellContentClassName = 'px-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
 const TUCK_HINT_KEY = 'edge.titleBarTuckHint.v1'
 
+/** Auto-tuck: fully shown = 1, tucked = a small sliver at the top center where the pull tab sits. */
+function shrinkScale(reveal) {
+  const r = Math.min(1, Math.max(0, Number(reveal) || 0))
+  return (0.18 + 0.82 * r).toFixed(3)
+}
+
 export default function ScrollLinkedEdgeTitleBarShell({
   titleBarNavSlot = null,
   /** Optional center control (e.g. live session chip). */
@@ -345,16 +351,34 @@ export default function ScrollLinkedEdgeTitleBarShell({
           onPointerDown={autoTuckMs ? () => { tuckActivityRef.current = Date.now() } : undefined}
           style={{
             top: feedViewportTopPx,
-            ...(revealAnimating ? { transition: 'transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1)' } : {}),
+            ...(revealAnimating
+              ? {
+                  transition: autoTuckMs
+                    ? 'transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 240ms ease, border-radius 300ms ease'
+                    : 'transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+                }
+              : {}),
+            // Auto-tuck bars shrink in place toward the pull tab (top center) instead of sliding under the status bar.
+            ...(autoTuckMs
+              ? {
+                  transformOrigin: '50% 0',
+                  opacity: Math.min(1, titleReveal * 1.6),
+                  borderRadius: `${Math.round((1 - titleReveal) * 22)}px`,
+                }
+              : {}),
             ...(titleBarAlignStart
               ? {
                   left: 'var(--edge-rail-inset-start, var(--edge-ipad-rail, 0px))',
                   width: alignStartWidth,
                   maxWidth: 'none',
-                  transform: `translate3d(0, ${loungeTitleBarHideTranslateYPx(titleReveal, titleBarHeight, feedViewportTopPx)}px, 0)`,
+                  transform: autoTuckMs
+                    ? `scale(${shrinkScale(titleReveal)})`
+                    : `translate3d(0, ${loungeTitleBarHideTranslateYPx(titleReveal, titleBarHeight, feedViewportTopPx)}px, 0)`,
                 }
               : {
-                  transform: `translate3d(-50%, ${loungeTitleBarHideTranslateYPx(titleReveal, titleBarHeight, feedViewportTopPx)}px, 0)`,
+                  transform: autoTuckMs
+                    ? `translate3d(-50%, 0, 0) scale(${shrinkScale(titleReveal)})`
+                    : `translate3d(-50%, ${loungeTitleBarHideTranslateYPx(titleReveal, titleBarHeight, feedViewportTopPx)}px, 0)`,
                 }),
             pointerEvents: titleReveal > 0.12 ? 'auto' : 'none',
           }}

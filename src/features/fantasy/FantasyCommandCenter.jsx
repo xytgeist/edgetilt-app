@@ -3635,6 +3635,23 @@ function projectedFinish(outlook, hostScore) {
 }
 
 /** NBA league formats vary a lot (one host can run five); the chip tells same-host leagues apart. NFL is all points. */
+/**
+ * Host default names spell out the format ("New Orleans Pro H2H Most Categories League", "Yahoo H2H-Pts 272329").
+ * The format chip already says it, so the card shows the rest. Falls back to the full name if nothing is left.
+ */
+const LEAGUE_FORMAT_WORDS =
+  /\b(h2h(?:[\s-]*(?:pts|points|cat|cats|categories))?|head[\s-]*to[\s-]*head|most\s+categories|most\s+cats|categories|cats|season\s+points|total\s+points|points|pts|ppr|roto(?:sserie)?|high\s+score|lock[\s-]*in)\b/gi
+function leagueNameWithoutFormat(name) {
+  const full = String(name || '').trim()
+  const rest = full
+    .replace(LEAGUE_FORMAT_WORDS, ' ')
+    .replace(/\bleague\b\s*$/i, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s*[-·|:]\s*$/, '')
+    .trim()
+  return rest || full
+}
+
 function leagueFormatLabel(provider, sport, settings) {
   if (String(sport || '').toLowerCase() !== 'nba') return ''
   if (String(provider || '').toLowerCase() === 'sleeper') return 'Lock-In'
@@ -3688,6 +3705,7 @@ function MatchupCard({
   const lo = projectedFinish(leftOut, page.leftScore)
   const ro = page.right ? projectedFinish(rightOut, page.rightScore) : null
   const format = leagueFormatLabel(provider, sport, settings)
+  const shownName = format ? leagueNameWithoutFormat(leagueName) : leagueName
   return (
     <div
       className="fantasy-card-lift relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900"
@@ -3710,14 +3728,17 @@ function MatchupCard({
               className="-ml-1 flex min-w-0 items-center gap-0.5 text-left text-[11px] font-semibold text-zinc-400 touch-manipulation"
             >
               <ChevronLeft size={14} strokeWidth={2.5} className="shrink-0" aria-hidden />
-              <span data-fantasy-card-title className="min-w-0 truncate">{leagueName || 'All leagues'}</span>
+              <span data-fantasy-card-title className="min-w-0 truncate">{shownName || 'All leagues'}</span>
             </button>
           ) : (
-            <span data-fantasy-card-title className="min-w-0 truncate text-[11px] font-semibold text-zinc-400">{leagueName}</span>
+            <span data-fantasy-card-title title={leagueName} className="min-w-0 truncate text-[11px] font-semibold text-zinc-400">{shownName}</span>
           )}
           <span className="min-w-0 flex-1" aria-hidden />
           {format ? (
-            <span className="shrink-0 rounded-full border border-zinc-700 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-zinc-300">
+            <span
+              data-fantasy-card-format
+              className="inline-flex h-7 shrink-0 items-center rounded-full border border-zinc-700 px-2.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300"
+            >
               {format}
             </span>
           ) : null}

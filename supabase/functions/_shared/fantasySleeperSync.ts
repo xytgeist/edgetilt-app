@@ -3,6 +3,7 @@
  * Public Sleeper API (no OAuth). Maps players onto sleeper_id for nfl_players + hub pins.
  */
 import { addSchedulePair, saveLeagueSchedule, type ScheduleWeeks } from './fantasySchedule.ts'
+import { pruneMissingLeagues } from './fantasyLeaguePrune.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 
 const SLEEPER = 'https://api.sleeper.app/v1'
@@ -239,6 +240,8 @@ export async function syncSleeperConnection(
 
       // Drop this sport's other seasons. Leave the other sport's rows alone.
       await admin.from('fantasy_leagues').delete().eq('connection_id', connectionId).eq('sport', sport).neq('season', season)
+      // And this season's leagues the user is no longer in.
+      await pruneMissingLeagues(admin, connectionId, sport, list.map((lg) => String(lg.league_id || '')))
 
     for (const lg of list) {
       const externalLeagueId = String(lg.league_id || '').trim()

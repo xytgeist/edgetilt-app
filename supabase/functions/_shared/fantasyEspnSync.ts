@@ -7,6 +7,7 @@
  * (Sleeper / Yahoo). An NBA failure never fails the NFL sync.
  */
 import { addSchedulePair, saveLeagueSchedule, type ScheduleWeeks } from './fantasySchedule.ts'
+import { pruneMissingLeagues } from './fantasyLeaguePrune.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { type NbaPlayer, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
 import { loadNbaBoard } from './fantasyNbaBoard.ts'
@@ -463,6 +464,8 @@ async function syncEspnConnection(
     }
 
     await admin.from('fantasy_leagues').delete().eq('connection_id', connectionId).eq('sport', 'nfl').neq('season', season)
+    // This season's NFL leagues no longer on the fan profile (left / deleted).
+    await pruneMissingLeagues(admin, connectionId, 'nfl', [...refs.map((r) => r.id), ...leagues.map((l) => String(l.id ?? ''))])
 
     const players = await loadPlayerIndex(admin)
     const mineKey = swidKey(session.swid)
@@ -705,6 +708,8 @@ async function syncEspnNba(
 ): Promise<{ leagues: number; firstMineLeague: string | null }> {
   const refs = await listFanLeagueRefs(session, null, NBA_GAME_ID)
   if (!refs.length) return { leagues: 0, firstMineLeague: null }
+  // NBA leagues no longer on the fan profile (left / deleted).
+  await pruneMissingLeagues(admin, connectionId, 'nba', refs.map((r) => r.id))
   const index = nbaIndexOf(await sleeperNbaPlayers(admin).catch(() => [] as NbaPlayer[]))
   const mineKey = swidKey(session.swid)
   const views = 'view=mTeam&view=mRoster&view=mMatchup&view=mSettings&view=mStatus&view=mMatchupScore'

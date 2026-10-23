@@ -34,6 +34,8 @@ Signed-in users link a fantasy account, sync leagues/rosters/matchups, and auto-
 
 Player identity for hub pins: **`nfl_players.sleeper_id`**. Yahoo sync resolves players by name + team (+ position).
 
+**Leagues that leave the account (2026-10-23):** every sync (Sleeper, ESPN NFL + NBA, Yahoo NFL + NBA, and the digest's pre-sync) drops leagues of that connection + sport the host no longer lists (left, deleted, removed). `_shared/fantasyLeaguePrune.ts` `pruneMissingLeagues` runs only after the host's league list read succeeded, never on an empty list (a hiccup or shape change must not wipe leagues), and one sport at a time; teams / rosters / matchups cascade, `fantasy_connections.primary_league_id` goes null. Past-season deletes (Sleeper per sport, ESPN NFL) stay as they were.
+
 ## Edge Functions
 
 | Function | Auth | Behavior |

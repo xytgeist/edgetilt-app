@@ -7,6 +7,7 @@
  * An NBA failure never fails the NFL sync.
  */
 import { addSchedulePair, reusableSchedule, saveLeagueSchedule, type ScheduleWeeks } from './fantasySchedule.ts'
+import { pruneMissingLeagues } from './fantasyLeaguePrune.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { resolvePublicAppOrigin } from './publicAppOrigin.ts'
 import { fetchNflState, type SyncResult } from './fantasySleeperSync.ts'
@@ -877,6 +878,8 @@ export async function syncYahooConnection(
 
         const uniqueLeagueKeys = [...new Set(leagueKeys)]
         leagueCount += uniqueLeagueKeys.length
+        // Leagues of this sport the account no longer lists (left / deleted; their own reads return 400).
+        await pruneMissingLeagues(admin, connectionId, sport, uniqueLeagueKeys)
 
         for (const leagueKey of uniqueLeagueKeys) {
           const metaPayload = await yahooGet(access, `/league/${encodeURIComponent(leagueKey)}`)

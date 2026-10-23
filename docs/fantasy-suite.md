@@ -25,7 +25,7 @@ Running list of shipped work that still needs a real-data check. **Add a line wh
 **After each new league drafts + syncs**
 - [x] 2026-10-23 Yahoo H2H-Cat 49714: drafted, 9 categories saved on prod.
 - [ ] Yahoo categories matchup totals (1.4.1423, `yahooCategoryMatchup`): week 2 (from Mon 10-26) saves `fantasy_matchups.categories` (team_stats totals + stat_winners WIN / LOSS / TIE) and category wins as the score; category board + win chance on live Yahoo data.
-- [x] 2026-10-23 Yahoo High Score 271599 + Yahoo Roto 272771 are no longer on Ryan's Yahoo account (not in `/users;use_login=1/games;game_keys=nba/teams`; league reads 400). Stale rows stay on prod until removed (sync never prunes leagues that disappear).
+- [x] 2026-10-23 Yahoo High Score 271599 + Yahoo Roto 272771 are no longer on Ryan's Yahoo account (not in `/users;use_login=1/games;game_keys=nba/teams`; league reads 400). 1.4.1424 syncs now prune leagues the host no longer lists; check both are gone after the next Yahoo sync on prod.
 - [ ] ESPN NBA H2H Points: first real test of the ESPN points path.
 - [ ] ESPN NBA H2H Most Categories (New Orleans): re-sync saves categories (was synced as points: `H2H_MOST_CATEGORIES` missed the CATEGORY check, fixed 1.4.1396); category board win chance = more categories won, which is how Most Categories scores.
 - [ ] ESPN NBA trade offer in New Orleans (from team 9, 5 players, expires 2026-10-24 3:14pm PT): Trades > Review lists and grades it after the re-sync (pending trades now read games/fba + ESPN season).

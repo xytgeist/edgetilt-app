@@ -12,10 +12,10 @@ import {
 
 /**
  * @typedef {{ id: string, heading?: string, paragraphs: string[] }} LegalSection
- * @typedef {{ slug: 'terms' | 'privacy' | 'guidelines', title: string, effectiveDate: string, intro?: string, sections: LegalSection[] }} LegalDocument
+ * @typedef {{ slug: 'terms' | 'privacy' | 'guidelines' | 'delete-account', title: string, effectiveDate: string, intro?: string, sections: LegalSection[] }} LegalDocument
  */
 
-/** @type {Record<'terms' | 'privacy' | 'guidelines', LegalDocument>} */
+/** @type {Record<'terms' | 'privacy' | 'guidelines' | 'delete-account', LegalDocument>} */
 export const LEGAL_DOCUMENTS = {
   terms: {
     slug: 'terms',
@@ -369,6 +369,35 @@ export const LEGAL_DOCUMENTS = {
         paragraphs: [
           `Questions about these Guidelines: ${LEGAL_CONTACT_EMAIL}.`,
           `${LEGAL_ENTITY_NAME} (${LEGAL_ENTITY_STATE}).`,
+        ],
+      },
+    ],
+  },
+  'delete-account': {
+    slug: 'delete-account',
+    title: 'Delete your EdgeTilt account',
+    effectiveDate: LEGAL_EFFECTIVE_DATE,
+    sections: [
+      {
+        id: 'steps',
+        heading: 'In the app',
+        paragraphs: [
+          '1. Open Settings.',
+          '2. Tap Account info.',
+          '3. Tap Delete account and confirm.',
+        ],
+      },
+      {
+        id: 'email',
+        heading: 'By email',
+        paragraphs: [`Email ${LEGAL_CONTACT_EMAIL} from your account email and ask us to delete your account.`],
+      },
+      {
+        id: 'data',
+        heading: 'What is deleted',
+        paragraphs: [
+          'Your login, profile, posts, comments, messages, media, and logbook, bankroll, and offers data.',
+          'Records we must keep for legal, security, or billing purposes are retained only as long as required.',
         ],
       },
     ],

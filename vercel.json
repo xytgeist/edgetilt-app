@@ -72,6 +72,8 @@
     { "source": "/terms/", "destination": "/api/legal-document?slug=terms" },
     { "source": "/guidelines", "destination": "/api/legal-document?slug=guidelines" },
     { "source": "/guidelines/", "destination": "/api/legal-document?slug=guidelines" },
+    { "source": "/delete-account", "destination": "/api/legal-document?slug=delete-account" },
+    { "source": "/delete-account/", "destination": "/api/legal-document?slug=delete-account" },
     { "source": "/reset-password", "destination": "/index.html" },
     { "source": "/auth/confirm", "destination": "/index.html" },
     {

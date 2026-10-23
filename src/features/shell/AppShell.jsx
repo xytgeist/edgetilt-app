@@ -3369,6 +3369,8 @@ export default function AppShell({
                 openChatRoomDirect(roomId, { skipReloadIfSame: true })
                 return
               }
+              // Android WebView retargets the FAB tap onto the inbox row that appears under it.
+              armShellNavGhostClickGuard()
               setTab('chat')
               setMenuOpen(false)
             }}

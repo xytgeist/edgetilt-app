@@ -472,12 +472,14 @@ function sideOutlook(roster, cards, scoring, sport, lockIn = false, upcoming = f
   let remaining = 0
   let outlookOk = false
   let kicked = false
+  let playing = false
   let allFinal = starters.length > 0
   for (const row of starters) {
     const card = row?.sleeper_id ? cards?.[row.sleeper_id] : null
     if (!card || sideStatus(card) !== 'Final') allFinal = false
     if (!card) continue
     if (gameStarted(card)) kicked = true
+    if (sideStatus(card) === 'Live') playing = true
     const livePts = pointsOf(card, scoring, sport)
     // A starter ruled out projects zero until his game starts (hosts score him the same way).
     const ruledOut = !livePts && injuryKey(row.injury_status) === 'out'
@@ -504,6 +506,7 @@ function sideOutlook(roster, cards, scoring, sport, lockIn = false, upcoming = f
   return {
     live: started,
     kicked: kicked || started,
+    playing,
     final: started && allFinal,
     fromLine,
     projected: projectedN ? projected : null,
@@ -522,6 +525,7 @@ function nbaSideOutlook(starters, cards, scoring, lockIn = false, upcoming = fal
   let remaining = 0
   let started = false
   let kicked = false
+  let playing = false
   let outlookOk = false
   let allDone = starters.length > 0
   for (const row of starters) {
@@ -536,7 +540,10 @@ function nbaSideOutlook(starters, cards, scoring, lockIn = false, upcoming = fal
       projectedN += 1
     }
     if (w.played > 0 || w.host) started = true
-    if (w.live) kicked = true
+    if (w.live) {
+      kicked = true
+      playing = true
+    }
     if (w.live || w.gamesLeft > 0) allDone = false
     scored += w.scored
     boost += w.boost
@@ -546,6 +553,7 @@ function nbaSideOutlook(starters, cards, scoring, lockIn = false, upcoming = fal
   return {
     live: started,
     kicked: kicked || started,
+    playing,
     final: started && allDone,
     fromLine: false,
     boost,
@@ -3486,7 +3494,7 @@ function ScoreLine({ outlook, hostScore, align, lead, projUp, projFinal: finish 
       </div>
       <div className={`mt-1 flex items-baseline gap-1.5 ${end ? 'justify-end' : ''}`}>
         <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-          {score.live ? (outlook?.final ? 'Final' : 'Live') : score.text === '–' ? '' : 'Proj'}
+          {score.live ? (outlook?.final ? 'Final' : outlook?.playing ? 'Live' : '') : score.text === '–' ? '' : 'Proj'}
         </span>
         {projFinal ? (
           <span className={`text-[11px] font-bold tabular-nums ${projUp ? 'fantasy-proj-up' : 'fantasy-proj-down'}`}>

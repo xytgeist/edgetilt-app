@@ -30,6 +30,7 @@ import { rankWaivers, rowId, waiverLineupSlots } from '../../../src/features/fan
 import { rankBoom } from '../../../src/features/fantasy/fantasySniper.js'
 import { injuryKey } from '../../../src/features/fantasy/fantasyStartSit.js'
 import { sleeperNbaPlayers } from '../_shared/sleeperNbaPlayers.ts'
+import { fantasyLeagueDisplayName } from '../../../src/features/fantasy/fantasyLeagueName.js'
 
 type Obj = Record<string, any>
 type Sport = 'nfl' | 'nba'
@@ -596,7 +597,8 @@ async function processUser(admin: SupabaseClient, userId: string, season: number
     .eq('sport', sport)
     .eq('season', season)
   const sections: Section[] = []
-  for (const lg of leagues || []) {
+  // Short names, same as the app ("Washington Pro", not "Washington Pro H2H Points PPR League").
+  for (const lg of (leagues || []).map((l) => ({ ...l, name: fantasyLeagueDisplayName(l.name) }))) {
     const s = await leagueSection(admin, userId, lg, week, sport, fresh.get(lg.connection_id)).catch((e) => {
       console.error('digest league', lg.id, e)
       return null

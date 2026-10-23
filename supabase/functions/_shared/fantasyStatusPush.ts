@@ -11,6 +11,7 @@ import { sendFcmToUser } from './fcmPush.ts'
 import { espnFetch } from './loungeSportsScoreboard.ts'
 import { fantasyPos, fetchJson, ptsOf, statMap } from './fantasyLineupCards.ts'
 import { loadNbaBoard, nbaTeam, teamWeek } from './fantasyNbaBoard.ts'
+import { fantasyLeagueDisplayName } from '../../../src/features/fantasy/fantasyLeagueName.js'
 
 export const ESPN_NFL = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl'
 export const ESPN_NBA = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba'
@@ -205,7 +206,11 @@ export async function pushStarterAlerts(
     const { data: leagues } = leagueIds.length
       ? await admin.from('fantasy_leagues').select('id, name, sport').in('id', leagueIds)
       : { data: [] }
-    const leagueById = new Map((leagues || []).filter((l) => str(l.sport || 'nfl') === sport).map((l) => [str(l.id), l]))
+    const leagueById = new Map(
+      (leagues || [])
+        .filter((l) => str(l.sport || 'nfl') === sport)
+        .map((l) => [str(l.id), { ...l, name: fantasyLeagueDisplayName(l.name) }]),
+    )
     // Only each team's latest synced week counts as the current lineup.
     const { data: weeks } = teamIds.length
       ? await admin.from('fantasy_rosters').select('team_id, week').in('team_id', teamIds).order('week', { ascending: false }).limit(5000)

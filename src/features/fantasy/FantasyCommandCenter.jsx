@@ -4203,7 +4203,7 @@ function HomeSyncActions({ syncing, busy, onSync, onOpenManage, syncedIso }) {
         onClick={() => void onSync()}
         aria-label={syncing ? 'Syncing' : 'Sync leagues'}
         data-fantasy-sync-btn={syncing ? 'on' : undefined}
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-zinc-800 text-zinc-300 touch-manipulation disabled:opacity-60"
+        className="flex h-7 w-7 items-center justify-center rounded-full border border-current text-zinc-300 touch-manipulation disabled:opacity-60"
       >
         <RefreshCw size={13} strokeWidth={2.25} className={syncing ? 'animate-spin' : ''} aria-hidden />
       </button>
@@ -4211,7 +4211,7 @@ function HomeSyncActions({ syncing, busy, onSync, onOpenManage, syncedIso }) {
         type="button"
         onClick={onOpenManage}
         aria-label="Manage leagues"
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-zinc-800 text-zinc-300 touch-manipulation"
+        className="flex h-7 w-7 items-center justify-center rounded-full border border-current text-zinc-300 touch-manipulation"
       >
         <SlidersHorizontal size={13} strokeWidth={2.25} aria-hidden />
       </button>

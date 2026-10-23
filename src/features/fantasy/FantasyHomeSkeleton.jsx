@@ -45,17 +45,14 @@ function SkeletonCard() {
 export default function FantasyHomeSkeleton({ cards = 2 }) {
   const count = Math.min(4, Math.max(1, Number(cards) || 2))
   return (
-    <div data-fantasy-skeleton className="space-y-4" role="status" aria-label="Loading fantasy">
-      <div className="flex justify-end gap-2">
-        <Bar className="h-8 w-14 rounded-full" />
-        <Bar className="h-8 w-20 rounded-full" />
-      </div>
-      <section className="space-y-2">
-        <Bar className="h-2.5 w-9" />
-        {Array.from({ length: count }, (_, i) => (
-          <SkeletonCard key={i} />
-        ))}
-      </section>
+    <div data-fantasy-skeleton className="space-y-3" role="status" aria-label="Loading fantasy">
+      {/* Same frame as the home carousel: card inset for the peeks, sport label in the left gutter. */}
+      {Array.from({ length: count }, (_, i) => (
+        <section key={i} className="relative -mx-4 px-7">
+          <Bar className="absolute left-2.5 top-1/2 h-9 w-2.5 -translate-y-1/2 rounded-full" />
+          <SkeletonCard />
+        </section>
+      ))}
     </div>
   )
 }

@@ -70,6 +70,8 @@ export default function ScrollLinkedEdgeTitleBarShell({
    * (drag down or tap). Scroll up / to the top still reveals it like the Lounge.
    */
   autoTuckMs = 0,
+  /** First tuck after the screen paints (defaults to `autoTuckMs`); later ones wait `autoTuckMs` of idle. */
+  autoTuckFirstMs = null,
 }) {
   const ipadNavRail = useIpadNavRail()
   /**
@@ -101,6 +103,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
   autoTuckRef.current = Boolean(autoTuckMs)
   const scrollRunRef = useRef({ dir: 0, px: 0 })
   const snapRevealRef = useRef(null)
+  const firstTuckDoneRef = useRef(false)
   const tabDragRef = useRef(null)
   const [titleBarHeight, setTitleBarHeight] = useState(0)
   const [titleReveal, setTitleReveal] = useState(1)
@@ -280,20 +283,22 @@ export default function ScrollLinkedEdgeTitleBarShell({
     if (!autoTuckMs || embedded || fillViewport || hideFixedTitleBar || tabDragging) return undefined
     if (titleReveal < 1) return undefined
     let timer = 0
+    const waitMs = firstTuckDoneRef.current ? autoTuckMs : autoTuckFirstMs ?? autoTuckMs
     const check = () => {
       const idle = Date.now() - tuckActivityRef.current
       // Menu open: try again once it has been closed for a full idle window.
       if (titleBarRef.current?.querySelector('[aria-expanded="true"]')) {
         tuckActivityRef.current = Date.now()
         timer = window.setTimeout(check, autoTuckMs)
-      } else if (idle >= autoTuckMs) {
-        // Skipped (content still loading, page fits): keep trying until it can tuck.
-        if (!tuck()) timer = window.setTimeout(check, TUCK_RETRY_MS)
-      } else timer = window.setTimeout(check, autoTuckMs - idle)
+      } else if (idle >= waitMs) {
+        // Skipped (content still loading): keep trying until it can tuck.
+        if (tuck()) firstTuckDoneRef.current = true
+        else timer = window.setTimeout(check, TUCK_RETRY_MS)
+      } else timer = window.setTimeout(check, waitMs - idle)
     }
-    timer = window.setTimeout(check, autoTuckMs)
+    timer = window.setTimeout(check, waitMs)
     return () => window.clearTimeout(timer)
-  }, [autoTuckMs, embedded, fillViewport, hideFixedTitleBar, tabDragging, titleReveal, tuck])
+  }, [autoTuckMs, autoTuckFirstMs, embedded, fillViewport, hideFixedTitleBar, tabDragging, titleReveal, tuck])
 
   const onTabPointerDown = (event) => {
     event.preventDefault()
@@ -477,6 +482,8 @@ export default function ScrollLinkedEdgeTitleBarShell({
               ? `${contentClassName} flex min-h-0 flex-1 flex-col overflow-hidden`
               : contentClassName
           }
+          // Auto-tuck pages always scroll by at least the bar height, so a short (or still loading) page can tuck.
+          style={autoTuckMs && !fillViewport ? { minHeight: '100%' } : undefined}
         >
           {children}
         </div>

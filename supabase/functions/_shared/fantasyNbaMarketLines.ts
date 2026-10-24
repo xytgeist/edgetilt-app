@@ -236,6 +236,50 @@ async function polyMeans(): Promise<MeanMap> {
   return ladderMeans(ladders)
 }
 
+export type NbaPolyStrike = { stat: string; line: number; bid: number; ask: number; slug: string; id: string; eventSlug: string }
+
+/**
+ * Polymarket US player strikes for games in the next two ET days, `nameKey|TEAM|ET date` → strikes (`15+ points` is
+ * line 15). Cards use them where Kalshi has not posted that game's props yet (Kalshi lists NBA props on game day).
+ */
+export async function polyNbaStrikes(): Promise<Record<string, NbaPolyStrike[]>> {
+  const out: Record<string, NbaPolyStrike[]> = {}
+  const signal = AbortSignal.timeout(POLY_BUDGET_MS)
+  const list = await polyJson(`${POLY}/v2/leagues/nba/events?limit=40&type=sport&section=general`, signal)
+  const today = etDate(new Date().toISOString())
+  const tomorrow = etDate(new Date(Date.now() + 86_400_000).toISOString())
+  const events = ((list.events || []) as Array<Record<string, unknown>>).filter((e) => {
+    const d = etDate(String(e.startDate || e.startTime || ''))
+    return (d === today || d === tomorrow) && Date.parse(String(e.startDate || '')) > Date.now()
+  })
+  await Promise.all(
+    events.map(async (e) => {
+      const slug = String(e.slug || '')
+      if (!slug) return
+      const wrap = await polyJson(`${POLY}/v1/events/slug/${encodeURIComponent(slug)}`, signal).catch(() => null)
+      const ev = (wrap?.event || {}) as Record<string, unknown>
+      const teams = new Map(
+        ((ev.teams || []) as Array<Record<string, unknown>>).map((t) => [String(t.id), nbaTeam(String(t.displayAbbreviation || t.abbreviation || ''))]),
+      )
+      const date = etDate(String(ev.startDate || e.startDate || ''))
+      for (const m of (ev.markets || []) as Array<Record<string, unknown>>) {
+        const stat = POLY_TYPE[String(m.sportsMarketType || '')]
+        if (!stat || m.active === false || m.closed === true || m.hidden === true) continue
+        const meta = (m.metadata || {}) as Record<string, unknown>
+        const team = teams.get(String(meta.teamId ?? '')) || ''
+        const line = num(m.line)
+        const bid = num((m.bestBidQuote as { value?: unknown } | null)?.value ?? m.bestBidQuote)
+        const ask = num((m.bestAskQuote as { value?: unknown } | null)?.value ?? m.bestAskQuote)
+        const name = String(meta.playerName || '')
+        if (!name || !team || !date || line == null || bid == null || ask == null || ask <= 0) continue
+        const key = `${nameKey(name)}|${team}|${date}`
+        ;(out[key] ||= []).push({ stat, line, bid, ask, slug: String(m.slug || ''), id: String(m.id ?? ''), eventSlug: slug })
+      }
+    }),
+  )
+  return out
+}
+
 /** Kalshi ladders for every open NBA game (`25+ points` = floor_strike 24.5). */
 async function kalshiMeans(): Promise<MeanMap> {
   const ladders: Ladders = new Map()

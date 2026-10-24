@@ -150,7 +150,7 @@ function sidePrice(
  * The board preselects a trade via `?marketSlug={slug}&outcomeId={marketId}-long|short`
  * (their `EVENT_TRADE_SELECTION_PARAMS`); `market` / `side` are ignored.
  */
-function polyUrls(league: PolyLeague, eventSlug: string, marketSlug: string, marketId: string) {
+export function polyUrls(league: PolyLeague, eventSlug: string, marketSlug: string, marketId: string) {
   const eventUrl = `${POLY_WEB}/sports/${league}/${encodeURIComponent(eventSlug)}`
   if (!marketSlug || !marketId) {
     return { seriesUrl: eventUrl, marketUrl: eventUrl, yesUrl: eventUrl, noUrl: eventUrl }

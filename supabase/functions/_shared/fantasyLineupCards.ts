@@ -20,8 +20,10 @@ import {
   loadNbaMarketLines,
   nameKey as nbaNameKey,
   nbaMarketLineFor,
+  polyNbaStrikes,
   seriesMarkets as nbaSeriesMarkets,
 } from './fantasyNbaMarketLines.ts'
+import { polyUrls } from './loungePolymarketNflProps.ts'
 
 const ET_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
 
@@ -43,7 +45,7 @@ type PropOut = {
   no: number | null
   volume: number
   stat: string | null
-  source: 'kalshi'
+  source: 'kalshi' | 'polymarket'
   url_market: string
   url_yes: string
   url_no: string
@@ -301,7 +303,7 @@ const NBA_PROP_MAX_SPREAD = 0.25
 /** `nameKey|TEAM|ET date` → that game's props, points first. Shared cache 10 min. */
 function loadNbaProps(admin?: SupabaseClient): Promise<Record<string, PropOut[]>> {
   return sharedCached(
-    'fantasy:nba-card-props:kalshi:v1',
+    'fantasy:nba-card-props:v2',
     { ttlMs: 10 * 60_000, staleMaxMs: 60 * 60_000, leaseMs: 30_000, admin, shouldStore: (v) => Object.keys(v).length > 0 },
     async () => {
       const best = new Map<string, Map<string, PropOut & { gap: number }>>()
@@ -341,6 +343,33 @@ function loadNbaProps(admin?: SupabaseClient): Promise<Record<string, PropOut[]>
           }
         }),
       )
+      // Polymarket fills stats Kalshi has not posted (it lists player props a day or two ahead; Kalshi on game day).
+      const poly = await polyNbaStrikes().catch(() => ({} as Awaited<ReturnType<typeof polyNbaStrikes>>))
+      const STAT_WORD: Record<string, string> = { pts: 'points', reb: 'rebounds', ast: 'assists', tpm: 'threes' }
+      for (const [key, strikes] of Object.entries(poly)) {
+        const byStat = best.get(key) || new Map()
+        for (const s of strikes) {
+          if (!STAT_WORD[s.stat] || s.ask - s.bid > NBA_PROP_MAX_SPREAD) continue
+          const kalshi = byStat.get(s.stat)
+          if (kalshi && kalshi.source === 'kalshi') continue
+          const gap = Math.abs((s.bid + s.ask) / 2 - 0.5)
+          if (kalshi && kalshi.gap <= gap) continue
+          const urls = polyUrls('nba', s.eventSlug, s.slug, s.id)
+          byStat.set(s.stat, {
+            label: `${s.line}+ ${STAT_WORD[s.stat]}`,
+            price: Math.round(s.ask * 100) / 100,
+            no: Math.round((1 - s.bid) * 100) / 100,
+            volume: 0,
+            stat: s.stat,
+            source: 'polymarket',
+            url_market: urls.marketUrl,
+            url_yes: urls.yesUrl,
+            url_no: urls.noUrl,
+            gap,
+          })
+        }
+        if (byStat.size) best.set(key, byStat)
+      }
       const out: Record<string, PropOut[]> = {}
       for (const [key, byStat] of best) {
         out[key] = NBA_PROP_ORDER.flatMap((stat) => {

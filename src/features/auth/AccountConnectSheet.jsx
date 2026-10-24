@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { authFetchRetry } from '../../utils/authFetchRetry.js'
 import AuthModalShell from './AuthModalShell.jsx'
 import { friendlyLinkError, linkAppleIdentity, linkGoogleIdentity } from './linkSignInMethod.js'
 import { createAppleIdTokenNonce } from './appleIdTokenNonce.js'
@@ -57,6 +58,7 @@ let handoffInFlight = false
 function createTargetAuthClient() {
   return createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'edge-connect-target' },
+    global: { fetch: authFetchRetry },
   })
 }
 

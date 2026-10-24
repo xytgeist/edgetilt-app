@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { authFetchRetry } from './utils/authFetchRetry.js'
 import { mobileShell, btnPrimary, linkBtn } from './features/shell/shellClasses'
 import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLocation, hasAuthSuccessTokens, replaceUrlPreservingQuery, isLikelyEmailConfirmLanding } from './features/auth/oauthCallback'
 import { parseAuthPanelFromSearch, stripAuthPanelQueryParam } from './features/auth/authPanelFromUrl.js'
@@ -170,6 +171,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     flowType: 'implicit',
     detectSessionInUrl: true,
   },
+  global: { fetch: authFetchRetry },
 })
 
 

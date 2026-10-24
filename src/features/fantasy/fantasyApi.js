@@ -464,6 +464,14 @@ export async function loadLeagueDetail(supabase, leagueId) {
       if (s?.sleeper_id) freshById[String(s.sleeper_id)] = FRESH_STATUS_LABEL[s.status] ?? null
     }
   }
+  // NBA: ESPN's injury report (kept fresh by fantasy-status-watch { sport: 'nba' }) wins over the host's tag too.
+  const nbaIds = String(league.sport || '').toLowerCase() === 'nba' ? [...new Set(rosterRows.map((r) => r.sleeper_id).filter(Boolean))] : []
+  if (nbaIds.length) {
+    const { data: fresh } = await supabase.from('nba_player_status').select('sleeper_id, status').in('sleeper_id', nbaIds)
+    for (const s of fresh || []) {
+      if (s?.sleeper_id) freshById[String(s.sleeper_id)] = FRESH_STATUS_LABEL[s.status] ?? null
+    }
+  }
 
   const rostersByTeam = {}
   for (const row of rosterRows) {

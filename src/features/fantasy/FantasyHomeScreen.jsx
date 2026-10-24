@@ -109,6 +109,9 @@ function friendlyYahooError(raw) {
 /**
  * Fantasy Connect home … Sleeper + Yahoo, league pick, my team + matchup + standings.
  */
+/** A kickoff / tip this recent with no final status yet still counts as live for the card refresh. */
+const LIVE_WINDOW_MS = 5 * 60 * 60 * 1000
+
 export default function FantasyHomeScreen({
   supabaseClient,
   titleBarNavSlot = null,
@@ -377,8 +380,36 @@ export default function FantasyHomeScreen({
         })
     }
     void pull(false)
+    // Live refresh: only the cards that can change (in a game, or tipped / kicked off within 5h), merged into the rest.
+    // Refetching every card in every sport cost ~2 MB a minute while any one player was on the floor.
+    const due = (card) => {
+      if (!cardIsLive(card)) return false
+      const st = String(card.game_status || '').toLowerCase()
+      if (['in_progress', 'inprogress', 'live'].includes(st)) return true
+      const t = Date.parse(card.kickoff || '')
+      return Number.isFinite(t) && Date.now() - t < LIVE_WINDOW_MS
+    }
     const timer = setInterval(() => {
-      if (Object.values(cardsRef.current || {}).some((map) => Object.values(map || {}).some((card) => cardIsLive(card)))) void pull(true)
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      const current = cardsRef.current || {}
+      const work = sports
+        .map((sport) => {
+          const map = current[sport] || {}
+          const rows = (bySport.get(`${sport}:rows`) || []).filter((row) => due(map[String(row.sleeper_id)]))
+          return { sport, rows }
+        })
+        .filter((w) => w.rows.length)
+      if (!work.length) return
+      void Promise.all(work.map((w) => loadLineupCards(supabaseClient, w.rows, w.sport).catch(() => null))).then((maps) => {
+        if (cancelled) return
+        setCards((prev) => {
+          const next = { ...(prev || {}) }
+          work.forEach((w, i) => {
+            if (maps[i]) next[w.sport] = { ...(next[w.sport] || {}), ...maps[i] }
+          })
+          return next
+        })
+      })
     }, 30_000)
     return () => {
       cancelled = true

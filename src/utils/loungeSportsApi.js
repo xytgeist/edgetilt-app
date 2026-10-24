@@ -24,7 +24,24 @@ async function edgeInvokeErrorMessage(error, fallback) {
   return message
 }
 
-export async function loungeSportsScoreboard(supabase, body = {}) {
+/**
+ * Identical requests already in flight share one promise: a hub open whose game flips live → final mid-load, or the
+ * Live tab and the hub polling the same game, used to send the same Edge call twice at once.
+ */
+const inflight = new Map()
+function sharedInflight(key, run) {
+  const hit = inflight.get(key)
+  if (hit) return hit
+  const p = run().finally(() => inflight.delete(key))
+  inflight.set(key, p)
+  return p
+}
+
+export function loungeSportsScoreboard(supabase, body = {}) {
+  return sharedInflight(`scoreboard:${JSON.stringify(body || {})}`, () => scoreboardRequest(supabase, body))
+}
+
+async function scoreboardRequest(supabase, body = {}) {
   let {
     data: { session },
   } = await supabase.auth.getSession()
@@ -208,7 +225,12 @@ export async function loungeGameNews(supabase, game) {
  * @param {{ eventId: string, awayAbbrev: string, homeAbbrev: string }} opts
  */
 /** NBA game hub Players + Fantasy roster (both teams, Sleeper projection + season lines). */
-export async function loungeNbaGamePlayers(supabase, opts) {
+export function loungeNbaGamePlayers(supabase, opts) {
+  const key = `nba-players:${String(opts?.eventId || '')}:${String(opts?.awayAbbrev || '')}:${String(opts?.homeAbbrev || '')}`
+  return sharedInflight(key, () => nbaGamePlayersRequest(supabase, opts))
+}
+
+async function nbaGamePlayersRequest(supabase, opts) {
   let {
     data: { session },
   } = await supabase.auth.getSession()

@@ -143,6 +143,18 @@ export function clearStaleChunkReloadGuard(reloadKey = STALE_CHUNK_RELOAD_KEY) {
   }
 }
 
+/** Plain fetch failure wording (WebKit / Chrome / Firefox), as opposed to a module or chunk miss. */
+function isGenericNetworkFailure(err) {
+  const msg = rejectionMessage(err).toLowerCase()
+  if (/module|import|chunk|mime|text\/html/.test(msg)) return false
+  return (
+    msg.includes('load failed') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror when attempting to fetch') ||
+    msg.includes('network request failed')
+  )
+}
+
 /** Install once at app boot — catches any dynamic import failure (nested lazy, prefetch, etc.). */
 export function installStaleChunkReloadListener(reloadKey = STALE_CHUNK_RELOAD_KEY) {
   if (typeof window === 'undefined') return
@@ -150,6 +162,9 @@ export function installStaleChunkReloadListener(reloadKey = STALE_CHUNK_RELOAD_K
   /** @param {unknown} reason @returns {boolean} true when a reload was started */
   const maybeReload = (reason) => {
     if (!isStaleChunkLoadError(reason)) return false
+    // After boot a plain "Load failed" is an ordinary fetch failure. A native navigation (push tap, universal link)
+    // cancels the old page's requests with exactly that error, and reloading here would replace the navigation.
+    if (window.__edgeAppReady && isGenericNetworkFailure(reason)) return false
     return reloadOnceForStaleChunk(reloadKey)
   }
 

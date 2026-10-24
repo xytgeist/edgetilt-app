@@ -3704,31 +3704,47 @@ function MatchupCard({
     >
       <span aria-hidden className="fantasy-vs-glow pointer-events-none absolute inset-0" />
       {leagueName || format || onBack || headerActions || reserveHeader ? (
-        <div data-fantasy-card-league className={`relative flex items-center gap-2 px-3 pt-2.5 ${reserveHeader ? 'min-h-[2.375rem]' : ''}`}>
-          {onBack ? (
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="All leagues"
-              data-fantasy-card-back
-              className="-ml-1 flex min-w-0 items-center gap-0.5 text-left text-[11px] font-semibold text-zinc-400 touch-manipulation"
-            >
-              <ChevronLeft size={14} strokeWidth={2.5} className="shrink-0" aria-hidden />
-              <span data-fantasy-card-title className="min-w-0 truncate">{shownName || 'All leagues'}</span>
-            </button>
-          ) : (
-            <span data-fantasy-card-title title={leagueName} className="min-w-0 truncate text-[11px] font-semibold text-zinc-400">{shownName}</span>
-          )}
-          <span className="min-w-0 flex-1" aria-hidden />
-          {format ? (
+        <div
+          data-fantasy-card-league
+          className={`relative grid items-center gap-2 px-3 pt-2.5 ${reserveHeader ? 'min-h-[2.375rem]' : ''}`}
+          // Side columns grow equally so the name sits dead center; a crowded side widens and the name gives way.
+          style={{ gridTemplateColumns: 'minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr)' }}
+        >
+          <span className="flex items-center">
+            {onBack ? (
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label="All leagues"
+                data-fantasy-card-back
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-current text-zinc-300 touch-manipulation"
+              >
+                <ChevronLeft size={15} strokeWidth={2.5} className="-ml-px" aria-hidden />
+              </button>
+            ) : null}
+          </span>
+          {shownName ? (
             <span
-              data-fantasy-card-format
-              className="inline-flex h-7 shrink-0 items-center rounded-full border border-zinc-700 px-2.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300"
+              data-fantasy-card-title
+              title={leagueName}
+              className="flex min-w-0 justify-center justify-self-center text-[11px] font-semibold text-zinc-400"
             >
-              {format}
+              <span className="min-w-0 truncate">{shownName}</span>
             </span>
-          ) : null}
-          {headerActions}
+          ) : (
+            <span aria-hidden />
+          )}
+          <span className="flex items-center justify-end gap-2">
+            {format ? (
+              <span
+                data-fantasy-card-format
+                className="inline-flex h-7 shrink-0 items-center rounded-full border border-zinc-700 px-2.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300"
+              >
+                {format}
+              </span>
+            ) : null}
+            {headerActions}
+          </span>
         </div>
       ) : null}
       {/* Names get the full width on top; the site badge sits between the scores below. */}

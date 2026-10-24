@@ -36,56 +36,17 @@ function standingTotal(team) {
   return Number.isFinite(n) ? n : 0
 }
 
-function statCell(key, v) {
+/** Teams by host season total, best first; `started` once anyone has scored. */
+export function seasonStandingRows(teams) {
+  const rows = (teams || []).map((t) => ({ t, total: standingTotal(t), stats: t?.metadata?.standings?.stats || {} })).sort((a, b) => b.total - a.total)
+  return { rows, started: rows.some((r) => r.total > 0) }
+}
+
+export function seasonStatCell(key, v) {
   const n = Number(v)
   if (!Number.isFinite(n)) return '-'
   if (/_pct$/.test(key)) return n > 0 ? n.toFixed(3).replace(/^0/, '') : '-'
   return String(Math.round(n))
-}
-
-/** Roto / season points standings: each team's host total (roto points or season points), roto category values. */
-export function SeasonStandings({ league, teams }) {
-  const format = seasonLongFormat(league)
-  const cats = leagueCategories(league) || []
-  const rows = useMemo(
-    () => (teams || []).map((t) => ({ t, total: standingTotal(t), stats: t?.metadata?.standings?.stats || {} })).sort((a, b) => b.total - a.total),
-    [teams],
-  )
-  if (!format || !rows.length) return null
-  const started = rows.some((r) => r.total > 0)
-  return (
-    <div data-fantasy-standings className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <div className="text-[13px] font-bold text-zinc-100">Standings</div>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{format === 'roto' ? 'Roto points' : 'Season points'}</span>
-      </div>
-      <ol className="mt-2 space-y-1">
-        {rows.map(({ t, total, stats }, i) => (
-          <li
-            key={t.id}
-            data-fantasy-standing-mine={t.is_mine ? '' : undefined}
-            className={`rounded-xl px-2 py-1.5 ${t.is_mine ? 'bg-sky-500/10' : ''}`}
-          >
-            <div className="flex items-baseline gap-2 text-[12px]">
-              <span className="w-5 shrink-0 text-right tabular-nums text-zinc-500">{started ? i + 1 : '-'}</span>
-              <span className={`min-w-0 flex-1 truncate font-semibold ${t.is_mine ? 'text-sky-300' : 'text-zinc-100'}`}>{t.team_name}</span>
-              <span className="shrink-0 font-bold tabular-nums text-zinc-100">{format === 'roto' ? total.toFixed(total % 1 ? 1 : 0) : total.toFixed(1)}</span>
-            </div>
-            {format === 'roto' && cats.length && Object.keys(stats).length ? (
-              <div className="mt-0.5 flex flex-wrap gap-x-2 pl-7 text-[10px] tabular-nums text-zinc-500">
-                {cats.map((c) => (
-                  <span key={c.key}>
-                    {c.label} <span className="text-zinc-300">{statCell(c.key, stats[c.key])}</span>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </li>
-        ))}
-      </ol>
-      {!started ? <p className="mt-2 text-[10px] text-zinc-500">Standings fill in once the season's first games are scored.</p> : null}
-    </div>
-  )
 }
 
 /** One side's starters: per-game lines (market blended) with games still to play and games already in the host totals. */

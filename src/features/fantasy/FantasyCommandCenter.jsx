@@ -4,7 +4,7 @@ import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
 import { nbaMatchupUpcoming, nbaWeekOf } from './fantasyNbaWeek.js'
 import { lockInCall, nbaLockIn } from './fantasyLockIn.js'
-import { CategoryBoard, CategoryScoreLine, leagueCategories, SeasonStandings, seasonLongFormat, useCategoryMatchup } from './FantasyCategoryBoard.jsx'
+import { CategoryBoard, CategoryScoreLine, leagueCategories, seasonLongFormat, seasonStandingRows, seasonStatCell, useCategoryMatchup } from './FantasyCategoryBoard.jsx'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { useLiveGames, useLivePlays } from './useFantasyLive.js'
@@ -96,7 +96,10 @@ function nflTools({ live, kicked }) {
   ]
 }
 
-const TOOL_IDS = new Set([...TOOLS.map((t) => t.id), 'plays'])
+const TOOL_IDS = new Set([...TOOLS.map((t) => t.id), 'plays', 'standings'])
+
+/** Season-long leagues (no weekly opponent) open on Standings. */
+const SEASON_TOOL = { id: 'standings', label: 'Standings' }
 
 function providerLabel(provider) {
   if (provider === 'yahoo') return 'Yahoo'
@@ -114,14 +117,21 @@ function recordLine(t) {
   return ti > 0 ? `${w}-${l}-${ti}` : `${w}-${l}`
 }
 
-function TeamLogo({ team }) {
+const TEAM_LOGO_SIZE = {
+  sm: { img: 'h-8 w-8 rounded-[9px]', letter: 'h-8 w-8 text-[12px]' },
+  md: { img: 'h-10 w-10 rounded-[10px]', letter: 'h-9 w-9 text-[13px]' },
+  lg: { img: 'h-14 w-14 rounded-[14px]', letter: 'h-14 w-14 text-[20px]' },
+}
+
+function TeamLogo({ team, size = 'md' }) {
   const [failed, setFailed] = useState(false)
   const url = String(team?.avatar_url || '').trim()
   const letter = String(team?.team_name || '?').trim().slice(0, 1).toUpperCase() || '?'
+  const cls = TEAM_LOGO_SIZE[size] || TEAM_LOGO_SIZE.md
   if (!url || failed) {
     return (
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-[13px] font-bold"
+        className={`flex shrink-0 items-center justify-center rounded-full bg-zinc-800 font-bold ${cls.letter}`}
         style={{ color: '#fff' }}
       >
         {letter}
@@ -133,7 +143,7 @@ function TeamLogo({ team }) {
       src={url}
       alt=""
       data-fantasy-team-logo
-      className="h-10 w-10 shrink-0 rounded-[10px] object-cover"
+      className={`shrink-0 object-cover ${cls.img}`}
       onError={() => setFailed(true)}
     />
   )
@@ -3682,6 +3692,148 @@ function leagueFormatLabel(provider, sport, settings) {
   return ''
 }
 
+function seasonTotalText(total, format) {
+  return format === 'roto' ? total.toFixed(total % 1 ? 1 : 0) : total.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+}
+
+/** Season-long card body: your total and rank, then the gaps to the teams around you (and this week, when the host sends it). */
+function SeasonSummary({ team, teams, format, provider, week, roster }) {
+  const { rows, started } = seasonStandingRows(teams)
+  const idx = rows.findIndex((r) => r.t.id === team?.id)
+  const total = idx >= 0 ? rows[idx].total : 0
+  const gaps = []
+  if (started && idx >= 0) {
+    if (idx === 0 && rows[1]) gaps.push({ label: 'Lead', value: total - rows[1].total })
+    if (idx > 0) gaps.push({ label: 'To 1st', value: total - rows[0].total })
+    if (idx > 1) gaps.push({ label: `To ${ordinal(idx)}`, value: total - rows[idx - 1].total })
+    if (idx < rows.length - 1) gaps.push({ label: `Over ${ordinal(idx + 2)}`, value: total - rows[idx + 1].total })
+    const weekRows = (roster || []).filter((r) => r?.slot === 'starter' && r.week_points != null)
+    if (weekRows.length) gaps.push({ label: 'This week', value: weekRows.reduce((n, r) => n + (Number(r.week_points) || 0), 0), plain: true })
+  }
+  const shown = gaps.slice(0, 4)
+  const sign = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}`
+  return (
+    <div data-fantasy-season-summary className="relative px-3 pb-3 pt-2">
+      <div className="flex min-w-0 items-center gap-3">
+        <TeamLogo team={team} size="lg" />
+        <div className="min-w-0">
+          <div className="truncate text-[17px] font-bold">{team?.team_name || 'Your team'}</div>
+          <div className="truncate text-[12px] text-zinc-500">
+            {format === 'roto' ? 'Roto' : 'Season Points'} · {providerLabel(provider)}
+            {week != null ? ` · Week ${week}` : ''}
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex items-end justify-between gap-3">
+        <div className="text-[34px] font-bold tabular-nums leading-none">
+          {seasonTotalText(total, format)}
+          <span className="ml-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-zinc-500">{format === 'roto' ? 'Roto pts' : 'Pts'}</span>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="text-[28px] font-bold tabular-nums leading-none">{started && idx >= 0 ? ordinal(idx + 1) : '-'}</div>
+          <div className="mt-1 text-[11px] font-semibold text-zinc-500">of {rows.length} teams</div>
+        </div>
+      </div>
+      {shown.length ? (
+        <div className="mt-3 grid gap-2" style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))` }}>
+          {shown.map((g) => (
+            <div key={g.label} data-fantasy-season-gap className="min-w-0 rounded-xl bg-white/5 px-2.5 py-1.5">
+              <div className="truncate text-[11px] font-semibold text-zinc-400">{g.label}</div>
+              <div
+                className={`text-[14px] font-bold tabular-nums ${
+                  g.plain ? 'text-zinc-100' : g.value > 0 ? 'fantasy-proj-up' : g.value < 0 ? 'fantasy-proj-down' : 'text-zinc-100'
+                }`}
+              >
+                {g.plain ? `+${g.value.toFixed(1)}` : sign(g.value)}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-[11px] text-zinc-500">Standings fill in once the season&apos;s first games are scored.</p>
+      )}
+    </div>
+  )
+}
+
+/** Season-long Standings tab: every team with its avatar and gap to 1st; tap one to see its roster. */
+function SeasonStandingsPanel({ league, teams, rostersByTeam }) {
+  const format = seasonLongFormat(league)
+  const cats = leagueCategories(league) || []
+  const { rows, started } = useMemo(() => seasonStandingRows(teams), [teams])
+  const [openId, setOpenId] = useState(null)
+  if (!format || !rows.length) return null
+  const leader = rows[0]?.total ?? 0
+  return (
+    <div data-fantasy-standings className="space-y-1">
+      {rows.map(({ t, total, stats }, i) => {
+        const open = openId === t.id
+        const roster = rostersByTeam?.[t.id] || []
+        const starters = roster.filter((r) => r.slot === 'starter')
+        const bench = roster.filter((r) => r.slot !== 'starter')
+        return (
+          <div
+            key={t.id}
+            data-fantasy-standing-mine={t.is_mine ? '' : undefined}
+            data-fantasy-standing-stripe={!t.is_mine && i % 2 === 0 ? '' : undefined}
+            className={`rounded-xl ${t.is_mine ? 'bg-sky-500/10' : ''}`}
+          >
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => setOpenId(open ? null : t.id)}
+              className="grid w-full grid-cols-[1.25rem_2rem_minmax(0,1fr)_auto] items-center gap-2 px-2 py-1.5 text-left touch-manipulation"
+            >
+              <span className="text-center text-[12px] font-bold tabular-nums text-zinc-500">{started ? i + 1 : '-'}</span>
+              <TeamLogo team={t} size="sm" />
+              <span className="min-w-0">
+                <span className={`block truncate text-[13px] font-semibold ${t.is_mine ? 'text-sky-300' : 'text-zinc-100'}`}>{t.team_name}</span>
+                <span className="block truncate text-[11px] text-zinc-500">
+                  {!started ? (t.owner_name && t.owner_name !== t.team_name ? t.owner_name : ' ') : i === 0 ? 'Leader' : `${(leader - total).toFixed(1)} behind 1st`}
+                </span>
+              </span>
+              <span className="text-right">
+                <span className="block text-[14px] font-bold tabular-nums text-zinc-100">{seasonTotalText(total, format)}</span>
+                <span className="block text-[10px] font-semibold text-zinc-500">{format === 'roto' ? 'roto pts' : 'pts'}</span>
+              </span>
+            </button>
+            {format === 'roto' && cats.length && Object.keys(stats).length ? (
+              <div className="-mt-1 flex flex-wrap gap-x-2 pb-1.5 pl-[4.25rem] pr-2 text-[10px] tabular-nums text-zinc-500">
+                {cats.map((c) => (
+                  <span key={c.key}>
+                    {c.label} <span className="text-zinc-300">{seasonStatCell(c.key, stats[c.key])}</span>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {open ? (
+              <div data-fantasy-standing-roster className="px-2 pb-2 pl-[4.25rem]">
+                {roster.length ? (
+                  [...starters, ...bench].map((r) => (
+                    <div key={`${r.sleeper_id || r.player_name}-${r.slot_label || r.slot}`} className={`flex items-baseline gap-1.5 py-0.5 text-[12px] ${r.slot === 'starter' ? '' : 'opacity-60'}`}>
+                      <span className="min-w-0 truncate font-semibold text-zinc-200">{shortName(r.player_name, r.position)}</span>
+                      <span className="shrink-0 text-[10px] text-zinc-500">
+                        {r.position}
+                        {r.nfl_team ? ` · ${r.nfl_team}` : ''}
+                        {r.slot === 'starter' ? '' : ' · BN'}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-[11px] text-zinc-500">No roster synced for this team yet.</p>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )
+      })}
+      <p className="px-2 pt-1 text-[10px] text-zinc-500">
+        {started ? 'Tap a team to see its roster.' : "Standings fill in once the season's first games are scored. Tap a team to see its roster."}
+      </p>
+    </div>
+  )
+}
+
 function MatchupCard({
   page,
   teams,
@@ -3725,6 +3877,8 @@ function MatchupCard({
   const ro = page.right ? projectedFinish(rightOut, page.rightScore) : null
   // Never beside Sync / Manage (or on a neighbor reserving their row), so swiping does not flash it in and out.
   const format = showFormat && !headerActions && !reserveHeader ? leagueFormatLabel(provider, sport, settings) : ''
+  // Season-long leagues (Roto, Season Points) have no opponent: the card is your season at a glance instead.
+  const seasonFmt = page.kind === 'idle' ? seasonLongFormat({ settings }) : null
   const shownName = fantasyLeagueDisplayName(leagueName)
   return (
     <div
@@ -3781,70 +3935,76 @@ function MatchupCard({
           </span>
         </div>
       ) : null}
-      {/* Names get the full width on top; the site badge sits between the scores below. */}
-      <div className={`relative grid gap-3 px-3 ${leagueName || format || onBack || headerActions || reserveHeader ? 'pt-1.5' : 'pt-3'} ${page.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        <TeamHead team={page.left} teams={teams} align="left" />
-        {page.right ? <TeamHead team={page.right} teams={teams} align="right" /> : null}
-      </div>
-      <div
-        className={`relative grid items-center gap-1 px-3 pb-3 pt-2 ${
-          page.right ? 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'grid-cols-1'
-        }`}
-      >
-        {cat ? (
-          <CategoryScoreLine
-            won={cat.record.wins}
-            expected={cat.expected}
-            playing={Boolean(leftOut.playing && !leftOut.final)}
-            align="left"
-            lead={!decided ? null : cat.record.wins > cat.record.losses ? 'lead' : cat.record.wins < cat.record.losses ? 'trail' : null}
-          />
-        ) : (
-          <ScoreLine
-            outlook={leftOut}
-            hostScore={page.leftScore}
-            align="left"
-            lead={lead === 'left' ? 'lead' : lead === 'right' ? 'trail' : null}
-            projUp={lo != null && ro != null ? lo >= ro : true}
-            projFinal={lo}
-          />
-        )}
-        {page.right ? (
-          <div className="flex flex-col items-center justify-center px-1">
-            <SiteBadge provider={provider} />
-            <div className="mt-1 text-[10px] font-semibold text-zinc-500">
-              {week != null ? `Week ${week}` : 'This week'}
-            </div>
+      {seasonFmt ? (
+        <SeasonSummary team={page.left} teams={teams} format={seasonFmt} provider={provider} week={week} roster={page.roster} />
+      ) : (
+        <>
+          {/* Names get the full width on top; the site badge sits between the scores below. */}
+          <div className={`relative grid gap-3 px-3 ${leagueName || format || onBack || headerActions || reserveHeader ? 'pt-1.5' : 'pt-3'} ${page.right ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            <TeamHead team={page.left} teams={teams} align="left" />
+            {page.right ? <TeamHead team={page.right} teams={teams} align="right" /> : null}
           </div>
-        ) : null}
-        {page.right && cat ? (
-          <CategoryScoreLine
-            won={cat.record.losses}
-            expected={Math.max(0, cat.total - cat.expected)}
-            playing={Boolean(rightOut.playing && !rightOut.final)}
-            align="right"
-            lead={!decided ? null : cat.record.losses > cat.record.wins ? 'lead' : cat.record.losses < cat.record.wins ? 'trail' : null}
-          />
-        ) : page.right ? (
-          <ScoreLine
-            outlook={rightOut}
-            hostScore={page.rightScore}
-            align="right"
-            lead={lead === 'right' ? 'lead' : lead === 'left' ? 'trail' : null}
-            projUp={lo != null && ro != null ? ro > lo : true}
-            projFinal={ro}
-          />
-        ) : (
-          <p className="text-[12px] text-zinc-500">
-            {page.kind === 'idle' ? (seasonLong ? 'Season-long league: no weekly matchup.' : 'No matchup this week.') : 'Bye this week.'}
-          </p>
-        )}
-      </div>
-      {page.right ? (
-        <div className="relative">
-          <WinBar left={lo} right={ro} remaining={leftOut.remaining + rightOut.remaining} sport={sport} chance={cat ? cat.win : null} lockIn={lockIn} />
-        </div>
-      ) : null}
+          <div
+            className={`relative grid items-center gap-1 px-3 pb-3 pt-2 ${
+              page.right ? 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'grid-cols-1'
+            }`}
+          >
+            {cat ? (
+              <CategoryScoreLine
+                won={cat.record.wins}
+                expected={cat.expected}
+                playing={Boolean(leftOut.playing && !leftOut.final)}
+                align="left"
+                lead={!decided ? null : cat.record.wins > cat.record.losses ? 'lead' : cat.record.wins < cat.record.losses ? 'trail' : null}
+              />
+            ) : (
+              <ScoreLine
+                outlook={leftOut}
+                hostScore={page.leftScore}
+                align="left"
+                lead={lead === 'left' ? 'lead' : lead === 'right' ? 'trail' : null}
+                projUp={lo != null && ro != null ? lo >= ro : true}
+                projFinal={lo}
+              />
+            )}
+            {page.right ? (
+              <div className="flex flex-col items-center justify-center px-1">
+                <SiteBadge provider={provider} />
+                <div className="mt-1 text-[10px] font-semibold text-zinc-500">
+                  {week != null ? `Week ${week}` : 'This week'}
+                </div>
+              </div>
+            ) : null}
+            {page.right && cat ? (
+              <CategoryScoreLine
+                won={cat.record.losses}
+                expected={Math.max(0, cat.total - cat.expected)}
+                playing={Boolean(rightOut.playing && !rightOut.final)}
+                align="right"
+                lead={!decided ? null : cat.record.losses > cat.record.wins ? 'lead' : cat.record.losses < cat.record.wins ? 'trail' : null}
+              />
+            ) : page.right ? (
+              <ScoreLine
+                outlook={rightOut}
+                hostScore={page.rightScore}
+                align="right"
+                lead={lead === 'right' ? 'lead' : lead === 'left' ? 'trail' : null}
+                projUp={lo != null && ro != null ? ro > lo : true}
+                projFinal={ro}
+              />
+            ) : (
+              <p className="text-[12px] text-zinc-500">
+                {page.kind === 'idle' ? (seasonLong ? 'Season-long league: no weekly matchup.' : 'No matchup this week.') : 'Bye this week.'}
+              </p>
+            )}
+          </div>
+          {page.right ? (
+            <div className="relative">
+              <WinBar left={lo} right={ro} remaining={leftOut.remaining + rightOut.remaining} sport={sport} chance={cat ? cat.win : null} lockIn={lockIn} />
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   )
 }
@@ -4494,7 +4654,8 @@ export default function FantasyCommandCenter({
       kicked: Boolean(left.kicked || right.kicked || Number(current.leftScore) > 0 || Number(current.rightScore) > 0),
     }
   }, [nflLeague, current, cards, detail])
-  const tools = nflLeague ? nflTools(nflState) : TOOLS
+  const seasonLeague = Boolean(seasonLongFormat(detail?.league))
+  const tools = seasonLeague ? [SEASON_TOOL, ...TOOLS] : nflLeague ? nflTools(nflState) : TOOLS
   const rosterPlan = useStartSitPlan(detail, cards, leagueSport)
   const dismissedCount = rosterPlan?.dismissed?.length || 0
   const leaguePending = usePendingTrades(supabaseClient, leagueId ? detail?.league?.id || null : null)
@@ -4613,7 +4774,7 @@ export default function FantasyCommandCenter({
                 cards={cardsFor(group.sport)}
                 supabaseClient={supabaseClient}
                 onOpen={(id, key) => {
-                  setTool(DEFAULT_TOOL)
+                  setTool(seasonLongFormat(details?.[id]?.league) ? SEASON_TOOL.id : DEFAULT_TOOL)
                   openMatchup(id, key)
                 }}
                 onOpenTool={(id, key, tool) => {
@@ -4679,9 +4840,6 @@ export default function FantasyCommandCenter({
           {current && leagueCategories(detail?.league) ? (
             <CategoryBoard page={current} cards={cards} categories={leagueCategories(detail?.league)} upcoming={nbaMatchupUpcoming(detail?.league)} />
           ) : null}
-          {current?.kind === 'idle' && seasonLongFormat(detail?.league) ? (
-            <SeasonStandings league={detail?.league} teams={detail?.teams} />
-          ) : null}
 
           <div data-fantasy-tool-tabs role="tablist" className="-mt-1 flex gap-5 overflow-x-auto border-b border-zinc-800 px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {tools.map((item) => {
@@ -4736,6 +4894,9 @@ export default function FantasyCommandCenter({
             })}
           </div>
 
+          {shownTool === 'standings' && detail ? (
+            <SeasonStandingsPanel league={detail.league} teams={detail.teams} rostersByTeam={detail.rostersByTeam} />
+          ) : null}
           {shownTool === 'plays' && detail && current ? (
             <LivePanel
               supabaseClient={supabaseClient}
@@ -4780,7 +4941,7 @@ export default function FantasyCommandCenter({
             <TradesPanel supabaseClient={supabaseClient} detail={detail} sport={selected?.sport || detail?.league?.sport} />
           ) : null}
 
-          {current && shownTool !== 'waiver' && shownTool !== 'trade' ? (
+          {current && shownTool !== 'waiver' && shownTool !== 'trade' && shownTool !== 'standings' ? (
             <VsMatchup
               mine={current.roster}
               opp={current.oppRoster}

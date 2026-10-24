@@ -404,7 +404,19 @@ export async function loadLeagueDetail(supabase, leagueId) {
     .limit(1)
     .maybeSingle()
 
-  const week = latestWeek?.week ?? null
+  let week = latestWeek?.week ?? null
+  const teamIdsForWeek = (teams || []).map((t) => t.id).filter(Boolean)
+  // Season-long leagues (Roto, Season Points) have no matchups: their rosters still sync under a week.
+  if (week == null && teamIdsForWeek.length) {
+    const { data: rosterWeek } = await supabase
+      .from('fantasy_rosters')
+      .select('week')
+      .in('team_id', teamIdsForWeek)
+      .order('week', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    week = rosterWeek?.week ?? null
+  }
   let matchups = []
   if (week != null) {
     const { data: rows, error: mErr } = await supabase

@@ -41,15 +41,14 @@ function SkeletonCard() {
   )
 }
 
-/** First-load placeholder shaped like the fantasy home (Sync / Manage, sport label, matchup cards). */
+/** First-load placeholder shaped like the fantasy home matchup cards. */
 export default function FantasyHomeSkeleton({ cards = 2 }) {
   const count = Math.min(4, Math.max(1, Number(cards) || 2))
   return (
     <div data-fantasy-skeleton className="space-y-3" role="status" aria-label="Loading fantasy">
-      {/* Same frame as the home carousel: card inset for the peeks, sport label in the left gutter. */}
+      {/* Same inset as the home carousel cards so nothing shifts when they paint. */}
       {Array.from({ length: count }, (_, i) => (
-        <section key={i} className="relative -mx-4 px-7">
-          <Bar className="absolute left-2.5 top-1/2 h-9 w-2.5 -translate-y-1/2 rounded-full" />
+        <section key={i} className="-mx-4 px-7">
           <SkeletonCard />
         </section>
       ))}

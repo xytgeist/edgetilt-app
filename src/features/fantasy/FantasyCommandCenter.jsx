@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { AlertTriangle, ChevronDown, ChevronLeft, Loader2, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
@@ -1871,24 +1871,54 @@ function readDismissedAlerts() {
   }
 }
 
+const alertListeners = new Set()
+let alertSnapshot = null
+
+function getDismissedAlerts() {
+  if (!alertSnapshot) alertSnapshot = readDismissedAlerts()
+  return alertSnapshot
+}
+
+function writeDismissedAlerts(next) {
+  alertSnapshot = next
+  try {
+    localStorage.setItem(DISMISSED_ALERTS_KEY, JSON.stringify(next))
+  } catch {
+    /* private mode: dismissed for this session only */
+  }
+  for (const fn of alertListeners) fn()
+}
+
+/** Dismissed Live warnings, shared by the warning card and the Live tab's restore count. */
+function useDismissedAlerts() {
+  return useSyncExternalStore(
+    (cb) => {
+      alertListeners.add(cb)
+      return () => alertListeners.delete(cb)
+    },
+    getDismissedAlerts,
+    getDismissedAlerts,
+  )
+}
+
+const alertKey = (detail, lines) => `${detail?.league?.id || ''}:${lines.join('|')}`
+
+function restoreAlerts(key) {
+  const next = { ...getDismissedAlerts() }
+  delete next[key]
+  writeDismissedAlerts(next)
+}
+
 /** Live tab warning; dismissing hides this exact set of warnings for the league (a new or changed warning shows again). */
 function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen, prefix = '' }) {
   const plan = useStartSitPlan(detail, cards, sport)
-  const [dismissed, setDismissed] = useState(readDismissedAlerts)
+  const dismissed = useDismissedAlerts()
   if (cardsLoading || !plan) return null
   const lines = leagueAlertLines(plan, detail, cards)
   if (!lines.length) return null
-  const key = `${detail?.league?.id || ''}:${lines.join('|')}`
+  const key = alertKey(detail, lines)
   if (dismissed[key]) return null
-  const dismiss = () => {
-    const next = { ...readDismissedAlerts(), [key]: Date.now() }
-    try {
-      localStorage.setItem(DISMISSED_ALERTS_KEY, JSON.stringify(next))
-    } catch {
-      /* private mode: dismiss for this view only */
-    }
-    setDismissed(next)
-  }
+  const dismiss = () => writeDismissedAlerts({ ...getDismissedAlerts(), [key]: Date.now() })
   return (
     <div data-fantasy-open-slot className="flex w-full items-center gap-1 rounded-xl border py-2 pl-3 pr-1.5 text-[12px] font-bold">
       <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-2 text-left">
@@ -4747,6 +4777,10 @@ export default function FantasyCommandCenter({
   const tools = nflLeague && !seasonLeague ? nflTools(nflState) : leagueTools(leagueSport, seasonLeague)
   const rosterPlan = useStartSitPlan(detail, cards, leagueSport)
   const dismissedCount = rosterPlan?.dismissed?.length || 0
+  const dismissedAlerts = useDismissedAlerts()
+  const liveAlertLines = rosterPlan && !cardsLoading ? leagueAlertLines(rosterPlan, detail, cards) : []
+  const liveAlertKey = alertKey(detail, liveAlertLines)
+  const dismissedAlertCount = liveAlertLines.length && dismissedAlerts[liveAlertKey] ? liveAlertLines.length : 0
   const leaguePending = usePendingTrades(supabaseClient, leagueId ? detail?.league?.id || null : null)
   const incomingTradeCount = incomingOffers(leaguePending, detail).length
   // Tool state is shared across leagues: an id this league's pills do not have (NBA Live, NFL Plays pre-kickoff) opens Roster.
@@ -4934,6 +4968,7 @@ export default function FantasyCommandCenter({
             {tools.map((item) => {
               const on = item.id === shownTool
               const showDismissed = item.id === 'start' && dismissedCount > 0
+              const showDismissedAlerts = item.id === 'live' && dismissedAlertCount > 0
               return (
                 <div key={item.id} className="relative flex shrink-0 items-center gap-1">
                   <button
@@ -4976,6 +5011,21 @@ export default function FantasyCommandCenter({
                       className="mb-1.5 rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums text-zinc-300"
                     >
                       {dismissedCount}
+                    </button>
+                  ) : null}
+                  {showDismissedAlerts ? (
+                    <button
+                      type="button"
+                      data-fantasy-dismissed-restore
+                      onClick={() => {
+                        setTool('live')
+                        restoreAlerts(liveAlertKey)
+                      }}
+                      aria-label={`Show ${dismissedAlertCount} dismissed warning${dismissedAlertCount > 1 ? 's' : ''}`}
+                      title="Show dismissed"
+                      className="mb-1.5 rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums text-zinc-300"
+                    >
+                      {dismissedAlertCount}
                     </button>
                   ) : null}
                 </div>

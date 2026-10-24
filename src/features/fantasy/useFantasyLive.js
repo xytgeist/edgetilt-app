@@ -14,6 +14,8 @@ import {
 import { teamsMatch } from '../lounge/gameHub/gameHubFormatters.js'
 import { playFantasyPoints } from '../lounge/gameHub/gameHubPlayFantasy.js'
 import { fantasyPosition } from './fantasyStartSit.js'
+import { scoreLine } from './fantasyBoxScore.js'
+import { nbaLineLabel, nbaPlayLine } from './nbaPlayFantasy.js'
 
 const POLL_MS = 30000
 const SPORT_KEY = { nfl: 'americanfootball_nfl', nba: 'basketball_nba' }
@@ -182,4 +184,88 @@ export function useLivePlays({ supabaseClient, active, games, rates }) {
     }
     return out.sort((a, b) => b.seen - a.seen || b.idx - a.idx).slice(0, 25)
   }, [games, feed, rates])
+}
+
+/**
+ * NBA twin of `useLivePlays`: each live game's play-by-play, split into the parts these lineups' players had in it
+ * (made shots, assists, rebounds, steals, blocks, turnovers), priced by the league scoring. Category leagues have no
+ * single points value per play, so their rows carry a stat label instead.
+ */
+export function useNbaLivePlays({ supabaseClient, active, games, scoring, categories = false }) {
+  const visible = usePageVisible()
+  const live = useMemo(() => games.filter((x) => x.game.status === 'in'), [games])
+  const liveKey = live.map((x) => x.game.id).join(',')
+  const [feed, setFeed] = useState({})
+
+  useEffect(() => {
+    if (!supabaseClient || !active || !visible || !liveKey) return undefined
+    let alive = true
+    const ids = liveKey.split(',')
+    const load = async () => {
+      const results = await Promise.all(
+        ids.map(async (id) => {
+          const entry = live.find((x) => String(x.game.id) === id)
+          if (!entry) return [id, null]
+          const detail = await loungeSportsGameDetail(supabaseClient, id, { omitRosters: true, match: loungeSportsGameMatch(entry.game) })
+          return [id, Array.isArray(detail?.plays) ? detail.plays : null]
+        }),
+      )
+      if (!alive) return
+      const now = Date.now()
+      setFeed((prev) => {
+        const next = { ...prev }
+        for (const [id, list] of results) {
+          if (!list) continue
+          const seen = new Map((prev[id] || []).map((p) => [p.id, p.seen]))
+          next[id] = list.map((p) => ({ ...p, seen: seen.get(p.id) ?? now }))
+        }
+        return next
+      })
+    }
+    void load()
+    const t = window.setInterval(load, POLL_MS)
+    return () => {
+      alive = false
+      window.clearInterval(t)
+    }
+    // `live` rows change identity every board poll; the id list is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabaseClient, active, visible, liveKey])
+
+  return useMemo(() => {
+    const out = []
+    for (const { game, left, right } of games) {
+      const list = feed[game.id]
+      if (!list?.length) continue
+      const sides = [
+        ...left.map((row) => ({ row, side: 'left' })),
+        ...right.map((row) => ({ row, side: 'right' })),
+      ].filter((x) => x.row?.player_name)
+      list.forEach((play, idx) => {
+        for (const { row, side } of sides) {
+          const line = nbaPlayLine(play.description, row.player_name)
+          if (!line) continue
+          const label = categories ? nbaLineLabel(line) : ''
+          const points = categories ? 0 : Number(scoreLine(line, scoring, 'nba', row.position || null)) || 0
+          // A missed shot alone moves points leagues by a fraction (or not at all); keep the plays that count.
+          if (categories ? !label : Math.abs(points) < 0.5) continue
+          out.push({
+            key: `${game.id}:${play.id || idx}:${row.sleeper_id || row.player_name}`,
+            name: row.player_name,
+            position: row.position,
+            sleeperId: row.sleeper_id ? String(row.sleeper_id) : '',
+            headshotUrl: row.headshot_url || null,
+            points,
+            statLabel: label,
+            side,
+            game,
+            play,
+            idx,
+            seen: play.seen,
+          })
+        }
+      })
+    }
+    return out.sort((a, b) => b.seen - a.seen || b.idx - a.idx).slice(0, 40)
+  }, [games, feed, scoring, categories])
 }

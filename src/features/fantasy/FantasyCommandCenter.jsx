@@ -7,7 +7,7 @@ import { lockInCall, nbaLockIn } from './fantasyLockIn.js'
 import { CategoryBoard, CategoryScoreLine, leagueCategories, seasonLongFormat, seasonStandingRows, seasonStatCell, useCategoryMatchup } from './FantasyCategoryBoard.jsx'
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
-import { useLiveGames, useLivePlays } from './useFantasyLive.js'
+import { useLiveGames, useLivePlays, useNbaLivePlays } from './useFantasyLive.js'
 import FantasyPlayerNews from './FantasyPlayerNews.jsx'
 import { usePlayerNews } from './usePlayerNews.js'
 import { newsByPlayer, newsTimeAgo, withNews } from './fantasyNewsStatus.js'
@@ -1611,8 +1611,12 @@ function LivePlayRow({ item, tagFor }) {
             <span data-fantasy-live-side={item.side} className="min-w-0 truncate rounded px-1 text-[9px] font-bold uppercase">
               {tagFor(item)}
             </span>
-            <span className={`ml-auto shrink-0 text-[13px] font-bold tabular-nums ${item.points >= 0 ? 'fantasy-sit-in' : 'fantasy-sit-out'}`}>
-              {formatFantasyPoints(item.points)}
+            <span
+              className={`ml-auto shrink-0 font-bold tabular-nums ${
+                item.statLabel ? 'text-[11px] fantasy-sit-in' : `text-[13px] ${item.points >= 0 ? 'fantasy-sit-in' : 'fantasy-sit-out'}`
+              }`}
+            >
+              {item.statLabel || formatFantasyPoints(item.points)}
             </span>
           </div>
           <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-zinc-400">{item.play.description}</p>
@@ -1637,7 +1641,15 @@ function LivePanel({ supabaseClient, page, detail, sport, active, emptyText = ''
   const on = nfl || s === 'nba'
   const games = useLiveGames({ supabaseClient, active: active && on, leftRows: page?.roster, rightRows: page?.oppRoster, sport: s })
   const rates = useMemo(() => leagueRates(detail?.league?.scoring, 'nfl'), [detail?.league?.scoring])
-  const plays = useLivePlays({ supabaseClient, active: active && nfl, games, rates })
+  const nflPlays = useLivePlays({ supabaseClient, active: active && nfl, games, rates })
+  const nbaPlays = useNbaLivePlays({
+    supabaseClient,
+    active: active && s === 'nba',
+    games,
+    scoring: detail?.league?.scoring,
+    categories: Boolean(leagueCategories(detail?.league)),
+  })
+  const plays = nfl ? nflPlays : nbaPlays
   if (!on || !games.length) {
     return emptyText ? <p className="px-0.5 text-[11px] text-zinc-500">{emptyText}</p> : null
   }
@@ -1663,8 +1675,8 @@ function LivePanel({ supabaseClient, page, detail, sport, active, emptyText = ''
             ))}
           </ul>
         </div>
-      ) : anyLive && nfl ? (
-        <p className="px-0.5 text-[11px] text-zinc-500">No scoring plays for these starters yet.</p>
+      ) : anyLive ? (
+        <p className="px-0.5 text-[11px] text-zinc-500">{nfl ? 'No scoring plays for these starters yet.' : 'No fantasy plays for these lineups yet.'}</p>
       ) : null}
     </div>
   )

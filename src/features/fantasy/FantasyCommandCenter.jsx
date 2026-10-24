@@ -96,10 +96,16 @@ function nflTools({ live, kicked }) {
   ]
 }
 
-const TOOL_IDS = new Set([...TOOLS.map((t) => t.id), 'plays', 'standings'])
+const TOOL_IDS = new Set([...TOOLS.map((t) => t.id), 'plays', 'standings', 'schedule'])
 
 /** Season-long leagues (no weekly opponent) open on Standings. */
 const SEASON_TOOL = { id: 'standings', label: 'Standings' }
+
+/** Season-long tabs: Standings first; NBA splits the games-left Schedule out of Roster. */
+function seasonTools(sport) {
+  const [roster, ...rest] = TOOLS
+  return [SEASON_TOOL, roster, ...(sport === 'nba' ? [{ id: 'schedule', label: 'Schedule' }] : []), ...rest]
+}
 
 function providerLabel(provider) {
   if (provider === 'yahoo') return 'Yahoo'
@@ -1225,7 +1231,8 @@ function NbaPointsCell({ card, row, loading, scoring, align, lockIn = false, upc
   )
 }
 
-function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn = false, upcoming = false, valueLabel = 'PROJ' }) {
+/** `solo`: no opponent (season-long leagues), so each row is one full-width player card. */
+function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn = false, upcoming = false, valueLabel = 'PROJ', solo = false }) {
   const [openKeys, setOpenKeys] = useState(() => new Set())
   const toggle = (key) =>
     setOpenKeys((prev) => {
@@ -1257,10 +1264,10 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
               <span
                 aria-hidden
                 data-fantasy-injury-side={injuryTone(pair.left.injury_status)}
-                className="pointer-events-none absolute inset-y-0 left-0 w-1/2"
+                className={`pointer-events-none absolute inset-y-0 left-0 ${solo ? 'w-full' : 'w-1/2'}`}
               />
             ) : null}
-            {injuryTone(pair.right?.injury_status) ? (
+            {!solo && injuryTone(pair.right?.injury_status) ? (
               <span
                 aria-hidden
                 data-fantasy-injury-side={injuryTone(pair.right.injury_status)}
@@ -1268,10 +1275,12 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
                 className="pointer-events-none absolute inset-y-0 right-0 w-1/2"
               />
             ) : null}
-            <span
-              aria-hidden
-              className="fantasy-row-divider pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2"
-            />
+            {solo ? null : (
+              <span
+                aria-hidden
+                className="fantasy-row-divider pointer-events-none absolute inset-y-2 left-1/2 w-px -translate-x-1/2"
+              />
+            )}
             {pair.left?.news_note ? (
               <span
                 data-fantasy-news-corner
@@ -1281,7 +1290,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
                 NEWS
               </span>
             ) : null}
-            {pair.right?.news_note ? (
+            {!solo && pair.right?.news_note ? (
               <span
                 data-fantasy-news-corner
                 aria-label="New news"
@@ -1304,8 +1313,8 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
               className="relative block w-full cursor-pointer px-2 py-2 touch-manipulation [-webkit-tap-highlight-color:transparent]"
             >
               <SideBust row={pair.left} align="left" live={leftLive} final={sideStatus(leftCard) === 'Final'} />
-              <SideBust row={pair.right} align="right" live={rightLive} final={sideStatus(rightCard) === 'Final'} />
-              <div className="relative z-[1] grid w-full grid-cols-2 items-center gap-3 px-10">
+              {solo ? null : <SideBust row={pair.right} align="right" live={rightLive} final={sideStatus(rightCard) === 'Final'} />}
+              <div className={`relative z-[1] grid w-full items-center gap-3 ${solo ? 'grid-cols-1 pl-10 pr-28' : 'grid-cols-2 px-10'}`}>
                 {pair.left || !pair.leftOpen ? (
                   <VsHead
                     row={pair.left}
@@ -1316,7 +1325,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
                 ) : (
                   <OpenSlotTag align="left" />
                 )}
-                {pair.right || !pair.rightOpen ? (
+                {solo ? null : pair.right || !pair.rightOpen ? (
                   <VsHead
                     row={pair.right}
                     align="right"
@@ -1328,7 +1337,7 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
                 )}
               </div>
               {/* Pinned to the card's vertical middle; it clears the name line above and the props row below. */}
-              <div className="absolute inset-x-0 top-1/2 z-[1] flex -translate-y-1/2 justify-center">
+              <div className={`absolute top-1/2 z-[1] flex -translate-y-1/2 ${solo ? 'right-3' : 'inset-x-0 justify-center'}`}>
                 <div className="flex items-center gap-1">
                   <PointsCell card={leftCard} row={pair.left} loading={cardsLoading} scoring={scoring} sport={sport} align="left" lockIn={lockIn} upcoming={upcoming} valueLabel={valueLabel} />
                   {bench ? (
@@ -1350,18 +1359,20 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
                       {pair.label}
                     </span>
                   )}
-                  <PointsCell card={rightCard} row={pair.right} loading={cardsLoading} scoring={scoring} sport={sport} align="right" lockIn={lockIn} upcoming={upcoming} valueLabel={valueLabel} />
+                  {solo ? null : (
+                    <PointsCell card={rightCard} row={pair.right} loading={cardsLoading} scoring={scoring} sport={sport} align="right" lockIn={lockIn} upcoming={upcoming} valueLabel={valueLabel} />
+                  )}
                 </div>
               </div>
-              <div className="relative z-[1] mt-[17px] grid min-h-[14px] grid-cols-2 gap-1.5 px-1">
+              <div className={`relative z-[1] mt-[17px] grid min-h-[14px] gap-1.5 px-1 ${solo ? 'grid-cols-1 pr-28' : 'grid-cols-2'}`}>
                 <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />
-                <CenterMarket prop={rightMain} align="right" row={pair.right} card={rightCard} />
+                {solo ? null : <CenterMarket prop={rightMain} align="right" row={pair.right} card={rightCard} />}
               </div>
             </div>
             {open ? (
-              <div className="relative grid grid-cols-2 gap-1.5 px-2 pb-2.5 pt-2">
+              <div className={`relative grid gap-1.5 px-2 pb-2.5 pt-2 ${solo ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 <SidePanel row={pair.left} card={leftCard} />
-                <SidePanel row={pair.right} card={rightCard} />
+                {solo ? null : <SidePanel row={pair.right} card={rightCard} />}
               </div>
             ) : null}
           </li>
@@ -3479,7 +3490,7 @@ function markOpenSlots(pairs, mine, opp, league) {
   return out
 }
 
-function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
+function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league, solo = false }) {
   const starters = markOpenSlots(pairStarters(mine, opp), mine, opp, league)
   const bench = pairBench(mine, opp)
   if (!starters.length && !bench.length) {
@@ -3487,7 +3498,7 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
   }
   return (
     <ul className="space-y-1.5">
-      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport, league?.settings)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} valueLabel={league?.settings?.category_value ? 'VAL' : 'PROJ'} />
+      <MatchupRows pairs={starters} cards={cards} cardsLoading={cardsLoading} scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport, league?.settings)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} valueLabel={league?.settings?.category_value ? 'VAL' : 'PROJ'} solo={solo} />
       {bench.length ? (
         <li data-fantasy-bench-divider className="flex items-center gap-2 px-1 pb-0.5 pt-3" aria-label="Bench">
           <span className="h-px flex-1" />
@@ -3495,7 +3506,7 @@ function VsMatchup({ mine, opp, cards, cardsLoading, scoring, sport, league }) {
           <span className="h-px flex-1" />
         </li>
       ) : null}
-      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport, league?.settings)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} valueLabel={league?.settings?.category_value ? 'VAL' : 'PROJ'} />
+      <MatchupRows pairs={bench} cards={cards} cardsLoading={cardsLoading} bench scoring={scoring} sport={sport} lockIn={nbaLockIn(league?.provider, sport, league?.settings)} upcoming={sport === 'nba' && nbaMatchupUpcoming(league)} valueLabel={league?.settings?.category_value ? 'VAL' : 'PROJ'} solo={solo} />
     </ul>
   )
 }
@@ -4655,7 +4666,7 @@ export default function FantasyCommandCenter({
     }
   }, [nflLeague, current, cards, detail])
   const seasonLeague = Boolean(seasonLongFormat(detail?.league))
-  const tools = seasonLeague ? [SEASON_TOOL, ...TOOLS] : nflLeague ? nflTools(nflState) : TOOLS
+  const tools = seasonLeague ? seasonTools(leagueSport) : nflLeague ? nflTools(nflState) : TOOLS
   const rosterPlan = useStartSitPlan(detail, cards, leagueSport)
   const dismissedCount = rosterPlan?.dismissed?.length || 0
   const leaguePending = usePendingTrades(supabaseClient, leagueId ? detail?.league?.id || null : null)
@@ -4931,7 +4942,7 @@ export default function FantasyCommandCenter({
           {shownTool === 'start' && detail ? (
             <StartSitPanel supabaseClient={supabaseClient} detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} />
           ) : null}
-          {shownTool === 'start' && detail && current && (selected?.sport || detail?.league?.sport) === 'nba' ? (
+          {((shownTool === 'start' && !seasonLeague) || shownTool === 'schedule') && detail && current && (selected?.sport || detail?.league?.sport) === 'nba' ? (
             <NbaSchedulePanel page={current} cards={cards} league={detail?.league} />
           ) : null}
           {shownTool === 'waiver' && detail ? (
@@ -4941,7 +4952,7 @@ export default function FantasyCommandCenter({
             <TradesPanel supabaseClient={supabaseClient} detail={detail} sport={selected?.sport || detail?.league?.sport} />
           ) : null}
 
-          {current && shownTool !== 'waiver' && shownTool !== 'trade' && shownTool !== 'standings' ? (
+          {current && shownTool !== 'waiver' && shownTool !== 'trade' && shownTool !== 'standings' && shownTool !== 'schedule' ? (
             <VsMatchup
               mine={current.roster}
               opp={current.oppRoster}
@@ -4950,6 +4961,7 @@ export default function FantasyCommandCenter({
               scoring={detail?.league?.scoring}
               sport={selected?.sport || detail?.league?.sport}
               league={detail?.league}
+              solo={seasonLeague}
             />
           ) : null}
         </>

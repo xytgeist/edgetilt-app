@@ -2038,8 +2038,15 @@ function NbaSchedulePanel({ page, cards, league }) {
                       {g ? (
                         <span
                           data-fantasy-sched-b2b={g.b2b && !past ? '' : undefined}
+                          data-fantasy-sched-chip={!past && !p.out && g.state !== 'in' ? '' : undefined}
                           className={`inline-block rounded px-[1px] text-[8.5px] font-semibold tracking-tight ${
-                            past || p.out ? 'text-zinc-600' : g.state === 'in' ? 'fantasy-sit-gain' : 'bg-zinc-800 text-zinc-200'
+                            past
+                              ? 'text-zinc-600'
+                              : p.out
+                                ? 'text-rose-300'
+                                : g.state === 'in'
+                                  ? 'fantasy-sit-gain'
+                                  : 'bg-zinc-800 text-zinc-200'
                           }`}
                         >
                           {g.home ? '' : '@'}
@@ -2079,7 +2086,29 @@ function NbaSchedulePanel({ page, cards, league }) {
           </tfoot>
         </table>
       </div>
-      <p className="mt-2 text-[10px] text-zinc-500">
+      <div data-fantasy-sched-legend className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-zinc-500">
+        <span className="inline-flex items-center gap-1">
+          <span className="fantasy-sit-gain inline-block rounded px-[3px] text-[8.5px] font-semibold">NOP</span>
+          Live
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span data-fantasy-sched-chip className="inline-block rounded bg-zinc-800 px-[3px] text-[8.5px] font-semibold text-zinc-200">@DEN</span>
+          Upcoming
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="text-[8.5px] font-semibold text-zinc-600">IND</span>
+          Played
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="text-[8.5px] font-semibold text-rose-300">MIA</span>
+          Out
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span data-fantasy-sched-b2b="" className="text-[8.5px] font-semibold text-zinc-200">PHX</span>
+          Back-to-back
+        </span>
+      </div>
+      <p className="mt-1.5 text-[10px] text-zinc-500">
         Starts = lineup slots you can fill with healthy players who play that night. L = games left. Underlined: second night of a back-to-back (rest risk).
         {lockIn === 'best'
           ? " High Score counts each starter's best game, so extra games are extra shots at a big night."

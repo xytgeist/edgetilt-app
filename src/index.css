@@ -12169,6 +12169,10 @@ html.light [data-fantasy-nba-schedule] tr[data-fantasy-sched-stripe] > td {
 html.light [data-fantasy-nba-schedule] tr[data-fantasy-sched-stripe] .bg-zinc-800 {
   background-color: #fff;
 }
+/* Light: upcoming chips get a hairline so they read as chips on plain rows (and in the legend), not bare text. */
+html.light [data-fantasy-nba-schedule] [data-fantasy-sched-chip] {
+  box-shadow: inset 0 0 0 1px #d4d4d8;
+}
 /* Categories board: same banding as the schedule. */
 [data-fantasy-cat-board] [data-fantasy-cat-stripe] {
   background-color: rgb(255 255 255 / 0.045);

@@ -3666,6 +3666,8 @@ function MatchupCard({
   seasonLong = false,
   /** Neighbors of a card that shows header icons keep the same row height, so swiping does not resize cards. */
   reserveHeader = false,
+  /** Home cards skip the format chip (Lock-In, H2H Cats ...): a manager knows his own league type. */
+  showFormat = true,
 }) {
   const lockIn = nbaLockIn(provider, sport, settings)
   const leftSide = sideOutlook(page.roster, cards, scoring, sport, lockIn, upcoming)
@@ -3688,7 +3690,7 @@ function MatchupCard({
   const lead = decided && ls != null && rs != null && ls !== rs ? (ls > rs ? 'left' : 'right') : null
   const lo = projectedFinish(leftOut, page.leftScore)
   const ro = page.right ? projectedFinish(rightOut, page.rightScore) : null
-  const format = leagueFormatLabel(provider, sport, settings)
+  const format = showFormat ? leagueFormatLabel(provider, sport, settings) : ''
   const shownName = fantasyLeagueDisplayName(leagueName)
   return (
     <div
@@ -4307,6 +4309,7 @@ function HomeSportCarousel({ group, entries, cards, onOpen, supabaseClient, onOp
             className="block w-full text-left"
           >
             <MatchupCard
+              showFormat={false}
               reserveHeader={Boolean(actions)}
               headerActions={
                 isCurrent && actions ? (

@@ -11903,7 +11903,7 @@ html.light [data-fantasy-home] [data-fantasy-card-league] [data-fantasy-card-for
 }
 html.light [data-fantasy-home] [data-fantasy-card-league] [data-fantasy-home-actions] button {
   background-color: rgb(255 255 255 / 0.72);
-  border-color: currentColor !important;
+  border-color: rgb(255 255 255 / 0.72) !important;
   color: #3f3f46 !important;
 }
 html.light [data-fantasy-home] .text-rose-300,

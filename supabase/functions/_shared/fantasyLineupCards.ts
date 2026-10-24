@@ -50,6 +50,8 @@ type PropOut = {
   url_market: string
   url_yes: string
   url_no: string
+  /** Consensus only: every line with each book's fair P(over), re-picked in the app for legal-books mode. */
+  lines?: Array<{ point: number; books: Array<{ key: string; p: number }> }>
 }
 
 const SERIES_STAT: Record<string, string> = {
@@ -304,7 +306,7 @@ const NBA_PROP_MAX_SPREAD = 0.25
 /** `nameKey|TEAM|ET date` → that game's props, points first. Shared cache 10 min. */
 function loadNbaProps(admin?: SupabaseClient): Promise<Record<string, PropOut[]>> {
   return sharedCached(
-    'fantasy:nba-card-props:v3',
+    'fantasy:nba-card-props:v4',
     { ttlMs: 10 * 60_000, staleMaxMs: 60 * 60_000, leaseMs: 30_000, admin, shouldStore: (v) => Object.keys(v).length > 0 },
     async () => {
       const best = new Map<string, Map<string, PropOut & { gap: number }>>()
@@ -387,6 +389,7 @@ function loadNbaProps(admin?: SupabaseClient): Promise<Record<string, PropOut[]>
             url_market: '',
             url_yes: '',
             url_no: '',
+            lines: p.lines,
             gap: Math.abs(p.price - 0.5),
           })
         }

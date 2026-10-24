@@ -29,7 +29,9 @@ const TEAM_BY_NAME: Record<string, string> = {
   'Sacramento Kings': 'SAC', 'San Antonio Spurs': 'SAS', 'Toronto Raptors': 'TOR', 'Utah Jazz': 'UTA', 'Washington Wizards': 'WAS',
 }
 
-export type NbaBookProp = { stat: string; label: string; price: number; no: number; books: number }
+/** Each line the books hang (`point` = 24.5) with every book's fair P(over), so the app can re-pick from legal books. */
+export type NbaBookLine = { point: number; books: Array<{ key: string; p: number }> }
+export type NbaBookProp = { stat: string; label: string; price: number; no: number; books: number; lines: NbaBookLine[] }
 
 const ET_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
 
@@ -49,7 +51,7 @@ export function loadNbaBookProps(admin?: SupabaseClient): Promise<Record<string,
   const key = String(Deno.env.get('THE_ODDS_API_KEY') || '').trim()
   if (!key) return Promise.resolve({})
   return sharedCached(
-    'fantasy:nba-book-props:v1',
+    'fantasy:nba-book-props:v2',
     { ttlMs: 30 * 60_000, staleMaxMs: 3 * 3600_000, leaseMs: 60_000, admin, shouldStore: (v) => Object.keys(v).length > 0 },
     async () => {
       const events = ((await oddsJson('/sports/basketball_nba/events', key)) as Array<Record<string, unknown>>) || []
@@ -68,8 +70,8 @@ export function loadNbaBookProps(admin?: SupabaseClient): Promise<Record<string,
           const date = ET_DATE.format(Date.parse(String(e.commence_time)))
           const teams = [TEAM_BY_NAME[String(e.home_team)], TEAM_BY_NAME[String(e.away_team)]].filter(Boolean).map((t) => nbaTeam(t))
           // player|stat|point → fair P(over) per book
-          const lines = new Map<string, { name: string; stat: string; point: number; fair: number[] }>()
-          for (const book of body?.bookmakers || []) {
+          const lines = new Map<string, { name: string; stat: string; point: number; fair: number[]; byBook: Array<{ key: string; p: number }> }>()
+          for (const book of (body?.bookmakers || []) as Array<{ key?: string; markets?: Array<{ key: string; outcomes?: Array<Record<string, unknown>> }> }>) {
             for (const m of book.markets || []) {
               const stat = MARKET_STAT[m.key]
               if (!stat) continue
@@ -88,20 +90,27 @@ export function loadNbaBookProps(admin?: SupabaseClient): Promise<Record<string,
               for (const p of pairs.values()) {
                 if (p.over == null || p.under == null) continue
                 const k = `${nameKey(p.name)}|${stat}|${p.point}`
-                const entry = lines.get(k) || { name: p.name, stat, point: p.point, fair: [] }
-                entry.fair.push(p.over / (p.over + p.under))
+                const entry = lines.get(k) || { name: p.name, stat, point: p.point, fair: [], byBook: [] }
+                const fair = p.over / (p.over + p.under)
+                entry.fair.push(fair)
+                entry.byBook.push({ key: String(book.key || ''), p: Math.round(fair * 1000) / 1000 })
                 lines.set(k, entry)
               }
             }
           }
           // Main line per player + stat: the point the most books post (ties: nearer 50%).
-          const best = new Map<string, { name: string; stat: string; point: number; p: number; books: number }>()
+          const best = new Map<string, { name: string; stat: string; point: number; p: number; books: number; lines: NbaBookLine[] }>()
+          const allLines = new Map<string, NbaBookLine[]>()
+          for (const v of lines.values()) {
+            const k = `${nameKey(v.name)}|${v.stat}`
+            ;(allLines.get(k) || allLines.set(k, []).get(k)!).push({ point: v.point, books: v.byBook })
+          }
           for (const v of lines.values()) {
             const p = v.fair.reduce((a, x) => a + x, 0) / v.fair.length
             const k = `${nameKey(v.name)}|${v.stat}`
             const cur = best.get(k)
             if (!cur || v.fair.length > cur.books || (v.fair.length === cur.books && Math.abs(p - 0.5) < Math.abs(cur.p - 0.5))) {
-              best.set(k, { name: v.name, stat: v.stat, point: v.point, p, books: v.fair.length })
+              best.set(k, { name: v.name, stat: v.stat, point: v.point, p, books: v.fair.length, lines: allLines.get(k) || [] })
             }
           }
           for (const v of best.values()) {
@@ -111,6 +120,7 @@ export function loadNbaBookProps(admin?: SupabaseClient): Promise<Record<string,
               price: Math.round(v.p * 100) / 100,
               no: Math.round((1 - v.p) * 100) / 100,
               books: v.books,
+              lines: v.lines,
             }
             for (const team of teams) (out[`${nameKey(v.name)}|${team}|${date}`] ||= []).push(prop)
           }

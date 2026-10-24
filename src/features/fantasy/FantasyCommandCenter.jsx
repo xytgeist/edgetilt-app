@@ -8,6 +8,8 @@ import { CategoryBoard, CategoryScoreLine, leagueCategories, seasonLongFormat, s
 import { useHeadshotSrc } from '../../utils/playerHeadshot.js'
 import { distinctTeamAccent, useTeamAccent } from './useTeamAccent.js'
 import { useLiveGames, useLivePlays, useNbaLivePlays } from './useFantasyLive.js'
+import { withLegalProps } from './fantasyLegalProps.js'
+import { useLegalBooks } from '../lounge/gameHub/gameHubLegalBooks.js'
 import FantasyPlayerNews from './FantasyPlayerNews.jsx'
 import { usePlayerNews } from './usePlayerNews.js'
 import { newsByPlayer, newsTimeAgo, withNews } from './fantasyNewsStatus.js'
@@ -4724,7 +4726,7 @@ export default function FantasyCommandCenter({
   leagues,
   details: syncedDetails,
   loadingDetail,
-  cards: cardsBySport,
+  cards: rawCardsBySport,
   cardsLoading,
   busy,
   onSetPrimary,
@@ -4732,6 +4734,12 @@ export default function FantasyCommandCenter({
   onSync,
   syncing = false,
 }) {
+  // Legal-books mode: sportsbook consensus props come only from books licensed in the viewer's state.
+  const { legalState } = useLegalBooks()
+  const cardsBySport = useMemo(() => {
+    if (!rawCardsBySport?.nba || !legalState) return rawCardsBySport
+    return { ...rawCardsBySport, nba: withLegalProps(rawCardsBySport.nba, legalState) }
+  }, [rawCardsBySport, legalState])
   const [leagueId, setLeagueId] = useState(null)
   const [pageKey, setPageKey] = useState(null)
   const [tool, setTool] = useState(DEFAULT_TOOL)

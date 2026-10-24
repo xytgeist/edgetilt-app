@@ -15,10 +15,13 @@ function espnNbaSeason(now = new Date()): number {
 export function loadNbaAuctionValues(admin?: SupabaseClient): Promise<Record<string, number>> {
   const season = espnNbaSeason()
   return sharedCached(
-    `fantasy:nba-espn-auction:${season}:v1`,
+    `fantasy:nba-espn-auction:${season}:v2`,
     { ttlMs: 6 * 60 * 60_000, staleMaxMs: 48 * 60 * 60_000, leaseMs: 30_000, admin, shouldStore: (v) => Object.keys(v).length > 0 },
     async () => {
-      const filter = { players: { limit: 500, sortPercOwned: { sortPriority: 1, sortAsc: false } } }
+      // `filterStatsForExternalIds` on a season that does not exist drops every stat block: 19 MB → ~0.7 MB.
+      const filter = {
+        players: { limit: 500, sortPercOwned: { sortPriority: 1, sortAsc: false }, filterStatsForExternalIds: { value: [2099] } },
+      }
       const res = await fetch(
         `https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba/seasons/${season}/segments/0/leaguedefaults/1?view=kona_player_info`,
         { headers: { Accept: 'application/json', 'x-fantasy-filter': JSON.stringify(filter) }, signal: AbortSignal.timeout(10_000) },

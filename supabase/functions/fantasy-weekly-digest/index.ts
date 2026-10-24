@@ -565,6 +565,34 @@ type Opts = {
   background?: boolean
   /** With dryRun: also return the rendered email HTML. */
   preview?: boolean
+  /** Internal: build just this league's section (one worker per league) and return it. */
+  onlyLeague?: string
+  fresh?: { provider: string; syncedAt: string | null; error: string | null }
+}
+
+/** Above this many leagues a user's sections are built one league per worker (nine NBA leagues ran out of compute). */
+const FAN_OUT_OVER = 2
+const FAN_OUT_BATCH = 3
+let selfAuth = ''
+
+function selfUrl() {
+  return `${str(Deno.env.get('SUPABASE_URL')).replace(/\/$/, '')}/functions/v1/fantasy-weekly-digest`
+}
+
+/** One league's section from its own worker; null on any failure (the digest skips that league, as before). */
+async function sectionViaWorker(userId: string, leagueId: string, sport: Sport, fresh: Opts['fresh']): Promise<Section | null> {
+  const res = await fetch(selfUrl(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: selfAuth, apikey: selfAuth.replace(/^Bearer\s+/i, '') },
+    body: JSON.stringify({ onlyUser: userId, onlyLeague: leagueId, sport, force: true, fresh }),
+    signal: AbortSignal.timeout(140_000),
+  }).catch(() => null)
+  if (!res?.ok) {
+    console.error('digest league worker', leagueId, res?.status)
+    return null
+  }
+  const body = (await res.json().catch(() => null)) as { section?: Section | null } | null
+  return body?.section || null
 }
 
 /** One user's digest: refresh stale hosts, build every league's section in this sport, push + email once per week. */
@@ -598,12 +626,22 @@ async function processUser(admin: SupabaseClient, userId: string, season: number
     .eq('season', season)
   const sections: Section[] = []
   // Short names, same as the app ("Washington Pro", not "Washington Pro H2H Points PPR League").
-  for (const lg of (leagues || []).map((l) => ({ ...l, name: fantasyLeagueDisplayName(l.name) }))) {
-    const s = await leagueSection(admin, userId, lg, week, sport, fresh.get(lg.connection_id)).catch((e) => {
-      console.error('digest league', lg.id, e)
-      return null
-    })
-    if (s) sections.push(s)
+  const named = (leagues || []).map((l) => ({ ...l, name: fantasyLeagueDisplayName(l.name) }))
+  if (named.length > FAN_OUT_OVER && selfAuth) {
+    for (let i = 0; i < named.length; i += FAN_OUT_BATCH) {
+      const batch = await Promise.all(
+        named.slice(i, i + FAN_OUT_BATCH).map((lg) => sectionViaWorker(userId, str(lg.id), sport, fresh.get(lg.connection_id))),
+      )
+      for (const s of batch) if (s) sections.push(s)
+    }
+  } else {
+    for (const lg of named) {
+      const s = await leagueSection(admin, userId, lg, week, sport, fresh.get(lg.connection_id)).catch((e) => {
+        console.error('digest league', lg.id, e)
+        return null
+      })
+      if (s) sections.push(s)
+    }
   }
   if (!sections.length) return { userId, skipped: 'no leagues' }
   const { title, body: text } = pushCopy(sections, week, sport)
@@ -673,6 +711,7 @@ Deno.serve(async (req) => {
   }
   const body = (await req.json().catch(() => ({}))) as Opts
   const sport: Sport = body.sport === 'nba' ? 'nba' : 'nfl'
+  selfAuth = req.headers.get('Authorization') || ''
   const pt = pacificNow()
   const sendHour = sport === 'nba' ? pt.weekday === 'Mon' && pt.hour === 9 : pt.weekday === 'Tue' && pt.hour === 17
   if (!body.force && !sendHour) return adminOpsJson(200, { ok: true, ran: false, sport, pacific: pt })
@@ -681,6 +720,21 @@ Deno.serve(async (req) => {
     const state = sport === 'nba' ? await fetchNbaState() : await fetchNflState()
     const season = Number(state.season)
     const week = Math.max(1, Number(state.week) || 1)
+
+    if (body.onlyUser && body.onlyLeague) {
+      const { data: lg } = await admin
+        .from('fantasy_leagues')
+        .select('id, user_id, connection_id, name, provider, sport, season, scoring, settings')
+        .eq('id', body.onlyLeague)
+        .eq('user_id', body.onlyUser)
+        .maybeSingle()
+      if (!lg) return adminOpsJson(404, { error: 'League not found.' })
+      const section = await leagueSection(admin, body.onlyUser, { ...lg, name: fantasyLeagueDisplayName(lg.name) }, week, sport, body.fresh).catch((e) => {
+        console.error('digest league', lg.id, e)
+        return null
+      })
+      return adminOpsJson(200, { ok: true, section })
+    }
 
     if (body.onlyUser) {
       const work = processUser(admin, body.onlyUser, season, week, sport, body)

@@ -4646,7 +4646,7 @@ export default function FantasyCommandCenter({
                       <span
                         data-fantasy-tab-count
                         aria-label={`${incomingTradeCount} trade offer${incomingTradeCount > 1 ? 's' : ''}`}
-                        className="mb-0.5 rounded-full bg-zinc-800 px-1.5 py-px text-[10px] font-bold tabular-nums text-zinc-300"
+                        className="rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums text-zinc-300"
                       >
                         {incomingTradeCount}
                       </span>
@@ -4662,7 +4662,7 @@ export default function FantasyCommandCenter({
                       }}
                       aria-label={`Show ${dismissedCount} dismissed suggestion${dismissedCount > 1 ? 's' : ''}`}
                       title="Show dismissed"
-                      className="mb-1.5 rounded-full bg-zinc-800 px-1.5 py-px text-[10px] font-bold tabular-nums text-zinc-300"
+                      className="mb-1.5 rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums text-zinc-300"
                     >
                       {dismissedCount}
                     </button>

@@ -103,6 +103,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
   autoTuckRef.current = Boolean(autoTuckMs)
   const scrollRunRef = useRef({ dir: 0, px: 0 })
   const snapRevealRef = useRef(null)
+  const tuckScrollRef = useRef(null)
   const firstTuckDoneRef = useRef(false)
   const tabDragRef = useRef(null)
   const [titleBarHeight, setTitleBarHeight] = useState(0)
@@ -200,6 +201,15 @@ export default function ScrollLinkedEdgeTitleBarShell({
       // one direction flips them, animated.
       if (autoTuckRef.current) {
         const run = scrollRunRef.current
+        // The tuck's own smooth scroll starts inside the "top reveals" zone; snapping there popped the bar back up mid-shrink.
+        const own = tuckScrollRef.current
+        if (own) {
+          if (st < own.top - 1 && Date.now() < own.until) return
+          tuckScrollRef.current = null
+          run.dir = 0
+          run.px = 0
+          return
+        }
         if (eff === 0) return
         if (Math.sign(eff) !== Math.sign(run.dir)) {
           run.dir = Math.sign(eff)
@@ -262,6 +272,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
       // Near the top the content slides up into the bar's space; a page that fits (or is still loading) waits.
       if (el.scrollHeight - el.clientHeight < h) return false
       const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      tuckScrollRef.current = { top: Math.min(h, el.scrollHeight - el.clientHeight), until: Date.now() + 700 }
       el.scrollTo({ top: h, behavior: reduce ? 'auto' : 'smooth' })
     }
     animateReveal(0)

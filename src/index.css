@@ -12153,6 +12153,22 @@ html.light [data-fantasy-nba-schedule] .bg-zinc-800 {
 html.light [data-fantasy-nba-schedule] .text-zinc-700 {
   color: #d4d4d8;
 }
+/* Every other player row is banded so a name lines up with its nights across the week. */
+[data-fantasy-nba-schedule] tr[data-fantasy-sched-stripe] > td {
+  background-color: rgb(255 255 255 / 0.045);
+}
+[data-fantasy-nba-schedule] tr[data-fantasy-sched-stripe] > td:first-child {
+  border-radius: 0.375rem 0 0 0.375rem;
+}
+[data-fantasy-nba-schedule] tr[data-fantasy-sched-stripe] > td:last-child {
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+html.light [data-fantasy-nba-schedule] tr[data-fantasy-sched-stripe] > td {
+  background-color: #f4f4f5;
+}
+html.light [data-fantasy-nba-schedule] tr[data-fantasy-sched-stripe] .bg-zinc-800 {
+  background-color: #fff;
+}
 /* Start/Sit open lineup slot */
 [data-fantasy-home] [data-fantasy-open-slot] {
   border-color: rgb(245 158 11 / 0.45);

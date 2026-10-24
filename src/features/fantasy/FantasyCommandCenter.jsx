@@ -2003,7 +2003,7 @@ function NbaSchedulePanel({ page, cards, league }) {
       <div className="mt-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <table className="w-full table-fixed border-separate border-spacing-0 text-[10px]">
           <colgroup>
-            <col className="w-[4.75rem]" />
+            <col className="w-[5rem]" />
             {plan.dates.map((d) => (
               <col key={d} />
             ))}
@@ -2017,20 +2017,24 @@ function NbaSchedulePanel({ page, cards, league }) {
                   {nightLabel(d).slice(0, 2)}
                 </th>
               ))}
-              <th className="pb-1 text-right font-semibold text-zinc-500">L</th>
+              <th className="pb-1 pr-1.5 text-right font-semibold text-zinc-500">L</th>
             </tr>
           </thead>
           <tbody>
-            {plan.rows.map((p) => (
-              <tr key={p.id} className={p.row.slot === 'bench' ? 'opacity-80' : ''}>
-                <td className="truncate py-0.5 pr-1 font-semibold text-zinc-200">
+            {plan.rows.map((p, i) => (
+              <tr
+                key={p.id}
+                data-fantasy-sched-stripe={i % 2 === 0 ? '' : undefined}
+                className={p.row.slot === 'bench' ? 'opacity-80' : ''}
+              >
+                <td className="truncate py-1 pl-1.5 pr-1 font-semibold text-zinc-200">
                   {shortName(p.row.player_name, p.row.position)}
                 </td>
                 {plan.dates.map((d) => {
                   const g = p.games.get(d)
                   const past = d < plan.today || g?.state === 'post'
                   return (
-                    <td key={d} className="py-0.5 text-center">
+                    <td key={d} className="py-1 text-center">
                       {g ? (
                         <span
                           data-fantasy-sched-b2b={g.b2b && !past ? '' : undefined}
@@ -2047,7 +2051,7 @@ function NbaSchedulePanel({ page, cards, league }) {
                     </td>
                   )
                 })}
-                <td className="py-0.5 text-right font-bold tabular-nums text-zinc-200">
+                <td className="py-1 pr-1.5 text-right font-bold tabular-nums text-zinc-200">
                   {p.out ? <span className="text-[8px] text-rose-300">OUT</span> : p.left}
                 </td>
               </tr>
@@ -2055,7 +2059,7 @@ function NbaSchedulePanel({ page, cards, league }) {
           </tbody>
           <tfoot>
             <tr>
-              <td className="pt-1 pr-1 font-semibold text-zinc-500">Starting</td>
+              <td className="pt-1 pl-1.5 pr-1 font-semibold text-zinc-500">Starting</td>
               {plan.dates.map((d) => {
                 const n = plan.starts[d]
                 return (

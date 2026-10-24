@@ -283,17 +283,26 @@ function espnWaiver(settings: Record<string, unknown>) {
 
 /**
  * NBA add / games limits from mSettings: `add_limit` (adds per matchup, or per day when ESPN counts them per scoring
- * period), `season_add_limit`, and `games_limit` (games played per lineup slot, stat 42, season-long leagues).
+ * period), `season_add_limit`, and `games_limit` (games played per starting seat, stat 42, season-long leagues).
  */
 function espnNbaLimits(settings: Record<string, unknown>) {
   const acq = asRecord(settings.acquisitionSettings) || {}
   const perMatchup = Number(acq.matchupAcquisitionLimit)
   const season = Number(acq.acquisitionLimit)
-  const slotLimits = Object.values(asRecord(asRecord(settings.rosterSettings)?.lineupSlotStatLimits) || {})
-    .map(asRecord)
-    .filter((l) => Number(l?.statId) === 42)
-    .map((l) => Number(l?.limitValue) || 0)
-  const games = slotLimits.length ? Math.max(...slotLimits) : 0
+  // ESPN caps a slot group's total (3 UTIL seats share 243), so the per-seat cap is the limit over its seat count.
+  const roster = asRecord(settings.rosterSettings) || {}
+  const seats = asRecord(roster.lineupSlotCounts) || {}
+  const perSeat: number[] = []
+  for (const [slotId, raw] of Object.entries(asRecord(roster.lineupSlotStatLimits) || {})) {
+    const l = asRecord(raw)
+    const count = Number(seats[slotId]) || 0
+    if (Number(l?.statId) !== 42 || !NBA_SLOT[Number(slotId)] || count <= 0) continue
+    const cap = Math.round((Number(l?.limitValue) || 0) / count)
+    if (cap > 0) perSeat.push(cap)
+  }
+  const tally = new Map<number, number>()
+  for (const cap of perSeat) tally.set(cap, (tally.get(cap) || 0) + 1)
+  const games = [...tally.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0] || 0
   return {
     ...(perMatchup > 0 ? { add_limit: { count: perMatchup, per: acq.matchupLimitPerScoringPeriod ? 'day' : 'week' } } : {}),
     ...(season > 0 ? { season_add_limit: season } : {}),

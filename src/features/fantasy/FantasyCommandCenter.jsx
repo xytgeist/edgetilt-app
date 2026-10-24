@@ -3766,6 +3766,7 @@ function MatchupCard({
           <CategoryScoreLine
             won={cat.record.wins}
             expected={cat.expected}
+            playing={Boolean(leftOut.playing && !leftOut.final)}
             align="left"
             lead={!decided ? null : cat.record.wins > cat.record.losses ? 'lead' : cat.record.wins < cat.record.losses ? 'trail' : null}
           />
@@ -3791,6 +3792,7 @@ function MatchupCard({
           <CategoryScoreLine
             won={cat.record.losses}
             expected={Math.max(0, cat.total - cat.expected)}
+            playing={Boolean(rightOut.playing && !rightOut.final)}
             align="right"
             lead={!decided ? null : cat.record.losses > cat.record.wins ? 'lead' : cat.record.losses < cat.record.wins ? 'trail' : null}
           />

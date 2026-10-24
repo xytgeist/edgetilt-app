@@ -124,7 +124,8 @@ function catValue(side, digits = 0) {
   return digits ? side.mean.toFixed(digits) : String(Math.round(side.mean))
 }
 
-export function CategoryScoreLine({ won, expected, align, lead }) {
+/** `playing`: a starter on this side is in a game right now (same rule as the points card's LIVE). */
+export function CategoryScoreLine({ won, expected, align, lead, playing = false }) {
   const end = align === 'right'
   return (
     <div className={`min-w-0 ${end ? 'text-right' : 'text-left'}`}>
@@ -134,7 +135,15 @@ export function CategoryScoreLine({ won, expected, align, lead }) {
         {won}
       </div>
       <div className={`mt-1 flex items-baseline gap-1.5 ${end ? 'justify-end' : ''}`}>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Cats · proj</span>
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          {playing ? (
+            <span data-fantasy-live-dot aria-hidden className="relative inline-flex h-1.5 w-1.5">
+              <span className="fantasy-live-dot-halo absolute inline-flex h-full w-full rounded-full motion-safe:animate-ping" />
+              <span className="fantasy-live-dot-core relative inline-flex h-1.5 w-1.5 rounded-full" />
+            </span>
+          ) : null}
+          {playing ? 'Live · proj' : 'Cats · proj'}
+        </span>
         <span className="text-[11px] font-bold tabular-nums text-zinc-300">{expected.toFixed(1)}</span>
       </div>
     </div>

@@ -861,11 +861,16 @@ function LoungeMatchupGameHubModal({
     if (id === 'stats') {
       return (
         <div className="space-y-3 py-3">
-          <OddsTable game={game} books={detail.odds} legalState={legalBooks.legalState} />
-          {(isNbaGame ? nbaRosterLoading : fantasyLoading) && !((isNbaGame ? nbaRoster.props : fantasy.props) || []).length ? (
-            <div className="py-4 text-center text-sm text-zinc-500">Loading Kalshi markets…</div>
-          ) : (
-            <KalshiGamePropsBoard props={isNbaGame ? nbaRoster.props : fantasy.props} game={game} live={live} />
+          {/* Lines and markets are for games still to decide; a final keeps only the box score and stats. */}
+          {game.status === 'post' ? null : (
+            <>
+              <OddsTable game={game} books={detail.odds} legalState={legalBooks.legalState} />
+              {(isNbaGame ? nbaRosterLoading : fantasyLoading) && !((isNbaGame ? nbaRoster.props : fantasy.props) || []).length ? (
+                <div className="py-4 text-center text-sm text-zinc-500">Loading Kalshi markets…</div>
+              ) : (
+                <KalshiGamePropsBoard props={isNbaGame ? nbaRoster.props : fantasy.props} game={game} live={live} />
+              )}
+            </>
           )}
           <BoxScoreCard game={game} />
           <PlayerStats game={game} stats={detail.stats} />

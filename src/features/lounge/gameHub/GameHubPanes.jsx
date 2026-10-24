@@ -375,7 +375,7 @@ export function BoxScoreCard({ game }) {
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : final ? null : (
         <div className="px-3 pb-3 text-[13px] text-zinc-500">Period scores land once the game is underway.</div>
       )}
     </div>

@@ -36,6 +36,7 @@ import {
   loadOpenSlotFill,
   loadPendingTrades,
   loadSniper,
+  loadNbaPlayoffSchedule,
   loadWaivers,
 } from './fantasyApi.js'
 import { rankBoom, rankHandcuffs } from './fantasySniper.js'
@@ -2109,28 +2110,63 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
 }
 
 /** NBA games-left planner: my roster by night (opponent, back-to-backs), nightly starts, starts left vs opponent. */
-function NbaSchedulePanel({ page, cards, league }) {
+function NbaSchedulePanel({ supabaseClient, page, cards, league }) {
   const upcoming = nbaMatchupUpcoming(league)
   const [pick, setPick] = useState(null)
-  const wk = pick ?? (upcoming ? 1 : 0)
+  // Head-to-head leagues only: season-long formats have no playoff weeks.
+  const playoffsOn = !seasonLongFormat(league) && Number(league?.settings?.playoff_week_start) > 0
+  const wk = pick === 'playoffs' && !playoffsOn ? 0 : pick ?? (upcoming ? 1 : 0)
   const plan = useMemo(() => {
+    if (wk === 'playoffs') return null
     const slots = waiverLineupSlots(league, page?.roster || [], 'nba')
     if (!slots.length || !page?.roster?.length) return null
     return schedulePlan({ mine: page.roster, opp: page.oppRoster, cards, slots, wk })
   }, [league, page, cards, wk])
-  if (!plan || !plan.dates.length) return null
+  const hasWeek = Boolean(plan?.dates.length)
+  if (!hasWeek && !playoffsOn) return null
   const oppName = shortTeamName(page?.right) || 'Opponent'
   const lockIn = nbaLockIn(league?.provider, 'nba', league?.settings)
+  const pills = [
+    [0, 'This week'],
+    [1, 'Next week'],
+    ...(playoffsOn ? [['playoffs', 'Playoffs']] : []),
+  ]
+  const header = (
+    <div className="flex items-center justify-between gap-2">
+      <div className="text-[13px] font-bold text-zinc-100">Schedule</div>
+      <div className="flex rounded-full border border-zinc-800 p-0.5">
+        {pills.map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setPick(id)}
+            className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${wk === id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+  if (wk === 'playoffs' || !hasWeek) {
+    return (
+      <div data-fantasy-nba-schedule className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
+        {header}
+        {wk === 'playoffs' ? (
+          <NbaPlayoffSchedule supabaseClient={supabaseClient} league={league} roster={page?.roster || []} />
+        ) : (
+          <div className="mt-2 text-[11px] text-zinc-500">No games on this week&apos;s schedule.</div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div data-fantasy-nba-schedule className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="text-[13px] font-bold text-zinc-100">Schedule</div>
         <div className="flex rounded-full border border-zinc-800 p-0.5">
-          {[
-            [0, 'This week'],
-            [1, 'Next week'],
-          ].map(([id, label]) => (
+          {pills.map(([id, label]) => (
             <button
               key={id}
               type="button"
@@ -2275,6 +2311,126 @@ function NbaSchedulePanel({ page, cards, league }) {
         {Number(league?.settings?.games_limit) > 0
           ? ` Each lineup slot counts up to ${league.settings.games_limit} games this season; starts past that score nothing.`
           : ''}
+      </p>
+    </div>
+  )
+}
+
+/** ESPN NBA abbreviations -> Sleeper's (rosters carry Sleeper's; the playoff Edge keys teams the same way). */
+const NBA_TEAM_ALIAS = { GS: 'GSW', SA: 'SAS', NO: 'NOP', NY: 'NYK', UTAH: 'UTA', WSH: 'WAS' }
+const nbaTeamKey = (team) => {
+  const t = String(team || '').toUpperCase().replace(/[^A-Z]/g, '')
+  return NBA_TEAM_ALIAS[t] || t
+}
+const SHORT_DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+const shortDate = (ymd) => SHORT_DATE.format(new Date(`${ymd}T12:00:00Z`))
+const playoffScheduleCache = new Map()
+
+/** Games per rostered player in this league's fantasy playoff weeks, against the NBA average for each week. */
+function NbaPlayoffSchedule({ supabaseClient, league, roster }) {
+  const leagueId = league?.id || null
+  const [data, setData] = useState(() => playoffScheduleCache.get(leagueId) || null)
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    if (!leagueId || !supabaseClient || playoffScheduleCache.has(leagueId)) return undefined
+    let alive = true
+    loadNbaPlayoffSchedule(supabaseClient, leagueId)
+      .then((res) => {
+        playoffScheduleCache.set(leagueId, res)
+        if (alive) setData(res)
+      })
+      .catch((e) => {
+        if (alive) setErr(e?.message || 'Could not load the playoff schedule.')
+      })
+    return () => {
+      alive = false
+    }
+  }, [leagueId, supabaseClient])
+  const weeks = useMemo(() => (Array.isArray(data?.weeks) ? data.weeks : []), [data])
+  const avg = useMemo(
+    () =>
+      weeks.map((w) => {
+        const counts = Object.values(w.games || {}).map(Number)
+        return counts.length ? counts.reduce((a, n) => a + n, 0) / counts.length : 0
+      }),
+    [weeks],
+  )
+  const rows = useMemo(
+    () =>
+      (roster || [])
+        .filter((r) => r?.sleeper_id && r.player_name)
+        .map((r) => {
+          const team = nbaTeamKey(r.nfl_team)
+          const games = weeks.map((w) => Number(w.games?.[team]) || 0)
+          return { row: r, games, total: games.reduce((a, n) => a + n, 0) }
+        })
+        .sort((a, b) => b.total - a.total || (a.row.slot === 'starter' ? -1 : 1)),
+    [roster, weeks],
+  )
+
+  if (err) return <div className="mt-2 text-[11px] text-zinc-500">{err}</div>
+  if (!data) return <div className="mt-2 text-[11px] text-zinc-500">Loading playoff weeks…</div>
+  if (!weeks.length) {
+    return <div className="mt-2 text-[11px] text-zinc-500">Playoff weeks show up after the next sync.</div>
+  }
+  const avgTotal = avg.reduce((a, n) => a + n, 0)
+  const tone = (n, i) => (n >= avg[i] + 0.5 ? 'fantasy-sit-in font-bold' : n <= avg[i] - 0.5 ? 'fantasy-sit-out font-bold' : 'text-zinc-300')
+
+  return (
+    <div data-fantasy-nba-playoffs>
+      <div className="mt-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <table className="w-full table-fixed border-separate border-spacing-0 text-[10px]">
+          <colgroup>
+            <col className="w-[6.5rem]" />
+            {weeks.map((w) => (
+              <col key={w.week} />
+            ))}
+            <col className="w-9" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th className="pr-1" />
+              {weeks.map((w) => (
+                <th key={w.week} className="pb-1 text-center font-bold text-zinc-400">
+                  <div>Wk {w.week}</div>
+                  <div className="text-[9px] font-semibold text-zinc-500">
+                    {shortDate(w.start)}-{shortDate(w.end)}
+                  </div>
+                </th>
+              ))}
+              <th className="pb-1 pr-1.5 text-right align-bottom font-semibold text-zinc-500">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((p, i) => (
+              <tr key={p.row.sleeper_id} data-fantasy-sched-stripe={i % 2 === 0 ? '' : undefined} className={p.row.slot === 'starter' ? '' : 'opacity-80'}>
+                <td className="truncate py-1 pl-1.5 pr-1 font-semibold text-zinc-200">{shortName(p.row.player_name, p.row.position)}</td>
+                {p.games.map((n, j) => (
+                  <td key={weeks[j].week} className={`py-1 text-center text-[11px] tabular-nums ${tone(n, j)}`}>
+                    {n}
+                  </td>
+                ))}
+                <td className="py-1 pr-1.5 text-right text-[11px] font-bold tabular-nums text-zinc-100">{p.total}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td className="pt-1 pl-1.5 pr-1 font-semibold text-zinc-500">NBA avg</td>
+              {avg.map((a, j) => (
+                <td key={weeks[j].week} className="pt-1 text-center tabular-nums text-zinc-500">
+                  {a.toFixed(1)}
+                </td>
+              ))}
+              <td className="pt-1 pr-1.5 text-right tabular-nums text-zinc-500">{avgTotal.toFixed(1)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p className="mt-2 text-[10px] text-zinc-500">
+        Games each player&apos;s team plays in your fantasy playoff weeks. Green beats the NBA average for that week, red trails it.
+        More playoff games is a tiebreaker worth weighing in trades and adds.
+        {data.estimated ? ' Sleeper dates are estimated from its week calendar.' : ''}
       </p>
     </div>
   )
@@ -5152,7 +5308,7 @@ export default function FantasyCommandCenter({
             <StartSitPanel supabaseClient={supabaseClient} detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} />
           ) : null}
           {shownTool === 'schedule' && detail && current && (selected?.sport || detail?.league?.sport) === 'nba' ? (
-            <NbaSchedulePanel page={current} cards={cards} league={detail?.league} />
+            <NbaSchedulePanel supabaseClient={supabaseClient} page={current} cards={cards} league={detail?.league} />
           ) : null}
           {shownTool === 'waiver' && detail ? (
             <WaiversPanel supabaseClient={supabaseClient} detail={detail} sport={selected?.sport || detail?.league?.sport} />

@@ -700,6 +700,28 @@ function yahooLeagueField(root: unknown, key: string): unknown {
   return visit(root, 0)
 }
 
+/** `/game/{game_key}/game_weeks`: every `game_week` ({ week, start, end }) in Yahoo's calendar for that season. */
+function yahooGameWeeks(root: unknown): Map<number, { start: string; end: string }> {
+  const out = new Map<number, { start: string; end: string }>()
+  const seen = new Set<unknown>()
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== 'object' || seen.has(node)) return
+    seen.add(node)
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item)
+      return
+    }
+    const obj = node as Record<string, unknown>
+    const week = Number(obj.week)
+    const start = String(obj.start || '')
+    const end = String(obj.end || '')
+    if (week > 0 && /^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end)) out.set(week, { start, end })
+    for (const value of Object.values(obj)) visit(value)
+  }
+  visit(root)
+  return out
+}
+
 /** Playoff start week + team count, saved under Sleeper's key names so the app reads one shape. */
 function yahooPlayoffs(root: unknown): { playoff_week_start?: number; playoff_teams?: number } {
   const out: { playoff_week_start?: number; playoff_teams?: number } = {}
@@ -953,6 +975,7 @@ export async function syncYahooConnection(
         // Leagues of this sport the account no longer lists (left / deleted; their own reads return 400).
         await pruneMissingLeagues(admin, connectionId, sport, uniqueLeagueKeys)
 
+        const gameWeeksByGame = new Map<string, Map<number, { start: string; end: string }>>()
         for (const leagueKey of uniqueLeagueKeys) {
           const metaPayload = await yahooGet(access, `/league/${encodeURIComponent(leagueKey)}`)
           const leagues = yahooEntities(metaPayload, 'league')
@@ -997,6 +1020,22 @@ export async function syncYahooConnection(
             waiver = yahooWaiver(settingsPayload)
             lineupSlots = yahooLineupSlots(settingsPayload)
             playoffs = yahooPlayoffs(settingsPayload)
+            // H2H NBA: the playoff weeks' dates (playoff start week through the league's last week).
+            const lastWeek = num(lg.end_week)
+            if (sport === 'nba' && playoffs.playoff_week_start && lastWeek >= playoffs.playoff_week_start && /^head/.test(str(lg.scoring_type))) {
+              const gameKey = leagueKey.split('.l.')[0]
+              let calendar = gameWeeksByGame.get(gameKey)
+              if (!calendar) {
+                calendar = yahooGameWeeks(await yahooGet(access, `/game/${encodeURIComponent(gameKey)}/game_weeks`).catch(() => null))
+                gameWeeksByGame.set(gameKey, calendar)
+              }
+              const playoffDates: Array<{ week: number; start: string; end: string }> = []
+              for (let w = playoffs.playoff_week_start; w <= lastWeek; w++) {
+                const d = calendar.get(w)
+                if (d) playoffDates.push({ week: w, ...d })
+              }
+              if (playoffDates.length) nbaExtra = { ...nbaExtra, playoff_dates: playoffDates }
+            }
           } catch {
             scoring = {}
           }

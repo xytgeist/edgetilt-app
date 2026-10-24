@@ -11,6 +11,7 @@ import { pruneMissingLeagues } from './fantasyLeaguePrune.ts'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { type NbaPlayer, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
 import { loadNbaBoard } from './fantasyNbaBoard.ts'
+import type { PlayoffWeek } from './fantasyNbaPlayoffs.ts'
 // The app's categories math (plain ESM): category-value weights the points engines score with.
 import { categoryWeights } from '../../../src/features/fantasy/fantasyCategories.js'
 
@@ -361,6 +362,34 @@ function espnPlayoffs(settings: Record<string, unknown>): { playoff_week_start?:
     ...(Number.isFinite(regular) && regular > 0 ? { playoff_week_start: regular + 1 } : {}),
     ...(Number.isFinite(teams) && teams > 0 ? { playoff_teams: teams } : {}),
   }
+}
+
+/**
+ * NBA playoff matchup dates. `matchupPeriods` maps each matchup to schedule weeks (a two-week playoff round lists
+ * two). Weeks are seven days counted back from the season's last day (`finalScoringPeriod`), so a long week 1 or an
+ * All-Star double week earlier does not shift them. A scoring period's date is its offset from today's.
+ */
+function espnPlayoffDates(settings: Record<string, unknown>, status: Record<string, unknown>): PlayoffWeek[] {
+  const sched = asRecord(settings.scheduleSettings) || {}
+  const regular = Number(sched.matchupPeriodCount) || 0
+  const today = Number(status.latestScoringPeriod) || 0
+  const finalDay = Number(status.finalScoringPeriod) || 0
+  const periods = asRecord(sched.matchupPeriods) || {}
+  const weeksOf = (p: string) => (Array.isArray(periods[p]) ? (periods[p] as unknown[]).map(Number).filter((n) => n > 0) : [])
+  const lastWeek = Math.max(0, ...Object.keys(periods).flatMap(weeksOf))
+  if (!regular || !today || !finalDay || !lastWeek) return []
+  const weekEnd = (w: number) => finalDay - 7 * (lastWeek - w)
+  return Object.keys(periods)
+    .map(Number)
+    .filter((p) => p > regular)
+    .sort((a, b) => a - b)
+    .flatMap((p) => {
+      const weeks = weeksOf(String(p))
+      if (!weeks.length) return []
+      const start = weekEnd(Math.min(...weeks)) - 6
+      const end = weekEnd(Math.max(...weeks))
+      return [{ week: p, start: etDateOffset(start - today), end: etDateOffset(end - today) }]
+    })
 }
 
 function espnLineupSlots(settings: Record<string, unknown>): string[] {
@@ -825,6 +854,7 @@ async function syncEspnNba(
             waiver: espnWaiver(settings),
             ...espnPlayoffs(settings),
             ...espnNbaLimits(settings),
+            ...(scoringType === 'ROTO' || scoringType === 'TOTAL_SEASON_POINTS' ? {} : { playoff_dates: espnPlayoffDates(settings, status) }),
           },
         },
         { onConflict: 'connection_id,external_league_id' },

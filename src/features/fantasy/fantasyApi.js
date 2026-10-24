@@ -279,6 +279,14 @@ export async function loadWaivers(supabase, leagueId) {
   return finishEdge(data, error, 'Could not load waivers.')
 }
 
+/** NBA: this league's fantasy playoff weeks with games per NBA team (`{ weeks: [{ week, start, end, games }] }`). */
+export async function loadNbaPlayoffSchedule(supabase, leagueId) {
+  const id = String(leagueId || '').trim()
+  if (!id) return null
+  const { data, error } = await supabase.functions.invoke('fantasy-nba-playoff-schedule', { body: { league_id: id } })
+  return finishEdge(data, error, 'Could not load the playoff schedule.')
+}
+
 /** Available players at these positions whose game this week has not started (open lineup slot fill). */
 export async function loadOpenSlotFill(supabase, leagueId, positions) {
   const id = String(leagueId || '').trim()

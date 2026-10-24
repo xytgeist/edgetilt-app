@@ -1409,7 +1409,6 @@ function App() {
       },
     })
     if (isEmailAlreadyRegisteredSignup(error, data)) {
-      const nextEmail = signupEmailForAuth
       setEmail((prev) => (prev.trim() ? prev : String(signupEmail || '').trim()))
       setPassword((prev) => (prev ? prev : signupPassword))
       setSignupHint('')

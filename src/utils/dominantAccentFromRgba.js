@@ -13,6 +13,17 @@ const HUE_BINS = 36
  * @returns {string | null} #rrggbb from curated palette
  */
 export function dominantAccentFromRgba(data) {
+  return dominantAccentsFromRgba(data, 1)[0] ?? null
+}
+
+/**
+ * Up to `count` distinct palette accents, strongest hue first. Runner-up hues must carry a real share of the image
+ * (a few stray pixels are not a second color).
+ * @param {Uint8ClampedArray | Uint8Array} data length width*height*4
+ * @param {number} count
+ * @returns {string[]} #rrggbb from curated palette
+ */
+export function dominantAccentsFromRgba(data, count = 2) {
   /** @type {{ weight: number, hueSum: number, hueWeight: number }[]} */
   const bins = Array.from({ length: HUE_BINS }, () => ({
     weight: 0,
@@ -44,20 +55,23 @@ export function dominantAccentFromRgba(data) {
     bins[bin].hueWeight += vivid
   }
 
-  let bestBin = null
-  let bestWeight = 0
-  for (const bin of bins) {
-    if (bin.weight > bestWeight) {
-      bestWeight = bin.weight
-      bestBin = bin
-    }
+  // Stable sort keeps the first-found bin on ties, matching the old single-winner scan.
+  const ranked = bins.filter((bin) => bin.weight > 0).sort((a, b) => b.weight - a.weight)
+  const best = ranked[0]
+  if (!best || best.weight < 0.01 || best.hueWeight < 0.01) return []
+
+  const out = []
+  for (const bin of ranked) {
+    if (out.length >= count) break
+    if (bin.weight < 0.01 || bin.hueWeight < 0.01) break
+    if (out.length && bin.weight < best.weight * 0.15) break
+    const meanHue = bin.hueSum / bin.hueWeight
+    // Synthetic mid-vivid sample at winning hue → palette snap
+    const hex = snapGuideAccentToPalette(hslToHex(meanHue, 0.68, 0.52))
+    if (!hex && bin === best) return []
+    if (hex && !out.includes(hex)) out.push(hex)
   }
-
-  if (!bestBin || bestWeight < 0.01 || bestBin.hueWeight < 0.01) return null
-
-  const meanHue = bestBin.hueSum / bestBin.hueWeight
-  // Synthetic mid-vivid sample at winning hue → palette snap
-  return snapGuideAccentToPalette(hslToHex(meanHue, 0.68, 0.52))
+  return out
 }
 
 /** @param {number} h @param {number} s @param {number} l 0-1 */

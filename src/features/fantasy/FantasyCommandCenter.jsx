@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ChevronLeft, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, Loader2, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
 import { nbaMatchupUpcoming, nbaWeekOf } from './fantasyNbaWeek.js'
@@ -3905,6 +3905,15 @@ function syncedAgo(iso) {
 
 const pctText = (p) => (p == null ? '-' : p >= 0.995 ? '99%+' : p > 0 && p < 0.01 ? '<1%' : `${Math.round(p * 100)}%`)
 
+function SynopsisLoading() {
+  return (
+    <div className="flex items-center justify-between gap-2 text-zinc-500" role="status">
+      <span>Loading…</span>
+      <Loader2 size={13} strokeWidth={2.25} className="shrink-0 animate-spin" aria-hidden />
+    </div>
+  )
+}
+
 function SynopsisSection({ title, onOpen, children }) {
   return (
     <div className="border-t border-zinc-800 pt-2">
@@ -4161,7 +4170,7 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool, 
           ) : null}
           <SynopsisSection title="Waiver adds" onOpen={toolOpen('waiver')}>
             {extra.id !== leagueId ? (
-              <div className="text-zinc-500">Loading…</div>
+              <SynopsisLoading />
             ) : waiverPicks.length ? (
               waiverPicks.map((pick) => (
                 <div key={pick.cand.id} className="flex items-baseline justify-between gap-2">
@@ -4178,7 +4187,7 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool, 
           </SynopsisSection>
           <SynopsisSection title="Sniper" onOpen={toolOpen('waiver')}>
             {extra.id !== leagueId ? (
-              <div className="text-zinc-500">Loading…</div>
+              <SynopsisLoading />
             ) : boom.length ? (
               boom.map((pick) => (
                 <div key={pick.entry.sleeper_id} className="flex items-baseline justify-between gap-2">
@@ -4195,7 +4204,7 @@ function LeagueSynopsis({ supabaseClient, lg, detail, cards, sport, onOpenTool, 
           </SynopsisSection>
           <SynopsisSection title="Trade ideas" onOpen={toolOpen('trade')}>
             {!values ? (
-              <div className="text-zinc-500">Loading…</div>
+              <SynopsisLoading />
             ) : trades.length ? (
               trades.map((offer) => (
                 <div key={`${offer.team?.id}-${offer.get?.[0]?.id}`} className="min-w-0">

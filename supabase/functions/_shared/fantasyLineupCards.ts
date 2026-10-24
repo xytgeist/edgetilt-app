@@ -24,6 +24,7 @@ import {
   seriesMarkets as nbaSeriesMarkets,
 } from './fantasyNbaMarketLines.ts'
 import { polyUrls } from './loungePolymarketNflProps.ts'
+import { loadNbaBookProps } from './fantasyNbaOddsProps.ts'
 
 const ET_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
 
@@ -45,7 +46,7 @@ type PropOut = {
   no: number | null
   volume: number
   stat: string | null
-  source: 'kalshi' | 'polymarket'
+  source: 'kalshi' | 'polymarket' | 'consensus'
   url_market: string
   url_yes: string
   url_no: string
@@ -303,7 +304,7 @@ const NBA_PROP_MAX_SPREAD = 0.25
 /** `nameKey|TEAM|ET date` → that game's props, points first. Shared cache 10 min. */
 function loadNbaProps(admin?: SupabaseClient): Promise<Record<string, PropOut[]>> {
   return sharedCached(
-    'fantasy:nba-card-props:v2',
+    'fantasy:nba-card-props:v3',
     { ttlMs: 10 * 60_000, staleMaxMs: 60 * 60_000, leaseMs: 30_000, admin, shouldStore: (v) => Object.keys(v).length > 0 },
     async () => {
       const best = new Map<string, Map<string, PropOut & { gap: number }>>()
@@ -366,6 +367,27 @@ function loadNbaProps(admin?: SupabaseClient): Promise<Record<string, PropOut[]>
             url_yes: urls.yesUrl,
             url_no: urls.noUrl,
             gap,
+          })
+        }
+        if (byStat.size) best.set(key, byStat)
+      }
+      // Sportsbook consensus last: books post a game's props a day or more before Kalshi / Polymarket.
+      const books = await loadNbaBookProps(admin)
+      for (const [key, props] of Object.entries(books)) {
+        const byStat = best.get(key) || new Map()
+        for (const p of props) {
+          if (byStat.has(p.stat)) continue
+          byStat.set(p.stat, {
+            label: p.label,
+            price: p.price,
+            no: p.no,
+            volume: p.books,
+            stat: p.stat,
+            source: 'consensus',
+            url_market: '',
+            url_yes: '',
+            url_no: '',
+            gap: Math.abs(p.price - 0.5),
           })
         }
         if (byStat.size) best.set(key, byStat)

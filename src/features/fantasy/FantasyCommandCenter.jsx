@@ -3690,7 +3690,8 @@ function MatchupCard({
   const lead = decided && ls != null && rs != null && ls !== rs ? (ls > rs ? 'left' : 'right') : null
   const lo = projectedFinish(leftOut, page.leftScore)
   const ro = page.right ? projectedFinish(rightOut, page.rightScore) : null
-  const format = showFormat ? leagueFormatLabel(provider, sport, settings) : ''
+  // Never beside Sync / Manage (or on a neighbor reserving their row), so swiping does not flash it in and out.
+  const format = showFormat && !headerActions && !reserveHeader ? leagueFormatLabel(provider, sport, settings) : ''
   const shownName = fantasyLeagueDisplayName(leagueName)
   return (
     <div

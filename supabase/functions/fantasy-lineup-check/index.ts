@@ -50,7 +50,9 @@ async function firstTipToday(now: number): Promise<number | null> {
 }
 
 /** One league's line for the push, or null when nothing needs doing today. */
-function leagueLine(league: Obj, detail: Obj, cards: Record<string, Obj>): { text: string; leagueId: string } | null {
+type LeagueLine = { text: string; leagueId: string; gain: number; hurt: number }
+
+function leagueLine(league: Obj, detail: Obj, cards: Record<string, Obj>): LeagueLine | null {
   const mine = (detail?.teams || []).find((t: Obj) => t.is_mine)
   const roster = mine ? detail?.rostersByTeam?.[mine.id] || [] : []
   if (!roster.length) return null
@@ -75,7 +77,8 @@ function leagueLine(league: Obj, detail: Obj, cards: Record<string, Obj>): { tex
     parts.push(moves.length > 1 ? `${swap}, ${moves.length - 1} more` : swap)
   }
   for (const r of hurt.slice(0, 1)) parts.push(`${briefName(r.player_name)} ${injuryKey(r.injury_status)}, no backup`)
-  return { text: `${name}: ${parts.join('; ')}`, leagueId: str(league.id) }
+  const gain = moves.reduce((sum, m) => sum + (Number(m.gain) || 0), 0)
+  return { text: `${name}: ${parts.join('; ')}`, leagueId: str(league.id), gain, hurt: hurt.length }
 }
 
 async function processUser(admin: SupabaseClient, userId: string, today: string, opts: Opts) {
@@ -105,12 +108,15 @@ async function processUser(admin: SupabaseClient, userId: string, today: string,
   const { cards } = await buildSportLineupCards([...players.values()], 'nba', admin)
   const lines = daily
     .map((lg, i) => (details[i] ? leagueLine(lg, details[i] as Obj, cards as Record<string, Obj>) : null))
-    .filter(Boolean) as Array<{ text: string; leagueId: string }>
+    .filter(Boolean) as LeagueLine[]
   if (!lines.length) return { userId, skipped: 'lineups already set' }
+  // A starter ruled out with no backup costs a full game, so those leagues lead; then biggest projected gain.
+  lines.sort((a, b) => Number(b.hurt > 0) - Number(a.hurt > 0) || b.gain - a.gain)
   const title = 'Lineup check before tip'
   const shown = lines.slice(0, 3).map((l) => l.text)
   const body = `${shown.join(' · ')}${lines.length > 3 ? ` · ${lines.length - 3} more leagues` : ''}`
-  const url = lines.length === 1 ? `/?tab=fantasy&league=${lines[0].leagueId}&fantasyTool=start` : '/?tab=fantasy'
+  // The tap opens the first league named, on Roster where its swaps are; the rest are a back tap away.
+  const url = `/?tab=fantasy&league=${encodeURIComponent(lines[0].leagueId)}&fantasyTool=start`
   if (opts.dryRun) return { userId, title, body, url, leagues: lines.length }
 
   const { data: inserted } = await admin

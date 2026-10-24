@@ -12,6 +12,8 @@ import {
   setFantasyScoring,
 } from './gameHubFantasyScoring.js'
 import { useHubPointFormat, useNflLeagueRules } from './gameHubLeagueRules.js'
+import GameHubLeagueChips from './GameHubLeagueChips.jsx'
+import { useGameLeagueChips } from './useGameLeagueChips.js'
 import {
   fantasyBoardTier,
   rosterBench,
@@ -770,50 +772,11 @@ function fantasyAccentColor(player, game, paint) {
   return paint.homeColor || paint.awayColor || '#3f3f46'
 }
 
-function leagueShortName(name) {
-  const text = String(name || 'League').trim()
-  return text.length > 16 ? `${text.slice(0, 15)}…` : text
-}
-
-/** Connected league when one is synced. Otherwise the device Std / Half / PPR toggle. */
-function FantasyScoringBar({ scoring, leagues, league, onSelectLeague, action = null }) {
+/** Connected leagues with a player in this game as a chip row. Otherwise the device Std / Half / PPR toggle. */
+function FantasyScoringBar({ scoring, leagues, league, onSelectLeague, action = null, gameId = '' }) {
+  const { chips, pick, activeId } = useGameLeagueChips(leagues, league?.id, onSelectLeague, gameId)
   if (leagues?.length) {
-    return (
-      <div data-fantasy-scoring-bar className="flex items-center justify-between gap-3 px-1">
-        {leagues.length === 1 ? (
-          <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
-            {leagues[0].name}
-          </span>
-        ) : (
-          <div
-            role="radiogroup"
-            aria-label="Fantasy league"
-            className="flex min-w-0 rounded-full bg-zinc-900 p-0.5 ring-1 ring-zinc-800"
-          >
-            {leagues.map((row) => {
-              const on = row.id === league?.id
-              return (
-                <button
-                  key={row.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  aria-label={row.name}
-                  data-on={on || undefined}
-                  onClick={() => onSelectLeague(row.id)}
-                  className={`max-w-[7.5rem] truncate rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide touch-manipulation transition-colors ${
-                    on ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 active:text-zinc-200'
-                  }`}
-                >
-                  {leagueShortName(row.name)}
-                </button>
-              )
-            })}
-          </div>
-        )}
-        {action}
-      </div>
-    )
+    return <GameHubLeagueChips chips={chips} activeId={activeId} onPick={pick} action={action} />
   }
   return (
     <div data-fantasy-scoring-bar className="flex items-center justify-between gap-3 px-1">
@@ -851,7 +814,7 @@ function FantasyScoringBar({ scoring, leagues, league, onSelectLeague, action = 
  * Opens the Fantasy tab; closing Fantasy comes back to this game (and its slate, when opened from one).
  * `compact`: a small pill that shares the league switcher row.
  */
-export function GoToFantasyButton({ game, compact = false }) {
+export function GoToFantasyButton({ game, compact = false, iconOnly = false }) {
   const sports = useLoungeSportsFeed()
   const onOpen = () => {
     if (typeof window === 'undefined') return
@@ -870,11 +833,12 @@ export function GoToFantasyButton({ game, compact = false }) {
         type="button"
         data-game-hub-go-fantasy
         data-compact
+        aria-label={iconOnly ? 'Go to Fantasy' : undefined}
         onClick={onOpen}
         className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900 py-1 pl-2 pr-1.5 text-[11px] font-semibold text-zinc-100 touch-manipulation active:bg-zinc-800/80 [-webkit-tap-highlight-color:transparent]"
       >
         <Shirt className="h-3.5 w-3.5 text-sky-400" strokeWidth={2.25} aria-hidden />
-        <span className="text-zinc-100">Fantasy</span>
+        {iconOnly ? null : <span className="text-zinc-100">Fantasy</span>}
         <ChevronRight className="h-3.5 w-3.5 text-zinc-500" strokeWidth={2.25} aria-hidden />
       </button>
     )
@@ -1010,7 +974,8 @@ export default function GameHubFantasyPane({
         leagues={leagues}
         league={league}
         onSelectLeague={selectLeague}
-        action={<GoToFantasyButton game={game} compact />}
+        gameId={game?.id}
+        action={(multi) => <GoToFantasyButton game={game} compact iconOnly={multi} />}
       />
       {liveOrFinal ? null : <FantasyMatchupStack matchups={matchups} game={game} gameStatus={status} />}
 

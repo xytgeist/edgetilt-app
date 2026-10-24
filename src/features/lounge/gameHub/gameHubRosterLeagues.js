@@ -81,6 +81,17 @@ export function useLeagueOpponents(leagueId) {
   return (id && opponentSnapshot[id]) || EMPTY_OPPONENTS
 }
 
+/** Every league's opponent starters in this game (league id → sleeper ids), for the league chip counts. */
+export function useAllLeagueOpponents() {
+  const [, bump] = useState(0)
+  useEffect(() => {
+    const onChange = () => bump((n) => n + 1)
+    window.addEventListener(CHANGE_EVENT, onChange)
+    return () => window.removeEventListener(CHANGE_EVENT, onChange)
+  }, [])
+  return opponentSnapshot
+}
+
 /**
  * Latest stored week on the user's NFL teams, then who they own among `sleeperIds`.
  * A miss leaves the map empty so the list keeps the manual Watch pins.

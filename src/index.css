@@ -4682,6 +4682,18 @@ html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] button[data-on]
 html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] > span {
   color: #71717a !important;
 }
+/* Scrolling league chips: separate white chips (no shared track), selected one inked. */
+html.light [data-lounge-game-fantasy] [data-game-hub-league-chips] {
+  background-color: transparent !important;
+}
+html.light [data-lounge-game-fantasy] [data-game-hub-league-chips] button:not([data-on]) {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #52525b !important;
+}
+html.light [data-lounge-game-fantasy] [data-game-hub-league-chips] button[data-on] {
+  border-color: #18181b !important;
+}
 /* My bench players in the game hub Fantasy list: BN chip (rows also get a dashed outline + lighter tint). */
 [data-lounge-game-fantasy] [data-lounge-fantasy-bench-chip] {
   background-color: rgba(161, 161, 170, 0.2);

@@ -7,6 +7,8 @@ import { scoreLine } from '../../fantasy/fantasyBoxScore.js'
 import { boxForPlayer, indexPlayerBox } from './gameHubPropStats.js'
 import { rosterBench, rosterBenchLabel, rosterLeaguePill, rosterLeagueTitle, useLeagueOpponents, useRosterLeagues } from './gameHubRosterLeagues.js'
 import { DEFAULT_NBA_SCORING, useNbaLeagueRules } from './gameHubNbaLeagues.js'
+import GameHubLeagueChips from './GameHubLeagueChips.jsx'
+import { useGameLeagueChips } from './useGameLeagueChips.js'
 
 /** ESPN box (`player_box` stats bag) → Sleeper NBA stat keys, with the double / triple-double flags Sleeper scores. */
 function nbaLineFromBox(box) {
@@ -214,6 +216,7 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
   const boxIndex = useBoxIndex(playerBox, status)
   const boxLoaded = Boolean(boxIndex?.any)
   const { league, leagues, selectLeague } = useNbaLeagueRules()
+  const chipState = useGameLeagueChips(leagues, league?.id, selectLeague, game?.id)
   const scoring = league?.scoring || DEFAULT_NBA_SCORING
   const owned = useRosterLeagues()
   const opponents = useLeagueOpponents(league?.id)
@@ -262,35 +265,19 @@ export function GameHubNbaFantasyPane({ players, loading, error, game, live = nu
 
   return (
     <div data-lounge-game-fantasy className="space-y-4 py-3">
-      <div data-fantasy-scoring-bar className="flex items-center justify-between gap-3 px-1">
-        {leagues.length > 1 ? (
-          <div role="radiogroup" aria-label="Fantasy league" className="flex min-w-0 rounded-full bg-zinc-900 p-0.5 ring-1 ring-zinc-800">
-            {leagues.map((row) => {
-              const on = row.id === league?.id
-              return (
-                <button
-                  key={row.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  data-on={on || undefined}
-                  onClick={() => selectLeague(row.id)}
-                  className={`max-w-[7.5rem] truncate rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide touch-manipulation ${
-                    on ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 active:text-zinc-200'
-                  }`}
-                >
-                  {row.name}
-                </button>
-              )
-            })}
-          </div>
-        ) : (
-          <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
-            {league?.name || 'Default points'}
-          </span>
-        )}
-        <GoToFantasyButton game={game} compact />
-      </div>
+      {leagues.length ? (
+        <GameHubLeagueChips
+          chips={chipState.chips}
+          activeId={chipState.activeId}
+          onPick={chipState.pick}
+          action={(multi) => <GoToFantasyButton game={game} compact iconOnly={multi} />}
+        />
+      ) : (
+        <div data-fantasy-scoring-bar className="flex items-center justify-between gap-3 px-1">
+          <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wide text-zinc-300">Default points</span>
+          <GoToFantasyButton game={game} compact />
+        </div>
+      )}
       {battles.length ? <FantasyMatchupStack matchups={battles} game={game} gameStatus={status} faceFor={faceFor} /> : null}
 
       <div className="space-y-2">

@@ -5042,7 +5042,7 @@ export default function FantasyCommandCenter({
           ) : null}
 
           {current && leagueCategories(detail?.league) ? (
-            <CategoryBoard page={current} cards={cards} categories={leagueCategories(detail?.league)} upcoming={nbaMatchupUpcoming(detail?.league)} />
+            <CategoryBoard page={current} cards={cards} categories={leagueCategories(detail?.league)} upcoming={nbaMatchupUpcoming(detail?.league)} leagueId={leagueId} />
           ) : null}
 
           <div data-fantasy-tool-tabs role="tablist" className="-mt-1 flex gap-5 overflow-x-auto border-b border-zinc-800 px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

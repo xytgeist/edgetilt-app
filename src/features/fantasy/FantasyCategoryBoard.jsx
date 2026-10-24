@@ -3,7 +3,8 @@
  * category board under it (projected finals per category, win chance per category and overall). Math lives in
  * `fantasyCategories.js`.
  */
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { categoryOutlook, sideProjection } from './fantasyCategories.js'
 
 const CAT_GRID = 'grid grid-cols-[3rem_minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-x-2 px-1.5'
@@ -113,18 +114,65 @@ export function CategoryScoreLine({ won, expected, align, lead, playing = false 
   )
 }
 
+const BOARD_COLLAPSED_KEY = 'edge.fantasy.catBoardCollapsed.v1'
+
+function readCollapsedLeagues() {
+  try {
+    const list = JSON.parse(localStorage.getItem(BOARD_COLLAPSED_KEY) || '[]')
+    return Array.isArray(list) ? list : []
+  } catch {
+    return []
+  }
+}
+
+/** Collapsed or open, remembered per league. Open by default. */
+function useBoardCollapsed(leagueId) {
+  const [collapsedIds, setCollapsedIds] = useState(readCollapsedLeagues)
+  const collapsed = Boolean(leagueId) && collapsedIds.includes(leagueId)
+  const toggle = () => {
+    if (!leagueId) return
+    const next = collapsed ? collapsedIds.filter((id) => id !== leagueId) : [...collapsedIds, leagueId]
+    setCollapsedIds(next)
+    try {
+      localStorage.setItem(BOARD_COLLAPSED_KEY, JSON.stringify(next))
+    } catch {
+      /* private mode */
+    }
+  }
+  return [collapsed, toggle]
+}
+
 /** Categories table under a categories matchup: each category's projected final for both sides and your win chance. */
-export function CategoryBoard({ page, cards, categories, upcoming = false }) {
+export function CategoryBoard({ page, cards, categories, upcoming = false, leagueId = null }) {
   const cat = useCategoryMatchup(page, cards, categories, upcoming)
+  const [collapsed, toggleCollapsed] = useBoardCollapsed(leagueId)
   if (!cat) return null
+  // Toss-ups: the categories a waiver or lineup move can still swing.
+  const close = cat.cats.filter((c) => c.p >= 0.35 && c.p <= 0.65).length
   return (
     <div data-fantasy-cat-board className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <div className="text-[13px] font-bold text-zinc-100">Categories</div>
-        <span className="text-[11px] font-semibold tabular-nums text-zinc-400">
-          {cat.expected.toFixed(1)} of {cat.total} projected · {Math.round(cat.win * 100)}% to win
+      <button
+        type="button"
+        aria-expanded={!collapsed}
+        onClick={toggleCollapsed}
+        className="flex w-full items-center justify-between gap-2 text-left touch-manipulation"
+      >
+        <span className="text-[13px] font-bold text-zinc-100">Categories</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-[11px] font-semibold tabular-nums text-zinc-400">
+            {cat.expected.toFixed(1)} of {cat.total} projected · {Math.round(cat.win * 100)}% to win
+            {collapsed && close ? ` · ${close} close` : ''}
+          </span>
+          <ChevronDown
+            size={16}
+            strokeWidth={2.25}
+            className={`shrink-0 text-zinc-500 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+            aria-hidden
+          />
         </span>
-      </div>
+      </button>
+      {collapsed ? null : (
+      <>
       {/* Value columns are centered and every other row is banded so a category reads straight across. */}
       <div className="mt-2 text-[12px] tabular-nums">
         <div className={`${CAT_GRID} pb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500`}>
@@ -151,6 +199,8 @@ export function CategoryBoard({ page, cards, categories, upcoming = false }) {
           ? "Projected finals for next week: each starter's per-game projection times his games that week."
           : "Projected finals: totals so far plus each starter's per-game projection for the games left this week."}
       </p>
+      </>
+      )}
     </div>
   )
 }

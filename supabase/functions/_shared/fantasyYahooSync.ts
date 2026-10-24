@@ -482,6 +482,22 @@ async function saveTokens(
  * Open trade offers that involve the caller's team in one Yahoo league, in the ESPN `PendingTrade` shape so Offer
  * Review grades them the same way. Players map to synced roster rows by `yahoo_player_key` (latest week).
  */
+/** My adds this week from Yahoo team metadata (`roster_adds`: { coverage_type: week, coverage_value: N, value }). */
+function yahooTeamAdds(team: Record<string, unknown>): Record<string, unknown> {
+  const raw = team.roster_adds
+  if (!raw || typeof raw !== 'object') return {}
+  const adds = raw as Record<string, unknown>
+  const asOf = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  return {
+    adds: {
+      used: Number(adds.value) || 0,
+      per: String(adds.coverage_type || 'week') === 'date' ? 'day' : 'week',
+      period: Number(adds.coverage_value) || null,
+      as_of: asOf,
+    },
+  }
+}
+
 export async function yahooPendingTrades(
   admin: SupabaseClient,
   league: { id: string; connection_id: string; external_league_id: string },
@@ -1077,6 +1093,7 @@ export async function syncYahooConnection(
                       rank: num(t.waiver_priority) || null,
                       faab_left: t.faab_balance != null && str(t.faab_balance) !== '' ? num(t.faab_balance) : null,
                     },
+                    ...(isMine ? yahooTeamAdds(t) : {}),
                   },
                   updated_at: new Date().toISOString(),
                 },

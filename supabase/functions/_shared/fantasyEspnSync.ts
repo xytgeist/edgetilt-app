@@ -281,6 +281,42 @@ function espnWaiver(settings: Record<string, unknown>) {
   }
 }
 
+/**
+ * NBA add / games limits from mSettings: `add_limit` (adds per matchup, or per day when ESPN counts them per scoring
+ * period), `season_add_limit`, and `games_limit` (games played per lineup slot, stat 42, season-long leagues).
+ */
+function espnNbaLimits(settings: Record<string, unknown>) {
+  const acq = asRecord(settings.acquisitionSettings) || {}
+  const perMatchup = Number(acq.matchupAcquisitionLimit)
+  const season = Number(acq.acquisitionLimit)
+  const slotLimits = Object.values(asRecord(asRecord(settings.rosterSettings)?.lineupSlotStatLimits) || {})
+    .map(asRecord)
+    .filter((l) => Number(l?.statId) === 42)
+    .map((l) => Number(l?.limitValue) || 0)
+  const games = slotLimits.length ? Math.max(...slotLimits) : 0
+  return {
+    ...(perMatchup > 0 ? { add_limit: { count: perMatchup, per: acq.matchupLimitPerScoringPeriod ? 'day' : 'week' } } : {}),
+    ...(season > 0 ? { season_add_limit: season } : {}),
+    ...(games > 0 ? { games_limit: games } : {}),
+  }
+}
+
+/** My adds against the limit: this scoring period (day limits) or matchup (week limits), stamped with the ET day read. */
+function espnTeamAdds(team: Record<string, unknown>, settings: Record<string, unknown>, status: Record<string, unknown>) {
+  const acq = asRecord(settings.acquisitionSettings) || {}
+  const perDay = Boolean(acq.matchupLimitPerScoringPeriod)
+  const counter = asRecord(team.transactionCounter) || {}
+  const totals = asRecord(counter.matchupAcquisitionTotals) || {}
+  const key = perDay ? Number(status.latestScoringPeriod) || 0 : Number(status.currentMatchupPeriod) || 0
+  return {
+    used: Number(totals[String(key)]) || 0,
+    per: perDay ? 'day' : 'week',
+    period: key || null,
+    season_used: Number(counter.acquisitions) || 0,
+    as_of: etDateOffset(0),
+  }
+}
+
 function espnTeamWaiver(team: Record<string, unknown>, settings: Record<string, unknown>) {
   const acq = asRecord(settings.acquisitionSettings) || {}
   const spent = Number(asRecord(team.transactionCounter)?.acquisitionBudgetSpent)
@@ -779,6 +815,7 @@ async function syncEspnNba(
             current_week: week,
             waiver: espnWaiver(settings),
             ...espnPlayoffs(settings),
+            ...espnNbaLimits(settings),
           },
         },
         { onConflict: 'connection_id,external_league_id' },
@@ -828,6 +865,7 @@ async function syncEspnNba(
             metadata: {
               espn_team_id: team.id ?? null,
               waiver: espnTeamWaiver(team, settings),
+              ...(isMine ? { adds: espnTeamAdds(team, settings, status) } : {}),
               ...(standings ? { standings } : {}),
             },
           },

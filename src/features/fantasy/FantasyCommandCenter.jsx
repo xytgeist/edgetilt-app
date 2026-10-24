@@ -2272,6 +2272,9 @@ function NbaSchedulePanel({ page, cards, league }) {
           : lockIn
             ? ' Lock-In counts one game a player, so extra games are extra shots at a big night.'
             : ''}
+        {Number(league?.settings?.games_limit) > 0
+          ? ` Each lineup slot counts up to ${league.settings.games_limit} games this season; starts past that score nothing.`
+          : ''}
       </p>
     </div>
   )
@@ -2602,6 +2605,32 @@ const NIGHT_LABEL = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZon
 const nightLabel = (date) => NIGHT_LABEL.format(new Date(`${date}T12:00:00Z`))
 
 /** NBA streaming: open lineup slots by night and the available players who fill them (daily, all-games leagues). */
+const ET_TODAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/**
+ * Add limit vs what I have used: ESPN `settings.add_limit` ({ count, per: day | week }) or Yahoo `max_weekly_adds`,
+ * against `metadata.adds` saved on my team at sync. A per-day count read on an earlier ET day no longer counts.
+ * `used` / `left` are null when the host gave no count (the limit still shows).
+ */
+function addsLeft(detail) {
+  const settings = detail?.league?.settings || {}
+  const limit = Number(settings.add_limit?.count) || Number(settings.max_weekly_adds) || 0
+  if (!limit) return null
+  const per = settings.add_limit?.per === 'day' ? 'day' : 'week'
+  const mine = (detail?.teams || []).find((t) => t.is_mine)
+  const adds = mine?.metadata?.adds
+  let used = adds && Number.isFinite(Number(adds.used)) ? Number(adds.used) : null
+  if (used != null && per === 'day' && adds.as_of !== ET_TODAY.format(Date.now())) used = 0
+  return { limit, per, used, left: used == null ? null : Math.max(0, limit - used) }
+}
+
+function addsLine(adds) {
+  if (!adds) return ''
+  const span = adds.per === 'day' ? 'today' : 'this week'
+  if (adds.left == null) return `${adds.limit} add${adds.limit > 1 ? 's' : ''} a ${adds.per === 'day' ? 'day' : 'week'}`
+  return adds.left > 0 ? `${adds.left} of ${adds.limit} add${adds.limit > 1 ? 's' : ''} left ${span}` : `No adds left ${span}`
+}
+
 function StreamView({ state, detail, rosterRows, sport, host }) {
   const league = detail?.league
   const upcoming = nbaMatchupUpcoming(league)
@@ -2610,7 +2639,10 @@ function StreamView({ state, detail, rosterRows, sport, host }) {
     if (!state.data?.players?.length || !rosterRows.length) return { days: [], picks: [] }
     return streamPlan({ pool: state.data, rosterRows, scoring: league?.scoring, slots: waiverLineupSlots(league, rosterRows, sport), upcoming })
   }, [state.data, rosterRows, league, sport, upcoming])
-  const picks = plan.picks.slice(0, 8)
+  const adds = addsLeft(detail)
+  // Out of adds for the week: nothing to stream. Day limits reset tomorrow, so picks stay (for the next add).
+  const outOfAdds = adds?.left === 0 && adds.per === 'week'
+  const picks = outOfAdds ? [] : plan.picks.slice(0, 8)
   const openNights = plan.days.filter((d) => d.open > 0).length
   // Every pick is one move from today's roster; when they all cut the same player they are alternatives.
   const sameDrop = picks.length > 1 && picks.every((p) => p.drop.id === picks[0].drop.id) ? picks[0].drop : null
@@ -2646,6 +2678,8 @@ function StreamView({ state, detail, rosterRows, sport, host }) {
           ) : null}
           {!plan.days.length ? (
             <p className="mt-2 text-[12px] text-zinc-500">No games left on the schedule this week.</p>
+          ) : outOfAdds ? (
+            <p className="mt-2 text-[12px] text-zinc-500">All {adds.limit} adds used this week. Streams come back next week.</p>
           ) : !openNights ? (
             <p className="mt-2 text-[12px] text-zinc-500">Every lineup slot has someone playing each night left. Nothing to stream.</p>
           ) : !picks.length ? (
@@ -2691,8 +2725,10 @@ function StreamView({ state, detail, rosterRows, sport, host }) {
         </>
       )}
       <p className="mt-2 text-[10px] text-zinc-500">
-        {Number(league?.settings?.max_weekly_adds) > 0
-          ? `Each stream uses one of your ${league.settings.max_weekly_adds} adds a week.`
+        {adds
+          ? adds.per === 'day' && adds.left === 0
+            ? `Today's add is used (${adds.limit} a day): these are for tomorrow.`
+            : `Each stream uses an add: ${addsLine(adds)}.`
           : "Each stream uses an add, so check your league's weekly add limit."}{' '}
         Same-night adds work only if {host} starts them that day.
       </p>
@@ -2737,6 +2773,7 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
   const tab = tabs.some(([id]) => id === view) ? view : 'adds'
   // NBA chips match any eligible position (a PG/SG shows under both).
   const shown = picks.filter((p) => pos === 'All' || p.cand.pos === pos || (p.cand.elig || []).includes(pos)).slice(0, 10)
+  const adds = addsLeft(detail)
 
   return (
     <div data-fantasy-waivers className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
@@ -2761,7 +2798,10 @@ function WaiversPanel({ supabaseClient, detail, sport }) {
         <StreamView state={state} detail={detail} rosterRows={rosterRows} sport={sport} host={host} />
       ) : (
       <>
-      <div className="mt-1 text-[10px] text-zinc-500">Available in your league{span ? ` · ${span} avg` : ''}</div>
+      <div className="mt-1 text-[10px] text-zinc-500">
+        Available in your league{span ? ` · ${span} avg` : ''}
+        {adds ? <span className={adds.left === 0 ? 'fantasy-sit-out font-semibold' : ''}> · {addsLine(adds)}</span> : null}
+      </div>
       <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {(sport === 'nba' ? NBA_WAIVER_POS : WAIVER_POS).map((p) => (
           <button

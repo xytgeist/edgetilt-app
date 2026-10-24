@@ -11883,17 +11883,18 @@ html.light [data-fantasy-home] [data-fantasy-card-league] > [data-fantasy-card-t
   margin-left: 0;
   padding: 0 0.7rem;
   border-radius: 9999px;
-  background-color: rgb(255 255 255 / 0.72);
-  border: 1px solid rgb(255 255 255 / 0.72);
-  color: #18181b !important;
+  /* Inverted (ink fill, white text) so the title pills read apart from the soft white icon buttons. */
+  background-color: #18181b;
+  border: 1px solid #18181b;
+  color: #fff !important;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 html.light [data-fantasy-home] [data-fantasy-card-league] [data-fantasy-card-format] {
   padding: 0 0.7rem;
-  background-color: rgb(255 255 255 / 0.72);
-  border-color: rgb(255 255 255 / 0.72) !important;
-  color: #18181b !important;
+  background-color: #18181b;
+  border-color: #18181b !important;
+  color: #fff !important;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;

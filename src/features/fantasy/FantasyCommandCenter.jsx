@@ -3005,7 +3005,12 @@ function OfferCard({ offer, myTeamName, compact = false, composeText, casualText
       ) : null}
       {offer.value ? (
         <div className="mt-1 text-[10px] tabular-nums text-zinc-500">
-          {offer.value.unit === 'market' ? 'Trade value (FantasyCalc)' : 'Value (pts above waivers, rest of season)'}: you give{' '}
+          {offer.value.unit === 'market'
+            ? 'Trade value (FantasyCalc)'
+            : offer.value.unit === 'blend'
+              ? 'Trade value (ESPN auction + rest of season)'
+              : 'Value (pts above waivers, rest of season)'}
+          : you give{' '}
           <span className="font-semibold text-zinc-300">{Math.round(offer.value.give).toLocaleString('en-US')}</span> · you get{' '}
           <span className="font-semibold text-zinc-300">{Math.round(offer.value.get).toLocaleString('en-US')}</span>
         </div>
@@ -3556,7 +3561,9 @@ function TradesPanel({ supabaseClient, detail, sport }) {
       <p className="mt-2 text-[10px] text-zinc-500">
         {state.data?.market_source === 'fantasycalc'
           ? 'Fair by market trade value (FantasyCalc, your league format), never more than 15% overpaid; helps you by rest-of-season lineup points in your scoring.'
-          : rosWeeks
+          : state.data?.market_source === 'espn_auction'
+            ? "Fair by trade value: half ESPN's average auction price, half rest-of-season value in your scoring. Never more than 15% overpaid."
+            : rosWeeks
             ? 'Rest-of-season value in your league scoring: season production blended with projections, above what the waiver wire offers. Never more than 15% overpaid.'
             : 'Based on next-four-week projections in your league scoring.'}{' '}
         Send the offer on {providerLabel(detail?.league?.provider)} or paste the message anywhere.

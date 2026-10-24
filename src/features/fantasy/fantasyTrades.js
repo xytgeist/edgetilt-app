@@ -83,6 +83,22 @@ export function valueContext(values, scoring, sport = 'nfl', { market = true, wa
       })
     }
   }
+  // NBA has no trade market feed: blend ESPN's average auction price (scaled to our units) with rest-of-season value.
+  if (market && values?.market_source === 'espn_auction') {
+    let ours = 0
+    let dollars = 0
+    for (const entry of values?.league_players || []) {
+      const auction = Number(entry.auction_value)
+      if (!(auction > 0)) continue
+      const pos = fantasyPosition(entry.position)
+      const h = horizonValue(entry, scoring, entry.injury_status, sport)
+      const prof = seasonProfile(entry, h, ctx, pos)
+      const keep = prof ? prof.ppg : h.known ? Math.max(h.avg, h.healthy) : h.avg
+      ours += Math.max(0, keep - (ctx.repl[pos] || 0)) * (prof ? prof.games : 0)
+      dollars += auction
+    }
+    if (ours > 0 && dollars > 0) ctx.auctionScale = ours / dollars
+  }
   return ctx
 }
 
@@ -105,6 +121,7 @@ function teamPlayers(rows, ctx) {
         keep: prof ? prof.ppg : h.known ? Math.max(h.avg, h.healthy) : h.avg,
         games: prof ? prof.games : (entry.weeks || []).filter((w) => !w.bye).length,
         market: Number.isFinite(Number(entry.market_value)) && entry.market_value != null ? Number(entry.market_value) : null,
+        auction: Number(entry.auction_value) > 0 ? Number(entry.auction_value) : 0,
         h,
         row,
         name: row.player_name,
@@ -145,7 +162,10 @@ function pickupNames(list) {
  */
 function tradeValue(p, ctx) {
   if (ctx.useMarket) return p.market || 0
-  return Math.max(0, p.keep - (ctx.repl[p.pos] || 0)) * (Number(p.games) || 0)
+  const ros = Math.max(0, p.keep - (ctx.repl[p.pos] || 0)) * (Number(p.games) || 0)
+  // Half what ESPN managers paid (draft-time market), half what he is worth from here (injuries, breakouts).
+  if (ctx.auctionScale) return 0.5 * ros + 0.5 * ctx.auctionScale * (p.auction || 0)
+  return ros
 }
 
 /**
@@ -181,7 +201,7 @@ function fairnessFromValue(theirGain, ratio) {
 
 /** Value line for the card: what each side gives in trade value, in market or points-above-waivers units. */
 function valueSummary(gate, ctx) {
-  return { give: gate.out, get: gate.received, unit: ctx.useMarket ? 'market' : 'pts' }
+  return { give: gate.out, get: gate.received, unit: ctx.useMarket ? 'market' : ctx.auctionScale ? 'blend' : 'pts' }
 }
 
 function seatOf(seats, id) {

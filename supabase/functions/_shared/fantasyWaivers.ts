@@ -20,6 +20,8 @@ import {
 import { sharedCached } from './edgeSharedCache.ts'
 import { loadNbaBoard, nbaTeam, teamWeek, weekGames, type NbaBoard } from './fantasyNbaBoard.ts'
 import { nbaHeadshots, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
+import { lookupNbaEspnId, nbaEspnIds } from './nbaEspnIds.ts'
+import { loadNbaAuctionValues } from './fantasyNbaAuction.ts'
 // The app's Lock-In math (plain ESM): one game per player per week counts in Sleeper NBA.
 import { nbaLockIn, oneGameFactor } from '../../../src/features/fantasy/fantasyLockIn.js'
 
@@ -42,6 +44,8 @@ export type WaiverPlayer = {
   trade?: (TradeEntry & { team_games: number; return_date: string | null }) | null
   /** Trades mode only: FantasyCalc redraft trade value for this league's format (null when unlisted). */
   market_value?: number | null
+  /** NBA: ESPN average auction price (dollars), blended with rest-of-season value for trades. */
+  auction_value?: number | null
 }
 
 type MarketParams = { numTeams: number; numQbs: 1 | 2; ppr: 0 | 0.5 | 1 }
@@ -727,9 +731,11 @@ async function buildNbaWaivers(
 
   const leaguePlayers = withLeague ? entries.filter((e) => rostered.has(e.p.sleeper_id)).map((e) => e.out) : []
   const valued = [...new Set([...roster, ...players, ...boom, ...leaguePlayers])]
-  const [shots, tradeBoard] = await Promise.all([
+  const [shots, tradeBoard, auction, espnIds] = await Promise.all([
     nbaHeadshots(admin, [...roster, ...players, ...boom]),
     loadNbaTradeBoard(admin, board).catch(() => null),
+    loadNbaAuctionValues(admin),
+    nbaEspnIds(admin).catch(() => new Map<string, string>()),
   ])
   for (const e of [...roster, ...players, ...boom]) e.headshot_url = shots.get(e.sleeper_id)?.headshot_url || null
   // Lock-In: a week is worth lockInFactor(its games) of one game, so rest-of-season "games" become that many weeks' worth.
@@ -738,6 +744,20 @@ async function buildNbaWaivers(
     const weeks = tradeBoard.weeks_left || 1
     return Math.round(weeks * oneGameFactor(Math.max(1, Math.round(teamGames / weeks)), mode || 'lock') * 10) / 10
   }
+  // Market half of NBA trade value: ESPN average auction price (separate from FantasyCalc's `market_value` scale).
+  const hasAuction = Object.keys(auction).length > 0
+  if (hasAuction) {
+    for (const e of valued) {
+      const espnId = lookupNbaEspnId(espnIds, e.name, e.team)
+      e.auction_value = espnId ? auction[espnId] ?? null : null
+    }
+  }
+  // ESPN's expected return date for injured players (rest-of-season games), as NFL reads nfl_player_status.
+  const { data: statusRows } = await admin
+    .from('nba_player_status')
+    .select('sleeper_id, return_date')
+    .in('sleeper_id', valued.map((e) => e.sleeper_id))
+  const returnById = new Map((statusRows || []).map((r) => [String(r.sleeper_id), r.return_date ? String(r.return_date) : null]))
   if (tradeBoard) {
     for (const e of valued) {
       const per = board.projLine[e.sleeper_id] || null
@@ -748,7 +768,7 @@ async function buildNbaWaivers(
         season_line: past?.line || {},
         season_games: past?.games || 0,
         team_games: lockInGames(tradeBoard.team_games[nbaTeam(e.team)] || 0),
-        return_date: null,
+        return_date: returnById.get(e.sleeper_id) || null,
       }
     }
   }
@@ -760,6 +780,7 @@ async function buildNbaWaivers(
     weeks: [board.week, board.week + 1],
     ...(tradeBoard ? { weeks_left: tradeBoard.weeks_left } : {}),
     ...(lockIn ? { lock_in: true } : {}),
+    ...(hasAuction ? { market_source: 'espn_auction' } : {}),
     players,
     roster,
     ...(withLeague ? { league_players: leaguePlayers } : {}),

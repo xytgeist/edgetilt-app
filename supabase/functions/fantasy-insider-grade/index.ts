@@ -7,12 +7,16 @@
  * stats), contradicted if he did; Doubtful is confirmed if he sat, otherwise left unconfirmed (a doubtful player
  * playing is not a misread). Contradicted statuses email ops right away and join `fantasy_insider_regression`.
  * A source under 90% accuracy over its last 20 graded statuses (10+ graded) loses push trust (`push_trusted`).
+ * NBA statuses grade the same way off ESPN's NBA scoreboard and box score (played = logged minutes).
  * Tuesdays (ET): run the regression set through the live prompt and email the weekly scorecard.
  */
 import { type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
 import { fetchJson, loadGames, normTeam, statMap, type GameRow } from '../_shared/fantasyLineupCards.ts'
-import { ESPN_NFL, ESPN_TO_SLEEPER, espnJson } from '../_shared/fantasyStatusPush.ts'
+import { ESPN_NBA, ESPN_NFL, ESPN_TO_SLEEPER, espnJson } from '../_shared/fantasyStatusPush.ts'
+import { nbaTeam } from '../_shared/fantasyNbaBoard.ts'
+import { lookupNbaEspnId, nbaEspnIds } from '../_shared/nbaEspnIds.ts'
+import { sleeperNbaPlayers } from '../_shared/sleeperNbaPlayers.ts'
 
 const LOOKBACK_DAYS = 21
 const DEMOTE_WINDOW = 20
@@ -80,6 +84,67 @@ async function nextGame(games: GameRow[], team: string, postedAt: number) {
     if (k && k.kickoff > postedAt) return { week, kickoff: k.kickoff, final: k.final || g.status === 'complete' }
   }
   return null
+}
+
+const ET_YMD = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/** ESPN NBA scoreboard for one ET date (YYYYMMDD): team → { id, tip, final }. */
+const nbaDayCache = new Map<string, Promise<Map<string, { id: string; tip: number; final: boolean }>>>()
+function nbaDay(ymd: string) {
+  if (!nbaDayCache.has(ymd)) {
+    nbaDayCache.set(
+      ymd,
+      espnJson(`${ESPN_NBA}/scoreboard?dates=${ymd}`, 10_000).then((body) => {
+        const out = new Map<string, { id: string; tip: number; final: boolean }>()
+        for (const ev of arr(body?.events)) {
+          const comp = arr(ev.competitions)[0]
+          const final = str(obj(obj(comp?.status).type).state) === 'post'
+          for (const c of arr(comp?.competitors)) {
+            out.set(nbaTeam(str(obj(c.team).abbreviation)), { id: str(ev.id), tip: Date.parse(str(ev.date)), final })
+          }
+        }
+        return out
+      }).catch(() => new Map()),
+    )
+  }
+  return nbaDayCache.get(ymd)!
+}
+
+/** First NBA game for this team that tips after `postedAt` (looks up to six days ahead). */
+async function nbaNextGame(team: string, postedAt: number) {
+  const t = nbaTeam(team)
+  for (let d = 0; d < 7; d++) {
+    const ymd = ET_YMD.format(new Date(postedAt + d * 86400_000)).replace(/-/g, '')
+    const g = (await nbaDay(ymd)).get(t)
+    if (g && g.tip > postedAt) return g
+  }
+  return null
+}
+
+/** ESPN athlete ids who logged minutes in one final game (inactive players are not in the box at all). */
+const nbaBoxCache = new Map<string, Promise<Map<string, number>>>()
+function nbaMinutes(eventId: string) {
+  if (!nbaBoxCache.has(eventId)) {
+    nbaBoxCache.set(
+      eventId,
+      espnJson(`${ESPN_NBA}/summary?event=${eventId}`, 10_000).then((body) => {
+        const out = new Map<string, number>()
+        for (const team of arr(obj(body?.boxscore).players)) {
+          for (const st of arr(team.statistics)) {
+            const names = (Array.isArray(st.names) ? st.names : st.labels) as unknown[] | undefined
+            const minAt = Math.max(0, (names || []).findIndex((n) => str(n).toUpperCase() === 'MIN'))
+            for (const a of arr(st.athletes)) {
+              const id = str(obj(a.athlete).id)
+              const mins = a.didNotPlay ? 0 : Number((a.stats as unknown[] | undefined)?.[minAt]) || 0
+              if (id) out.set(id, mins)
+            }
+          }
+        }
+        return out
+      }).catch(() => new Map()),
+    )
+  }
+  return nbaBoxCache.get(eventId)!
 }
 
 function alertRecipients(): string[] {
@@ -190,7 +255,7 @@ Deno.serve(async (req) => {
     const { data: rows, error } = await admin
       .from('fantasy_insider_news')
       .select('tweet_id, handle, author_name, posted_at, text, url, next_status, status_sleeper_id, status_trusted, next_statuses, grade')
-      // Grading reads the NFL schedule and Sleeper NFL stats (NBA ids collide), so NBA statuses stay ungraded.
+      // NFL pass: NFL schedule + Sleeper NFL stats (NBA ids collide; NBA has its own pass below).
       .eq('sport', 'nfl')
       .in('next_status', ['out', 'ir', 'doubtful'])
       .not('status_sleeper_id', 'is', null)
@@ -216,6 +281,20 @@ Deno.serve(async (req) => {
     let contradicted = 0
     let pending = 0
     const newContradictions: Obj[] = []
+    /** Saves one graded post; a contradiction joins the regression set and the ops email. */
+    const record = async (r: Obj, grade: string, note: string, lead: number | null, playerName: string) => {
+      if (grade === 'confirmed') confirmed++
+      else contradicted++
+      if (body.dryRun) return
+      await admin.from('fantasy_insider_news').update({ grade, grade_note: note, graded_at: new Date().toISOString(), espn_lead_min: lead }).eq('tweet_id', r.tweet_id)
+      if (grade === 'contradicted') {
+        newContradictions.push({ ...r, player: playerName, note })
+        await admin.from('fantasy_insider_regression').upsert(
+          { handle: str(r.handle), text: str(r.text), posted_at: str(r.posted_at) || null, expected_next: 'none', expected_player: playerName, origin: 'contradicted', note: `auto ${note}; review label` },
+          { onConflict: 'handle,text', ignoreDuplicates: true },
+        )
+      }
+    }
     for (const r of rows || []) {
       const posted = Date.parse(str(r.posted_at))
       if (!Number.isFinite(posted)) continue
@@ -259,16 +338,68 @@ Deno.serve(async (req) => {
         pending++
         continue
       }
-      if (grade === 'confirmed') confirmed++
-      else contradicted++
-      if (body.dryRun) continue
-      await admin.from('fantasy_insider_news').update({ grade, grade_note: note, graded_at: new Date().toISOString(), espn_lead_min: lead }).eq('tweet_id', r.tweet_id)
-      if (grade === 'contradicted') {
-        newContradictions.push({ ...r, player: p.full_name, note })
-        await admin.from('fantasy_insider_regression').upsert(
-          { handle: str(r.handle), text: str(r.text), posted_at: str(r.posted_at) || null, expected_next: 'none', expected_player: str(p.full_name), origin: 'contradicted', note: `auto ${note}; review label` },
-          { onConflict: 'handle,text', ignoreDuplicates: true },
-        )
+      await record(r, grade, note, lead, p.full_name)
+    }
+
+    // NBA: ESPN NBA schedule + box scores (Sleeper NBA ids collide with NFL ones, so nothing above is reused).
+    const { data: nbaRows, error: nbaErr } = await admin
+      .from('fantasy_insider_news')
+      .select('tweet_id, handle, author_name, posted_at, text, url, next_status, status_sleeper_id, status_trusted, next_statuses, grade')
+      .eq('sport', 'nba')
+      .in('next_status', ['out', 'ir', 'doubtful'])
+      .not('status_sleeper_id', 'is', null)
+      .gte('posted_at', since)
+      .or('grade.is.null,grade.eq.unconfirmed')
+      .limit(1000)
+    if (nbaErr) throw new Error(nbaErr.message)
+    if ((nbaRows || []).length) {
+      const [nbaPlayers, espnIds] = await Promise.all([sleeperNbaPlayers(admin).catch(() => []), nbaEspnIds(admin).catch(() => new Map<string, string>())])
+      const nbaBy = new Map(nbaPlayers.map((p) => [p.sleeper_id, p]))
+      const nbaSids = [...new Set((nbaRows || []).flatMap((r) => entriesOf(r).map((e) => e.sleeper_id)))]
+      const { data: nbaEspn } = nbaSids.length ? await admin.from('nba_player_status').select('sleeper_id, status, changed_at').in('sleeper_id', nbaSids) : { data: [] }
+      const nbaEspnBy = new Map((nbaEspn || []).map((p) => [str(p.sleeper_id), p]))
+      for (const r of nbaRows || []) {
+        const posted = Date.parse(str(r.posted_at))
+        if (!Number.isFinite(posted)) continue
+        const notes: string[] = []
+        const leads: number[] = []
+        let anyBad = false
+        let allDone = true
+        let badPlayer = ''
+        for (const entry of entriesOf(r)) {
+          const p = nbaBy.get(entry.sleeper_id)
+          const athlete = p ? lookupNbaEspnId(espnIds, p.name, p.team) : ''
+          if (!p?.team || !athlete) {
+            allDone = false
+            continue
+          }
+          const e = nbaEspnBy.get(entry.sleeper_id)
+          const changed = e?.changed_at ? Date.parse(str(e.changed_at)) : NaN
+          if (e && BLOCKING.has(str(e.status)) && Number.isFinite(changed) && changed > posted) leads.push(Math.round((changed - posted) / 60000))
+          const game = await nbaNextGame(p.team, posted)
+          if (!game?.final) {
+            allDone = false
+            continue
+          }
+          const mins = (await nbaMinutes(game.id)).get(athlete) || 0
+          const day = ET_YMD.format(new Date(game.tip))
+          if (entry.status === 'doubtful') {
+            if (mins > 0) allDone = false
+            else notes.push(`${p.name} sat ${day}`)
+          } else if (mins > 0) {
+            anyBad = true
+            badPlayer = badPlayer || p.name
+            notes.push(`${p.name} played ${day} (${mins} min)`)
+          } else {
+            notes.push(`${p.name} did not play ${day}`)
+          }
+        }
+        const grade: string | null = anyBad ? 'contradicted' : allDone && notes.length ? 'confirmed' : null
+        if (!grade) {
+          pending++
+          continue
+        }
+        await record(r, grade, notes.join('; '), leads.length ? Math.min(...leads) : null, badPlayer || str(nbaBy.get(str(r.status_sleeper_id))?.name))
       }
     }
 

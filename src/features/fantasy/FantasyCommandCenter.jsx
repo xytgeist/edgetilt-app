@@ -850,7 +850,8 @@ function CenterMarket({ prop, align, row, card }) {
   )
 }
 
-function VsHead({ row, align, final = false, gamesLeft = null }) {
+/** `chip`: the slot pill beside the name (one-sided cards), which also replaces the position in the meta line. */
+function VsHead({ row, align, final = false, gamesLeft = null, chip = null }) {
   if (!row) return <div />
   return (
     <div
@@ -862,12 +863,13 @@ function VsHead({ row, align, final = false, gamesLeft = null }) {
           <span className="truncate text-[12px] font-bold tracking-wide text-zinc-100">
             {shortName(row.player_name, row.position)}
           </span>
+          {chip}
           {injuryPill(row.injury_status)}
         </div>
         <div className="truncate text-[10px] text-zinc-500">
-          {fantasyPos(row.position) || row.position}
-          {row.nfl_team ? ` · ${row.nfl_team}` : ''}
-          {gamesLeft != null ? ` · ${gamesLeft} left` : ''}
+          {[chip ? '' : fantasyPos(row.position) || row.position, row.nfl_team, gamesLeft != null ? `${gamesLeft} left` : '']
+            .filter(Boolean)
+            .join(' · ')}
         </div>
       </div>
     </div>
@@ -1232,6 +1234,29 @@ function NbaPointsCell({ card, row, loading, scoring, align, lockIn = false, upc
   )
 }
 
+function slotChip(label, bench) {
+  if (bench) {
+    return (
+      <span data-fantasy-bench-pill className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold">
+        BN
+      </span>
+    )
+  }
+  const pos = slotPillPosition(label)
+  if (pos) {
+    return (
+      <span data-pos-pill={pos} className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${positionPillClass(pos)}`}>
+        {label}
+      </span>
+    )
+  }
+  return (
+    <span className="fantasy-slot-pill shrink-0 rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-zinc-500/60" style={{ color: '#fff' }}>
+      {label}
+    </span>
+  )
+}
+
 /** `solo`: no opponent (season-long leagues), so each row is one full-width player card. */
 function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn = false, upcoming = false, valueLabel = 'PROJ', solo = false }) {
   const [openKeys, setOpenKeys] = useState(() => new Set())
@@ -1315,13 +1340,14 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
             >
               <SideBust row={pair.left} align="left" live={leftLive} final={sideStatus(leftCard) === 'Final'} />
               {solo ? null : <SideBust row={pair.right} align="right" live={rightLive} final={sideStatus(rightCard) === 'Final'} />}
-              <div className={`relative z-[1] grid w-full items-center gap-3 ${solo ? 'grid-cols-1 pl-10 pr-28' : 'grid-cols-2 px-10'}`}>
+              <div className={`relative z-[1] grid w-full items-center gap-3 ${solo ? 'grid-cols-1 pl-10 pr-20' : 'grid-cols-2 px-10'}`}>
                 {pair.left || !pair.leftOpen ? (
                   <VsHead
                     row={pair.left}
                     align="left"
                     final={sideStatus(leftCard) === 'Final'}
                     gamesLeft={sport === 'nba' && leftCard ? Number(upcoming ? leftCard.games_next : leftCard.games_left) || 0 : null}
+                    chip={solo ? slotChip(pair.label, bench) : null}
                   />
                 ) : (
                   <OpenSlotTag align="left" />
@@ -1341,31 +1367,13 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
               <div className={`absolute top-1/2 z-[1] flex -translate-y-1/2 ${solo ? 'right-3' : 'inset-x-0 justify-center'}`}>
                 <div className="flex items-center gap-1">
                   <PointsCell card={leftCard} row={pair.left} loading={cardsLoading} scoring={scoring} sport={sport} align="left" lockIn={lockIn} upcoming={upcoming} valueLabel={valueLabel} />
-                  {bench ? (
-                    <span data-fantasy-bench-pill className="rounded-md px-1.5 py-0.5 text-[10px] font-bold">
-                      BN
-                    </span>
-                  ) : slotPillPosition(pair.label) ? (
-                    <span
-                      data-pos-pill={slotPillPosition(pair.label)}
-                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${positionPillClass(slotPillPosition(pair.label))}`}
-                    >
-                      {pair.label}
-                    </span>
-                  ) : (
-                    <span
-                      className="fantasy-slot-pill rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-zinc-500/60"
-                      style={{ color: '#fff' }}
-                    >
-                      {pair.label}
-                    </span>
-                  )}
+                  {solo ? null : slotChip(pair.label, bench)}
                   {solo ? null : (
                     <PointsCell card={rightCard} row={pair.right} loading={cardsLoading} scoring={scoring} sport={sport} align="right" lockIn={lockIn} upcoming={upcoming} valueLabel={valueLabel} />
                   )}
                 </div>
               </div>
-              <div className={`relative z-[1] mt-[17px] grid min-h-[14px] gap-1.5 px-1 ${solo ? 'grid-cols-1 pr-28' : 'grid-cols-2'}`}>
+              <div className={`relative z-[1] mt-[17px] grid min-h-[14px] gap-1.5 px-1 ${solo ? 'grid-cols-1 pr-20' : 'grid-cols-2'}`}>
                 <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />
                 {solo ? null : <CenterMarket prop={rightMain} align="right" row={pair.right} card={rightCard} />}
               </div>

@@ -3,8 +3,10 @@
  * category board under it (projected finals per category, win chance per category and overall). Math lives in
  * `fantasyCategories.js`.
  */
-import { Fragment, useMemo } from 'react'
+import { useMemo } from 'react'
 import { categoryOutlook, sideProjection } from './fantasyCategories.js'
+
+const CAT_GRID = 'grid grid-cols-[3rem_minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-x-2 px-1.5'
 
 function startersOf(rows) {
   return (rows || []).filter((r) => r.slot === 'starter')
@@ -162,22 +164,25 @@ export function CategoryBoard({ page, cards, categories, upcoming = false }) {
           {cat.expected.toFixed(1)} of {cat.total} projected · {Math.round(cat.win * 100)}% to win
         </span>
       </div>
-      <div className="mt-2 grid grid-cols-[3rem_minmax(0,1fr)_3rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-[12px] tabular-nums">
-        <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Cat</span>
-        <span className="text-right text-[10px] font-bold uppercase tracking-wide text-zinc-500">{shortTeamName(page.left) || 'You'}</span>
-        <span className="text-center text-[10px] font-bold uppercase tracking-wide text-zinc-500">Win</span>
-        <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{shortTeamName(page.right) || 'Opp'}</span>
-        {cat.cats.map((c) => (
-          <Fragment key={c.key}>
+      {/* Value columns are centered and every other row is banded so a category reads straight across. */}
+      <div className="mt-2 text-[12px] tabular-nums">
+        <div className={`${CAT_GRID} pb-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500`}>
+          <span>Cat</span>
+          <span className="truncate text-center">{shortTeamName(page.left) || 'You'}</span>
+          <span className="text-center">Win</span>
+          <span className="truncate text-center">{shortTeamName(page.right) || 'Opp'}</span>
+        </div>
+        {cat.cats.map((c, i) => (
+          <div key={c.key} data-fantasy-cat-stripe={i % 2 === 0 ? '' : undefined} className={`${CAT_GRID} rounded-md py-1`}>
             <span className="font-semibold text-zinc-300">{c.label}</span>
-            <span className="text-right text-zinc-100">{catValue(c.left)}</span>
+            <span className={`text-center ${c.p >= 0.5 ? 'font-bold text-zinc-100' : 'text-zinc-400'}`}>{catValue(c.left)}</span>
             <span
               className={`text-center text-[11px] font-bold ${c.p >= 0.6 ? 'fantasy-proj-up' : c.p <= 0.4 ? 'fantasy-proj-down' : 'text-zinc-400'}`}
             >
               {Math.round(c.p * 100)}%
             </span>
-            <span className="text-zinc-100">{catValue(c.right)}</span>
-          </Fragment>
+            <span className={`text-center ${c.p < 0.5 ? 'font-bold text-zinc-100' : 'text-zinc-400'}`}>{catValue(c.right)}</span>
+          </div>
         ))}
       </div>
       <p className="mt-2 text-[10px] text-zinc-500">

@@ -12169,6 +12169,13 @@ html.light [data-fantasy-nba-schedule] tr[data-fantasy-sched-stripe] > td {
 html.light [data-fantasy-nba-schedule] tr[data-fantasy-sched-stripe] .bg-zinc-800 {
   background-color: #fff;
 }
+/* Categories board: same banding as the schedule. */
+[data-fantasy-cat-board] [data-fantasy-cat-stripe] {
+  background-color: rgb(255 255 255 / 0.045);
+}
+html.light [data-fantasy-cat-board] [data-fantasy-cat-stripe] {
+  background-color: #e8e8eb;
+}
 /* Start/Sit open lineup slot */
 [data-fantasy-home] [data-fantasy-open-slot] {
   border-color: rgb(245 158 11 / 0.45);

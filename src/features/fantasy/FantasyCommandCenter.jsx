@@ -5096,6 +5096,8 @@ export default function FantasyCommandCenter({
 
           {current && shownTool !== 'waiver' && shownTool !== 'trade' && shownTool !== 'standings' && shownTool !== 'schedule' ? (
             <VsMatchup
+              // A swipe to another matchup starts with every player row collapsed.
+              key={current.key}
               mine={current.roster}
               opp={current.oppRoster}
               cards={cards}

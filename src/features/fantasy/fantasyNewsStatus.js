@@ -30,7 +30,7 @@ const LINEUP_TERMS =
  */
 export function lineupNews(note) {
   if (LINEUP_KINDS.has(String(note?.topic || ''))) return true
-  const head = { headline: note?.headline || '' }
+  const head = { headline: note?.headline || '', player: note?.player }
   if (noteStatus(head)) return true
   return LINEUP_TERMS.test(noteText(head))
 }
@@ -41,16 +41,54 @@ const LABEL = { questionable: 'Questionable', doubtful: 'Doubtful', out: 'Out' }
 /** Hypotheticals ("If Curry suffers a setback ... he'll miss time") never set a status. */
 const CONDITIONAL = /^(if|should|in the event|assuming)\b/i
 
-function noteText(note) {
-  return `${note?.headline || ''} ${note?.story || ''}`
+/** Surname the note's own player goes by in Rotowire / insider copy ("Aaron Jones Sr." -> "Jones"). */
+function surnameOf(player) {
+  const words = String(player || '')
+    .trim()
+    .split(/\s+/)
+    .filter((w) => !/^(jr|sr|ii|iii|iv|v)\.?$/i.test(w))
+  const last = words[words.length - 1] || ''
+  return last.length >= 2 ? last : ''
+}
+
+/** Clause breaks where copy hands off to another player ("..., as fellow RB Jordan Mason (thumb) is questionable"). */
+const CLAUSE_BREAK = /,|;|\s--?\s|\s(?:after|with|while|because|since|but|and|although|though|due to|given that|now that|until|as (?=(?:fellow|teammate|[A-Z])))\s?/
+/** Another player in the clause: an injury tag ("Rice (hamstring/knee)") or a first + last name ("Jordan Mason"). */
+const INJURY_TAGGED = /\b[A-Z][A-Za-z'.-]+\s*\([a-z][a-z/ ,-]*\)/
+const FULL_NAME = /\b[A-Z][a-z'.-]+\s+[A-Z][A-Za-z'.-]+/
+
+function nameRe(surname) {
+  return new RegExp(`\\b${surname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`)
+}
+
+/**
+ * Only the clauses about this player. Teammate news rides along in his notes ("Rashee Rice (hamstring/knee) was
+ * ruled out", "Mason -- who is still on IR"), and reading those as his status benched healthy starters.
+ */
+function subjectClauses(sentence, mine) {
+  return sentence
+    .split(CLAUSE_BREAK)
+    .filter((clause) => mine.test(clause) || !(INJURY_TAGGED.test(clause) || FULL_NAME.test(clause)))
+    .join(', ')
+}
+
+/** `subjectOnly` keeps just the clauses about the note's player (status); off, teammate news still flags the row. */
+function noteText(note, { subjectOnly = false } = {}) {
+  const sentences = `${note?.headline || ''} ${note?.story || ''}`
     .split(/(?<=[.!?])\s+/)
-    .filter((sentence) => !CONDITIONAL.test(sentence.trim()))
+    .filter((sentence) => sentence.trim() && !CONDITIONAL.test(sentence.trim()))
+  const surname = subjectOnly ? surnameOf(note?.player) : ''
+  if (!surname) return sentences.join(' ')
+  const mine = nameRe(surname)
+  return sentences
+    .filter((sentence) => mine.test(sentence))
+    .map((sentence) => subjectClauses(sentence, mine))
     .join(' ')
 }
 
 /** 'out' | 'doubtful' | 'questionable' | 'cleared' | '' for one note. */
 export function noteStatus(note) {
-  const text = noteText(note)
+  const text = noteText(note, { subjectOnly: true })
   if (SEASON.test(text) || MISS_TIME.test(text)) return 'out'
   if (IN_GAME.test(text)) return ''
   if (ACTIVATED.test(text)) return 'cleared'

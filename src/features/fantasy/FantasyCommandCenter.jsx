@@ -3728,7 +3728,7 @@ function MatchupCard({
             <span
               data-fantasy-card-title
               title={leagueName}
-              className="flex min-w-0 justify-center justify-self-center text-[11px] font-semibold text-zinc-400"
+              className="flex min-w-0 justify-center justify-self-center text-[16px] font-bold leading-6 tracking-[-0.01em] text-zinc-100"
             >
               <span className="min-w-0 truncate">{shownName}</span>
             </span>

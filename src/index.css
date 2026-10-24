@@ -11875,20 +11875,9 @@ html.light [data-fantasy-home] .text-sky-300 {
 html.light [data-fantasy-home] .text-sky-400 {
   color: #2563eb !important;
 }
-/* Matchup card league row reads as a title area: league name chip + back / Sync / Manage chips share one fill. */
+/* Matchup card league row: plain title text; back / Sync / Manage chips share one fill. */
 html.light [data-fantasy-home] [data-fantasy-card-league] > [data-fantasy-card-title] {
-  display: inline-flex;
-  align-items: center;
-  height: 1.75rem;
-  margin-left: 0;
-  padding: 0 0.7rem;
-  border-radius: 9999px;
-  /* Inverted (ink fill, white text) so the title pills read apart from the soft white icon buttons. */
-  background-color: #18181b;
-  border: 1px solid #18181b;
-  color: #fff !important;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  color: #18181b !important;
 }
 html.light [data-fantasy-home] [data-fantasy-card-league] [data-fantasy-card-format] {
   padding: 0 0.7rem;

@@ -15,7 +15,13 @@ import { loadMarketLines, marketLineFor } from './fantasyMarketProjections.ts'
 import { loadNbaBoard, nbaTeam, teamWeek, weekGames, type NbaGame } from './fantasyNbaBoard.ts'
 import { lookupNbaEspnId, nbaEspnIds } from './nbaEspnIds.ts'
 import { type NbaPlayer, sleeperNbaPlayers } from './sleeperNbaPlayers.ts'
-import { loadNbaMarketLines, nbaMarketLineFor } from './fantasyNbaMarketLines.ts'
+import {
+  eventDate as nbaEventDate,
+  loadNbaMarketLines,
+  nameKey as nbaNameKey,
+  nbaMarketLineFor,
+  seriesMarkets as nbaSeriesMarkets,
+} from './fantasyNbaMarketLines.ts'
 
 const ET_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
 
@@ -285,6 +291,68 @@ function askPrice(m: Record<string, unknown>, side: 'yes' | 'no'): number | null
   const raw = Number(side === 'yes' ? (m.yes_ask_dollars ?? m.yes_ask) : (m.no_ask_dollars ?? m.no_ask))
   if (!Number.isFinite(raw) || raw <= 0 || raw >= 1) return null
   return Math.round(raw * 100) / 100
+}
+
+/** NBA card props: Kalshi points / rebounds / assists / threes, one strike per stat (the one priced nearest 50%). */
+const NBA_PROP_SERIES: Record<string, string> = { KXNBAPTS: 'pts', KXNBAREB: 'reb', KXNBAAST: 'ast', KXNBA3PT: 'tpm' }
+const NBA_PROP_ORDER = ['pts', 'reb', 'ast', 'tpm']
+const NBA_PROP_MAX_SPREAD = 0.25
+
+/** `nameKey|TEAM|ET date` → that game's props, points first. Shared cache 10 min. */
+function loadNbaProps(admin?: SupabaseClient): Promise<Record<string, PropOut[]>> {
+  return sharedCached(
+    'fantasy:nba-card-props:kalshi:v1',
+    { ttlMs: 10 * 60_000, staleMaxMs: 60 * 60_000, leaseMs: 30_000, admin, shouldStore: (v) => Object.keys(v).length > 0 },
+    async () => {
+      const best = new Map<string, Map<string, PropOut & { gap: number }>>()
+      await Promise.all(
+        Object.entries(NBA_PROP_SERIES).map(async ([series, stat]) => {
+          for (const m of await nbaSeriesMarkets(series).catch(() => [])) {
+            const title = String(m.title || '')
+            const cut = title.indexOf(':')
+            if (cut <= 0) continue
+            const name = title.slice(0, cut).trim()
+            const label = title.slice(cut + 1).trim()
+            // Ticker `KXNBAPTS-26OCT23HOUSAS-SASDHARPER2-25`: the third part starts with the player's team code.
+            const team = nbaTeam(String(m.ticker || '').split('-')[2]?.slice(0, 3) || '')
+            const date = nbaEventDate(String(m.event_ticker || ''))
+            const bid = Number(m.yes_bid_dollars)
+            const ask = Number(m.yes_ask_dollars)
+            if (!name || !label || !team || !date || !Number.isFinite(bid) || !(ask > 0) || ask - bid > NBA_PROP_MAX_SPREAD) continue
+            const key = `${nbaNameKey(name)}|${team}|${date}`
+            const gap = Math.abs((bid + ask) / 2 - 0.5)
+            const byStat = best.get(key) || new Map()
+            const cur = byStat.get(stat)
+            if (cur && cur.gap <= gap) continue
+            const urls = kalshiMarketUrls(series, String(m.event_ticker || ''), String(m.ticker || ''))
+            byStat.set(stat, {
+              label,
+              price: askPrice(m, 'yes'),
+              no: askPrice(m, 'no'),
+              volume: Math.round(liquidity(m)),
+              stat,
+              source: 'kalshi',
+              url_market: urls.marketUrl,
+              url_yes: urls.yesUrl,
+              url_no: urls.noUrl,
+              gap,
+            })
+            best.set(key, byStat)
+          }
+        }),
+      )
+      const out: Record<string, PropOut[]> = {}
+      for (const [key, byStat] of best) {
+        out[key] = NBA_PROP_ORDER.flatMap((stat) => {
+          const p = byStat.get(stat)
+          if (!p) return []
+          const { gap: _gap, ...prop } = p
+          return [prop]
+        })
+      }
+      return out
+    },
+  ).catch(() => ({}))
 }
 
 async function loadProps(): Promise<Map<string, Array<PropOut & { teams: string }>>> {
@@ -662,11 +730,12 @@ export async function buildSportLineupCards(
     return { season: '', week: 0, cards }
   }
 
-  const [board, espnIds, nbaPlayers, market] = await Promise.all([
+  const [board, espnIds, nbaPlayers, market, nbaProps] = await Promise.all([
     loadNbaBoard(),
     nbaEspnIds(admin).catch(() => new Map<string, string>()),
     admin ? sleeperNbaPlayers(admin).catch(() => [] as NbaPlayer[]) : Promise.resolve([] as NbaPlayer[]),
     loadNbaMarketLines(admin),
+    loadNbaProps(admin),
     mergeLiveLines(cards, list, sport, {}),
   ])
   await attachNbaHeadshots(cards, list, espnIds, admin)
@@ -706,6 +775,10 @@ export async function buildSportLineupCards(
       card.kickoff = wk.next?.date || null
     }
     card.game_date = card.kickoff ? card.kickoff.slice(0, 10) : null
+    // Props for the game he is in now, else his next one (Kalshi keys games by US Eastern date).
+    const propGame = wk.live || wk.next
+    card.props = propGame && raw.name ? nbaProps[`${nbaNameKey(String(raw.name))}|${t}|${etDate(propGame.date)}`] || [] : []
+    card.main_prop = card.props[0] || null
     card.opponent = wk.opponent
     card.home = wk.home
     const sched = (games: NbaGame[], w: 0 | 1) =>

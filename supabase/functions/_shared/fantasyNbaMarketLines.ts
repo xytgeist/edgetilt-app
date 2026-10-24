@@ -136,7 +136,7 @@ export function ladderMean(stat: string, ladder: Strike[]): number | null {
   return sw > 0 ? sm / sw : null
 }
 
-function nameKey(name: string): string {
+export function nameKey(name: string): string {
   return String(name || '')
     .toLowerCase()
     .normalize('NFD')
@@ -148,12 +148,12 @@ function nameKey(name: string): string {
 const MONTHS: Record<string, string> = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' }
 
 /** `KXNBAPTS-26OCT23HOUSAS` → `2026-10-23` (US Eastern game date). */
-function eventDate(eventTicker: string): string {
+export function eventDate(eventTicker: string): string {
   const m = String(eventTicker || '').match(/-(\d{2})([A-Z]{3})(\d{2})/)
   return m && MONTHS[m[2]] ? `20${m[1]}-${MONTHS[m[2]]}-${m[3]}` : ''
 }
 
-async function seriesMarkets(series: string): Promise<Array<Record<string, unknown>>> {
+export async function seriesMarkets(series: string): Promise<Array<Record<string, unknown>>> {
   const out: Array<Record<string, unknown>> = []
   let cursor = ''
   for (let page = 0; page < 3; page++) {

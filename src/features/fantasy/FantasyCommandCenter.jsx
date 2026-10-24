@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ChevronLeft, Loader2, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronLeft, Loader2, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
 import { scoreLine } from './fantasyBoxScore.js'
 import { projectionOf } from './fantasyProjection.js'
 import { nbaMatchupUpcoming, nbaWeekOf } from './fantasyNbaWeek.js'
@@ -388,6 +388,10 @@ const PROP_LABEL_SHORT = [
   [/\breceiving yards\b/i, 'rec yds'],
   [/\breceptions?\b/i, 'rec'],
   [/\btouchdowns?\b/i, 'TD'],
+  [/\bpoints\b/i, 'pts'],
+  [/\brebounds\b/i, 'reb'],
+  [/\bassists\b/i, 'ast'],
+  [/\bthrees\b|\b3-pointers?( made)?\b/i, '3PM'],
 ]
 
 function shortPropLabel(label) {
@@ -698,9 +702,12 @@ function groupMarkets(props, position) {
     }))
 }
 
+const NBA_PROP_STATS = new Set(['pts', 'reb', 'ast', 'tpm'])
+
 function pickMainProp(row, card) {
   const want = MAIN_STAT[fantasyPos(row?.position)]
-  if (!want) return null
+  // NBA cards carry their own pick (points first, else the next stat Kalshi prices).
+  if (!want) return NBA_PROP_STATS.has(card?.main_prop?.stat) ? card.main_prop : null
   return (card?.props || []).find((p) => propStat(p) === want) || null
 }
 
@@ -838,11 +845,12 @@ function injuryPill(status) {
 }
 
 /** Main market under the row. The pill sits against the card's center line, label outward. */
-function CenterMarket({ prop, align, row, card }) {
+/** `start`: one-sided cards keep the market under the name instead of against the center line. */
+function CenterMarket({ prop, align, row, card, start = false }) {
   if (!prop?.label) return <div />
   const left = align === 'left'
   return (
-    <div className={`flex min-w-0 items-center gap-1 ${left ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex min-w-0 items-center gap-1 ${left && !start ? 'justify-end' : 'justify-start'}`}>
       {left ? <span className="fantasy-prop-label min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{shortPropLabel(prop.label)}</span> : null}
       <YesNoPills prop={prop} row={row} card={card} />
       {left ? null : <span className="fantasy-prop-label min-w-0 truncate text-[10px] font-semibold leading-[14px] text-sky-300">{shortPropLabel(prop.label)}</span>}
@@ -1373,8 +1381,8 @@ function MatchupRows({ pairs, cards, cardsLoading, bench, scoring, sport, lockIn
                   )}
                 </div>
               </div>
-              <div className={`relative z-[1] mt-[17px] grid min-h-[14px] gap-1.5 px-1 ${solo ? 'grid-cols-1 pr-20' : 'grid-cols-2'}`}>
-                <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} />
+              <div className={`relative z-[1] mt-[17px] grid min-h-[14px] gap-1.5 px-1 ${solo ? 'grid-cols-1 pl-9 pr-20' : 'grid-cols-2'}`}>
+                <CenterMarket prop={leftMain} align="left" row={pair.left} card={leftCard} start={solo} />
                 {solo ? null : <CenterMarket prop={rightMain} align="right" row={pair.right} card={rightCard} />}
               </div>
             </div>
@@ -1850,35 +1858,79 @@ function leagueAlertLines(plan, detail, cards) {
   return [...named.map((a) => a.text), ...lockLines, ...(parts.length ? [parts.join(' · ')] : [])]
 }
 
+const DISMISSED_ALERTS_KEY = 'edge.fantasy.liveAlertsDismissed.v1'
+const DISMISSED_ALERTS_TTL_MS = 3 * 24 * 60 * 60 * 1000
+
+function readDismissedAlerts() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DISMISSED_ALERTS_KEY) || '{}')
+    const now = Date.now()
+    return Object.fromEntries(Object.entries(raw || {}).filter(([, at]) => now - Number(at) < DISMISSED_ALERTS_TTL_MS))
+  } catch {
+    return {}
+  }
+}
+
+/** Live tab warning; dismissing hides this exact set of warnings for the league (a new or changed warning shows again). */
 function LiveAlerts({ detail, cards, cardsLoading, sport, onOpen, prefix = '' }) {
   const plan = useStartSitPlan(detail, cards, sport)
+  const [dismissed, setDismissed] = useState(readDismissedAlerts)
   if (cardsLoading || !plan) return null
   const lines = leagueAlertLines(plan, detail, cards)
   if (!lines.length) return null
+  const key = `${detail?.league?.id || ''}:${lines.join('|')}`
+  if (dismissed[key]) return null
+  const dismiss = () => {
+    const next = { ...readDismissedAlerts(), [key]: Date.now() }
+    try {
+      localStorage.setItem(DISMISSED_ALERTS_KEY, JSON.stringify(next))
+    } catch {
+      /* private mode: dismiss for this view only */
+    }
+    setDismissed(next)
+  }
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      data-fantasy-open-slot
-      className="flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-[12px] font-bold"
-    >
-      <AlertTriangle size={15} strokeWidth={2.25} className="shrink-0" aria-hidden />
-      <span className="min-w-0 flex-1">
-        {lines.map((line, i) => (
-          <span key={line} className="block truncate">
-            {prefix && i === 0 ? <span className="opacity-80">{prefix}: </span> : null}
-            {line}
-          </span>
-        ))}
-      </span>
-      <span className="shrink-0 text-[11px] font-semibold opacity-80">Roster</span>
-    </button>
+    <div data-fantasy-open-slot className="flex w-full items-center gap-1 rounded-xl border py-2 pl-3 pr-1.5 text-[12px] font-bold">
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+        <AlertTriangle size={15} strokeWidth={2.25} className="shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1">
+          {lines.map((line, i) => (
+            <span key={line} className="block truncate">
+              {prefix && i === 0 ? <span className="opacity-80">{prefix}: </span> : null}
+              {line}
+            </span>
+          ))}
+        </span>
+        <span className="shrink-0 text-[11px] font-semibold opacity-80">Roster</span>
+      </button>
+      <button type="button" onClick={dismiss} aria-label="Dismiss warning" className="shrink-0 rounded-full p-1 opacity-70 hover:opacity-100">
+        <X size={14} strokeWidth={2.25} aria-hidden />
+      </button>
+    </div>
   )
 }
 
 /** Start/Sit: best lineup for this week from your own roster, as swap cards. Moves happen on the host. */
+const LINEUP_COLLAPSED_KEY = 'edge.fantasy.lineupCollapsed.v1'
+
 function StartSitPanel({ supabaseClient, detail, cards, sport }) {
   const plan = useStartSitPlan(detail, cards, sport)
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(LINEUP_COLLAPSED_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const toggleCollapsed = () =>
+    setCollapsed((v) => {
+      try {
+        localStorage.setItem(LINEUP_COLLAPSED_KEY, v ? '0' : '1')
+      } catch {
+        /* private mode */
+      }
+      return !v
+    })
   const empty = plan?.empty || []
   const fills = useOpenSlotFills({ supabaseClient, detail, empty, sport })
   const lockCalls = plan?.lockCalls || []
@@ -1888,18 +1940,33 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
   const moves = plan.moves
   return (
     <div data-fantasy-start-sit className="fantasy-card-lift rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-[13px] font-bold text-zinc-100">
+      <button
+        type="button"
+        aria-expanded={!collapsed}
+        onClick={toggleCollapsed}
+        className="flex w-full items-center justify-between gap-2 text-left touch-manipulation"
+      >
+        <span className="text-[13px] font-bold text-zinc-100">
           {plan.today ? "Today's lineup" : moves.length ? 'Suggested moves' : 'Open lineup slot'}
-        </div>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
-            moves.length ? 'fantasy-sit-gain' : 'fantasy-sit-ok'
-          }`}
-        >
-          {moves.length ? `+${plan.gain.toFixed(1)} proj` : `${plan.projected.toFixed(1)} proj`}
         </span>
-      </div>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums ${
+              moves.length ? 'fantasy-sit-gain' : 'fantasy-sit-ok'
+            }`}
+          >
+            {moves.length ? `+${plan.gain.toFixed(1)} proj` : `${plan.projected.toFixed(1)} proj`}
+          </span>
+          <ChevronDown
+            size={16}
+            strokeWidth={2.25}
+            className={`text-zinc-500 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+            aria-hidden
+          />
+        </span>
+      </button>
+      {collapsed ? null : (
+      <>
       {moves.length ? (
         <ul className="mt-2 space-y-1.5">
           {moves.map((m) => (
@@ -1977,6 +2044,8 @@ function StartSitPanel({ supabaseClient, detail, cards, sport }) {
           : ''}
         {plan.inferred ? ' Slots read from your current lineup; Sync to load league slots.' : ''}
       </p>
+      </>
+      )}
     </div>
   )
 }

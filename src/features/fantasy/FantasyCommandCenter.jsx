@@ -101,10 +101,11 @@ const TOOL_IDS = new Set([...TOOLS.map((t) => t.id), 'plays', 'standings', 'sche
 /** Season-long leagues (no weekly opponent) open on Standings. */
 const SEASON_TOOL = { id: 'standings', label: 'Standings' }
 
-/** Season-long tabs: Standings first; NBA splits the games-left Schedule out of Roster. */
-function seasonTools(sport) {
+/** NBA: the games-left Schedule is its own tab right after Roster. Season-long leagues put Standings first. */
+function leagueTools(sport, seasonLong) {
   const [roster, ...rest] = TOOLS
-  return [SEASON_TOOL, roster, ...(sport === 'nba' ? [{ id: 'schedule', label: 'Schedule' }] : []), ...rest]
+  const base = sport === 'nba' ? [roster, { id: 'schedule', label: 'Schedule' }, ...rest] : TOOLS
+  return seasonLong ? [SEASON_TOOL, ...base] : base
 }
 
 function providerLabel(provider) {
@@ -4666,7 +4667,7 @@ export default function FantasyCommandCenter({
     }
   }, [nflLeague, current, cards, detail])
   const seasonLeague = Boolean(seasonLongFormat(detail?.league))
-  const tools = seasonLeague ? seasonTools(leagueSport) : nflLeague ? nflTools(nflState) : TOOLS
+  const tools = nflLeague && !seasonLeague ? nflTools(nflState) : leagueTools(leagueSport, seasonLeague)
   const rosterPlan = useStartSitPlan(detail, cards, leagueSport)
   const dismissedCount = rosterPlan?.dismissed?.length || 0
   const leaguePending = usePendingTrades(supabaseClient, leagueId ? detail?.league?.id || null : null)
@@ -4942,7 +4943,7 @@ export default function FantasyCommandCenter({
           {shownTool === 'start' && detail ? (
             <StartSitPanel supabaseClient={supabaseClient} detail={detail} cards={cards} sport={selected?.sport || detail?.league?.sport} />
           ) : null}
-          {((shownTool === 'start' && !seasonLeague) || shownTool === 'schedule') && detail && current && (selected?.sport || detail?.league?.sport) === 'nba' ? (
+          {shownTool === 'schedule' && detail && current && (selected?.sport || detail?.league?.sport) === 'nba' ? (
             <NbaSchedulePanel page={current} cards={cards} league={detail?.league} />
           ) : null}
           {shownTool === 'waiver' && detail ? (

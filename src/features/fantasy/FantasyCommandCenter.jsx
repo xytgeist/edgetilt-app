@@ -662,6 +662,7 @@ const MARKET_GROUP_ORDER = {
   WR: ['rec_yds', 'rec', 'td', 'rush_yds', 'pass_yds'],
   TE: ['rec_yds', 'rec', 'td', 'rush_yds', 'pass_yds'],
 }
+const NBA_MARKET_ORDER = ['pts', 'reb', 'ast', 'tpm']
 const MARKET_GROUP_LABEL = {
   pass_yds: 'Pass yds',
   rush_yds: 'Rush yds',
@@ -669,6 +670,10 @@ const MARKET_GROUP_LABEL = {
   rr_yds: 'Rush + rec yds',
   rec: 'Receptions',
   td: 'Touchdowns',
+  pts: 'Points',
+  reb: 'Rebounds',
+  ast: 'Assists',
+  tpm: 'Threes',
 }
 
 function marketStat(prop) {
@@ -682,7 +687,8 @@ function marketStat(prop) {
 
 /** Markets grouped by stat (position's main stat first), each ladder low strike to high. */
 function groupMarkets(props, position) {
-  const order = MARKET_GROUP_ORDER[fantasyPos(position)] || MARKET_GROUP_ORDER.WR
+  const nba = (props || []).some((p) => NBA_PROP_STATS.has(p?.stat))
+  const order = nba ? NBA_MARKET_ORDER : MARKET_GROUP_ORDER[fantasyPos(position)] || MARKET_GROUP_ORDER.WR
   const by = new Map()
   for (const prop of props || []) {
     const key = marketStat(prop)
@@ -732,13 +738,20 @@ const PROP_STAT_NAME = {
   rec_yds: 'Receiving yards',
   rec: 'Receptions',
   td: 'Touchdowns',
+  pts: 'Points',
+  reb: 'Rebounds',
+  ast: 'Assists',
+  tpm: 'Threes made',
 }
 
 /** Bet Tracker fields for this player's game (each fantasy row is a different game). */
 function playerBetGame(row, card) {
   const team = String(row?.nfl_team || '').toUpperCase()
   const opp = String(card?.opponent || '').toUpperCase()
-  const out = { sport_key: 'americanfootball_nfl', sport_label: 'NFL', commence_time: card?.kickoff || undefined }
+  const nba = (card?.props || []).some((p) => NBA_PROP_STATS.has(p?.stat))
+  const out = nba
+    ? { sport_key: 'basketball_nba', sport_label: 'NBA', commence_time: card?.kickoff || undefined }
+    : { sport_key: 'americanfootball_nfl', sport_label: 'NFL', commence_time: card?.kickoff || undefined }
   if (team && opp && card?.home != null) {
     out.home_team = card.home ? team : opp
     out.away_team = card.home ? opp : team
@@ -875,10 +888,11 @@ function VsHead({ row, align, final = false, gamesLeft = null, chip = null }) {
           {injuryPill(row.injury_status)}
         </div>
         <div className="truncate text-[10px] text-zinc-500">
-          {[chip ? '' : fantasyPos(row.position) || row.position, row.nfl_team, gamesLeft != null ? `${gamesLeft} ${gamesLeft === 1 ? 'game' : 'games'} left` : '']
-            .filter(Boolean)
-            .join(' · ')}
+          {[chip ? '' : fantasyPos(row.position) || row.position, row.nfl_team].filter(Boolean).join(' · ')}
         </div>
+        {gamesLeft != null ? (
+          <div className="truncate text-[10px] text-zinc-500">{`${gamesLeft} ${gamesLeft === 1 ? 'game' : 'games'} left`}</div>
+        ) : null}
       </div>
     </div>
   )

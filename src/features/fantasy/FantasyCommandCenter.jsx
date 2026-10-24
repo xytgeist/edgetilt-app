@@ -867,7 +867,7 @@ function VsHead({ row, align, final = false, gamesLeft = null, chip = null }) {
           {injuryPill(row.injury_status)}
         </div>
         <div className="truncate text-[10px] text-zinc-500">
-          {[chip ? '' : fantasyPos(row.position) || row.position, row.nfl_team, gamesLeft != null ? `${gamesLeft} left` : '']
+          {[chip ? '' : fantasyPos(row.position) || row.position, row.nfl_team, gamesLeft != null ? `${gamesLeft} ${gamesLeft === 1 ? 'game' : 'games'} left` : '']
             .filter(Boolean)
             .join(' · ')}
         </div>
